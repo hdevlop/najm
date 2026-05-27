@@ -1,0 +1,39 @@
+{
+  "name": "najm-i18n",
+  "version": "1.1.10",
+  "description": "I18n .",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./src/*.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "start": "bun --watch src/main.ts",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "rimraf": "^6.0.1"
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0",
+    "najm-core": "workspace:*",
+    "reflect-metadata": "^0.2.0"
+  }
+}

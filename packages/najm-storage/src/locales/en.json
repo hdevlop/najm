@@ -1,0 +1,15 @@
+{
+  "storage": {
+    "files": {
+      "listed": "Files retrieved successfully"
+    },
+    "file": {
+      "info": "File details retrieved successfully",
+      "uploaded": "File uploaded successfully",
+      "deleted": "File deleted successfully"
+    },
+    "namespace": {
+      "deleted": "Namespace deleted successfully"
+    }
+  }
+}

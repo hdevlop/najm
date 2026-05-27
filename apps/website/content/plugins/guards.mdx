@@ -1,0 +1,71 @@
+---
+title: Guard Plugin
+description: Authorization system with route protection and automatic token injection
+order: 2
+---
+
+The Guard Plugin provides a comprehensive authorization system for protecting routes and controlling access based on authentication, roles, permissions, or custom business logic.
+
+## Quick Setup
+
+```typescript
+import { guards } from 'najm-guard';
+import { Server } from 'najm-core';
+
+const server = new Server()
+  .use(guards())  // Enable guard middleware
+  .load(UserController);
+```
+
+## Key Features
+
+- **Flexible Guard Creation** - Function-based, class-based, and parameterized guards
+- **Automatic Token Injection** - Set USER, ROLE, PERMISSIONS, and custom tokens
+- **Path Exclusion** - Wildcard support for public routes (`/api/public/**`)
+- **Parameter Resolution** - Full `najm-params` integration
+- **DI Integration** - Guards are injectable services
+
+## Quick Example
+
+```typescript
+import { createGuard } from 'najm-guard';
+import { Headers } from 'najm-params';
+
+// Create authentication guard
+export const isAuth = createGuard(
+  class {
+    async canActivate(@Headers('authorization') token: string) {
+      if (!token) return false;
+
+      const user = await verifyToken(token);
+      if (!user) return false;
+
+      return { user };  // Sets USER token
+    }
+  }
+);
+
+// Use in controller
+@Controller('/api/private')
+@isAuth()
+class PrivateController {
+  @Get('/data')
+  getData(@User() user: any) {
+    return { userId: user.id };
+  }
+}
+```
+
+## Complete Documentation
+
+For comprehensive documentation including:
+
+- **Creating Guards** - Function, class-based, and parameterized guards
+- **Guard Patterns** - Permission-based, owner-based, multi-tenant
+- **Guard Composition** - Combining multiple guards
+- **Path Exclusion** - Wildcard patterns for public routes
+- **Security Best Practices** - Token validation, fail-closed design
+- **Testing Guards** - Unit and integration testing
+- **Advanced Examples** - JWT auth, API keys, rate limiting
+
+**See:** [Security > Guards & Authorization](/docs/security/guards)

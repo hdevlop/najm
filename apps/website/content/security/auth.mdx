@@ -1,0 +1,731 @@
+---
+title: Authentication & Authorization
+description: Complete authentication and authorization system with JWT, RBAC, and PBAC for Najm applications
+---
+
+The `najm-auth` package provides a production-ready authentication and authorization system for Najm applications. It includes JWT-based authentication, Role-Based Access Control (RBAC), Permission-Based Access Control (PBAC), and automatic route registration.
+
+## Features
+
+- **JWT Authentication** - Access + refresh token strategy with automatic rotation
+- **Role-Based Access Control (RBAC)** - Pre-defined roles with composable guards
+- **Permission-Based Access Control (PBAC)** - Granular permissions with wildcard support
+- **Token Blacklist** - Immediate token revocation via cache
+- **Auto-Registered Routes** - Auth, user, role, and permission controllers
+- **Multi-Database Support** - PostgreSQL, SQLite, and MySQL schemas
+- **Password Security** - bcrypt hashing with timing attack prevention
+- **i18n Support** - Built-in translation keys
+- **Rate Limiting** - Pre-configured on auth endpoints
+- **Email Integration** - Password reset flows
+
+## Installation
+
+```bash
+npm install najm-auth
+# or
+bun add najm-auth
+```
+
+## Quick Start
+
+### 1. Setup Database Schema
+
+Import the auth schema for your database dialect:
+
+```typescript
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { Database } from 'bun:sqlite';
+import { authSchema } from 'najm-auth/sqlite'; // or '/pg' or '/mysql'
+
+const sqlite = new Database('./app.db');
+export const db = drizzle(sqlite, {
+  schema: {
+    ...authSchema,  // users, roles, permissions, tokens, rolePermissions
+    // ...your app tables
+  }
+});
+```
+
+### 2. Configure the Plugin
+
+The auth plugin defaults to PostgreSQL and automatically reads JWT secrets from environment variables:
+
+```typescript
+import { Server } from 'najm-core';
+import { database } from 'najm-database';
+import { auth } from 'najm-auth';
+
+const server = new Server()
+  .use(database({ default: db }))  // Required before auth
+  .use(auth());  // Defaults to PostgreSQL, JWT from env vars
+
+await server.listen(3000);
+```
+
+For SQLite or MySQL, specify the dialect:
+
+```typescript
+.use(auth({ dialect: 'sqlite' }))  // or 'mysql'
+```
+
+### 3. Start Using Protected Routes
+
+```typescript
+import { Controller } from 'diject';
+import { Get } from 'najm-router';
+import { isAuth, isAdmin } from 'najm-auth';
+
+@Controller('/api/products')
+class ProductController {
+  @Get('/')
+  @isAuth()  // Any authenticated user
+  async getAll() {
+    return { products: [] };
+  }
+
+  @Post('/')
+  @isAdmin()  // Admin only
+  async create() {
+    return { created: true };
+  }
+}
+```
+
+## Configuration
+
+### Minimal Configuration (Recommended)
+
+For PostgreSQL (default dialect), you don't even need to specify any options:
+
+```typescript
+.use(auth())  // Defaults to PostgreSQL, reads JWT from env
+```
+
+For other databases, just specify the dialect:
+
+```typescript
+.use(auth({
+  dialect: 'sqlite'  // or 'mysql'
+}))
+```
+
+**Dialect defaults to PostgreSQL** if not specified.
+
+**Required environment variables:**
+```env
+JWT_ACCESS_SECRET=your-access-secret-min-32-chars
+JWT_REFRESH_SECRET=your-refresh-secret-min-32-chars
+```
+
+**Optional environment variables:**
+```env
+ACCESS_EXPIRES_IN=1h          # Default: 1h
+REFRESH_EXPIRES_IN=7d         # Default: 7d
+FRONTEND_URL=http://localhost:3000  # For password reset links
+```
+
+Generate secure secrets:
+```bash
+openssl rand -base64 32
+```
+
+### When to Pass Explicit Config
+
+Only pass explicit JWT config when you need to:
+
+**1. Use different environment variable names:**
+```typescript
+.use(auth({
+  dialect: 'sqlite',
+  jwt: {
+    accessSecret: process.env.MY_ACCESS_SECRET!,
+    refreshSecret: process.env.MY_REFRESH_SECRET!
+  }
+}))
+```
+
+**2. Use config file values:**
+```typescript
+.use(auth({
+  dialect: 'sqlite',
+  jwt: {
+    accessSecret: config.get('auth.accessSecret'),
+    accessExpiresIn: '30m'  // Override default
+  }
+}))
+```
+
+**3. Testing environment:**
+```typescript
+.use(auth({
+  dialect: 'sqlite',
+  jwt: {
+    accessSecret: 'test-secret',
+    refreshSecret: 'test-refresh'
+  }
+}))
+```
+
+### Auth Plugin Options
+
+```typescript
+interface AuthPluginConfig {
+  /** Database dialect (default: 'pg' - PostgreSQL) */
+  dialect?: 'pg' | 'sqlite' | 'mysql';
+
+  /** Explicit schema (overrides dialect) */
+  schema?: AuthSchema;
+
+  /** JWT configuration - auto-read from env if not provided */
+  jwt?: {
+    accessSecret: string;      // Default: process.env.JWT_ACCESS_SECRET
+    accessExpiresIn?: string;  // Default: process.env.ACCESS_EXPIRES_IN || '1h'
+    refreshSecret: string;     // Default: process.env.JWT_REFRESH_SECRET
+    refreshExpiresIn?: string; // Default: process.env.REFRESH_EXPIRES_IN || '7d'
+  };
+
+  /** Refresh token cookie name (default: 'refreshToken' - no need to set) */
+  refreshCookieName?: string;
+
+  /** Database name to use (default: 'default' - no need to set) */
+  database?: string;
+
+  /** Cache prefix for blacklist (default: 'auth:blacklist:') */
+  blacklistPrefix?: string;
+
+  /** Validation plugin config */
+  validation?: ValidationPluginConfig;
+
+  /** Rate limiting config */
+  rateLimit?: RateLimitPluginConfig;
+}
+```
+
+## Auto-Registered Routes
+
+The auth plugin automatically registers these REST endpoints:
+
+### Authentication Routes (`/auth/*`)
+
+| Method | Endpoint | Description | Rate Limit |
+|--------|----------|-------------|------------|
+| POST | `/auth/register` | User registration | 5/15min |
+| POST | `/auth/login` | User login | 5/15min |
+| GET | `/auth/refresh` | Refresh access token | 10/15min |
+| GET | `/auth/logout` | Logout (revokes tokens) | - |
+| GET | `/auth/me` | Get current user profile | - |
+| POST | `/auth/forgot-password` | Request password reset | 3/15min |
+| POST | `/auth/reset-password` | Confirm password reset | 5/15min |
+
+### User Management (`/users/*`) - Admin Only
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/users` | List all users |
+| GET | `/users/:id` | Get user by ID |
+| GET | `/users/email/:email` | Get user by email |
+| POST | `/users` | Create new user |
+| PUT | `/users/:id` | Update user |
+| DELETE | `/users/:id` | Delete user |
+| DELETE | `/users` | Delete all users |
+| POST | `/users/assign/:userId/:roleId` | Assign role to user |
+| DELETE | `/users/remove/:userId` | Remove role from user |
+| GET | `/users/lang` | Get current language |
+| POST | `/users/lang/:language` | Update language |
+
+### Role Management (`/roles/*`) - Admin Only
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/roles` | List all roles |
+| GET | `/roles/:id` | Get role by ID |
+| POST | `/roles` | Create new role |
+| PUT | `/roles/:id` | Update role |
+| DELETE | `/roles/:id` | Delete role |
+
+### Permission Management (`/permissions/*`) - Admin Only
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/permissions` | List all permissions |
+| GET | `/permissions/:id` | Get permission by ID |
+| POST | `/permissions` | Create new permission |
+| PUT | `/permissions/:id` | Update permission |
+| DELETE | `/permissions/:id` | Delete permission |
+| GET | `/permissions/role/:id` | Get permissions by role |
+| GET | `/permissions/roles/:id` | Get roles by permission |
+| POST | `/permissions/assign/:roleId/:permissionId` | Assign permission to role |
+| DELETE | `/permissions/remove/:roleId/:permissionId` | Remove permission from role |
+
+## Guards
+
+### Authentication Guard
+
+```typescript
+import { isAuth } from 'najm-auth';
+
+@Controller('/api')
+class MyController {
+  @Get('/protected')
+  @isAuth()  // Requires valid access token
+  async protectedRoute() {
+    return { message: 'You are authenticated' };
+  }
+}
+```
+
+### Role-Based Guards (RBAC)
+
+```typescript
+import { 
+  isAuth, 
+  isAdmin, 
+  isPrincipal,
+  isAccounting,
+  isSecretary,
+  isTeacher,
+  isParent,
+  isStudent,
+  isAdministrator,  // Admin OR Principal
+  isFinancial,      // Admin OR Accounting
+  isStaff           // All staff roles
+} from 'najm-auth';
+
+@Controller('/api/admin')
+class AdminController {
+  @Get('/dashboard')
+  @isAdmin()
+  async dashboard() { }
+
+  @Get('/reports')
+  @isFinancial()  // Admin or Accounting
+  async reports() { }
+}
+```
+
+**Built-in Roles:**
+- `admin` - Full system access
+- `principal` - School/organization principal
+- `accounting` - Financial access
+- `secretary` - Administrative access
+- `teacher` - Teaching staff
+- `parent` - Parent/guardian access
+- `student` - Student access (default for new users)
+
+### Permission-Based Guards (PBAC)
+
+```typescript
+import { 
+  canRead, 
+  canCreate, 
+  canUpdate, 
+  canDelete,
+  canManage,
+  Can 
+} from 'najm-auth';
+
+@Controller('/api/posts')
+class PostController {
+  @Get('/')
+  @canRead('posts')
+  async getAll() { }
+
+  @Post('/')
+  @canCreate('posts')
+  async create() { }
+
+  @Put('/:id')
+  @canUpdate('posts')
+  async update() { }
+
+  @Delete('/:id')
+  @canDelete('posts')
+  async delete() { }
+
+  @Post('/:id/publish')
+  @Can('publish:posts')  // Custom permission
+  async publish() { }
+}
+```
+
+**Permission Wildcards:**
+- `*:*` - All actions on all resources
+- `create:*` - Create action on any resource
+- `*:posts` - Any action on posts resource
+
+### Custom Role Guard
+
+```typescript
+import { Role } from 'najm-auth';
+
+@Controller('/api/custom')
+class CustomController {
+  @Get('/moderator-only')
+  @Role(['moderator', 'admin'])  // Custom roles
+  async moderatorRoute() { }
+}
+```
+
+### Composing Guards
+
+```typescript
+import { composeGuards, isAuth, Can } from 'najm-auth';
+
+// Create custom composite guard
+const isAdminOrCanEdit = composeGuards(
+  isAuth(),
+  (ctx) => ctx.user.role === 'admin' || ctx.user.permissions.includes('edit:posts')
+);
+
+@Controller('/api/posts')
+class PostController {
+  @Put('/:id')
+  @isAdminOrCanEdit()
+  async update() { }
+}
+```
+
+## Services
+
+### AuthService
+
+```typescript
+import { AuthService } from 'najm-auth';
+
+@Service()
+class MyService {
+  constructor(private authService: AuthService) {}
+
+  async example() {
+    // Available methods:
+    await this.authService.registerUser(data);
+    await this.authService.loginUser(credentials);
+    await this.authService.refreshTokens();
+    await this.authService.logoutUser(userId, authorization);
+    await this.authService.getUserProfile(userData);
+    await this.authService.forgotPassword(email);
+    await this.authService.resetPassword(token, newPassword);
+  }
+}
+```
+
+### UserService
+
+```typescript
+import { UserService } from 'najm-auth';
+
+@Service()
+class MyService {
+  constructor(private userService: UserService) {}
+
+  async example() {
+    // Available methods:
+    await this.userService.getAll();
+    await this.userService.getById(id);
+    await this.userService.getByEmail(email);
+    await this.userService.create(data);
+    await this.userService.update(id, data);
+    await this.userService.delete(id);
+    await this.userService.assignRole(userId, roleId);
+    await this.userService.removeRole(userId);
+    await this.userService.seedAdminUser(config);
+  }
+}
+```
+
+### TokenService
+
+```typescript
+import { TokenService } from 'najm-auth';
+
+@Service()
+class MyService {
+  constructor(private tokenService: TokenService) {}
+
+  async example() {
+    // Token generation
+    const tokens = await this.tokenService.generateTokens(userId);
+    
+    // Token verification
+    const user = await this.tokenService.getUser(authorization);
+    await this.tokenService.verifyAccessToken(token);
+    
+    // Token management
+    await this.tokenService.blacklistToken(jti, expiresInSeconds);
+    await this.tokenService.revokeToken(userId);
+    await this.tokenService.logout(userId, authorization);
+    
+    // Password reset
+    const { token } = this.tokenService.generateResetToken(userId);
+    const userId = this.tokenService.verifyResetToken(token);
+  }
+}
+```
+
+## Database Schema
+
+### Table Structure
+
+The auth plugin creates these tables:
+
+**users**
+- `id` - Primary key (nanoid)
+- `email` - Unique email
+- `password` - Hashed password
+- `emailVerified` - Boolean
+- `image` - Profile image
+- `status` - active/inactive/pending
+- `roleId` - Foreign key to roles
+- `lastLogin` - Last login timestamp
+- `createdAt`, `updatedAt` - Timestamps
+
+**roles**
+- `id` - Primary key
+- `name` - Role name (admin, teacher, etc.)
+- `description` - Role description
+
+**permissions**
+- `id` - Primary key
+- `name` - Permission name (read:posts, etc.)
+- `description` - Permission description
+- `resource` - Resource name (posts, users, etc.)
+- `action` - Action (read, create, update, delete, *)
+
+**rolePermissions**
+- `roleId` - Foreign key to roles
+- `permissionId` - Foreign key to permissions
+
+**tokens**
+- `id` - Primary key
+- `userId` - Foreign key to users
+- `token` - Hashed refresh token
+- `type` - Token type (refresh)
+- `status` - active/revoked/expired
+- `expiresAt` - Expiration timestamp
+
+### Schema Types
+
+```typescript
+import type { 
+  User, 
+  NewUser,
+  RoleEntity,
+  NewRoleEntity,
+  Permission,
+  NewPermission,
+  Token,
+  NewToken,
+  RolePermission,
+  NewRolePermission
+} from 'najm-auth';
+```
+
+### Dialect-Specific Imports
+
+```typescript
+// PostgreSQL
+import { authSchema, usersTable } from 'najm-auth/pg';
+
+// SQLite
+import { authSchema, usersTable } from 'najm-auth/sqlite';
+
+// MySQL
+import { authSchema, usersTable } from 'najm-auth/mysql';
+```
+
+## Password Security
+
+### Password Requirements
+
+Default password validation:
+- Minimum 8 characters
+- At least one uppercase letter
+- At least one lowercase letter
+- At least one number
+- At least one special character
+
+### Timing Attack Prevention
+
+The auth plugin automatically prevents timing attacks by always performing bcrypt comparison even when user doesn't exist:
+
+```typescript
+// This is handled internally by AuthService
+const user = await this.userService.findByEmail(email);
+const storedHash = user?.password || DUMMY_HASH;  // Always compare
+const isValid = await bcrypt.compare(password, storedHash);
+```
+
+## Token Blacklist
+
+When a user logs out, their access token is immediately blacklisted:
+
+```typescript
+// Logout automatically blacklists the token
+await this.authService.logoutUser(userId, authorization);
+
+// Manual blacklisting
+await this.tokenService.blacklistToken(jti, expiresInSeconds);
+
+// Check if blacklisted
+const isBlacklisted = await this.tokenService.isTokenBlacklisted(jti);
+```
+
+Tokens remain in the blacklist until they naturally expire, ensuring immediate revocation while maintaining stateless JWT benefits.
+
+## i18n Integration
+
+The auth plugin provides built-in translation keys:
+
+```json
+{
+  "auth": {
+    "errors": {
+      "invalidCredentials": "Invalid email or password",
+      "tokenExpired": "Token has expired",
+      "unauthorized": "Unauthorized access"
+    },
+    "success": {
+      "login": "Login successful",
+      "logout": "Logout successful"
+    }
+  },
+  "users": { ... },
+  "roles": { ... },
+  "permissions": { ... }
+}
+```
+
+Override translations by contributing to i18n:
+
+```typescript
+import { i18n, I18N_CONTRIBUTIONS } from 'najm-i18n';
+
+const server = new Server()
+  .use(i18n({
+    translations: {
+      en: {
+        ...myTranslations,
+        auth: {
+          errors: {
+            invalidCredentials: "Custom error message"
+          }
+        }
+      }
+    }
+  }))
+  .use(auth({ ... }));
+```
+
+## Complete Example
+
+```typescript
+import { Server } from 'najm-core';
+import { database } from 'najm-database';
+import { auth, isAuth, isAdmin, canRead, canCreate } from 'najm-auth';
+import { drizzle } from 'drizzle-orm/bun-sqlite';
+import { Database } from 'bun:sqlite';
+import { authSchema } from 'najm-auth/sqlite';
+import { Controller, Get, Post } from 'najm-router';
+import { Body } from 'najm-params';
+
+// Setup database
+const sqlite = new Database('./app.db');
+const db = drizzle(sqlite, { schema: authSchema });
+
+// Product controller with authorization
+@Controller('/api/products')
+class ProductController {
+  @Get('/')
+  @canRead('products')
+  async getAll() {
+    return { products: [] };
+  }
+
+  @Post('/')
+  @canCreate('products')
+  async create(@Body() data: any) {
+    return { created: data };
+  }
+
+  @Get('/admin')
+  @isAdmin()
+  async adminView() {
+    return { allProducts: [] };
+  }
+}
+
+// Create server
+const server = new Server()
+  .use(database({ default: db }))
+  .use(auth())  // PostgreSQL default, JWT secrets auto-read from environment
+  .load(ProductController);
+
+await server.listen(3000);
+console.log('Server running on http://localhost:3000');
+console.log('Auth routes:');
+console.log('  POST /auth/register');
+console.log('  POST /auth/login');
+console.log('  GET /auth/me');
+```
+
+## API Client Example
+
+```typescript
+// Register
+const register = await fetch('/auth/register', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'SecurePass123!'
+  })
+});
+
+// Login
+const login = await fetch('/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'user@example.com',
+    password: 'SecurePass123!'
+  })
+});
+const { accessToken, refreshToken } = await login.json();
+
+// Access protected route
+const me = await fetch('/auth/me', {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`
+  }
+});
+
+// Refresh tokens
+const refresh = await fetch('/auth/refresh', {
+  credentials: 'include'  // Sends refresh token cookie
+});
+
+// Logout
+await fetch('/auth/logout', {
+  headers: {
+    'Authorization': `Bearer ${accessToken}`
+  }
+});
+```
+
+## Security Best Practices
+
+1. **Use strong JWT secrets** (min 32 characters)
+2. **Set JWT secrets via environment variables**
+3. **Enable HTTPS in production**
+4. **Use the built-in rate limiting** (already configured)
+5. **Don't disable token blacklisting**
+6. **Regularly rotate JWT secrets**
+7. **Set short access token expiration** (15-60 minutes)
+8. **Use HttpOnly cookies for refresh tokens** (handled automatically)
+
+## Next Steps
+
+- [Guards](/docs/security/guards) - Learn more about route protection
+- [Rate Limiting](/docs/security/rate-limit) - Protect against abuse
+- [CORS Configuration](/docs/security/cors) - Configure cross-origin requests
+- [Database Plugin](/docs/plugins/database) - Database configuration

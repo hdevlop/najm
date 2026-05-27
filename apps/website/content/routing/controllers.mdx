@@ -1,0 +1,605 @@
+---
+title: Controllers & Routes
+description: Define HTTP endpoints using decorator-based controllers with full dependency injection support
+---
+
+Controllers are the entry points for HTTP requests in Najm. They organize related endpoints using class-based decorators and integrate seamlessly with the dependency injection system.
+
+## Basic Controller
+
+```typescript
+import { Controller, Get, Post } from 'najm-router';
+import { Service } from 'najm-di';
+
+@Service()
+class UserService {
+  findAll() {
+    return [{ id: 1, name: 'Alice' }, { id: 2, name: 'Bob' }];
+  }
+}
+
+@Controller('/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  getUsers() {
+    return this.userService.findAll();
+  }
+
+  @Get('/:id')
+  getUser(@Params('id') id: string) {
+    return { id, name: 'Alice' };
+  }
+
+  @Post('/')
+  createUser(@Body() data: any) {
+    return { created: true, ...data };
+  }
+}
+```
+
+## Route Decorators
+
+### HTTP Method Decorators
+
+Najm provides decorators for all standard HTTP methods:
+
+```typescript
+@Controller('/api')
+class ApiController {
+  @Get('/items')        // GET /api/items
+  getItems() {}
+
+  @Get('/items/:id')    // GET /api/items/:id
+  getItem() {}
+
+  @Post('/items')       // POST /api/items
+  createItem() {}
+
+  @Put('/items/:id')    // PUT /api/items/:id
+  updateItem() {}
+
+  @Patch('/items/:id')  // PATCH /api/items/:id
+  patchItem() {}
+
+  @Delete('/items/:id') // DELETE /api/items/:id
+  deleteItem() {}
+}
+```
+
+### Path Parameters
+
+Routes support dynamic path segments:
+
+```typescript
+@Controller('/posts')
+class PostController {
+  @Get('/:id')
+  getPost(@Params('id') id: string) {
+    return { id };
+  }
+
+  @Get('/:category/:slug')
+  getBySlug(
+    @Params('category') category: string,
+    @Params('slug') slug: string
+  ) {
+    return { category, slug };
+  }
+}
+```
+
+**Supported patterns:**
+```typescript
+'/:id'              // Single parameter
+'/:category/:slug'  // Multiple parameters
+'/users/:id/posts'  // Mixed static and dynamic segments
+```
+
+## Path Building
+
+Paths are built by combining three parts:
+
+```typescript
+// 1. Base path (configured at server level)
+const server = new Server().base('/api/v1');
+
+// 2. Controller prefix
+@Controller('/users')
+
+// 3. Route path
+@Get('/:id')
+
+// Final path: /api/v1/users/:id
+```
+
+### Normalization
+
+Paths are automatically normalized:
+
+```typescript
+'/users/'    → '/users'     // Trailing slash removed
+'//users'    → '/users'     // Duplicate slashes removed
+''           → '/'          // Empty becomes root
+'/api/v1' + '/users' + '/:id' → '/api/v1/users/:id'
+```
+
+## Dependency Injection
+
+Controllers support full dependency injection:
+
+### Constructor Injection
+
+```typescript
+@Service()
+class UserRepository {
+  async findById(id: string) {
+    return { id, name: 'Alice' };
+  }
+}
+
+@Service()
+class UserService {
+  constructor(private repo: UserRepository) {}
+
+  async getUser(id: string) {
+    return this.repo.findById(id);
+  }
+}
+
+@Controller('/users')
+class UserController {
+  constructor(
+    private userService: UserService,
+    private logger: LoggerService
+  ) {}
+
+  @Get('/:id')
+  async getUser(@Params('id') id: string) {
+    this.logger.info(`Fetching user ${id}`);
+    return this.userService.getUser(id);
+  }
+}
+```
+
+### Property Injection
+
+```typescript
+@Controller('/users')
+class UserController {
+  @Inject(UserService) private userService!: UserService;
+  @Log() logger!: ILogger;
+  @Events() events!: EventMethods;
+
+  @Get('/:id')
+  async getUser(@Params('id') id: string) {
+    this.logger.info(`Fetching user ${id}`);
+    const user = await this.userService.findById(id);
+    this.events.emit('user.viewed', { userId: id });
+    return user;
+  }
+}
+```
+
+## Return Values
+
+Controllers can return various types, all automatically formatted:
+
+### JSON Response
+
+```typescript
+@Get('/users')
+getUsers() {
+  return { users: [{ id: 1, name: 'Alice' }] };
+}
+// Response: { "users": [{ "id": 1, "name": "Alice" }] }
+```
+
+### Custom Status
+
+```typescript
+@Post('/users')
+createUser(@Body() data: any) {
+  return { status: 201, user: data };
+}
+// Response: 201 Created with JSON body
+```
+
+### No Content
+
+```typescript
+@Delete('/users/:id')
+deleteUser(@Params('id') id: string) {
+  return null;
+}
+// Response: 204 No Content
+```
+
+### HTML Response
+
+```typescript
+@Get('/home')
+getHome() {
+  return '<html><body><h1>Welcome</h1></body></html>';
+}
+// Response: HTML with proper content-type
+```
+
+### Redirect
+
+```typescript
+@Get('/old-path')
+redirect() {
+  return { redirect: '/new-path', status: 301 };
+}
+// Response: 301 redirect to /new-path
+```
+
+### Stream Response
+
+```typescript
+@Get('/stream')
+streamData() {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue('chunk1');
+      controller.enqueue('chunk2');
+      controller.close();
+    }
+  });
+}
+```
+
+### Pass-through Response
+
+```typescript
+@Get('/custom')
+customResponse(@Ctx() ctx: Context) {
+  return new Response('Custom', {
+    status: 200,
+    headers: { 'X-Custom': 'Header' }
+  });
+}
+```
+
+## Async/Await Support
+
+All controller methods support async/await:
+
+```typescript
+@Controller('/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/:id')
+  async getUser(@Params('id') id: string) {
+    const user = await this.userService.findById(id);
+    if (!user) {
+      throw new HttpError(404, 'User not found');
+    }
+    return user;
+  }
+
+  @Post('/')
+  async createUser(@Body() data: CreateUserDto) {
+    const user = await this.userService.create(data);
+    return { status: 201, user };
+  }
+}
+```
+
+## Error Handling
+
+Throw `HttpError` for automatic error responses:
+
+```typescript
+import { HttpError } from 'najm-core';
+
+@Controller('/users')
+class UserController {
+  @Get('/:id')
+  async getUser(@Params('id') id: string) {
+    const user = await this.userService.findById(id);
+
+    if (!user) {
+      throw new HttpError(404, 'User not found');
+    }
+
+    return user;
+  }
+
+  @Post('/')
+  async createUser(@Body() data: any) {
+    if (!data.email) {
+      throw new HttpError(400, 'Email is required');
+    }
+
+    const existing = await this.userService.findByEmail(data.email);
+    if (existing) {
+      throw new HttpError(409, 'Email already exists');
+    }
+
+    return this.userService.create(data);
+  }
+}
+```
+
+**Common HTTP status codes:**
+```typescript
+throw new HttpError(400, 'Bad Request');
+throw new HttpError(401, 'Unauthorized');
+throw new HttpError(403, 'Forbidden');
+throw new HttpError(404, 'Not Found');
+throw new HttpError(409, 'Conflict');
+throw new HttpError(422, 'Unprocessable Entity');
+throw new HttpError(500, 'Internal Server Error');
+```
+
+## Controller Organization
+
+### Single Resource Controller
+
+```typescript
+@Controller('/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  async list(@Query() query: ListQuery) {
+    return this.userService.findAll(query);
+  }
+
+  @Get('/:id')
+  async get(@Params('id') id: string) {
+    return this.userService.findById(id);
+  }
+
+  @Post('/')
+  @Validate(createUserSchema)
+  async create(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
+
+  @Put('/:id')
+  @Validate({ params: idSchema, body: updateUserSchema })
+  async update(
+    @Params('id') id: string,
+    @Body() data: UpdateUserDto
+  ) {
+    return this.userService.update(id, data);
+  }
+
+  @Delete('/:id')
+  @Validate({ params: idSchema })
+  async delete(@Params('id') id: string) {
+    await this.userService.delete(id);
+    return null;
+  }
+}
+```
+
+### Nested Resources
+
+```typescript
+@Controller('/users/:userId/posts')
+class UserPostController {
+  constructor(private postService: PostService) {}
+
+  @Get('/')
+  async getUserPosts(@Params('userId') userId: string) {
+    return this.postService.findByUser(userId);
+  }
+
+  @Post('/')
+  async createPost(
+    @Params('userId') userId: string,
+    @Body() data: CreatePostDto
+  ) {
+    return this.postService.create(userId, data);
+  }
+}
+```
+
+### Multiple Controllers
+
+```typescript
+// User management
+@Controller('/users')
+class UserController { }
+
+// Authentication
+@Controller('/auth')
+class AuthController { }
+
+// Admin endpoints
+@Controller('/admin/users')
+@Guards(AdminGuard)
+class AdminUserController { }
+```
+
+### Abstract Base Controller <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+abstract class BaseController<T> {
+  constructor(protected service: BaseService<T>) {}
+
+  @Get('/')
+  async list(@Query() query: any) {
+    return this.service.findAll(query);
+  }
+
+  @Get('/:id')
+  async get(@Params('id') id: string) {
+    return this.service.findById(id);
+  }
+}
+
+@Controller('/users')
+class UserController extends BaseController<User> {
+  constructor(userService: UserService) {
+    super(userService);
+  }
+
+  // Add user-specific endpoints
+  @Get('/:id/posts')
+  async getUserPosts(@Params('id') id: string) {
+    return this.userService.getUserPosts(id);
+  }
+}
+```
+
+### Mixin Pattern <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+function Timestamped<T extends Constructor>(Base: T) {
+  return class extends Base {
+    @Get('/created-at')
+    getCreatedAt() {
+      return { createdAt: new Date() };
+    }
+  };
+}
+
+@Controller('/items')
+class ItemController extends Timestamped(BaseController) {
+  @Get('/')
+  list() {
+    return { items: [] };
+  }
+}
+```
+
+### Response Wrapper <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+class ResponseWrapper {
+  static success(data: any, message?: string) {
+    return { status: 'success', data, message };
+  }
+
+  static error(error: any, status = 500) {
+    return { status: 'error', error, statusCode: status };
+  }
+}
+
+@Controller('/users')
+class UserController {
+  @Get('/:id')
+  async getUser(@Params('id') id: string) {
+    const user = await this.userService.findById(id);
+    return ResponseWrapper.success(user, 'User retrieved');
+  }
+}
+```
+
+## Best Practices
+
+### 1. Keep Controllers Thin
+
+**✓ Good: Controller delegates to service**
+```typescript
+@Controller('/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Post('/')
+  async createUser(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
+}
+```
+
+**✗ Avoid: Business logic in controller**
+```typescript
+@Controller('/users')
+class UserController {
+  @Post('/')
+  async createUser(@Body() data: any) {
+    // ✗ Don't do this - move to service
+    const hashedPassword = await bcrypt.hash(data.password, 10);
+    const user = await db.users.create({
+      ...data,
+      password: hashedPassword,
+    });
+    await emailService.sendWelcome(user.email);
+    return user;
+  }
+}
+```
+
+### 2. Use Descriptive Method Names
+
+```typescript
+@Controller('/users')
+class UserController {
+  @Get('/')
+  listUsers() {}                    // ✓ Clear what it does
+
+  @Get('/:id')
+  getUserById() {}                  // ✓ Explicit
+
+  @Get('/:id/posts')
+  getUserPosts() {}                 // ✓ Describes relationship
+
+  @Get('/')
+  handle() {}                       // ✗ Too generic
+}
+```
+
+### 3. Validate Input
+
+```typescript
+@Controller('/users')
+class UserController {
+  @Post('/')
+  @Validate(createUserSchema)       // ✓ Validate before processing
+  async createUser(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
+}
+```
+
+### 4. Use Proper HTTP Methods
+
+```typescript
+@Controller('/users')
+class UserController {
+  @Get('/')          // ✓ Retrieve list
+  @Get('/:id')       // ✓ Retrieve one
+  @Post('/')         // ✓ Create new
+  @Put('/:id')       // ✓ Full update
+  @Patch('/:id')     // ✓ Partial update
+  @Delete('/:id')    // ✓ Delete
+
+  @Get('/create')    // ✗ Should be POST
+  @Post('/get/:id')  // ✗ Should be GET
+}
+```
+
+### 5. Return Appropriate Status Codes
+
+```typescript
+@Controller('/users')
+class UserController {
+  @Post('/')
+  async createUser(@Body() data: CreateUserDto) {
+    const user = await this.userService.create(data);
+    return { status: 201, user };  // ✓ Created
+  }
+
+  @Delete('/:id')
+  async deleteUser(@Params('id') id: string) {
+    await this.userService.delete(id);
+    return null;  // ✓ 204 No Content
+  }
+}
+```
+
+## Next Steps
+
+- [Request/Response Handling](/docs/routing/request-response) - Learn about request parsing and response formatting
+- [Params Plugin](/docs/routing/params) - Explore parameter decorators
+- [Validation](/docs/routing/validation) - Add input validation
+- [Middleware](/docs/routing/middleware) - Add cross-cutting concerns
+- [Guards](/docs/plugins/guards) - Add authorization

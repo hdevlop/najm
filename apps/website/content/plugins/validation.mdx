@@ -1,0 +1,100 @@
+---
+title: Validation Plugin
+description: Schema-based data validation with Zod integration
+order: 6
+---
+
+The Validation Plugin provides comprehensive data validation with support for schema-based validation, automatic error formatting, and seamless integration with the parameter system.
+
+## Quick Setup
+
+```typescript
+import { validation, Validate } from 'najm-validation';
+import { z } from 'zod';
+import { Server } from 'najm-core';
+
+const server = new Server()
+  .use(validation());
+```
+
+## Quick Example
+
+```typescript
+import { z } from 'zod';
+
+// Define schema
+const createUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(2),
+});
+
+@Controller('/users')
+class UserController {
+  @Post('/')
+  @Validate(createUserSchema)  // Automatically validates body
+  async createUser(@Body() data: z.infer<typeof createUserSchema>) {
+    // data is already validated and typed
+    return { created: true, email: data.email };
+  }
+
+  @Get('/')
+  @Validate({
+    query: z.object({
+      page: z.coerce.number().int().positive().default(1),
+      limit: z.coerce.number().int().max(100).default(10),
+    })
+  })
+  async getUsers(@Query() query: any) {
+    return this.userService.findAll(query);
+  }
+}
+```
+
+## Key Features
+
+- **Schema-based Validation** - Define validation rules with Zod schemas
+- **Smart Defaults** - Pass schema directly for body validation (most common)
+- **Type Inference** - TypeScript types inferred from schemas
+- **Multiple Targets** - Body, query, params, headers validation
+- **Async Validation** - Support for async validation rules
+- **Error Formatting** - Consistent, detailed error messages
+- **Transformation** - Auto-transform validated data
+
+## Common Patterns
+
+```typescript
+// String validation
+z.string().email()
+z.string().url()
+z.string().uuid()
+z.string().min(3).max(20)
+z.string().regex(/^[A-Z]{3}-\d{4}$/)
+
+// Number validation
+z.number().int().positive()
+z.number().min(0).max(100)
+z.number().multipleOf(0.5)
+
+// Array validation
+z.array(z.string()).min(1).max(10)
+z.array(z.object({ id: z.string() }))
+
+// Enum validation
+z.enum(['admin', 'user', 'guest'])
+```
+
+## Complete Documentation
+
+For comprehensive documentation including:
+
+- **Schema Definition** - Complete Zod schema patterns
+- **Validation Targets** - Body, query, params, headers
+- **Error Handling** - Custom error messages and formatters
+- **Async Validation** - Database lookups and external checks
+- **Transformation** - Clean and normalize data
+- **Advanced Patterns** - Complex validation scenarios
+- **Best Practices** - Type safety and schema organization
+- **Complete Examples** - CRUD operations with validation
+
+**See:** [Routing > Validation](/docs/routing/validation)

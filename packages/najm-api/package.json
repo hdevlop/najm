@@ -1,0 +1,44 @@
+{
+  "name": "najm-api",
+  "version": "1.1.10",
+  "description": "Modern TypeScript decorator-based web framework built on Hono.js",
+  "type": "module",
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "bun test",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "najm-core": "workspace:*"
+  },
+  "devDependencies": {
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [
+    "najm",
+    "framework",
+    "typescript",
+    "decorators",
+    "dependency-injection",
+    "hono",
+    "api",
+    "bun"
+  ],
+  "author": "Hicham Jebara",
+  "license": "MIT"
+}

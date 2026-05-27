@@ -1,0 +1,150 @@
+// ============================================================================
+// types.ts - Auth Plugin Type Definitions
+// ============================================================================
+
+import type { ValidationPluginConfig } from 'najm-validation';
+import type { RateLimitPluginConfig } from 'najm-rate';
+
+/**
+ * JWT configuration for token generation and verification
+ */
+export interface JwtConfig {
+  /** Secret key for access token signing */
+  accessSecret: string;
+  /** Access token expiration time (e.g., '15m', '1h') */
+  accessExpiresIn: string;
+  /** Secret key for refresh token signing */
+  refreshSecret: string;
+  /** Refresh token expiration time (e.g., '7d', '30d') */
+  refreshExpiresIn: string;
+}
+
+export interface LockoutConfig {
+  /** Failed attempts before the account is temporarily locked */
+  maxAttempts: number;
+  /** Lockout duration (e.g. '15m') */
+  duration: string;
+}
+
+/**
+ * Session cookie cache configuration.
+ * A short-lived, HMAC-signed cookie that caches user/roles/permissions for
+ * instant SSR reads (skips the /auth/me round-trip).
+ */
+export interface SessionCookieConfig {
+  /** Cookie name (default: 'najm.session') */
+  name: string;
+  /** Max age in seconds (default: 300 = 5 min) */
+  maxAge: number;
+  /** Secret used to HMAC-sign the cookie. Defaults to jwt.accessSecret. */
+  secret?: string;
+}
+
+/**
+ * Complete auth plugin configuration (internal)
+ */
+export interface AuthConfig {
+  /** JWT configuration */
+  jwt: JwtConfig;
+  /** Refresh token cookie name (default: 'refreshToken') */
+  refreshCookieName: string;
+  /** Database name to use (default: 'default') */
+  database: string;
+  /** Cache key prefix for blacklist (default: 'auth:blacklist:') */
+  blacklistPrefix: string;
+  /** Default role name for new user registration (default: null - no role assigned) */
+  defaultRole: string | null;
+  /** Frontend URL for password reset links (default: 'http://localhost:3000') */
+  frontendUrl: string;
+  /** Registration mode: 'active' auto-activates, 'pending' requires admin approval (default: 'active') */
+  registrationMode: 'active' | 'pending';
+  /** Per-account lockout settings */
+  lockout: LockoutConfig;
+  /** Session cookie cache settings */
+  session: SessionCookieConfig;
+}
+
+/**
+ * Auth plugin configuration options
+ * Cache is provided by najm-cache plugin (auto-dependency)
+ */
+/**
+ * Auth schema shape (dialect-agnostic)
+ * Import from 'najm-auth/pg', 'najm-auth/sqlite', or 'najm-auth/mysql'
+ */
+export interface AuthSchema {
+  users: any;
+  tokens: any;
+  roles: any;
+  permissions: any;
+  rolePermissions: any;
+}
+
+export type AuthPluginConfig = {
+  /** Database dialect (default: 'pg'). Auto-selects the correct schema. */
+  dialect?: 'pg' | 'sqlite' | 'mysql';
+  /** Database schema tables (optional, overrides dialect). Use authSchema from 'najm-auth/sqlite' or 'najm-auth/mysql' */
+  schema?: AuthSchema;
+  /** JWT configuration (secrets can be set via env vars) */
+  jwt?: Partial<JwtConfig>;
+  /** Refresh token cookie name (default: 'refreshToken') */
+  refreshCookieName?: string;
+  /** Database name to use (default: 'default') */
+  database?: string;
+  /** Cache key prefix for blacklist (default: 'auth:blacklist:') */
+  blacklistPrefix?: string;
+  /** Default role name for new user registration (default: null - no role assigned). Set to 'user' for auto-assignment. */
+  defaultRole?: string | null;
+  /** Frontend URL for password reset links. Falls back to FRONTEND_URL env var, then 'http://localhost:3000' */
+  frontendUrl?: string;
+  /** Registration mode: 'active' auto-activates new users, 'pending' requires admin approval (default: 'active') */
+  registrationMode?: 'active' | 'pending';
+  /** Per-account lockout settings */
+  lockout?: Partial<LockoutConfig>;
+  /** Session cookie cache settings (optional — sensible defaults applied) */
+  session?: Partial<SessionCookieConfig>;
+  /** Optional config forwarded to validation() dependency */
+  validation?: ValidationPluginConfig;
+  /** Optional config forwarded to rateLimit() dependency */
+  rateLimit?: RateLimitPluginConfig;
+  /** AES-256-GCM key for reversible encryption (e.g. API keys). Falls back to NAJM_ENCRYPTION_KEY env var. */
+  encryptionKey?: string;
+};
+
+/**
+ * JWT payload structure
+ */
+export interface JwtPayload {
+  userId: string;
+  /** Unique token ID for blacklist-based revocation */
+  jti: string;
+  /** Per-user access token generation version for mass invalidation */
+  sessionVersion?: number;
+  /** User roles (included for client-side RBAC) */
+  roles?: string[];
+  /** User permissions (included for client-side PBAC) */
+  permissions?: string[];
+  exp?: number;
+  iat?: number;
+}
+
+/**
+ * Token pair returned after authentication
+ */
+export interface TokenPair {
+  accessToken: string;
+  refreshToken: string;
+  accessTokenExpiresAt?: number;
+  refreshTokenExpiresAt?: number;
+}
+
+/**
+ * User data structure for authentication
+ */
+export interface AuthUser {
+  id: string;
+  email: string;
+  name?: string | null;
+  role?: string;
+  permissions?: string[];
+}

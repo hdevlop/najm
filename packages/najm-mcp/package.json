@@ -1,0 +1,39 @@
+{
+  "name": "najm-mcp",
+  "version": "0.0.14",
+  "description": "MCP plugin for Najm framework",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "bun test"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1"
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0",
+    "najm-core": "workspace:*",
+    "najm-guard": "workspace:*",
+    "reflect-metadata": "^0.2.0",
+    "zod": "^3.0.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "najm-core": "workspace:*",
+    "najm-guard": "workspace:*",
+    "tsup": "^8.0.0",
+    "typescript": "^5.7.3"
+  }
+}

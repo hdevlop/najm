@@ -1,0 +1,139 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ─────────────────────────────────────────────────────────────
+   WA Studio Theme — Dark-first operational interface.
+   ───────────────────────────────────────────────────────────── */
+
+.wa-studio {
+  --wa-bg: #06060a;
+  --wa-sidebar: #0a0a10;
+  --wa-card: #0f0f16;
+  --wa-card-hover: #15151e;
+  --wa-surface: #13131c;
+  --wa-surface-hover: #1a1a26;
+  --wa-border: #1e1e2d;
+  --wa-border-subtle: #161622;
+
+  --wa-brand: #25d366;
+  --wa-brand-hover: #128c7e;
+  --wa-brand-muted: #075e54;
+  --wa-brand-glow: rgba(37, 211, 102, 0.18);
+
+  --wa-accent: #06b6d4;
+  --wa-accent-hover: #0891b2;
+
+  --wa-txt-primary: #f1f1f4;
+  --wa-txt-secondary: #a1a1b3;
+  --wa-txt-muted: #6e6e82;
+
+  --wa-status-green: #22c55e;
+  --wa-status-yellow: #eab308;
+  --wa-status-red: #ef4444;
+
+  --najm-primary: 142 70% 49%;
+  --najm-primary-foreground: 156 84% 8%;
+  --najm-ring: 142 70% 49%;
+
+  --primary: var(--wa-brand);
+  --primary-foreground: #052e1b;
+  --ring: var(--wa-brand);
+
+  color-scheme: dark;
+}
+
+.wa-studio .dark,
+.wa-studio.dark {
+  --najm-primary: 142 70% 49%;
+  --najm-primary-foreground: 156 84% 8%;
+  --najm-ring: 142 70% 49%;
+
+  --primary: var(--wa-brand);
+  --primary-foreground: #052e1b;
+  --ring: var(--wa-brand);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: #06060a;
+  color: #f1f1f4;
+  font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1e1e2d;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #2a2a3c;
+}
+
+::selection {
+  background: rgba(16, 185, 129, 0.2);
+  color: #f1f1f4;
+}
+
+@layer base {
+  .wa-studio * {
+    box-sizing: border-box;
+  }
+
+  .wa-studio {
+    scrollbar-width: thin;
+    scrollbar-color: var(--wa-border) transparent;
+    font-family: 'JetBrains Mono', ui-monospace, SFMono-Regular, Consolas, 'Liberation Mono', Menlo, monospace;
+  }
+
+  .wa-studio ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .wa-studio ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .wa-studio ::-webkit-scrollbar-thumb {
+    background: var(--wa-border);
+    border-radius: 3px;
+  }
+
+  .wa-studio ::-webkit-scrollbar-thumb:hover {
+    background: var(--wa-surface-hover);
+  }
+
+  .wa-studio ::selection {
+    background: var(--wa-brand-glow);
+    color: var(--wa-txt-primary);
+  }
+}
+
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-bg;
+  }
+}

@@ -1,0 +1,307 @@
+---
+title: Module Organization
+description: Best practices for organizing modules with clear separation of concerns
+order: 3
+---
+
+This guide describes the recommended module organization structure for Najm applications, following best practices for separating concerns between database schemas, DTOs, and business validation.
+
+## Overview
+
+Each module (users, roles, permissions, etc.) follows a consistent structure:
+
+```
+module/
+├── ModuleSchema.ts       # Database table (Drizzle)
+├── ModuleDto.ts          # Zod schemas + inferred types
+├── ModuleValidator.ts    # Business validation service
+├── ModuleController.ts   # HTTP endpoints
+├── ModuleService.ts      # Business logic
+├── ModuleRepository.ts   # Data access
+└── index.ts              # Module exports
+```
+
+## File Responsibilities
+
+### `ModuleSchema.ts` - Database Schema
+
+**Purpose:** Drizzle ORM table definitions and database types
+
+**Contains:**
+- Drizzle table schema using `pgTable`
+- Database field definitions
+- Foreign key relationships
+- Type inference for database operations
+
+**Example:**
+```typescript
+import { pgTable, text, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { baseFields, userStatusEnum } from '../shared/BaseSchema';
+
+export const usersTable = pgTable('users', {
+  ...baseFields(8),
+  email: text('email').notNull().unique(),
+  password: text('password').notNull(),
+  status: userStatusEnum('status').default('pending'),
+});
+
+export type User = typeof usersTable.$inferSelect;
+export type NewUser = typeof usersTable.$inferInsert;
+```
+
+**Key Points:**
+- Uses `baseFields()` helper for id, createdAt, updatedAt
+- Uses shared enums from `shared/BaseSchema.ts`
+- Exports inferred types for type safety
+
+### `ModuleDto.ts` - Data Transfer Objects
+
+**Purpose:** HTTP request/response validation schemas using Zod
+
+**Contains:**
+- Zod schemas for request validation
+- Field-level validation rules (format, length, type)
+- Inferred TypeScript types from schemas
+
+**Example:**
+```typescript
+import { z } from 'zod';
+
+export const createUserDto = z.object({
+  email: z.string().email('Invalid email format'),
+  password: z.string().min(8, 'Password must be at least 8 characters'),
+  username: z.string().min(2).max(50).optional(),
+});
+
+export const updateUserDto = createUserDto.partial();
+
+export const userIdParam = z.object({
+  id: z.string().length(8, 'User ID must be 8 characters'),
+});
+
+export type CreateUserDto = z.infer<typeof createUserDto>;
+export type UpdateUserDto = z.infer<typeof updateUserDto>;
+```
+
+**Key Points:**
+- Handles shape validation (format, length, type)
+- Returns 400 Bad Request on validation failure
+- Used with `@Validate()` decorator in controllers
+
+### `ModuleValidator.ts` - Business Validation
+
+**Purpose:** Database-dependent business rules and validations
+
+**Contains:**
+- Uniqueness checks (e.g., email already exists)
+- Existence checks (e.g., user not found)
+- Permission checks (e.g., user has required role)
+- Cross-entity validation (e.g., role exists when assigning)
+
+**Example:**
+```typescript
+import { Injectable } from 'najm-di';
+import { Err } from 'najm-core';
+import { I18n, type TFn } from 'najm-i18n';
+import { UserRepository } from './UserRepository';
+
+@Injectable()
+export class UserValidator {
+  @I18n("users") private t!: TFn;
+
+  constructor(private userRepository: UserRepository) {}
+
+  async checkEmailUnique(email: string, excludeId?: string) {
+    const existingUser = await this.userRepository.getByEmail(email);
+    if (existingUser && existingUser.id !== excludeId) {
+      Err(this.t('errors.emailExists'), 409);
+    }
+  }
+
+  async checkUserExists(id: string) {
+    const user = await this.userRepository.getById(id);
+    if (!user) {
+      Err(this.t('errors.notFound'), 404);
+    }
+    return user;
+  }
+}
+```
+
+**Key Points:**
+- Handles async database checks
+- Returns appropriate HTTP status codes (404, 409, 403)
+- Uses i18n for error messages
+- Injectable service, can be used in controllers and services
+
+## Validation Flow
+
+```
+HTTP Request
+    ↓
+@Validate(dto) → Schema validation (format, length, type)
+    ↓ (400 if invalid)
+Validator.check() → Business validation (unique, exists, permissions)
+    ↓ (409/404/403 if invalid)
+Service.execute() → Business logic
+    ↓
+Response
+```
+
+## Module Structure Examples
+
+### Users Module
+
+```
+users/
+├── UserSchema.ts         # usersTable, User, NewUser
+├── UserDto.ts            # createUserDto, updateUserDto, loginDto
+├── UserValidator.ts      # checkEmailUnique, checkUserExists
+├── UserController.ts     # @Controller, HTTP endpoints
+├── UserService.ts        # Business logic
+├── UserRepository.ts     # Data access
+└── index.ts              # Export all
+```
+
+### Roles Module
+
+```
+roles/
+├── RoleSchema.ts         # rolesTable, Role, NewRole
+├── RoleDto.ts            # createRoleDto, updateRoleDto
+├── RoleValidator.ts      # checkNameUnique, checkRoleExists
+├── RoleController.ts     # HTTP endpoints
+├── RoleService.ts        # Business logic
+├── RoleRepository.ts     # Data access
+├── RoleGuards.ts         # Authorization guards
+└── index.ts              # Export all
+```
+
+## Shared Base Schema
+
+All modules use shared base utilities:
+
+**`shared/BaseSchema.ts`:**
+```typescript
+import { text, timestamp, pgEnum } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
+import { nanoid } from 'nanoid';
+
+export const baseFields = (idLength = 5) => ({
+  id: text('id').primaryKey().$defaultFn(() => nanoid(idLength)),
+  createdAt: timestamp('created_at', { mode: 'string' }).defaultNow(),
+  updatedAt: timestamp('updated_at', { mode: 'string' })
+    .defaultNow()
+    .$onUpdate(() => sql`CURRENT_TIMESTAMP`),
+});
+
+export const USER_STATUS = ['active', 'inactive', 'pending'] as const;
+export const TOKEN_STATUS = ['active', 'revoked', 'expired'] as const;
+export const TOKEN_TYPE = ['access', 'refresh'] as const;
+
+export const userStatusEnum = pgEnum('user_status', USER_STATUS);
+export const tokenStatusEnum = pgEnum('token_status', TOKEN_STATUS);
+export const tokenTypeEnum = pgEnum('token_type', TOKEN_TYPE);
+```
+
+## Usage in Controllers
+
+```typescript
+import { Controller, Post, Patch } from 'najm-router';
+import { Validate } from 'najm-validation';
+import { Body, Params } from 'najm-params';
+import { createUserDto, updateUserDto, userIdParam, type CreateUserDto } from './UserDto';
+import { UserValidator } from './UserValidator';
+import { UserService } from './UserService';
+
+@Controller('/users')
+export class UserController {
+  constructor(
+    private service: UserService,
+    private validator: UserValidator
+  ) {}
+
+  @Post('/')
+  @Validate(createUserDto)
+  async create(@Body() data: CreateUserDto) {
+    await this.validator.checkEmailUnique(data.email);
+    return this.service.create(data);
+  }
+
+  @Patch('/:id')
+  @Validate({ params: userIdParam, body: updateUserDto })
+  async update(@Params('id') id: string, @Body() data: UpdateUserDto) {
+    await this.validator.checkUserExists(id);
+    if (data.email) {
+      await this.validator.checkEmailUnique(data.email, id);
+    }
+    return this.service.update(id, data);
+  }
+}
+```
+
+## Benefits
+
+### 1. Clear Separation of Concerns
+- **Schema**: Database structure
+- **DTO**: HTTP validation
+- **Validator**: Business rules
+
+### 2. Type Safety
+- Inferred types from schemas
+- No manual type definitions needed
+
+### 3. Reusability
+- DTOs can be reused across controllers
+- Validators can be injected anywhere
+
+### 4. Testability
+- Each layer can be tested independently
+- Mock validators in controller tests
+
+### 5. Consistency
+- Same pattern across all modules
+- Easy to understand and maintain
+
+## Best Practices
+
+### 1. DTO Naming
+
+- `createXxxDto` - For creation
+- `updateXxxDto` - For updates (usually partial)
+- `xxxIdParam` - For route parameters
+- `loginDto`, `changePasswordDto` - For specific operations
+
+### 2. Validator Methods
+
+- `checkXxxExists()` - Throws 404 if not found
+- `checkXxxUnique()` - Throws 409 if exists
+- `hasXxx()` - Throws 403 if unauthorized
+
+### 3. Error Codes
+
+- `400` - Schema validation (handled by `@Validate`)
+- `404` - Not found (validator)
+- `409` - Conflict/duplicate (validator)
+- `403` - Forbidden (validator)
+
+### 4. Type Inference
+
+Always use inferred types from schemas:
+```typescript
+export type User = typeof usersTable.$inferSelect;
+export type CreateUserDto = z.infer<typeof createUserDto>;
+```
+
+## Summary
+
+The module organization provides:
+
+✅ Clear separation between database schema and HTTP validation
+✅ Consistent structure across all modules
+✅ Type safety through inference
+✅ Testable business validation layer
+✅ Easy to understand and maintain
+✅ Ready for production use
+
+Follow this pattern to build maintainable, scalable Najm applications.

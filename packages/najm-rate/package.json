@@ -1,0 +1,35 @@
+{
+  "name": "najm-rate",
+  "version": "1.1.10",
+  "description": "Rate limiting plugin for Najm framework",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "bun test",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "najm-cache": "workspace:*",
+    "najm-core": "workspace:*",
+    "najm-guard": "workspace:*"
+  },
+  "devDependencies": {
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3"
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0"
+  }
+}

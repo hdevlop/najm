@@ -1,0 +1,415 @@
+---
+title: Server & Lifecycle
+description: Framework orchestrator for lifecycle management, plugin integration, and boot system
+order: 1
+---
+
+The Server class (`najm-core`) is the framework orchestrator that manages application lifecycle, plugin integration, dependency injection, and HTTP server management built on [Hono](https://hono.dev/).
+
+## Quick Start
+
+```typescript
+import { Server } from 'najm-core';
+import { guards } from 'najm-guard';
+import { database } from 'najm-database';
+
+const server = new Server()
+  .use(guards())           // Authorization
+  .use(database({ default: db }))  // Database
+  .base('/api')            // Base path
+  .load(UserController, UserService, UserRepository)
+  .set('port', 3000);
+
+await server.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+```
+
+## Key Features
+
+- **Fluent API** - Chain `.use()`, `.load()`, `.middleware()`, `.base()`, `.listen()`
+- **Plugin Architecture** - Composable features via `.use()` with auto-registration
+- **3-Station Boot** - Infrastructure → Lifecycle → App Services
+- **4-Phase Lifecycle** - scan → configure → activate → onReady
+- **Automatic DI** - Just `.load()` classes, framework handles the rest
+- **Serverless Support** - Use `.fetch` for edge deployments
+
+## Constructor
+
+```typescript
+const server = new Server(opts?)
+```
+
+### Options
+
+| Property | Type | Default | Description |
+|----------|------|---------|-------------|
+| `app` | `Hono` | `new Hono()` | Custom Hono instance |
+| `port` | `number` | `3000` | Server port |
+| `isolated` | `boolean` | `false` | Use isolated DI container (testing) |
+| `silent` | `boolean` | `false` | Suppress logs |
+| `basePath` | `string` | `''` | Base path for all routes |
+
+### Examples
+
+```typescript
+// Minimal
+const server = new Server();
+
+// With options
+const server = new Server({
+  port: 8080,
+  basePath: '/api/v1',
+  silent: false,
+});
+
+// Custom Hono app
+const app = new Hono();
+const server = new Server({ app });
+
+// Testing mode
+const server = new Server({ isolated: true });
+```
+
+## Public Properties
+
+```typescript
+server.container    // Container - DI container instance
+server.app          // Hono - Underlying Hono application
+server.isRunning    // boolean - Server running state
+```
+
+## State Management
+
+The Server uses a state machine to manage initialization:
+
+```typescript
+enum ServerState {
+  IDLE = 'idle',                    // Initial state, not initialized
+  INITIALIZING = 'initializing',    // Initialization in progress
+  READY = 'ready',                  // Fully initialized and ready
+  FAILED = 'failed',                // Initialization failed
+}
+```
+
+**State transitions:**
+- `IDLE` → `INITIALIZING` (on first `.listen()` or `.fetch` access)
+- `INITIALIZING` → `READY` (on successful initialization)
+- `INITIALIZING` → `FAILED` (on initialization error)
+- `FAILED` → `INITIALIZING` (retry allowed)
+
+**Benefits:**
+- Prevents multiple concurrent initializations
+- Fast path for already-initialized servers
+- Clear error recovery path
+
+## Fluent API Methods
+
+### `.base(path: string): this`
+
+Set base path prefix for all routes.
+
+```typescript
+const server = new Server()
+  .base('/api/v1')
+  .load(UserController);
+
+// Routes: /api/v1/users, /api/v1/users/:id
+```
+
+### `.set<K extends keyof ServerOpts>(key: K, value: ServerOpts[K]): this`
+
+Set server options directly.
+
+```typescript
+const server = new Server()
+  .set('port', 8080)
+  .set('silent', true)
+  .set('basePath', '/api');
+```
+
+### `.use(plugin: NajmPlugin): this`
+
+Register a plugin.
+
+```typescript
+import { cors } from 'najm-cors';
+import { database } from 'najm-database';
+import { guards } from 'najm-guard';
+
+const server = new Server()
+  .use(cors({ origin: '*' }))
+  .use(database({ default: db }))
+  .use(guards())
+  .listen(3000);
+```
+
+### `.middleware(...handlers: MiddlewareHandler[]): this`
+
+Add functional middleware handlers.
+
+```typescript
+import { compress } from 'hono/compress';
+
+const server = new Server()
+  .middleware(
+    async (c, next) => {
+      console.log('Request:', c.req.path);
+      await next();
+    },
+    compress()
+  )
+  .listen(3000);
+```
+
+### `.load(...classes: Constructor[]): this`
+
+Register application classes (controllers, services, repositories).
+
+```typescript
+const server = new Server()
+  .load(
+    UserController,
+    UserService,
+    UserRepository,
+    OrderController,
+    OrderService
+  )
+  .listen(3000);
+```
+
+## Lifecycle Methods
+
+### `.listen(port: number, cb?: () => void): Promise<this>`
+
+Start the server on specified port.
+
+```typescript
+// Simple
+await server.listen(3000);
+
+// With callback
+await server.listen(3000, () => {
+  console.log('Server running on port 3000');
+});
+
+// With port from options
+server.set('port', 8080);
+await server.listen();
+```
+
+### `.fetch: (req: Request) => Promise<Response>`
+
+Get fetch handler for serverless deployments.
+
+```typescript
+// Cloudflare Workers / Vercel Edge
+export default new Server()
+  .load(ApiController)
+  .fetch;
+
+// Bun serve
+Bun.serve({
+  fetch: server.fetch,
+  port: 3000,
+});
+```
+
+**Note:** Accessing `.fetch` triggers lazy initialization.
+
+### `.stop(): Promise<void>`
+
+Gracefully stop the server.
+
+```typescript
+const server = await new Server().load(App).listen(3000);
+
+// Later...
+await server.stop();
+```
+
+## Default Plugins
+
+The Server auto-registers these plugins (if not already registered):
+
+| Plugin | Package | Purpose |
+|--------|---------|---------|
+| `middleware()` | najm-middleware | Middleware management |
+| `params()` | najm-params | Parameter resolution |
+| `router()` | najm-router | HTTP routing |
+
+**Note:** Other plugins like `guards()`, `cors()`, `database()`, `i18n()`, etc. must be explicitly registered via `.use()`.
+
+## Complete Example
+
+```typescript
+import { Server } from 'najm-core';
+import { guards } from 'najm-guard';
+import { database } from 'najm-database';
+import { events } from 'najm-event';
+import { cors } from 'najm-cors';
+import { i18n } from 'najm-i18n';
+
+// Repositories
+@Repository('postgres')
+class UserRepository {
+  @DB('postgres') db: Database;
+
+  async findById(id: string) {
+    return this.db.query('SELECT * FROM users WHERE id = ?', [id]);
+  }
+}
+
+// Services
+@Service()
+class UserService {
+  constructor(private repo: UserRepository) {}
+
+  @Events() events: { emit, on, off };
+
+  @Transaction({ retries: 2 })
+  async createUser(data: any) {
+    const user = await this.repo.create(data);
+    this.events.emit('user.created', { userId: user.id });
+    return user;
+  }
+}
+
+// Guards
+@Service()
+class AuthGuard {
+  async canActivate(@Headers('authorization') token: string) {
+    const user = await this.verifyToken(token);
+    return { user };
+  }
+}
+
+// Controllers
+@Controller('/api/users')
+@Guards(AuthGuard)
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/:id')
+  async getUser(@Params('id') id: string, @User() user: any) {
+    return this.userService.findById(id);
+  }
+
+  @Post('/')
+  async createUser(@Body() data: any) {
+    return this.userService.createUser(data);
+  }
+}
+
+// Server
+const server = new Server()
+  .use(guards())
+  .use(database({ default: postgresDb }))
+  .use(events())
+  .use(cors({ origin: '*' }))
+  .use(i18n({ translations: { en, fr } }))
+  .base('/api/v1')
+  .load(UserController, UserService, UserRepository, AuthGuard)
+  .set('port', 3000);
+
+await server.listen(3000, () => console.log('Server running'));
+```
+
+## Testing
+
+### Isolated Container
+
+```typescript
+import { test } from 'bun:test';
+
+test('should handle requests', async () => {
+  const server = new Server({ isolated: true })
+    .load(TestController);
+
+  await server.listen(3100);
+
+  const res = await fetch('http://localhost:3100/test');
+  expect(await res.json()).toEqual({ ok: true });
+
+  await server.stop();
+});
+```
+
+### Serverless Testing
+
+```typescript
+test('serverless handler', async () => {
+  const server = new Server({ isolated: true })
+    .load(ApiController);
+
+  const request = new Request('http://localhost/api/test');
+  const response = await server.fetch(request);
+
+  expect(response.status).toBe(200);
+});
+```
+
+## Best Practices
+
+### 1. Chain Configuration
+
+**✓ Good: Fluent chaining**
+```typescript
+const server = new Server()
+  .use(guards())
+  .use(database({ default: db }))
+  .base('/api')
+  .load(UserController, UserService)
+  .set('port', 3000);
+```
+
+### 2. Register Plugins Before Loading Classes
+
+**✓ Good: Plugins first**
+```typescript
+const server = new Server()
+  .use(guards())         // Register plugins
+  .use(database())
+  .load(UserController); // Then load app classes
+```
+
+**✗ Avoid: Classes before plugins**
+```typescript
+const server = new Server()
+  .load(UserController)
+  .use(guards());  // Too late!
+```
+
+### 3. Use Isolated Containers for Testing
+
+**✓ Good: Isolated testing**
+```typescript
+test('my test', async () => {
+  const server = new Server({ isolated: true })
+    .load(TestController);
+});
+```
+
+### 4. Set Base Path Early
+
+**✓ Good: Base path before routes**
+```typescript
+const server = new Server()
+  .base('/api/v1')
+  .load(UserController);
+```
+
+## Summary
+
+The Server provides:
+
+✓ **Fluent API** - Chainable methods for clean configuration
+✓ **Plugin Architecture** - Composable, reusable features
+✓ **3-Station Boot** - Infrastructure → Lifecycle → App Services
+✓ **State Management** - IDLE → INITIALIZING → READY → FAILED
+✓ **Auto-registration** - Default plugins (middleware, params, router)
+✓ **Serverless Support** - Export `.fetch` for edge deployments
+✓ **Type-safe** - Full TypeScript support
+✓ **Testing-friendly** - Isolated containers, easy mocking
+
+The Server is the entry point to the Najm framework, orchestrating all components into a cohesive application.

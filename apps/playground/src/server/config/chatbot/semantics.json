@@ -1,0 +1,51 @@
+{
+  "items": [
+    {
+      "toolName": "auth_register",
+      "phrases": [
+        { "lang": "en", "phrase": "sign up" },
+        { "lang": "en", "phrase": "create account" },
+        { "lang": "fr", "phrase": "créer un compte" },
+        { "lang": "ar", "phrase": "إنشاء حساب" }
+      ]
+    },
+    {
+      "toolName": "auth_login",
+      "phrases": [
+        { "lang": "en", "phrase": "log in" },
+        { "lang": "en", "phrase": "sign in" },
+        { "lang": "fr", "phrase": "se connecter" },
+        { "lang": "ar", "phrase": "تسجيل الدخول" }
+      ]
+    },
+    {
+      "toolName": "products_get_all",
+      "phrases": [
+        { "lang": "en", "phrase": "list all products" },
+        { "lang": "en", "phrase": "show products" },
+        { "lang": "en", "phrase": "catalog" },
+        { "lang": "fr", "phrase": "liste des produits" },
+        { "lang": "ar", "phrase": "عرض المنتجات" }
+      ]
+    },
+    {
+      "toolName": "orders_get_my_orders",
+      "phrases": [
+        { "lang": "en", "phrase": "show me my last orders" },
+        { "lang": "en", "phrase": "my orders" },
+        { "lang": "en", "phrase": "order history" },
+        { "lang": "fr", "phrase": "mes commandes" },
+        { "lang": "ar", "phrase": "طلباتي" }
+      ]
+    },
+    {
+      "toolName": "cart_get_my_cart",
+      "phrases": [
+        { "lang": "en", "phrase": "my cart" },
+        { "lang": "en", "phrase": "shopping cart" },
+        { "lang": "fr", "phrase": "mon panier" },
+        { "lang": "ar", "phrase": "سلة التسوق" }
+      ]
+    }
+  ]
+}

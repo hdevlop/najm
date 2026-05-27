@@ -1,0 +1,130 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "preserve",
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "baseUrl": ".",
+    "paths": {
+      "diject": [
+        "../../../diject/src/index.ts"
+      ],
+      "najm-rag-studio": [
+        "../../packages/najm-rag-studio/dist/index.mjs"
+      ],
+      "najm-rag-studio/styles.css": [
+        "../../packages/najm-rag-studio/dist/styles.css"
+      ],
+      "najm-rag-studio/package.json": [
+        "../../packages/najm-rag-studio/package.json"
+      ],
+      "najm-storage-studio": [
+        "../../packages/najm-storage-studio/dist/index.mjs"
+      ],
+      "najm-storage-studio/styles.css": [
+        "../../packages/najm-storage-studio/dist/styles.css"
+      ],
+      "najm-storage-studio/package.json": [
+        "../../packages/najm-storage-studio/package.json"
+      ],
+      "najm-api": [
+        "../../packages/najm-api/src/index.ts"
+      ],
+      "najm-auth": [
+        "../../packages/najm-auth/src/index.ts"
+      ],
+      "najm-cache": [
+        "../../packages/najm-cache/src/index.ts"
+      ],
+      "najm-chatbot": [
+        "../../packages/najm-chatbot/src/index.ts"
+      ],
+      "najm-chatbot/sqlite": [
+        "../../packages/najm-chatbot/src/schema/sqlite.ts"
+      ],
+      "najm-cookies": [
+        "../../packages/najm-cookies/src/index.ts"
+      ],
+      "najm-core": [
+        "../../packages/najm-core/src/index.ts"
+      ],
+      "najm-cors": [
+        "../../packages/najm-cors/src/index.ts"
+      ],
+      "najm-database": [
+        "../../packages/najm-database/src/index.ts"
+      ],
+      "najm-email": [
+        "../../packages/najm-email/src/index.ts"
+      ],
+      "najm-event": [
+        "../../packages/najm-event/src/index.ts"
+      ],
+      "najm-guard": [
+        "../../packages/najm-guard/src/index.ts"
+      ],
+      "najm-i18n": [
+        "../../packages/najm-i18n/src/index.ts"
+      ],
+      "najm-mcp": [
+        "../../packages/najm-mcp/src/index.ts"
+      ],
+      "najm-rag": [
+        "../../packages/najm-rag/src/index.ts"
+      ],
+      "najm-rate": [
+        "../../packages/najm-rate/src/index.ts"
+      ],
+      "najm-storage": [
+        "../../packages/najm-storage/src/index.ts"
+      ],
+      "najm-validation": [
+        "../../packages/najm-validation/src/index.ts"
+      ],
+      "najm-whatsapp": [
+        "../../packages/najm-whatsapp/src/index.ts"
+      ],
+      "najm-chatbot/*": [
+        "../../packages/najm-chatbot/src/*"
+      ],
+      "najm-auth/*": [
+        "../../packages/najm-auth/src/*"
+      ],
+      "@/*": [
+        "./src/*"
+      ]
+    },
+    "allowJs": true,
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "noEmit": true,
+    "isolatedModules": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "src/**/*",
+    "test/**/*",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".next"
+  ]
+}

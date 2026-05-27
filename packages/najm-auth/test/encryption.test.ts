@@ -1,0 +1,83 @@
+import { describe, test, expect } from 'bun:test';
+import { EncryptionService } from '../src/auth/EncryptionService';
+
+describe('EncryptionService — AES-256-GCM', () => {
+  const key = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
+
+  test('round-trips encrypt → decrypt', () => {
+    const svc = new EncryptionService(key);
+    const plain = 'sk-ant-api03-secret-key-here';
+    const cipher = svc.encrypt(plain);
+    expect(cipher).not.toBe(plain);
+    expect(svc.decrypt(cipher)).toBe(plain);
+  });
+
+  test('different ciphertexts for same plaintext (random IV)', () => {
+    const svc = new EncryptionService(key);
+    const plain = 'hello world';
+    expect(svc.encrypt(plain)).not.toBe(svc.encrypt(plain));
+  });
+
+  test('tampered ciphertext throws (auth tag check)', () => {
+    const svc = new EncryptionService(key);
+    const cipher = svc.encrypt('secret');
+    const tampered = cipher.slice(0, -4) + 'XXXX';
+    expect(() => svc.decrypt(tampered)).toThrow();
+  });
+
+  test('decrypting with wrong key throws', () => {
+    const otherKey = 'fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210';
+    const svcA = new EncryptionService(key);
+    const svcB = new EncryptionService(otherKey);
+    const cipher = svcA.encrypt('secret');
+    expect(() => svcB.decrypt(cipher)).toThrow();
+  });
+
+  test('works with empty string', () => {
+    const svc = new EncryptionService(key);
+    expect(svc.decrypt(svc.encrypt(''))).toBe('');
+  });
+
+  test('works with unicode / long strings', () => {
+    const svc = new EncryptionService(key);
+    const plain = 'مرحبا 🌍 '.repeat(200);
+    expect(svc.decrypt(svc.encrypt(plain))).toBe(plain);
+  });
+
+  test('still hashes passwords (bcrypt unchanged)', async () => {
+    const svc = new EncryptionService(key);
+    const hash = await svc.hashPassword('pass123');
+    expect(hash).not.toBe('pass123');
+    expect(await svc.comparePassword('pass123', hash)).toBe(true);
+    expect(await svc.comparePassword('wrong', hash)).toBe(false);
+  });
+
+  test('throws when key is missing (no config, no env)', () => {
+    const prev = process.env.NAJM_ENCRYPTION_KEY;
+    delete process.env.NAJM_ENCRYPTION_KEY;
+    try {
+      expect(() => new EncryptionService()).toThrow(/Encryption key missing/);
+      expect(() => new EncryptionService(null)).toThrow(/Encryption key missing/);
+      expect(() => new EncryptionService('')).toThrow(/Encryption key missing/);
+    } finally {
+      if (prev !== undefined) process.env.NAJM_ENCRYPTION_KEY = prev;
+    }
+  });
+
+  test('accepts base64-encoded 32-byte key', () => {
+    const base64 = Buffer.from('a'.repeat(32)).toString('base64');
+    const svc = new EncryptionService(base64);
+    expect(svc.decrypt(svc.encrypt('hi'))).toBe('hi');
+  });
+
+  test('accepts base64url-encoded 32-byte key', () => {
+    const base64url = Buffer.from('b'.repeat(32)).toString('base64url');
+    const svc = new EncryptionService(base64url);
+    expect(svc.decrypt(svc.encrypt('hi'))).toBe('hi');
+  });
+
+  test('throws on malformed key (wrong length)', () => {
+    expect(() => new EncryptionService('short')).toThrow(/32 bytes/);
+    expect(() => new EncryptionService('x'.repeat(50))).toThrow(/32 bytes/);
+  });
+});

@@ -1,0 +1,209 @@
+---
+title: Routing & HTTP Overview
+description: Comprehensive HTTP routing system with decorators, automatic response formatting, and 40+ parameter decorators
+---
+
+Najm provides a powerful, decorator-based HTTP routing system built on top of Hono.js. The routing layer handles everything from request parsing to response formatting, with full TypeScript support and dependency injection integration.
+
+## Key Features
+
+- **Decorator-based routing** - Define routes using `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`
+- **40+ parameter decorators** - Extract request data with `@Body()`, `@Params()`, `@Query()`, and more
+- **Automatic response formatting** - Return any type, get proper HTTP responses
+- **Lazy request parsing** - Parse only what you need for optimal performance
+- **Schema validation** - Zod-based validation with type inference
+- **Middleware system** - Flexible, ordered middleware chains
+- **Type-safe** - Full TypeScript support throughout
+
+## Architecture
+
+```
+HTTP Request
+    │
+    ▼
+┌─────────────────────────┐
+│  Middleware Chain       │
+│  - CORS, Auth, etc.     │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Parameter Resolution   │
+│  - @Body(), @Params()   │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Validation             │
+│  - Zod schemas          │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Controller Handler     │
+│  - Business logic       │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Response Formatting    │
+│  - JSON, HTML, Stream   │
+└────────┬────────────────┘
+         │
+         ▼
+    HTTP Response
+```
+
+## Quick Example
+
+```typescript
+import { Controller, Get, Post } from 'najm-router';
+import { Body, Params, Query } from 'najm-params';
+import { Validate } from 'najm-validation';
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+  age: z.number().int().positive().optional(),
+});
+
+@Controller('/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  async getUsers(@Query('page') page?: string) {
+    return this.userService.findAll({ page });
+  }
+
+  @Get('/:id')
+  async getUser(@Params('id') id: string) {
+    return this.userService.findById(id);
+  }
+
+  @Post('/')
+  @Validate(createUserSchema)
+  async createUser(@Body() data: z.infer<typeof createUserSchema>) {
+    return this.userService.create(data);
+  }
+}
+```
+
+## Core Components
+
+### Router Plugin
+
+The router plugin scans controllers, registers routes, and handles the request-response lifecycle.
+
+- Decorator-based route definitions
+- Automatic path building (base path + controller prefix + route path)
+- Response formatting based on return type
+- Integration with middleware, guards, and params
+
+[Learn more about Router Plugin →](/docs/routing/router)
+
+### Controllers & Routes
+
+Controllers organize your API endpoints using class-based decorators.
+
+- `@Controller(prefix)` - Define controller with path prefix
+- `@Get()`, `@Post()`, `@Put()`, `@Patch()`, `@Delete()` - HTTP method decorators
+- Dependency injection support
+- Full TypeScript type safety
+
+[Learn more about Controllers & Routes →](/docs/routing/controllers)
+
+### Request/Response Handling
+
+Automatic parsing and formatting for all request/response types.
+
+- Lazy request parsing (parse only what you need)
+- Multiple content types (JSON, form data, multipart, text)
+- Smart response formatting (JSON, HTML, streams, redirects)
+- File upload handling
+
+[Learn more about Request/Response Handling →](/docs/routing/request-response)
+
+### Params Plugin (40+ Decorators)
+
+Extract request data into controller parameters with decorators.
+
+- **Body**: `@Body()`, `@JsonBody()`, `@FormData()`, `@File()`
+- **URL**: `@Params()`, `@Query()`, `@Path()`, `@Url()`
+- **Headers**: `@Headers()`, `@ContentType()`, `@Origin()`
+- **Context**: `@Ctx()`, `@Req()`, `@Cookie()`, `@IP()`
+- **Guards**: `@User()`, `@Role()`, `@Permissions()`
+
+[Learn more about Params Plugin →](/docs/routing/params)
+
+### Validation Plugin
+
+Zod-based schema validation with type inference.
+
+- Single `@Validate()` decorator for all targets
+- Validate body, params, query, headers
+- Automatic error formatting
+- Type-safe with Zod schema inference
+- Transform and sanitize data
+
+[Learn more about Validation Plugin →](/docs/routing/validation)
+
+### Middleware
+
+Flexible middleware system with three registration methods.
+
+- `@Middleware()` class decorator with DI support
+- `@Use()` property decorator for functional middleware
+- Config-based registration
+- Ordered execution with path matching
+
+[Learn more about Middleware →](/docs/routing/middleware)
+
+## Plugin Setup
+
+```typescript
+import { Server } from 'najm-core';
+import { router } from 'najm-router';
+import { params } from 'najm-params';
+import { middleware } from 'najm-middleware';
+import { validation } from 'najm-validation';
+
+const server = new Server()
+  .use(middleware())     // Auto-registered
+  .use(params())         // Auto-registered
+  .use(router())         // Auto-registered
+  .use(validation())     // Optional
+  .load(UserController);
+
+await server.listen(3000);
+```
+
+**Note:** `middleware()`, `params()`, and `router()` are automatically registered if not explicitly added. You only need to register them if you want to customize their configuration.
+
+## Performance Optimizations
+
+The routing system includes several performance optimizations:
+
+1. **Lazy request parsing** - Body, headers, and files are parsed only when accessed
+2. **Middleware caching** - Middleware chains are built once and cached per route
+3. **Parameter caching** - Parameter metadata is parsed once and cached
+4. **Efficient path building** - Paths are normalized once during registration
+5. **Smart type detection** - Avoids unnecessary JSON parsing
+
+## Best Practices
+
+1. **Use parameter decorators** - Explicit and type-safe: `@Body()`, `@Params()`
+2. **Validate input** - Use `@Validate()` with Zod schemas
+3. **Return clean data** - Let the formatter handle response structure
+4. **Define types** - Use `z.infer<>` for type inference from schemas
+5. **Keep controllers thin** - Move business logic to services
+
+## Next Steps
+
+- [Router Plugin](/docs/routing/router) - Deep dive into routing internals
+- [Controllers & Routes](/docs/routing/controllers) - Learn about controller patterns
+- [Request/Response Handling](/docs/routing/request-response) - Understand request/response lifecycle
+- [Params Plugin](/docs/routing/params) - Explore all 40+ parameter decorators
+- [Validation Plugin](/docs/routing/validation) - Master input validation
+- [Middleware](/docs/routing/middleware) - Build custom middleware

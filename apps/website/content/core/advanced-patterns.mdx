@@ -1,0 +1,642 @@
+---
+title: Advanced Patterns
+description: Advanced DI patterns including AlsStore, registry tokens, metadata system, and service ordering
+order: 6
+---
+
+Najm provides advanced patterns for sophisticated use cases including AsyncLocalStorage (ALS) for request context, registry tokens for cross-service communication, metadata system for service organization, and service ordering for boot control.
+
+## AsyncLocalStorage (AlsStore)
+
+AsyncLocalStorage (ALS) provides request-scoped context isolation. Each HTTP request gets its own isolated context that persists across async operations.
+
+### How It Works
+
+```typescript
+// Framework creates ALS context per request
+app.use('*', async (c, next) => {
+  await store.run(async () => {
+    // Store request-specific data
+    container.set(CONTEXT, c);
+    container.set(REQUEST_ID, generateId());
+
+    await next();  // All downstream code accesses same context
+  });
+});
+```
+
+### Built-in ALS Tokens
+
+Najm provides several ALS tokens out of the box:
+
+```typescript
+// From najm-core
+export const CONTEXT = Symbol('CONTEXT');        // Hono context
+export const REQUEST_ID = Symbol('REQUEST_ID');  // Unique request ID
+
+// From najm-guard
+export const USER = Symbol('USER');              // Authenticated user
+export const GUARD_PARAMS = Symbol('GUARD_PARAMS');  // Guard return values
+
+// From najm-i18n
+export const LANG = Symbol('LANG');              // Current language
+
+// From najm-params
+export const ROUTE_PARAMS = Symbol('ROUTE_PARAMS');  // URL params
+```
+
+### Accessing ALS Data in Services
+
+Use the container to access ALS tokens:
+
+```typescript
+import { CONTEXT, REQUEST_ID } from 'najm-core';
+import { USER } from 'najm-guard';
+
+@Service()
+class MyService {
+  @DI() container: Container;
+
+  doSomething() {
+    // Access request context
+    const context = this.container.get<Context>(CONTEXT);
+    const requestId = this.container.get<string>(REQUEST_ID);
+    const user = this.container.get<any>(USER);
+
+    this.logger.info('Processing request', { requestId, userId: user?.id });
+  }
+}
+```
+
+### Accessing ALS Data in Controllers
+
+Use parameter decorators for cleaner access:
+
+```typescript
+import { User, Ctx } from 'najm-params';
+
+@Controller('/api/posts')
+class PostController {
+  @Get('/')
+  async list(
+    @User() user: any,           // From USER token
+    @Ctx() context: Context,     // From CONTEXT token
+  ) {
+    // Direct access without container
+    return this.postService.findByUser(user.id);
+  }
+}
+```
+
+### Custom ALS Tokens
+
+Create custom ALS tokens for your needs:
+
+```typescript
+// Define token
+export const TENANT_ID = Symbol('TENANT_ID');
+
+// Set in middleware
+app.use('*', async (c, next) => {
+  const tenantId = c.req.header('x-tenant-id');
+  container.set(TENANT_ID, tenantId);
+  await next();
+});
+
+// Access in service
+@Service()
+class TenantService {
+  @DI() container: Container;
+
+  getCurrentTenant() {
+    return this.container.get(TENANT_ID);
+  }
+}
+
+// Or create custom parameter decorator
+export const TenantId = createParamDecorator(TENANT_ID);
+
+@Controller('/api/data')
+class DataController {
+  @Get('/')
+  async list(@TenantId() tenantId: string) {
+    return this.dataService.findByTenant(tenantId);
+  }
+}
+```
+
+### ALS Best Practices
+
+**✓ Good: Use for request-scoped data**
+```typescript
+// User, request ID, language, tenant
+container.set(USER, user);
+container.set(REQUEST_ID, id);
+```
+
+**✗ Avoid: Use for application config**
+```typescript
+// Use regular container instead
+container.set('config', config);  // Not ALS
+```
+
+**✓ Good: Access via parameter decorators**
+```typescript
+@Get('/profile')
+async getProfile(@User() user: any) {
+  // Clean and declarative
+}
+```
+
+**✗ Avoid: Access via container in controllers**
+```typescript
+@Get('/profile')
+async getProfile(@DI() container: Container) {
+  const user = container.get(USER);  // Extra code
+}
+```
+
+## Registry Tokens
+
+Registry tokens enable cross-service communication and data aggregation without tight coupling.
+
+### Common Registry Tokens
+
+```typescript
+// From najm-router
+export const ROUTES = Symbol('ROUTES');              // Route metadata
+export const HANDLERS = Symbol('HANDLERS');          // Route handlers
+
+// From najm-guard
+export const GUARDS = Symbol('GUARDS');              // Guard metadata
+
+// From najm-middleware
+export const MIDDLEWARES = Symbol('MIDDLEWARES');    // Middleware handlers
+
+// From najm-params
+export const INJECTIONS = Symbol('INJECTIONS');      // Parameter injections
+
+// From najm-event
+export const EVENT_LISTENERS = Symbol('EVENT_LISTENERS');  // Event handlers
+```
+
+### Using Registry Tokens
+
+Services register data to registry tokens during boot:
+
+```typescript
+@Service()
+@Meta({ layer: 'plugin', order: 5 })
+class RouterService {
+  @Inject(ROUTES) routes: RouteMetadata[];
+
+  async scan() {
+    // Scan controller classes for @Get, @Post, etc.
+    const routes = this.scanRoutes();
+
+    // Push to registry
+    this.container.push(ROUTES, ...routes);
+  }
+
+  async activate() {
+    // Access accumulated routes from all services
+    const allRoutes = this.container.get<RouteMetadata[]>(ROUTES);
+
+    // Register with Hono
+    allRoutes.forEach(route => {
+      this.app[route.method](route.path, route.handler);
+    });
+  }
+}
+```
+
+### Custom Registry Tokens
+
+Create custom registries for plugin communication:
+
+```typescript
+// Define registry token
+export const VALIDATORS = Symbol('VALIDATORS');
+
+// Plugin 1: Register validators
+@Service()
+class ValidationService {
+  async scan() {
+    const validators = [
+      { name: 'email', fn: validateEmail },
+      { name: 'phone', fn: validatePhone },
+    ];
+
+    this.container.push(VALIDATORS, ...validators);
+  }
+}
+
+// Plugin 2: Use validators
+@Service()
+class FormService {
+  @Inject(VALIDATORS) validators: Validator[];
+
+  validate(field: string, value: any) {
+    const validator = this.validators.find(v => v.name === field);
+    return validator?.fn(value);
+  }
+}
+```
+
+### Registry API
+
+```typescript
+// Push to array
+container.push('myArray', item1, item2, item3);
+
+// Get array
+const items = container.get<Item[]>('myArray');
+
+// Filter array
+const filtered = container.filter('myArray', (item) => item.active);
+```
+
+## Metadata System
+
+The metadata system enables service organization, querying, and ordering.
+
+### Setting Metadata
+
+Use `@Meta` decorator to add metadata:
+
+```typescript
+import { Meta } from 'najm-di';
+
+@Service()
+@Meta({ layer: 'core', order: 1, priority: 10 })
+class BootService {}
+
+@Service()
+@Meta({ layer: 'plugin', order: 5, feature: 'routing' })
+class RouterService {}
+
+@Service()
+@Meta({ layer: 'app', order: 10 })
+class UserService {}
+```
+
+### Querying by Metadata
+
+Find services by metadata criteria:
+
+```typescript
+// Find all core services
+const coreServices = container.find({ layer: 'core' });
+
+// Find high-priority services
+const highPriority = container.find({ priority: (p) => p > 5 });
+
+// Find routing-related services
+const routingServices = container.find({ feature: 'routing' });
+
+// Complex query
+const services = container.find({
+  layer: 'plugin',
+  order: (o) => o < 10,
+  enabled: true,
+});
+```
+
+### Grouping by Metadata
+
+Group services by metadata field:
+
+```typescript
+const byLayer = container.groupBy('layer');
+// {
+//   core: [BootService, LoggerService],
+//   plugin: [RouterService, GuardService],
+//   app: [UserService, OrderService],
+// }
+
+const byFeature = container.groupBy('feature');
+// {
+//   routing: [RouterService],
+//   auth: [GuardService, AuthService],
+//   database: [DatabaseService],
+// }
+```
+
+### Default Metadata
+
+Set default metadata for all services:
+
+```typescript
+container.setDefaults({ layer: 'app', priority: 0, enabled: true });
+
+// All subsequent registrations get defaults
+container.set(UserService);  // Gets { layer: 'app', priority: 0, enabled: true }
+```
+
+### Metadata Use Cases
+
+**1. Layered Architecture**
+```typescript
+@Meta({ layer: 'core' })
+class InfraService {}
+
+@Meta({ layer: 'domain' })
+class BusinessService {}
+
+@Meta({ layer: 'app' })
+class ApiController {}
+```
+
+**2. Feature Flags**
+```typescript
+@Meta({ feature: 'payments', enabled: false })
+class PaymentService {}
+
+// Conditionally boot features
+const enabled = container.find({ enabled: true });
+await container.boot(enabled);
+```
+
+**3. Service Discovery**
+```typescript
+@Meta({ type: 'repository' })
+class UserRepository {}
+
+@Meta({ type: 'repository' })
+class OrderRepository {}
+
+// Find all repositories
+const repos = container.find({ type: 'repository' });
+```
+
+## Service Ordering
+
+Control service boot order using metadata.
+
+### Order Metadata
+
+```typescript
+@Service()
+@Meta({ layer: 'plugin', order: 1 })
+class DatabaseService {}
+
+@Service()
+@Meta({ layer: 'plugin', order: 2 })
+class CacheService {}
+
+@Service()
+@Meta({ layer: 'plugin', order: 3 })
+class RouterService {}
+```
+
+### Boot by Order
+
+Services boot in order within each layer:
+
+```typescript
+// Boot plugin layer
+await container.bootBy({ layer: 'plugin' });
+// Boots: DatabaseService (order: 1)
+//        → CacheService (order: 2)
+//        → RouterService (order: 3)
+```
+
+### Phased Boot
+
+Boot services in phases:
+
+```typescript
+await container.bootPhased('layer', ['core', 'plugin', 'app']);
+// Phase 1: Boot all { layer: 'core' } services
+// Phase 2: Boot all { layer: 'plugin' } services
+// Phase 3: Boot all { layer: 'app' } services
+```
+
+### Lifecycle Order
+
+Within each service, lifecycle methods execute in order:
+
+```typescript
+@Service()
+@Meta({ layer: 'plugin', order: 5 })
+class RouterService {
+  async scan() {
+    // Phase 1: Scan
+  }
+
+  async configure() {
+    // Phase 2: Configure
+  }
+
+  async activate() {
+    // Phase 3: Activate
+  }
+
+  async onReady() {
+    // Phase 4: Ready
+  }
+}
+```
+
+### Complete Boot Order
+
+```typescript
+// 1. Infrastructure Boot (Core Services)
+await bootService.bootInfrastructure();
+// - BootService (order: 1)
+// - LoggerService (order: 2)
+// - ScannerService (order: 3)
+
+// 2. Lifecycle Phases (Plugin Services)
+await bootService.runLifecycle();
+// For each service in order:
+//   - scan()
+// For each service in order:
+//   - configure()
+// For each service in order:
+//   - activate()
+// For each service in order:
+//   - onReady()
+
+// 3. App Services Boot
+await bootService.bootAppServices();
+// - Controllers
+// - Services
+// - Repositories
+```
+
+## Custom Injectors
+
+Extend the DI system with custom property injectors.
+
+### Creating Custom Injectors
+
+```typescript
+container.use({
+  name: 'CustomInjector',
+  global: true,
+  inject: (instance, ctor, registry, injections) => {
+    for (const injection of injections) {
+      // Custom injection logic
+      const value = resolveCustomValue(injection);
+      instance[injection.propertyKey] = value;
+    }
+  },
+});
+```
+
+### Example: @Config Injector
+
+```typescript
+// Create decorator
+export function Config(key: string) {
+  return (target: any, propertyKey: string) => {
+    Reflect.defineMetadata('config:key', key, target, propertyKey);
+  };
+}
+
+// Register injector
+container.use({
+  name: 'ConfigInjector',
+  global: true,
+  inject: (instance, ctor, registry) => {
+    const prototype = Object.getPrototypeOf(instance);
+    const properties = Object.getOwnPropertyNames(prototype);
+
+    for (const prop of properties) {
+      const key = Reflect.getMetadata('config:key', prototype, prop);
+      if (key) {
+        const config = container.get('config');
+        instance[prop] = config[key];
+      }
+    }
+  },
+});
+
+// Usage
+@Service()
+class ApiService {
+  @Config('apiUrl') apiUrl: string;
+  @Config('apiKey') apiKey: string;
+}
+```
+
+## Injection Registry
+
+The injection registry stores metadata about custom injections for framework extensions.
+
+### Registering Injections
+
+```typescript
+const token = container.setInjection({
+  type: 'middleware',
+  target: UserController,
+  methodName: 'create',
+  handler: validateMiddleware,
+  order: 1,
+  scope: 'method',
+  metadata: { async: true },
+});
+```
+
+### Retrieving Injections
+
+```typescript
+// Get all injections of a type
+const middlewares = container.getInjections<MiddlewareInjection>('middleware');
+
+// Get injections for specific target/method
+const specific = container.getInjectionsFor('middleware', UserController, 'create');
+```
+
+### Example: Middleware Plugin
+
+```typescript
+// Middleware plugin uses injection registry
+@Service()
+class MiddlewareService {
+  async scan() {
+    // Get all middleware injections
+    const middlewares = this.container.getInjections('middleware');
+
+    // Sort by order
+    middlewares.sort((a, b) => a.order - b.order);
+
+    // Register with Hono
+    middlewares.forEach(mw => {
+      this.app.use(mw.handler);
+    });
+  }
+}
+```
+
+## Best Practices
+
+### 1. Use ALS for Request Data
+
+**✓ Good: Request-scoped data in ALS**
+```typescript
+container.set(USER, user);
+container.set(TENANT_ID, tenantId);
+```
+
+**✗ Avoid: Request data in singleton**
+```typescript
+@Service()
+class UserContext {
+  currentUser: any;  // Shared across requests!
+}
+```
+
+### 2. Use Registry Tokens for Accumulation
+
+**✓ Good: Registry for cross-service data**
+```typescript
+container.push(ROUTES, ...routes);
+container.push(GUARDS, ...guards);
+```
+
+**✗ Avoid: Direct service coupling**
+```typescript
+routerService.addRoutes(routes);  // Tight coupling
+```
+
+### 3. Use Metadata for Organization
+
+**✓ Good: Metadata for structure**
+```typescript
+@Service()
+@Meta({ layer: 'plugin', order: 5, feature: 'routing' })
+class RouterService {}
+```
+
+**✗ Avoid: Manual ordering logic**
+```typescript
+if (service.name === 'RouterService') {
+  bootOrder = 5;
+}
+```
+
+### 4. Order Services by Dependencies
+
+**✓ Good: Lower order for dependencies**
+```typescript
+@Meta({ order: 1 })
+class DatabaseService {}
+
+@Meta({ order: 2 })
+class CacheService {}  // Depends on database
+```
+
+## Summary
+
+Advanced patterns in Najm provide:
+
+✓ **AsyncLocalStorage** - Request context isolation
+✓ **Registry Tokens** - Cross-service communication
+✓ **Metadata System** - Service organization and querying
+✓ **Service Ordering** - Control boot sequence
+✓ **Custom Injectors** - Extend DI system
+✓ **Injection Registry** - Framework extension points
+
+These patterns enable sophisticated architectures while maintaining clean, decoupled code.

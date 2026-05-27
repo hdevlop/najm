@@ -1,0 +1,764 @@
+---
+title: Guards & Authorization
+description: Powerful authorization system with route protection, automatic token injection, custom guard logic, and path exclusion
+---
+
+The Guard Plugin provides a comprehensive authorization system for protecting routes and controlling access based on authentication, roles, permissions, or custom business logic. Guards execute before route handlers to determine if a request should proceed.
+
+## Key Features
+
+- **Flexible Guard Creation** - Function-based, class-based, and parameterized guards
+- **Automatic Token Injection** - Set USER, ROLE, PERMISSIONS, and custom tokens
+- **Guard Composition** - Combine multiple guards into reusable patterns
+- **Path Exclusion** - Wildcard support for public routes
+- **Parameter Resolution** - Full najm-params integration
+- **DI Integration** - Guards are injectable services
+- **Type-safe** - Complete TypeScript support
+
+## Plugin Setup
+
+```typescript
+import { guards } from 'najm-guard';
+
+// Enable with defaults
+const server = new Server()
+  .use(guards())
+  .load(UserController);
+
+// With path exclusion
+const server = new Server()
+  .use(guards({
+    exclude: [
+      '/health',
+      '/api/public/*',      // Wildcard: /api/public/info, /api/public/data
+      '/api/webhooks/**'    // Deep wildcard: all nested paths
+    ]
+  }))
+  .load(UserController);
+
+// Disable guards globally
+const server = new Server()
+  .use(guards(false))
+  .load(UserController);
+```
+
+## How Guards Work
+
+```
+Request → Path Exclusion Check → Guard Middleware → Guards Execute → Route Handler
+          ↓                      ↓                  ↓
+          Excluded?              Guard 1            Set ALS tokens
+          ↓ Yes → Skip           Guard 2            (user, role, etc.)
+          ↓ No → Continue        Guard 3            ↓
+                                 All pass? → Next   Available in handler
+                                 Any fail? → 401    via @User(), @Role()
+```
+
+## Creating Guards
+
+### Function Guards
+
+Simple guards for basic authentication:
+
+```typescript
+import { createGuard } from 'najm-guard';
+import { Headers } from 'najm-params';
+
+export const isAuth = createGuard(
+  class {
+    async canActivate(@Headers('authorization') token: string) {
+      if (!token) return false;
+
+      const user = await verifyToken(token);
+      if (!user) return false;
+
+      // Return user data to set USER token
+      return { user };
+    }
+  }
+);
+```
+
+### Class-Based Guards
+
+Advanced guards with dependency injection:
+
+```typescript
+import { createGuard } from 'najm-guard';
+import { Injectable, Inject } from 'najm-di';
+import { Headers } from 'najm-params';
+
+@Injectable()
+class AuthGuard {
+  @Inject(AuthService) private authService!: AuthService;
+
+  async canActivate(@Headers('authorization') token: string) {
+    const user = await this.authService.verify(token);
+
+    if (!user) return false;
+
+    // Return structured data
+    return {
+      user: { id: user.id, email: user.email },
+      role: user.role,
+      permissions: user.permissions
+    };
+  }
+}
+
+export const isAuth = createGuard(AuthGuard);
+```
+
+### Parameterized Guards
+
+Guards that accept configuration:
+
+```typescript
+import { createGuard } from 'najm-guard';
+import { DI } from 'najm-di';
+
+interface RoleParams {
+  roles: string[];
+}
+
+class RoleGuard {
+  @DI() private container!: Container;
+
+  async canActivate() {
+    const params = this.container.get('guardParams') as RoleParams;
+    const user = this.container.get(USER);
+
+    if (!user) return false;
+
+    return params.roles.includes(user.role);
+  }
+}
+
+export const Role = createGuard<RoleParams>(RoleGuard);
+
+// Usage
+@Controller('/admin')
+@Role({ roles: ['admin', 'superadmin'] })
+class AdminController {
+  @Get('/users')
+  getUsers() {
+    return { users: [] };
+  }
+}
+```
+
+## Using Guards
+
+### Controller-Level Guards
+
+Applied to all methods in the controller:
+
+```typescript
+import { isAuth } from './guards';
+
+@Controller('/api/private')
+@isAuth()
+class PrivateController {
+  @Get('/data')
+  getData(@User() user: any) {
+    // Guard ensures user exists
+    return { userId: user.id };
+  }
+
+  @Get('/profile')
+  getProfile(@User() user: any) {
+    // Guard applies here too
+    return user;
+  }
+}
+```
+
+### Method-Level Guards
+
+Applied to specific methods:
+
+```typescript
+@Controller('/api/mixed')
+class MixedController {
+  @Get('/public')
+  getPublic() {
+    // No guard - publicly accessible
+    return { public: true };
+  }
+
+  @Get('/private')
+  @isAuth()
+  getPrivate(@User() user: any) {
+    // Guard required for this method only
+    return { userId: user.id };
+  }
+}
+```
+
+### Multiple Guards
+
+Guards execute sequentially - all must pass:
+
+```typescript
+import { isAuth, Role } from './guards';
+
+@Controller('/api/admin')
+@isAuth()  // First: Check authentication
+@Role({ roles: ['admin'] })  // Second: Check role
+class AdminController {
+  @Get('/dashboard')
+  getDashboard(@User() user: any, @Role() role: string) {
+    // Both guards passed
+    return { user, role };
+  }
+}
+```
+
+## Guard Return Values
+
+### Boolean Return
+
+```typescript
+async canActivate() {
+  if (!authenticated) return false;  // Reject (401)
+  return true;  // Allow (no tokens set)
+}
+```
+
+### GuardResult Object
+
+Automatically sets ALS tokens accessible via decorators:
+
+```typescript
+interface GuardResult {
+  user?: any;           // @User()
+  owner?: any;          // @Owner()
+  info?: any;           // @Info()
+  data?: any;           // @Data()
+  filter?: any;         // @Filter()
+  role?: string;        // @Role()
+  permissions?: string[]; // @Permissions()
+}
+
+async canActivate(@Headers('authorization') token: string) {
+  const user = await this.authService.verify(token);
+
+  if (!user) return false;
+
+  // Set multiple tokens at once
+  return {
+    user: { id: user.id, email: user.email, name: user.name },
+    role: user.role,
+    permissions: user.permissions,
+    owner: user.organizationId,
+    filter: { tenantId: user.tenantId }
+  };
+}
+```
+
+### Accessing Guard Data
+
+```typescript
+import { User, Role, Permissions, Owner, Filter } from 'najm-params';
+
+@Controller('/api/posts')
+@isAuth()
+class PostController {
+  @Get('/')
+  getPosts(
+    @User() user: any,              // Full user object
+    @User('id') userId: string,     // Specific user field
+    @Role() role: string,           // User role
+    @Permissions() perms: string[], // User permissions
+    @Owner() ownerId: string,       // Owner/organization ID
+    @Filter() filter: any           // Filter criteria
+  ) {
+    return {
+      userId,
+      role,
+      permissions: perms,
+      ownerId,
+      filter
+    };
+  }
+}
+```
+
+### Guard Composition <Badge variant="advanced">Advanced</Badge>
+
+Combine multiple guards into one:
+
+```typescript
+import { composeGuards } from 'najm-guard';
+
+// Create composed guard
+export const isAdmin = composeGuards(
+  isAuth(),
+  Role({ roles: ['admin'] })
+);
+
+// Usage
+@Controller('/admin')
+@isAdmin()
+class AdminController {
+  @Get('/settings')
+  getSettings() {
+    return { settings: {} };
+  }
+}
+```
+
+### Permission-Based Guards <Badge variant="advanced">Advanced</Badge>
+
+Fine-grained permission checking:
+
+```typescript
+class PermissionGuard {
+  @DI() private container!: Container;
+
+  async canActivate() {
+    const params = this.container.get('guardParams');
+    const permissions = this.container.get(PERMISSIONS) as string[];
+
+    if (!permissions) return false;
+
+    // Check if user has required permission
+    return permissions.includes(params.permission);
+  }
+}
+
+export const HasPermission = createGuard<{ permission: string }>(PermissionGuard);
+
+// Usage
+@Controller('/api/posts')
+class PostController {
+  @Get('/')
+  @HasPermission({ permission: 'posts.read' })
+  getPosts() {
+    return { posts: [] };
+  }
+
+  @Post('/')
+  @HasPermission({ permission: 'posts.write' })
+  createPost(@Body() data: any) {
+    return { created: true };
+  }
+}
+```
+
+### Owner-Based Access Control <Badge variant="advanced">Advanced</Badge>
+
+Verify resource ownership:
+
+```typescript
+class OwnerGuard {
+  @Inject(PostService) private postService!: PostService;
+
+  async canActivate(@Params('id') postId: string, @User('id') userId: string) {
+    const post = await this.postService.findById(postId);
+
+    if (!post) return false;
+
+    // Check if user owns the post
+    if (post.authorId !== userId) return false;
+
+    return {
+      owner: post.authorId,
+      data: { post }
+    };
+  }
+}
+
+export const isOwner = createGuard(OwnerGuard);
+
+@Controller('/api/posts')
+class PostController {
+  @Put('/:id')
+  @isAuth()
+  @isOwner()
+  updatePost(
+    @Params('id') id: string,
+    @Body() data: any,
+    @Owner() ownerId: string
+  ) {
+    // Only post owner can update
+    return { updated: true, ownerId };
+  }
+}
+```
+
+### Multi-Tenant Guards <Badge variant="advanced">Advanced</Badge>
+
+Enforce tenant isolation:
+
+```typescript
+class TenantGuard {
+  @Inject(TenantService) private tenantService!: TenantService;
+
+  async canActivate(@User('tenantId') tenantId: string) {
+    const tenant = await this.tenantService.findById(tenantId);
+
+    if (!tenant || !tenant.active) return false;
+
+    return {
+      filter: { tenantId },
+      info: { tenant }
+    };
+  }
+}
+
+export const hasTenant = createGuard(TenantGuard);
+
+@Controller('/api/resources')
+@isAuth()
+@hasTenant()
+class ResourceController {
+  @Get('/')
+  getResources(@Filter() filter: any) {
+    // Filter automatically includes tenantId
+    return this.resourceService.findAll(filter);
+  }
+}
+```
+
+### Rate Limiting Guard <Badge variant="advanced">Advanced</Badge>
+
+Custom rate limiting logic:
+
+```typescript
+class RateLimitGuard {
+  @Inject(RateLimiter) private limiter!: RateLimiter;
+
+  async canActivate(@User('id') userId: string, @IP() ip: string) {
+    const key = userId || ip;
+    const allowed = await this.limiter.check(key);
+
+    if (!allowed) return false;
+
+    return true;
+  }
+}
+
+export const rateLimit = createGuard(RateLimitGuard);
+
+@Controller('/api/expensive')
+class ExpensiveController {
+  @Post('/operation')
+  @isAuth()
+  @rateLimit()
+  performOperation() {
+    return { success: true };
+  }
+}
+```
+
+## Path Exclusion
+
+### Exact Paths
+
+```typescript
+const server = new Server()
+  .use(guards({
+    exclude: [
+      '/health',              // Exact match
+      '/metrics'              // Exact match
+    ]
+  }));
+```
+
+### Wildcard Patterns
+
+```typescript
+const server = new Server()
+  .use(guards({
+    exclude: [
+      '/api/public/*',        // Matches: /api/public/info, /api/public/data
+                              // Does NOT match: /api/public/nested/path
+
+      '/api/webhooks/**',     // Matches: /api/webhooks/github,
+                              //          /api/webhooks/stripe/callback,
+                              //          All nested paths
+
+      '/docs/*',              // Matches: /docs/api, /docs/guide
+      '/docs/**'              // Matches: All docs paths (nested too)
+    ]
+  }));
+```
+
+### Public + Protected Routes
+
+```typescript
+@Controller('/api/auth')
+@isAuth()  // Protected by default
+class AuthController {
+  @Get('/me')
+  getMe(@User() user: any) {
+    return user;
+  }
+
+  @Get('/refresh')
+  refreshToken(@User() user: any) {
+    return { token: 'new-token' };
+  }
+}
+
+// Exclude login/register from guards
+const server = new Server()
+  .use(guards({
+    exclude: [
+      '/api/auth/login',
+      '/api/auth/register',
+      '/api/public/**'
+    ]
+  }))
+  .load(AuthController, PublicController);
+```
+
+## Security Best Practices
+
+### Always Validate Tokens
+
+```typescript
+// ✓ Good: Verify token cryptographically
+async canActivate(@Headers('authorization') token: string) {
+  const user = await this.jwtService.verify(token);
+  if (!user) return false;
+  return { user };
+}
+
+// ✗ Avoid: Trust token without verification
+async canActivate(@Headers('authorization') token: string) {
+  const decoded = JSON.parse(atob(token.split('.')[1]));
+  return { user: decoded };  // Unverified!
+}
+```
+
+### Use Structured Returns
+
+```typescript
+// ✓ Good: Explicit token setting
+return {
+  user: { id: user.id, email: user.email },  // Only necessary fields
+  role: user.role,
+  permissions: user.permissions
+};
+
+// ✗ Avoid: Exposing sensitive data
+return {
+  user: user  // Might include password hash, secrets, etc.
+};
+```
+
+### Check Permissions Properly
+
+```typescript
+// ✓ Good: Explicit permission check
+async canActivate(@User() user: any) {
+  if (!user.permissions.includes('admin.write')) return false;
+  return true;
+}
+
+// ✗ Avoid: Trusting client-provided data
+async canActivate(@Headers('x-role') role: string) {
+  if (role === 'admin') return true;  // Client can fake this!
+}
+```
+
+### Fail Closed
+
+```typescript
+// ✓ Good: Fail closed (deny by default)
+async canActivate(@User() user: any) {
+  if (!user) return false;
+  if (!user.active) return false;
+  return user.role === 'admin';  // Explicit check
+}
+
+// ✗ Avoid: Fail open
+async canActivate(@User() user: any) {
+  if (user?.role === 'admin') return false;  // Inverted logic!
+  return true;  // Default allows!
+}
+```
+
+### Use Guard Composition
+
+```typescript
+// ✓ Good: Compose guards for complex logic
+export const canManageUsers = composeGuards(
+  isAuth(),
+  Role({ roles: ['admin', 'manager'] }),
+  HasPermission({ permission: 'users.manage' })
+);
+
+// ✗ Avoid: Single mega-guard
+async canActivate() {
+  // 100+ lines of complex logic...
+}
+```
+
+## Common Authentication Patterns
+
+### JWT Authentication
+
+```typescript
+@Injectable()
+class AuthGuard {
+  @Inject(AuthService) private authService!: AuthService;
+
+  async canActivate(@Headers('authorization') token: string) {
+    if (!token) return false;
+
+    const user = await this.authService.verify(token);
+    if (!user) return false;
+
+    return {
+      user,
+      role: user.role,
+      permissions: user.permissions
+    };
+  }
+}
+
+export const isAuth = createGuard(AuthGuard);
+
+// Usage
+@Controller('/admin')
+@isAuth()
+@Role({ roles: ['admin', 'superadmin'] })
+class AdminController {
+  @Get('/users')
+  getUsers() {
+    return { users: [] };
+  }
+}
+```
+
+### API Key Authentication
+
+```typescript
+class ApiKeyGuard {
+  @Inject(ApiKeyService) private apiKeyService!: ApiKeyService;
+
+  async canActivate(@Headers('x-api-key') apiKey: string) {
+    if (!apiKey) return false;
+
+    const client = await this.apiKeyService.validateKey(apiKey);
+    if (!client) return false;
+
+    return {
+      user: { type: 'api', clientId: client.id },
+      permissions: client.permissions
+    };
+  }
+}
+
+export const requireApiKey = createGuard(ApiKeyGuard);
+
+@Controller('/api/external')
+@requireApiKey()
+class ExternalAPIController {
+  @Get('/data')
+  getData(@User('clientId') clientId: string) {
+    return { clientId, data: [] };
+  }
+}
+```
+
+## Testing Guards
+
+```typescript
+import { describe, test, expect } from 'bun:test';
+
+test('should reject unauthenticated requests', async () => {
+  @Injectable()
+  class TestGuard {
+    async canActivate(@Headers('authorization') token: string) {
+      return !!token;
+    }
+  }
+
+  const testAuth = createGuard(TestGuard);
+
+  @Controller('/test')
+  class TestController {
+    @Get('/protected')
+    @testAuth()
+    getProtected() {
+      return { protected: true };
+    }
+  }
+
+  const server = new Server({ isolated: true })
+    .use(guards())
+    .use(router())
+    .use(params())
+    .load(TestController, TestGuard);
+
+  await server.listen(3300);
+
+  // Without token
+  const res1 = await fetch('http://localhost:3300/test/protected');
+  expect(res1.status).toBe(401);
+
+  // With token
+  const res2 = await fetch('http://localhost:3300/test/protected', {
+    headers: { 'Authorization': 'Bearer valid-token' }
+  });
+  expect(res2.status).toBe(200);
+
+  await server.stop();
+});
+```
+
+## API Reference
+
+### createGuard Factory
+
+```typescript
+function createGuard<TParams = void>(
+  guardClass: Constructor,
+  options?: { methodName?: string }
+): TParams extends void
+  ? () => ClassDecorator & MethodDecorator
+  : (params: TParams) => ClassDecorator & MethodDecorator
+```
+
+### composeGuards
+
+```typescript
+function composeGuards(
+  ...decorators: (ClassDecorator & MethodDecorator)[]
+): () => ClassDecorator & MethodDecorator
+```
+
+### GuardResult Interface
+
+```typescript
+interface GuardResult {
+  user?: any;           // Accessible via @User()
+  owner?: any;          // Accessible via @Owner()
+  info?: any;           // Accessible via @Info()
+  data?: any;           // Accessible via @Data()
+  filter?: any;         // Accessible via @Filter()
+  role?: string;        // Accessible via @Role()
+  permissions?: string[]; // Accessible via @Permissions()
+}
+```
+
+### Plugin Configuration
+
+```typescript
+type GuardPluginConfig = boolean | {
+  enabled?: boolean;       // Enable/disable guards globally
+  exclude?: string[];      // Paths to exclude (supports wildcards)
+};
+```
+
+## Next Steps
+
+- [Authentication Patterns](/docs/security/authentication) - Learn authentication strategies
+- [Rate Limiting](/docs/security/rate-limit) - Protect against abuse
+- [CORS Configuration](/docs/security/cors) - Configure cross-origin requests
+- [Cookie Security](/docs/security/cookies) - Secure cookie management
+- [Params Plugin](/docs/routing/params) - Explore parameter decorators

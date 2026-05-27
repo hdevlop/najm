@@ -1,0 +1,636 @@
+---
+title: I18n Plugin
+description: Internationalization and localization support with multi-source language detection
+order: 8
+---
+
+The I18n Plugin provides internationalization and localization support for Najm applications. It handles language detection from multiple sources, translation management, and automatic language persistence.
+
+## Quick Start
+
+```typescript
+import { i18n, I18n } from 'najm-i18n';
+
+// Setup translations
+const translations = {
+   en: {
+      welcome: 'Welcome',
+      user: {
+         profile: {
+            title: 'User Profile',
+            edit: 'Edit Profile',
+         },
+      },
+   },
+   fr: {
+      welcome: 'Bienvenue',
+      user: {
+         profile: {
+            title: 'Profil utilisateur',
+            edit: 'Modifier le profil',
+         },
+      },
+   },
+};
+
+// Setup plugin
+const server = new Server()
+   .use(i18n({
+      translations,
+      defaultLanguage: 'en',
+      supportedLanguages: ['en', 'fr'],
+   }))
+   .load(UserController);
+
+// Use in controller
+@Controller('/users')
+class UserController {
+   @I18n('user') t!: (key: string) => string;
+
+   @Get('/profile')
+   getProfile() {
+      return {
+         title: this.t('profile.title'),  // → user.profile.title
+      };
+   }
+}
+```
+
+## Key Features
+
+- **Multi-source language detection** - Cookie, query string, headers, path
+- **Automatic language persistence** - Cookie-based with configurable options
+- **Decorator-based injection** - `@I18n()` for translation functions
+- **Nested translation keys** - Dot notation support (`user.profile.title`)
+- **Parameter interpolation** - Dynamic values in translations (`Hello {{name}}`)
+- **Request-scoped language** - Different users can have different languages
+- **Standalone mode** - Use translations outside HTTP requests
+- **Type-safe** - Full TypeScript support
+
+## Language Detection
+
+### Detection Order
+
+The plugin checks multiple sources in a configurable order (default: cookie → query → header):
+
+```typescript
+order: ['cookie', 'querystring', 'header']
+```
+
+### Detection Methods
+
+**1. Cookie (default: `language`)**
+```
+Cookie: language=fr
+```
+
+**2. Query String (default: `lang`)**
+```
+GET /users?lang=es
+```
+
+**3. Accept-Language Header**
+```
+Accept-Language: en-US,en;q=0.9,fr;q=0.8
+```
+
+**4. Path Index (default: 0)**
+```
+GET /fr/users  → language = 'fr'
+```
+
+### Language Persistence
+
+When a language is detected, it's automatically stored in a cookie:
+
+```typescript
+const cookieOptions = {
+   path: '/',
+   sameSite: 'Lax',
+   secure: process.env.NODE_ENV === 'production',
+   maxAge: 365 * 24 * 60 * 60,  // 1 year
+   httpOnly: true,
+};
+```
+
+## Decorator Usage
+
+### @I18n() - Full Translation Function
+
+Injects the complete translation function:
+
+```typescript
+@Service()
+class UserService {
+   @I18n() t!: TFn;
+
+   getWelcomeMessage() {
+      return this.t('welcome.message');
+   }
+}
+```
+
+### @I18n('prefix') - Prefixed Translation Function
+
+Injects a translation function with automatic prefix:
+
+```typescript
+@Controller('/users')
+class UserController {
+   @I18n('users') t!: (key: string, params?: any) => string;
+
+   @Get('/')
+   getUsers() {
+      return {
+         title: this.t('list.title'),        // → users.list.title
+         empty: this.t('list.empty'),        // → users.list.empty
+      };
+   }
+}
+```
+
+### @I18n('key', true) - Specific Translation Value
+
+Injects a specific translation value (dynamic getter):
+
+```typescript
+@Service()
+class EmailService {
+   @I18n('email.subject.welcome', true) welcomeSubject!: string;
+
+   async sendWelcome(email: string) {
+      await sendEmail({
+         to: email,
+         subject: this.welcomeSubject,  // Resolved based on current language
+         body: '...',
+      });
+   }
+}
+```
+
+**Important:** The value is resolved dynamically on each access based on the current request language.
+
+## Translation System
+
+### Nested Key Lookup
+
+```typescript
+// Translations
+{
+  "user": {
+    "profile": {
+      "title": "User Profile"
+    }
+  }
+}
+
+// Lookup
+t('user.profile.title')  // → "User Profile"
+```
+
+### Parameter Interpolation
+
+Parameters are replaced using `{{paramName}}` syntax:
+
+```typescript
+// Translation
+{
+  "greeting": "Hello {{name}}, you have {{count}} messages"
+}
+
+// Usage
+t('greeting', { name: 'Alice', count: 5 })
+// → "Hello Alice, you have 5 messages"
+```
+
+### Fallback Strategy
+
+```
+1. Try current language → en.user.title
+2. If not found, try default language → en.user.title
+3. If still not found, return key → "user.title"
+```
+
+## Configuration
+
+### Plugin Setup
+
+```typescript
+import { i18n } from 'najm-i18n';
+
+const server = new Server()
+   .use(i18n({
+      translations: {
+         en: enTranslations,
+         fr: frTranslations,
+         es: esTranslations,
+      },
+      defaultLanguage: 'en',
+      supportedLanguages: ['en', 'fr', 'es'],
+      order: ['cookie', 'querystring', 'header'],
+      lookupQueryString: 'lang',
+      lookupCookie: 'language',
+      caches: ['cookie'],
+      cookieOptions: {
+         maxAge: 365 * 24 * 60 * 60,
+         secure: true,
+         httpOnly: true,
+      },
+   }));
+```
+
+### Configuration Options
+
+```typescript
+interface I18nOptions {
+   // Translation data
+   translations: Record<string, Record<string, any>>;
+
+   // Language settings
+   defaultLanguage?: string;           // Default: 'en'
+   supportedLanguages?: string[];      // Default: ['en']
+
+   // Detection configuration
+   order?: ('querystring' | 'header' | 'cookie' | 'path')[];
+   // Default: ['cookie', 'querystring', 'header']
+
+   lookupQueryString?: string;         // Default: 'lang'
+   lookupCookie?: string;              // Default: 'language'
+   lookupFromHeaderKey?: string;       // Default: 'language'
+   lookupFromPathIndex?: number;       // Default: 0
+
+   // Persistence
+   caches?: ('cookie')[];              // Default: ['cookie']
+   cookieOptions?: I18nCookieOptions;
+
+   // Advanced
+   ignoreCase?: boolean;               // Default: true
+   convertDetectedLanguage?: (lang: string) => string;
+   debug?: boolean;                    // Default: false
+}
+```
+
+### Translation File Structure
+
+**Flat structure:**
+```typescript
+const en = {
+   'welcome': 'Welcome',
+   'user.name': 'Name',
+   'user.email': 'Email',
+};
+```
+
+**Nested structure (recommended):**
+```typescript
+const en = {
+   welcome: 'Welcome',
+   user: {
+      name: 'Name',
+      email: 'Email',
+      profile: {
+         title: 'User Profile',
+         edit: 'Edit Profile',
+      },
+   },
+   errors: {
+      notFound: 'Not found',
+      unauthorized: 'Unauthorized',
+   },
+};
+```
+
+## Usage Examples
+
+### Basic Controller Usage
+
+```typescript
+@Controller('/products')
+class ProductController {
+   @I18n('products') t!: (key: string, params?: any) => string;
+
+   @Get('/')
+   getProducts() {
+      return {
+         title: this.t('list.title'),        // → products.list.title
+         empty: this.t('list.empty'),        // → products.list.empty
+      };
+   }
+
+   @Post('/')
+   createProduct(@Body() data: CreateProductDto) {
+      return {
+         message: this.t('created', { name: data.name }),
+         // → products.created with {{name}} interpolated
+      };
+   }
+}
+```
+
+**Translations:**
+```typescript
+{
+   en: {
+      products: {
+         list: {
+            title: 'Product List',
+            empty: 'No products available',
+         },
+         created: 'Product {{name}} created successfully',
+      },
+   },
+   fr: {
+      products: {
+         list: {
+            title: 'Liste des produits',
+            empty: 'Aucun produit disponible',
+         },
+         created: 'Produit {{name}} créé avec succès',
+      },
+   },
+}
+```
+
+### Service with Full Translation Function
+
+```typescript
+@Service()
+class NotificationService {
+   @I18n() t!: TFn;
+
+   sendNotification(type: string, data: any) {
+      const title = this.t(`notifications.${type}.title`);
+      const body = this.t(`notifications.${type}.body`, data);
+
+      return { title, body };
+   }
+}
+```
+
+### Error Handling with Translations
+
+```typescript
+@Controller('/auth')
+class AuthController {
+   @I18n('auth.errors') tError!: (key: string) => string;
+
+   @Post('/login')
+   async login(@Body() credentials: LoginDto) {
+      const user = await this.authService.validateUser(credentials);
+
+      if (!user) {
+         throw new HttpError(401, this.tError('invalidCredentials'));
+         // → auth.errors.invalidCredentials
+      }
+
+      return { token: this.authService.generateToken(user) };
+   }
+}
+```
+
+### Dynamic Language Switching
+
+```typescript
+@Controller('/settings')
+class SettingsController {
+   constructor(private i18n: I18nService) {}
+
+   @Post('/language')
+   setLanguage(@Body('language') language: string) {
+      const success = this.i18n.setLanguage(language);
+
+      if (!success) {
+         throw new HttpError(400, 'Unsupported language');
+      }
+
+      return {
+         language: this.i18n.getCurrentLanguage(),
+         available: this.i18n.getAvailableLanguages(),
+      };
+   }
+
+   @Get('/language')
+   getLanguage() {
+      return {
+         current: this.i18n.getCurrentLanguage(),
+         default: this.i18n.getDefaultLanguage(),
+         supported: this.i18n.getAvailableLanguages(),
+      };
+   }
+}
+```
+
+### Standalone Usage (Outside HTTP Requests)
+
+```typescript
+import { t } from 'najm-i18n';
+
+// In CLI commands, background jobs, etc.
+function sendScheduledEmail() {
+   const subject = t('emails.scheduled.subject');
+   const body = t('emails.scheduled.body', { date: new Date() });
+
+   sendEmail({ subject, body });
+}
+```
+
+### Conditional Translation Keys <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Service()
+class ProductService {
+   @I18n('products') t!: (key: string, params?: any) => string;
+
+   getStatusMessage(status: 'active' | 'pending' | 'inactive') {
+      return this.t(`status.${status}`);
+      // → products.status.active
+      // → products.status.pending
+      // → products.status.inactive
+   }
+}
+```
+
+### Pluralization <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+// Translations
+{
+   "items": {
+      "count": {
+         "zero": "No items",
+         "one": "1 item",
+         "other": "{{count}} items"
+      }
+   }
+}
+
+// Usage
+@Service()
+class ItemService {
+   @I18n('items') t!: (key: string, params?: any) => string;
+
+   getCountMessage(count: number) {
+      if (count === 0) return this.t('count.zero');
+      if (count === 1) return this.t('count.one');
+      return this.t('count.other', { count });
+   }
+}
+```
+
+### Language-Specific Formatting <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Service()
+class FormatterService {
+   constructor(private i18n: I18nService) {}
+
+   formatDate(date: Date): string {
+      const lang = this.i18n.getCurrentLanguage();
+      return new Intl.DateTimeFormat(lang).format(date);
+   }
+
+   formatCurrency(amount: number): string {
+      const lang = this.i18n.getCurrentLanguage();
+      return new Intl.NumberFormat(lang, {
+         style: 'currency',
+         currency: 'USD',
+      }).format(amount);
+   }
+}
+```
+
+### Custom Language Conversion <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+i18n({
+   supportedLanguages: ['en', 'fr', 'es'],
+   convertDetectedLanguage: (lang) => {
+      // Convert locale to language code
+      const map: Record<string, string> = {
+         'en-US': 'en',
+         'en-GB': 'en',
+         'fr-FR': 'fr',
+         'fr-CA': 'fr',
+         'es-ES': 'es',
+         'es-MX': 'es',
+      };
+      return map[lang] || lang.split('-')[0];
+   },
+})
+```
+
+## API Reference
+
+### I18nService Methods
+
+```typescript
+class I18nService {
+   // Translation
+   t(key: string, params?: Record<string, any>): string;
+
+   // Language management
+   getCurrentLanguage(): string;
+   setLanguage(language: string): boolean;
+   getAvailableLanguages(): string[];
+   isLanguageSupported(language: string): boolean;
+   getDefaultLanguage(): string;
+
+   // Configuration
+   getConfig(): I18nOptions;
+   getTranslations(): Record<string, Record<string, any>>;
+}
+```
+
+### Decorator Signatures
+
+```typescript
+// Full translation function
+@I18n() t: TFn;
+
+// Prefixed translation function
+@I18n('prefix') t: (key: string, params?: any) => string;
+
+// Specific translation value (dynamic getter)
+@I18n('key', true) value: string;
+```
+
+## Best Practices
+
+### 1. Use Nested Translation Keys
+
+**✓ Good: Organized and maintainable**
+```typescript
+{
+   user: {
+      profile: {
+         title: 'Profile',
+         edit: 'Edit Profile',
+      }
+   }
+}
+```
+
+### 2. Use Prefixed Decorators for Controllers
+
+**✓ Good: Automatic namespace**
+```typescript
+@Controller('/products')
+class ProductController {
+   @I18n('products') t!: (key: string) => string;
+
+   getProduct() {
+      return this.t('details.title');  // → products.details.title
+   }
+}
+```
+
+### 3. Provide All Language Variants
+
+**✓ Good: Complete translations**
+```typescript
+{
+   en: { welcome: 'Welcome' },
+   fr: { welcome: 'Bienvenue' },
+   es: { welcome: 'Bienvenido' },
+}
+```
+
+### 4. Use Parameters for Dynamic Content
+
+**✓ Good: Reusable with different values**
+```typescript
+{
+   greeting: 'Hello {{name}}, welcome back!'
+}
+
+t('greeting', { name: 'Alice' })
+```
+
+### 5. Keep Translation Keys Semantic
+
+**✓ Good: Describes content purpose**
+```typescript
+{
+   user: {
+      profile: {
+         title: 'User Profile',
+         editButton: 'Edit',
+      }
+   }
+}
+```
+
+## Summary
+
+The I18n Plugin provides:
+
+✓ **Multi-source language detection** - Cookie, query, header, path
+✓ **Automatic persistence** - Cookie-based storage
+✓ **Decorator injection** - `@I18n()` with prefix and resolve options
+✓ **Nested keys** - Organized translation structure
+✓ **Parameter interpolation** - Dynamic content with `{{params}}`
+✓ **Request-scoped** - Different users, different languages
+✓ **Standalone mode** - Use outside HTTP requests
+✓ **Type-safe** - Full TypeScript support
+
+The system is designed for maintainability, performance, and developer experience.

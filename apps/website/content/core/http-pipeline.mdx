@@ -1,0 +1,651 @@
+---
+title: HTTP Request Pipeline
+description: Understand how Najm processes HTTP requests through middleware, routing, guards, and parameter resolution
+order: 5
+---
+
+Najm processes HTTP requests through a well-defined pipeline that handles middleware, routing, guard execution, parameter resolution, controller invocation, and response formatting. Understanding this pipeline helps you build efficient applications and debug issues effectively.
+
+## Pipeline Overview
+
+```
+1. HTTP Request
+   ↓
+2. Middleware Layer (najm-middleware)
+   ↓
+3. Route Matching (najm-router)
+   ↓
+4. Guard Execution (najm-guard)
+   ↓
+5. Parameter Resolution (najm-params)
+   ↓
+6. Controller Method
+   ↓
+7. Response Formatting (najm-router)
+   ↓
+8. HTTP Response
+```
+
+## Stage 1: HTTP Request
+
+The request enters through Hono's HTTP server:
+
+```typescript
+// Client makes request
+fetch('http://localhost:3000/api/users/123', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer token123',
+    'Content-Type': 'application/json',
+  },
+});
+```
+
+## Stage 2: Middleware Layer
+
+Middleware handlers execute in order before route matching.
+
+### Built-in Middleware
+
+Najm automatically registers middleware for:
+- **AsyncLocalStorage** - Request context isolation
+- **Request ID** - Unique ID for each request
+- **Error handling** - Catch and format errors
+
+### User Middleware
+
+Add custom middleware via `.middleware()`:
+
+```typescript
+import { compress } from 'hono/compress';
+import { logger } from 'hono/logger';
+
+const server = new Server()
+  .middleware(
+    logger(),
+    compress(),
+    async (c, next) => {
+      console.log('Request:', c.req.path);
+      const start = Date.now();
+      await next();
+      const duration = Date.now() - start;
+      console.log('Duration:', duration, 'ms');
+    }
+  )
+  .listen(3000);
+```
+
+### Execution Order
+
+```typescript
+// Middleware executes in registration order
+const server = new Server()
+  .middleware(
+    middleware1,  // Executes first
+    middleware2,  // Then second
+    middleware3,  // Then third
+  );
+```
+
+### AsyncLocalStorage Setup
+
+Najm creates an AsyncLocalStorage context for each request:
+
+```typescript
+// Automatically done by framework
+const store = new AlsStore();
+
+app.use('*', async (c, next) => {
+  await store.run(async () => {
+    // Store request context
+    container.set(CONTEXT, c);
+    container.set(REQUEST_ID, generateId());
+
+    await next();
+  });
+});
+```
+
+## Stage 3: Route Matching
+
+The RouterService matches the request to a controller method.
+
+### Route Registration
+
+Routes are registered from controller decorators:
+
+```typescript
+@Controller('/api/users')
+class UserController {
+  @Get('/')           // GET /api/users
+  async list() {}
+
+  @Get('/:id')        // GET /api/users/:id
+  async show() {}
+
+  @Post('/')          // POST /api/users
+  async create() {}
+}
+```
+
+### Route Matching Process
+
+```typescript
+// RouterService matches:
+// 1. HTTP method (GET, POST, etc.)
+// 2. Path pattern (/api/users/:id)
+// 3. Parameter extraction (id = 123)
+
+const route = routerService.match('GET', '/api/users/123');
+// {
+//   controller: UserController,
+//   method: 'show',
+//   params: { id: '123' },
+//   guards: [authGuard],
+// }
+```
+
+### 404 Not Found
+
+If no route matches:
+
+```typescript
+// Throws HttpError(404, 'Not Found')
+throw new HttpError(404, 'Not Found');
+```
+
+## Stage 4: Guard Execution
+
+Guards execute before the controller method to implement authorization.
+
+### Guard Declaration
+
+```typescript
+const authGuard = async (headers, cookie, context) => {
+  const token = headers('authorization');
+  if (!token) throw new HttpError(401, 'Unauthorized');
+
+  const user = await verifyToken(token);
+  return { userId: user.id };  // Stored for later use
+};
+
+@Controller('/api/users')
+@Guards(authGuard)  // Applies to all routes
+class UserController {
+  @Get('/:id')
+  @Guards(roleGuard)  // Additional guard for this route
+  async show() {}
+}
+```
+
+### Guard Execution Order
+
+```typescript
+// Guards execute in order:
+// 1. Controller-level guards (@Guards on class)
+// 2. Method-level guards (@Guards on method)
+
+@Controller('/api/admin')
+@Guards(authGuard)        // Executes first
+class AdminController {
+  @Get('/users')
+  @Guards(adminGuard)     // Executes second
+  async getUsers() {}
+}
+```
+
+### Guard Return Values
+
+Guard return values are merged and stored in the AlsStore:
+
+```typescript
+const authGuard = async () => {
+  return { userId: '123' };
+};
+
+const roleGuard = async () => {
+  return { role: 'admin' };
+};
+
+// Stored as: { userId: '123', role: 'admin' }
+// Accessible via @GuardParams() decorator
+```
+
+### Guard Failure
+
+If a guard throws an error, the pipeline stops:
+
+```typescript
+const authGuard = async (headers) => {
+  const token = headers('authorization');
+  if (!token) {
+    throw new HttpError(401, 'Missing authorization header');
+  }
+  // Pipeline stops, returns 401 response
+};
+```
+
+## Stage 5: Parameter Resolution
+
+The ParamResolver extracts and transforms request data based on parameter decorators.
+
+### Parameter Extraction
+
+```typescript
+@Controller('/api/users')
+class UserController {
+  @Get('/:id')
+  async show(
+    @Params('id') id: string,              // From URL params
+    @Query('include') include?: string,    // From query string
+    @Headers('authorization') token: string, // From headers
+    @User() user: any,                     // From AlsStore
+  ) {
+    // All parameters resolved before method executes
+  }
+}
+```
+
+### Resolution Process
+
+```typescript
+// For each parameter decorator:
+// 1. Identify decorator type (@Params, @Query, etc.)
+// 2. Extract data from request/context/store
+// 3. Transform/validate if needed
+// 4. Build arguments array
+
+const args = await paramResolver.resolve(controller, method, context);
+// ['123', 'posts,comments', 'Bearer token', { id: '123', role: 'admin' }]
+```
+
+### Special Parameters
+
+Some parameters come from the AlsStore:
+
+```typescript
+@Get('/profile')
+async getProfile(
+  @User() user: any,           // From AlsStore (set by guards)
+  @GuardParams() auth: any,    // From AlsStore (guard return values)
+  @Ctx() context: Context,     // From AlsStore (Hono context)
+) {
+  // Parameters extracted from request context
+}
+```
+
+### Type Coercion
+
+Parameters are automatically type-coerced where appropriate:
+
+```typescript
+@Get('/posts')
+async list(
+  @Query('page') page: number,    // String to number
+  @Query('limit') limit: number,  // String to number
+) {
+  // page and limit are numbers
+}
+```
+
+## Stage 6: Controller Method
+
+The controller method executes with resolved parameters.
+
+### Method Invocation
+
+```typescript
+// Controller method is called with resolved arguments
+const result = await controller[method](...args);
+
+// Example:
+// controller.show('123', 'posts,comments', 'Bearer token', { id: '123' })
+```
+
+### Dependency Injection
+
+Dependencies are injected via constructor or properties:
+
+```typescript
+@Controller('/api/users')
+class UserController {
+  // Constructor injection
+  constructor(
+    private userService: UserService,
+    private emailService: EmailService,
+  ) {}
+
+  // Property injection
+  @Log() logger: ILogger;
+  @Events() events: EventMethods;
+
+  @Get('/:id')
+  async show(@Params('id') id: string) {
+    // All dependencies available
+    this.logger.info('Fetching user', { id });
+    const user = await this.userService.findById(id);
+    this.events.emit('user.viewed', { userId: id });
+    return user;
+  }
+}
+```
+
+### Transaction Handling
+
+Methods can be wrapped in transactions:
+
+```typescript
+@Service()
+class OrderService {
+  @DB() db: Database;
+
+  @Transaction({ retries: 2 })
+  async createOrder(data: OrderData) {
+    // All db operations use same transaction
+    // Auto-commits on success
+    // Auto-rolls back on error
+  }
+}
+```
+
+### Error Handling
+
+Errors thrown in the method are caught and formatted:
+
+```typescript
+@Get('/:id')
+async show(@Params('id') id: string) {
+  const user = await this.userService.findById(id);
+
+  if (!user) {
+    throw new HttpError(404, 'User not found');
+  }
+
+  return user;
+}
+```
+
+## Stage 7: Response Formatting
+
+The ResponseFormatter transforms the return value into an HTTP response.
+
+### Automatic JSON
+
+Objects are automatically serialized to JSON:
+
+```typescript
+@Get('/users')
+async list() {
+  return [
+    { id: 1, name: 'Alice' },
+    { id: 2, name: 'Bob' },
+  ];
+}
+// Response: 200 OK, Content-Type: application/json
+// Body: [{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]
+```
+
+### Custom Status Codes
+
+Return Hono's `c.json()` for custom status codes:
+
+```typescript
+@Post('/users')
+async create(@Body() data: CreateUserDto, @Ctx() c: Context) {
+  const user = await this.userService.create(data);
+  return c.json(user, 201);  // 201 Created
+}
+```
+
+### Text Responses
+
+Return strings for plain text:
+
+```typescript
+@Get('/health')
+async health() {
+  return 'OK';
+}
+// Response: 200 OK, Content-Type: text/plain
+// Body: OK
+```
+
+### HTML Responses
+
+Return HTML strings:
+
+```typescript
+@Get('/page')
+async page(@Ctx() c: Context) {
+  return c.html('<h1>Hello World</h1>');
+}
+// Response: 200 OK, Content-Type: text/html
+```
+
+### Stream Responses
+
+Return streams for large data:
+
+```typescript
+@Get('/download')
+async download(@Ctx() c: Context) {
+  const stream = fs.createReadStream('large-file.pdf');
+  return c.stream(stream);
+}
+```
+
+### Error Responses
+
+Errors are automatically formatted:
+
+```typescript
+throw new HttpError(404, 'User not found');
+
+// Response: 404 Not Found
+// Body: {
+//   error: 'Not Found',
+//   message: 'User not found',
+//   statusCode: 404
+// }
+```
+
+## Stage 8: HTTP Response
+
+The formatted response is sent to the client:
+
+```typescript
+// Response sent with appropriate headers
+HTTP/1.1 200 OK
+Content-Type: application/json
+Content-Length: 45
+X-Request-Id: abc123
+
+{"id":123,"name":"Alice","email":"alice@example.com"}
+```
+
+## Complete Pipeline Example
+
+```typescript
+// 1. Request
+fetch('http://localhost:3000/api/users/123', {
+  method: 'GET',
+  headers: { 'Authorization': 'Bearer token123' },
+});
+
+// 2. Middleware
+// - Store context in ALS
+// - Generate request ID
+// - Log request
+
+// 3. Route Matching
+// - Match: GET /api/users/:id
+// - Controller: UserController
+// - Method: show
+// - Params: { id: '123' }
+
+// 4. Guard Execution
+const authGuard = async (headers) => {
+  const token = headers('authorization');
+  const user = await verifyToken(token);
+  return { userId: user.id };
+};
+// Result: { userId: '456' }
+
+// 5. Parameter Resolution
+@Get('/:id')
+async show(
+  @Params('id') id: string,           // '123'
+  @User() user: any,                  // { userId: '456' }
+  @Headers('authorization') token: string,  // 'Bearer token123'
+) {
+  // 6. Controller Method
+  const userData = await this.userService.findById(id);
+  return userData;
+}
+
+// 7. Response Formatting
+// Object -> JSON
+// Status: 200
+// Headers: Content-Type: application/json
+
+// 8. Response
+// HTTP/1.1 200 OK
+// Content-Type: application/json
+// Body: {"id":123,"name":"Alice","email":"alice@example.com"}
+```
+
+## Pipeline Timing
+
+Here's a typical request timeline:
+
+```
+0ms    - Request received
+1ms    - Middleware 1 (logger)
+2ms    - Middleware 2 (compress)
+3ms    - Middleware 3 (ALS setup)
+4ms    - Route matching
+5ms    - Guard 1 (auth) - 20ms
+25ms   - Guard 2 (role) - 5ms
+30ms   - Parameter resolution
+31ms   - Controller method - 50ms
+81ms   - Response formatting
+82ms   - Response sent
+Total: 82ms
+```
+
+## Error Handling in Pipeline
+
+Errors at any stage stop the pipeline and return an error response:
+
+```typescript
+// Middleware error
+app.use('*', async (c, next) => {
+  throw new Error('Middleware error');  // Caught and returned as 500
+});
+
+// Guard error
+const authGuard = async () => {
+  throw new HttpError(401, 'Unauthorized');  // Returns 401
+};
+
+// Controller error
+@Get('/:id')
+async show(@Params('id') id: string) {
+  throw new HttpError(404, 'Not found');  // Returns 404
+}
+```
+
+## Best Practices
+
+### 1. Keep Middleware Fast
+
+**✓ Good: Fast middleware**
+```typescript
+app.use('*', async (c, next) => {
+  c.set('requestId', generateId());  // Quick operation
+  await next();
+});
+```
+
+**✗ Avoid: Slow middleware**
+```typescript
+app.use('*', async (c, next) => {
+  await slowDatabaseQuery();  // Blocks all requests
+  await next();
+});
+```
+
+### 2. Use Guards for Authorization
+
+**✓ Good: Guards for auth**
+```typescript
+@Controller('/api/admin')
+@Guards(authGuard, adminGuard)
+class AdminController {
+  @Get('/users')
+  async getUsers() {
+    // Auth already verified
+  }
+}
+```
+
+**✗ Avoid: Auth in controller**
+```typescript
+@Get('/users')
+async getUsers(@Headers('authorization') token: string) {
+  if (!token) throw new HttpError(401);  // Should be in guard
+  // ...
+}
+```
+
+### 3. Extract Only Needed Parameters
+
+**✓ Good: Specific parameters**
+```typescript
+@Get('/:id')
+async show(@Params('id') id: string) {
+  // Only extract what you need
+}
+```
+
+**✗ Avoid: Extract everything**
+```typescript
+@Get('/:id')
+async show(@Ctx() c: Context) {
+  const id = c.req.param('id');  // Extra work
+}
+```
+
+### 4. Return Simple Values
+
+**✓ Good: Return objects/strings**
+```typescript
+@Get('/users')
+async list() {
+  return this.userService.findAll();  // Auto-formatted
+}
+```
+
+**✗ Avoid: Manual response building**
+```typescript
+@Get('/users')
+async list(@Ctx() c: Context) {
+  const users = await this.userService.findAll();
+  return c.json({ data: users, status: 'success' });  // Extra code
+}
+```
+
+## Summary
+
+The HTTP request pipeline provides:
+
+✓ **Ordered Processing** - Clear stages from request to response
+✓ **Middleware Support** - Pre-processing and context setup
+✓ **Route Matching** - Efficient URL pattern matching
+✓ **Guard System** - Authorization before controller execution
+✓ **Parameter Resolution** - Automatic extraction and type coercion
+✓ **Dependency Injection** - Services available in controllers
+✓ **Response Formatting** - Automatic JSON/HTML/text formatting
+✓ **Error Handling** - Consistent error responses
+
+Understanding the pipeline helps you build efficient applications and debug issues quickly.

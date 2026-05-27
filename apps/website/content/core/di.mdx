@@ -1,0 +1,177 @@
+---
+title: Dependency Injection
+description: Learn about Najm's powerful dependency injection system with scopes, decorators, and lifecycle management.
+order: 2
+---
+
+## Overview
+
+Najm features a powerful dependency injection (DI) container that manages the lifecycle of your services, controllers, and repositories.
+
+## Scopes
+
+Najm supports three injection scopes:
+
+### Singleton (Default)
+
+A single instance is created and shared throughout the application lifetime.
+
+```typescript
+@Service()
+class ConfigService {
+  private config = { ... };
+
+  get(key: string) {
+    return this.config[key];
+  }
+}
+```
+
+### Request Scope
+
+A new instance is created for each HTTP request. Uses AsyncLocalStorage under the hood.
+
+```typescript
+@Service(Scope.REQUEST)
+class RequestContext {
+  public userId: string;
+  public requestId: string;
+}
+```
+
+### Transient Scope
+
+A new instance is created every time the service is injected.
+
+```typescript
+@Service(Scope.TRANSIENT)
+class UniqueIdGenerator {
+  public id = crypto.randomUUID();
+}
+```
+
+## Decorators
+
+### @Service
+
+Marks a class as a business logic service.
+
+```typescript
+@Service()
+class UserService {
+  async createUser(data: CreateUserDto) {
+    // Business logic here
+  }
+}
+```
+
+### @Controller
+
+Marks a class as an HTTP controller with a route prefix.
+
+```typescript
+@Controller('/api/users')
+class UserController {
+  constructor(private userService: UserService) {}
+}
+```
+
+### @Repository
+
+Marks a class as a data access layer component.
+
+```typescript
+@Repository('postgres')
+class UserRepository {
+  @DB('postgres') db: Database;
+
+  async findById(id: string) {
+    return this.db.query('SELECT * FROM users WHERE id = ?', [id]);
+  }
+}
+```
+
+### @Injectable
+
+A generic decorator for any injectable class.
+
+```typescript
+@Injectable()
+class CacheManager {
+  private cache = new Map();
+}
+```
+
+## Constructor Injection
+
+Services are automatically injected through the constructor:
+
+```typescript
+@Service()
+class OrderService {
+  constructor(
+    private userService: UserService,
+    private productService: ProductService,
+    private emailService: EmailService,
+  ) {}
+}
+```
+
+## Property Injection
+
+Use the `@Inject` decorator for property injection:
+
+```typescript
+@Service()
+class NotificationService {
+  @Inject() emailService: EmailService;
+  @Inject() smsService: SmsService;
+  @Inject('config') config: AppConfig;
+}
+```
+
+## Named Tokens
+
+Register and inject using string tokens:
+
+```typescript
+// Registration
+container.set('appConfig', { apiUrl: 'https://api.example.com' });
+
+// Injection
+@Service()
+class ApiClient {
+  @Inject('appConfig') config: AppConfig;
+}
+```
+
+## Factory Registration
+
+Register factories for dynamic instantiation:
+
+```typescript
+container.set('database', async () => {
+  const db = new Database();
+  await db.connect();
+  return db;
+});
+```
+
+## Container API
+
+Access the container directly when needed:
+
+```typescript
+@Service()
+class MyService {
+  @DI() container: Container;
+
+  doSomething() {
+    // Sync resolution (post-boot only)
+    const config = this.container.get(ConfigService);
+
+    // Async resolution (always works)
+    const db = await this.container.resolve(DatabaseService);
+  }
+}
+```

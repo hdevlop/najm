@@ -1,0 +1,12 @@
+{
+  "VsCodeTaskButtons.showCounter": false,
+  "VsCodeTaskButtons.tasks": [
+    {
+      "label": "$(warning) Kill Dev Ports",
+      "task": "Ports: Kill dev-tool ports",
+      "tooltip": "Immediately stop ports owned by bun, node, vite, next, pnpm, or npm in this VS Code session",
+      "alignment": "left",
+      "color": "error"
+    }
+  ]
+}

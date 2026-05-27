@@ -1,0 +1,184 @@
+---
+title: Introduction
+description: Introduction to Najm - A TypeScript decorator-based web framework built on Hono.
+order: 0
+---
+
+Welcome to Najm! This guide will help you understand what Najm is and get you started building modern, type-safe web applications.
+
+## What is Najm?
+
+**Najm** is a TypeScript decorator-based web framework library built on [Hono.js](https://hono.dev/). It provides:
+
+- **Dependency Injection** - Automatic resolution of constructor and property dependencies
+- **40+ Parameter Decorators** - Extract route params, query strings, headers, body, and more with simple decorators
+- **Guards** - Declarative authorization and authentication
+- **Database Integration** - Built-in transaction support and multi-database management
+- **Events** - Type-safe event emitter for decoupled components
+- **Internationalization** - Multi-language support out of the box
+- **CLI Tooling** - Code generation for rapid development
+
+## Why Najm?
+
+### Decorator-Based Design
+Write clean, declarative code with TypeScript decorators:
+
+```typescript
+@Controller('/users')
+export class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/:id')
+  async getUser(@Params('id') id: string) {
+    return this.userService.findById(id);
+  }
+}
+```
+
+### Modular Architecture
+Install only what you need. Start with core and add features as you grow:
+
+```bash
+npm install najm-core najm-di hono          # Core
+npm install najm-database najm-auth         # Add features
+npm install najm-event najm-i18n najm-cors # More features
+```
+
+### Type Safety
+Full TypeScript support with strict typing throughout the framework.
+
+### Performance
+Built on Hono, one of the fastest web frameworks. Optimized for Bun runtime with Node.js fallback.
+
+## Quick Example
+
+Here's a complete REST API in under 30 lines:
+
+```typescript
+import "reflect-metadata";
+import { Server } from "najm-core";
+import { Controller, Service } from "najm-di";
+import { Get, Post } from "najm-router";
+import { Body, Params } from "najm-params";
+
+@Service()
+class UserService {
+  private users = [{ id: "1", name: "John" }];
+
+  findAll() {
+    return this.users;
+  }
+
+  findById(id: string) {
+    return this.users.find(u => u.id === id);
+  }
+}
+
+@Controller('/api/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  list() {
+    return this.userService.findAll();
+  }
+
+  @Get('/:id')
+  get(@Params('id') id: string) {
+    return this.userService.findById(id);
+  }
+}
+
+await new Server()
+  .load(UserController, UserService)
+  .listen(3000);
+```
+
+## Key Concepts
+
+### Decorators
+Najm uses TypeScript decorators for:
+- **Class decorators**: `@Controller`, `@Service`, `@Repository`
+- **Method decorators**: `@Get`, `@Post`, `@Guards`, `@Transaction`
+- **Property decorators**: `@Inject`, `@DB`, `@Log`, `@I18n`
+- **Parameter decorators**: `@Body`, `@Params`, `@Query`, `@Headers`, etc.
+
+### Dependency Injection
+Automatic dependency resolution with support for:
+- Constructor injection
+- Property injection
+- Scopes (Singleton, Request, Transient)
+- Custom injectors
+
+### Plugin System
+Najm is built as a collection of plugins:
+- **Core plugins** (auto-registered): middleware, params, router
+- **Optional plugins**: database, auth, guards, events, cors, cookies, i18n
+
+### Server Lifecycle
+Three-station boot system:
+1. **Infrastructure Boot** - Resolve core and plugin services
+2. **Lifecycle Phases** - Run scan → configure → activate → onReady
+3. **App Boot** - Resolve application services and controllers
+
+## Learning Path
+
+Follow this path to master Najm:
+
+### 1. Installation & Setup
+- **[Installation Guide](/docs/installation)** - Install Najm and set up your project
+- **[Quick Start](/docs/quick-start)** - Build your first API in 5 minutes
+- **[Project Structure](/docs/project-structure)** - Organize your application
+- **[CLI Commands](/docs/cli)** - Use code generation tools
+
+### 2. Core Concepts
+- **[Server](/docs/core/server)** - Understand the Server class and boot system
+- **[Dependency Injection](/docs/core/di)** - Master the DI container and decorators
+
+### 3. Essential Plugins
+- **[Router](/docs/plugins/router)** - HTTP routing and request handling
+- **[Guards](/docs/plugins/guards)** - Authentication and authorization
+- **[Database](/docs/plugins/database)** - Database connections and transactions
+- **[Events](/docs/plugins/events)** - Event-driven architecture
+
+### 4. Advanced Topics
+- Testing strategies
+- Error handling
+- Performance optimization
+- Deployment
+
+## Philosophy
+
+Najm follows these principles:
+
+1. **Convention over Configuration** - Sensible defaults, override when needed
+2. **Plugin-First** - Features as composable plugins with declarative config
+3. **Separation of Concerns** - Each service has a single responsibility
+4. **Type Safety** - Full TypeScript support throughout
+5. **Developer Experience** - Clean APIs, helpful errors, fast iteration
+
+## Target Runtimes
+
+Najm supports multiple runtimes:
+
+- **Bun** (recommended) - Fastest performance, built-in TypeScript
+- **Node.js 18+** - Production-ready with excellent ecosystem
+- **Deno** (experimental) - Modern JavaScript runtime
+
+## Community & Support
+
+- **GitHub:** [github.com/anthropics/najm-api](https://github.com/anthropics/najm-api)
+- **Issues:** Report bugs or request features
+- **Discussions:** Ask questions and share your projects
+
+## Next Steps
+
+Ready to start building? Choose your path:
+
+- **[Install Najm](/docs/installation)** - Set up your development environment
+- **[Quick Start Tutorial](/docs/quick-start)** - Build your first API in 5 minutes
+- **[Explore Examples](https://github.com/anthropics/najm-api/tree/main/examples)** - See real-world applications
+
+---
+
+**Let's build something amazing together!** 🚀

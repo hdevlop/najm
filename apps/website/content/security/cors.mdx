@@ -1,0 +1,608 @@
+---
+title: CORS Configuration
+description: Flexible CORS configuration at global, controller, and method levels with intelligent merging and validation
+---
+
+The CORS (Cross-Origin Resource Sharing) Plugin provides flexible CORS configuration at global, controller, and method levels. Built on Hono's CORS middleware with intelligent merging, validation, and decorator-based configuration.
+
+## Key Features
+
+- **Three-level configuration** - Global, controller, method-level
+- **Intelligent merging** - Cascading config with proper precedence
+- **Runtime validation** - Catch config errors early
+- **Security warnings** - Alert on risky configurations
+- **Hono integration** - Built on battle-tested Hono CORS
+- **Flexible origins** - String, array, or wildcard support
+- **Preflight caching** - Reduce OPTIONS requests with maxAge
+- **Type-safe** - Full TypeScript support
+- **Decorator-based** - Clean, declarative configuration
+
+## Plugin Setup
+
+```typescript
+import { cors } from 'najm-cors';
+
+// Enable with defaults
+const server = new Server()
+  .use(cors())
+  .load(UserController);
+
+// Custom global configuration
+const server = new Server()
+  .use(cors({
+    origin: 'https://example.com',
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+    maxAge: 86400  // 24 hours
+  }))
+  .load(UserController);
+```
+
+## Default Configuration
+
+```typescript
+{
+  origin: 'http://localhost:3000',
+  allowMethods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE'],
+  allowHeaders: ['Content-Type', 'Authorization'],
+  exposeHeaders: ['Content-Type', 'Authorization'],
+  credentials: true
+}
+```
+
+## Configuration Levels
+
+### Level 1: Global Configuration
+
+Applied to all routes unless overridden:
+
+```typescript
+import { cors } from 'najm-cors';
+
+const server = new Server()
+  .use(cors({
+    origin: '*',                    // Allow all origins
+    allowMethods: ['GET', 'POST'],  // Only these methods
+    credentials: false              // No credentials
+  }))
+  .load(PublicController, AdminController);
+```
+
+### Level 2: Controller-Level Configuration
+
+Overrides global config for all methods in controller:
+
+```typescript
+import { Cors } from 'najm-cors';
+
+@Controller('/api/public')
+@Cors({
+  origin: '*',
+  credentials: false
+})
+class PublicController {
+  @Get('/health')
+  health() {
+    return { status: 'ok' };
+  }
+
+  @Get('/version')
+  version() {
+    return { version: '1.0.0' };
+  }
+}
+```
+
+### Level 3: Method-Level Configuration
+
+Most specific - overrides both global and controller config:
+
+```typescript
+@Controller('/api/admin')
+@Cors({
+  origin: 'https://admin.example.com',
+  credentials: true
+})
+class AdminController {
+  @Get('/stats')
+  getStats() {
+    return { users: 1000 };
+  }
+
+  @Post('/webhook')
+  @Cors({
+    origin: 'https://webhook-provider.com',  // Override just for this method
+    allowMethods: ['POST'],
+    credentials: false
+  })
+  handleWebhook(@Body() data: any) {
+    return { received: true };
+  }
+}
+```
+
+## Configuration Merging
+
+### Merge Priority
+
+```
+Method Config > Controller Config > Global Config > Default Config
+```
+
+### Example Merge Flow
+
+```typescript
+// Global config
+cors({
+  origin: 'https://example.com',
+  allowMethods: ['GET', 'POST'],
+  credentials: true
+})
+
+// Controller config
+@Cors({
+  origin: 'https://api.example.com',
+  allowHeaders: ['X-Custom-Header']
+})
+
+// Method config
+@Cors({
+  origin: '*'
+})
+
+// Final merged config for method:
+{
+  origin: '*',                                    // From method
+  allowMethods: ['GET', 'POST'],                 // From global
+  allowHeaders: ['X-Custom-Header'],             // From controller
+  credentials: true,                              // From global
+  exposeHeaders: ['Content-Type', 'Authorization'] // From default
+}
+```
+
+## Common Use Cases
+
+### Public API with Wildcard Origin
+
+```typescript
+@Controller('/api/public')
+@Cors({
+  origin: '*',
+  credentials: false,
+  allowMethods: ['GET']
+})
+class PublicAPIController {
+  @Get('/data')
+  getPublicData() {
+    return { data: 'public' };
+  }
+}
+```
+
+### Multiple Allowed Origins
+
+```typescript
+@Controller('/api/app')
+@Cors({
+  origin: [
+    'https://app.example.com',
+    'https://staging.example.com',
+    'http://localhost:3000'
+  ],
+  credentials: true
+})
+class AppController {
+  @Get('/user-data')
+  getUserData() {
+    return { data: 'sensitive' };
+  }
+}
+```
+
+### Disable CORS for Specific Route
+
+```typescript
+@Controller('/api/internal')
+@Cors({
+  origin: 'https://internal.example.com'
+})
+class InternalController {
+  @Get('/config')
+  getConfig() {
+    return { config: 'data' };
+  }
+
+  @Get('/health')
+  @Cors({ disabled: true })  // No CORS headers for this route
+  health() {
+    return { status: 'ok' };
+  }
+}
+```
+
+### Preflight Caching
+
+```typescript
+@Controller('/api/expensive')
+@Cors({
+  origin: 'https://app.example.com',
+  maxAge: 7200  // Cache preflight response for 2 hours
+})
+class ExpensiveController {
+  @Post('/process')
+  process(@Body() data: any) {
+    return { processed: true };
+  }
+}
+```
+
+### Custom Headers for Specific Endpoints
+
+```typescript
+@Controller('/api/files')
+class FileController {
+  @Post('/upload')
+  @Cors({
+    origin: 'https://files.example.com',
+    allowHeaders: [
+      'Content-Type',
+      'Authorization',
+      'X-File-Name',
+      'X-File-Size'
+    ]
+  })
+  uploadFile(@Body() file: any) {
+    return { uploaded: true };
+  }
+}
+```
+
+## API Reference
+
+### CORS Options
+
+```typescript
+interface CorsOptions {
+  origin?: string | string[];       // Allowed origin(s)
+  allowMethods?: string[];          // Allowed HTTP methods
+  allowHeaders?: string[];          // Allowed request headers
+  exposeHeaders?: string[];         // Headers exposed to client
+  maxAge?: number;                  // Preflight cache duration (seconds)
+  credentials?: boolean;            // Allow credentials (cookies, auth)
+}
+```
+
+### Decorator Options
+
+```typescript
+interface CorsDecoratorOptions extends CorsOptions {
+  disabled?: boolean;  // Disable CORS for this route
+}
+```
+
+### Plugin Config
+
+```typescript
+type CorsPluginConfig = boolean | CorsOptions | null | undefined;
+
+// true or {} → use default config
+// null or undefined → no global CORS
+// CorsOptions → custom global config
+```
+
+## Security Best Practices
+
+### 1. Avoid Wildcard with Credentials
+
+```typescript
+// ✗ Avoid: Wildcard + credentials (doesn't work anyway)
+@Cors({
+  origin: '*',
+  credentials: true
+})
+
+// ✓ Good: Specific origins with credentials
+@Cors({
+  origin: ['https://app.example.com', 'https://admin.example.com'],
+  credentials: true
+})
+```
+
+### 2. Restrict Methods
+
+```typescript
+// ✗ Avoid: Allowing all methods
+@Cors({
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS', 'HEAD']
+})
+
+// ✓ Good: Only necessary methods
+@Cors({
+  allowMethods: ['GET', 'POST']
+})
+```
+
+### 3. Minimize Exposed Headers
+
+```typescript
+// ✗ Avoid: Exposing sensitive headers
+@Cors({
+  exposeHeaders: ['*']  // Don't do this
+})
+
+// ✓ Good: Explicit headers only
+@Cors({
+  exposeHeaders: ['Content-Type', 'X-Total-Count']
+})
+```
+
+### 4. Use HTTPS Origins in Production
+
+```typescript
+// ✗ Avoid: HTTP in production
+@Cors({
+  origin: 'http://app.example.com'
+})
+
+// ✓ Good: HTTPS only
+@Cors({
+  origin: 'https://app.example.com'
+})
+```
+
+### 5. Set Appropriate Preflight Cache
+
+```typescript
+// ✓ Good: Cache preflight for stable APIs
+@Cors({
+  maxAge: 3600  // 1 hour
+})
+
+// ⚠ Caution: Long cache for frequently changing APIs
+@Cors({
+  maxAge: 86400  // 24 hours - only if CORS config is stable
+})
+```
+
+## Validation and Error Handling
+
+### Origin Validation
+
+The service validates origins during configuration:
+
+```typescript
+// ✓ Valid origins
+origin: '*'
+origin: 'https://example.com'
+origin: ['https://app.com', 'https://api.com']
+
+// ✗ Invalid origins (throws error)
+origin: ''                    // Empty string
+origin: 'not-a-url'          // Invalid URL
+origin: ['https://app.com', '']  // Array with empty string
+```
+
+### Wildcard + Credentials Warning
+
+```typescript
+@Cors({
+  origin: '*',
+  credentials: true  // Logs warning - security risk
+})
+```
+
+**Warning:**
+```
+Warning at Controller.method: Using wildcard origin (*) with credentials is not recommended
+```
+
+**Why?** Browsers reject `Access-Control-Allow-Origin: *` when credentials are enabled.
+
+### Common Errors
+
+**Invalid Origin URL**
+```typescript
+Err.invalidConfig('cors.origin', 'Invalid origin URL: not-a-url');
+```
+
+**Empty Origin**
+```typescript
+Err.invalidConfig('cors.origin', 'Origin cannot be an empty string');
+```
+
+### Dynamic Origin Function <Badge variant="advanced">Advanced</Badge>
+
+For complex origin validation, use global middleware:
+
+```typescript
+import { cors as honoCors } from 'hono/cors';
+
+const server = new Server()
+  .set('middleware', [
+    honoCors({
+      origin: (origin, c) => {
+        // Dynamic validation
+        const allowedDomains = ['.example.com', '.staging.example.com'];
+        const allowed = allowedDomains.some(domain => origin.endsWith(domain));
+        return allowed ? origin : 'https://example.com';
+      },
+      credentials: true
+    })
+  ]);
+```
+
+### Environment-Specific Config <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+const corsConfig = process.env.NODE_ENV === 'production'
+  ? {
+      origin: ['https://app.example.com'],
+      credentials: true,
+      maxAge: 86400
+    }
+  : {
+      origin: '*',
+      credentials: false
+    };
+
+const server = new Server()
+  .use(cors(corsConfig));
+```
+
+### Microservice CORS <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+// Gateway service
+@Controller('/api/gateway')
+@Cors({
+  origin: [
+    'https://app.example.com',
+    'https://admin.example.com'
+  ],
+  credentials: true
+})
+class GatewayController {
+  @Post('/proxy')
+  async proxyRequest(@Body() request: any) {
+    // Forward to microservices
+  }
+}
+
+// Internal service (no CORS needed)
+@Controller('/api/internal')
+class InternalController {
+  @Get('/data')
+  getData() {
+    return { data: 'internal' };
+  }
+}
+```
+
+## Debugging CORS Issues
+
+### Inspect CORS Headers
+
+```typescript
+@Get('/debug/cors')
+@Cors({
+  origin: 'https://example.com',
+  allowMethods: ['GET'],
+  exposeHeaders: ['X-Custom-Header']
+})
+debugCors() {
+  return {
+    message: 'Check response headers for CORS config'
+  };
+}
+
+// Response headers will include:
+// Access-Control-Allow-Origin: https://example.com
+// Access-Control-Allow-Methods: GET
+// Access-Control-Expose-Headers: X-Custom-Header
+```
+
+### Common CORS Errors
+
+**Error: "CORS policy: No 'Access-Control-Allow-Origin' header"**
+- **Cause:** No CORS configured or origin not allowed
+- **Solution:** Add CORS config with correct origin
+
+**Error: "CORS policy: Credentials mode is 'include' but origin is '*'"**
+- **Cause:** Wildcard origin with credentials
+- **Solution:** Use specific origins with credentials
+
+**Error: "CORS policy: Method not allowed"**
+- **Cause:** HTTP method not in `allowMethods`
+- **Solution:** Add method to `allowMethods` array
+
+**Error: "CORS policy: Header not allowed"**
+- **Cause:** Custom header not in `allowHeaders`
+- **Solution:** Add header to `allowHeaders` array
+
+## Performance Considerations
+
+### 1. Preflight Caching
+
+Reduce preflight requests with `maxAge`:
+
+```typescript
+@Cors({
+  maxAge: 7200  // Cache for 2 hours
+})
+```
+
+**Impact:**
+- First request: Full preflight (OPTIONS + actual request)
+- Subsequent requests (within 2h): Skip preflight
+
+### 2. Middleware Order
+
+CORS runs early (`order: 10`) to avoid unnecessary processing:
+
+```
+Request → CORS → Guards → Params → Handler
+         ↑
+         Rejected early if origin not allowed
+```
+
+### 3. Config Merging
+
+Configs merged once during scan phase, not per request:
+
+```typescript
+// Merged at startup
+@Cors({ origin: 'https://example.com' })
+
+// Cached middleware created once
+this.createRouteMiddleware(options)
+```
+
+## Testing CORS
+
+```typescript
+import { describe, test, expect } from 'bun:test';
+
+test('should handle CORS preflight', async () => {
+  @Controller('/api')
+  @Cors({
+    origin: 'https://example.com',
+    allowMethods: ['GET', 'POST']
+  })
+  class TestController {
+    @Get('/data')
+    getData() {
+      return { data: 'test' };
+    }
+  }
+
+  const server = new Server({ isolated: true })
+    .use(cors())
+    .use(router())
+    .load(TestController);
+
+  await server.listen(3200);
+
+  // Preflight request
+  const preflight = await fetch('http://localhost:3200/api/data', {
+    method: 'OPTIONS',
+    headers: {
+      'Origin': 'https://example.com',
+      'Access-Control-Request-Method': 'GET'
+    }
+  });
+
+  expect(preflight.headers.get('Access-Control-Allow-Origin')).toBe('https://example.com');
+  expect(preflight.headers.get('Access-Control-Allow-Methods')).toContain('GET');
+
+  await server.stop();
+});
+```
+
+## Next Steps
+
+- [Security Overview](/docs/security) - Complete security guide
+- [Guards & Authorization](/docs/security/guards) - Implement route protection
+- [Rate Limiting](/docs/security/rate-limit) - Protect against abuse
+- [Cookie Security](/docs/security/cookies) - Secure cookie management
+- [Authentication Patterns](/docs/security/authentication) - Learn authentication strategies

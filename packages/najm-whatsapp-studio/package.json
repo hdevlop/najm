@@ -1,0 +1,54 @@
+{
+  "name": "najm-whatsapp-studio",
+  "version": "0.0.1",
+  "description": "Embeddable WhatsApp Studio React component library for Najm framework",
+  "type": "module",
+  "files": ["dist"],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./styles.css": {
+      "import": "./dist/styles.css",
+      "default": "./dist/styles.css"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup",
+    "build:css": "node scripts/build-css.mjs",
+    "dev": "tsup --watch",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "najm-ui": "workspace:*",
+    "qrcode.react": "^4.0.0",
+    "react-window": "^2.2.7",
+    "recharts": "^2.13.0",
+    "tailwind-merge": "^2.5.5"
+  },
+  "peerDependencies": {
+    "react": ">=18",
+    "react-dom": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": ">=18",
+    "@types/react-dom": ">=18",
+    "@types/react-window": "^2.0.0",
+    "autoprefixer": "^10.4.20",
+    "class-variance-authority": "^0.7.1",
+    "postcss": "^8.4.49",
+    "postcss-prefix-selector": "^2.1.0",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^3.4.16",
+    "tailwindcss-animate": "^1.0.7",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3"
+  }
+}

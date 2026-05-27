@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 240 10% 3.9%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 262 83% 58%;
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* OpenCode.ai Dark Theme */
+    --background: 19 6% 6.9%;              /* rgb(19, 16, 16) - dark brownish-black */
+    --foreground: 0 0% 72%;                /* rgb(184, 178, 178) - muted gray for body */
+    --card: 27 6% 9.4%;                    /* rgb(27, 24, 24) - slightly lighter bg */
+    --card-foreground: 0 0% 95%;           /* rgb(242, 237, 237) - near white */
+    --popover: 19 6% 6.9%;
+    --popover-foreground: 0 0% 72%;
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 27 6% 9.4%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 27 6% 9.4%;
+    --muted-foreground: 0 0% 72%;
+    --accent: 27 6% 9.4%;
+    --accent-foreground: 0 0% 95%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 215 7% 36%;                  /* rgb(85, 89, 98) - subtle gray divider */
+    --input: 215 7% 36%;
+    --ring: 262 83% 58%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground text-sm;
+  }
+}
+
+/* Code block styling */
+pre {
+  @apply rounded-lg border bg-muted p-4 overflow-x-auto w-full text-sm;
+  max-width: 100%;
+  color: rgb(242, 237, 237);
+  border: none !important;
+}
+
+code {
+  @apply font-mono text-sm;
+  white-space: pre;
+  color: rgb(242, 237, 237);
+}
+
+:not(pre) > code {
+  @apply rounded bg-muted px-1.5 py-0.5;
+  white-space: normal;
+  color: rgb(242, 237, 237);
+}
+
+/* Prose styling for MDX */
+.prose {
+  @apply max-w-none w-full;
+}
+
+.prose pre {
+  @apply w-full;
+  max-width: 100%;
+}
+
+.prose code {
+  white-space: pre;
+  word-wrap: normal;
+}
+
+.prose h1 {
+  @apply text-2xl font-medium tracking-tight mt-8 mb-4 text-primary;
+  line-height: 1.2;
+}
+
+.prose h2 {
+  @apply text-xl font-medium tracking-tight mt-8 mb-4 border-b pb-2;
+  color: rgb(242, 237, 237);
+}
+
+.prose h3 {
+  @apply text-lg font-medium tracking-tight mt-6 mb-3;
+  color: rgb(242, 237, 237);
+}
+
+.prose h4 {
+  @apply text-sm font-semibold tracking-tight mt-4 mb-2;
+  color: rgb(242, 237, 237);
+}
+
+.prose p {
+  @apply text-sm mb-4;
+  color: rgb(184, 178, 178);
+  line-height: 1.5;
+}
+
+.prose ul {
+  @apply list-disc pl-6 mb-4 text-sm;
+  color: rgb(184, 178, 178);
+}
+
+.prose ol {
+  @apply list-decimal pl-6 mb-4 text-sm;
+  color: rgb(184, 178, 178);
+}
+
+.prose li {
+  @apply mb-2;
+  color: rgb(184, 178, 178);
+}
+
+.prose a {
+  @apply text-primary underline underline-offset-4 hover:text-primary/80;
+  font-weight: 600;
+}
+
+.prose blockquote {
+  @apply border-l-4 border-primary pl-4 italic my-4;
+}
+
+.prose table {
+  @apply w-full border-collapse my-4;
+}
+
+.prose th {
+  @apply border bg-muted px-4 py-2 text-left font-semibold;
+}
+
+.prose td {
+  @apply border px-4 py-2;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-border rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-muted-foreground/50;
+}

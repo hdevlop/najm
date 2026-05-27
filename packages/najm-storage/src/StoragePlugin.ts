@@ -1,0 +1,70 @@
+// ============================================================================
+// najm-storage - Plugin Factory
+// ============================================================================
+
+import { plugin } from 'najm-core';
+import { events } from 'najm-event';
+import { STORAGE_CONFIG } from './tokens';
+import type { StorageConfig } from './types';
+import { StorageService } from './StorageService';
+import { StorageValidator } from './StorageValidator';
+import { StorageController } from './StorageController';
+import { StorageMcpTools } from './StorageMcpTools';
+import { StorageStudioController } from './StorageStudioController';
+import { AuditService } from './AuditService';
+
+const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provider' | 'mcp'>> & StorageConfig => ({
+  provider: config.provider ?? 'local',
+  mcp: config.mcp ?? false,
+  dialect: config.dialect,             // optional — auto-detected if omitted
+  schema: config.schema,               // optional — overrides auto-detection
+  database: config.database ?? 'default',
+  basePath: config.basePath ?? 'storage',
+  servePrefix: config.servePrefix ?? '',
+  maxFileSize: config.maxFileSize ?? 10 * 1024 * 1024,
+  allowedCategories: config.allowedCategories,
+  blockedExtensions: config.blockedExtensions,
+  enableCascadeDelete: config.enableCascadeDelete ?? true,
+  cacheMaxAge: config.cacheMaxAge ?? 31536000,
+  studio: config.studio ?? false,
+});
+
+/**
+ * Create the storage plugin.
+ *
+ * **Plugin ordering:** When `mcp: true`, the `mcp()` plugin must be
+ * registered **before** `storage()` in the server chain:
+ *
+ * ```typescript
+ * new Server()
+ *   .use(mcp({ name: 'app', version: '1.0.0' }))  // first
+ *   .use(storage({ mcp: true }))                   // then storage
+ * ```
+ *
+ * Similarly, when `provider: 'database'`, the `database()` plugin must
+ * be registered before `storage()`.
+ */
+export const storage = (config: StorageConfig = {}) => {
+  const merged = mergeConfig(config);
+
+  const builder = plugin('storage')
+    .version('2.0.0')
+    .depends(events())
+    .services(StorageService, StorageValidator, StorageController)
+    .config(STORAGE_CONFIG, merged);
+
+  if (merged.provider === 'database' || merged.studio) {
+    builder.requires('database');
+  }
+
+  if (merged.mcp) {
+    builder.requires('mcp');
+    builder.services(StorageMcpTools);
+  }
+
+  if (merged.studio) {
+    builder.services(StorageStudioController, AuditService);
+  }
+
+  return builder.build();
+};

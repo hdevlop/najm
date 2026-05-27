@@ -1,0 +1,595 @@
+---
+title: Plugin Architecture
+description: Build composable, reusable features with Najm's fluent plugin system
+order: 4
+---
+
+Najm's plugin architecture enables you to build composable, reusable features that seamlessly integrate with the framework. Plugins can provide services, contribute to other plugins, declare dependencies, and participate in the application lifecycle.
+
+## Overview
+
+Najm plugins provide:
+
+- **Fluent Builder API** - Chain methods to configure plugins
+- **Automatic Registration** - Dependencies auto-register if not present
+- **Contribution System** - Share data between plugins (e.g., i18n translations)
+- **Lifecycle Integration** - Plugins participate in boot phases
+- **Circular Detection** - Prevents circular dependencies
+- **Type Safety** - Full TypeScript support
+
+## Plugin Interface
+
+```typescript
+interface NajmPlugin {
+  name: string;                             // Unique plugin name
+  version?: string;                         // Plugin version
+  dependencies?: (NajmPlugin | string)[];   // Plugin dependencies
+  contributions?: PluginContribution[];     // Contributions to other plugins
+  services?: Constructor[];                 // Services to register
+  token?: symbol;                           // Primary config token
+  config?: any;                             // Primary config value
+  tokens?: Array<[symbol, any]>;            // Additional token-value pairs
+}
+
+interface PluginContribution {
+  token: symbol;                            // Target token
+  value: any;                               // Contribution value
+}
+```
+
+## Fluent Builder API
+
+Najm provides a fluent builder for creating plugins:
+
+```typescript
+import { plugin } from 'najm-core';
+
+export const myPlugin = (config?: MyConfig) =>
+  plugin('my-plugin')
+    .version('1.0.0')
+    .services(MyService, MyController)
+    .config(MY_PLUGIN_CONFIG, config ?? {})
+    .build();
+```
+
+### Builder Methods
+
+| Method | Description |
+|--------|-------------|
+| `.version(v)` | Set plugin version |
+| `.depends(...plugins)` | Auto-register plugin dependencies |
+| `.requires(...names)` | Declare required dependencies (strings) |
+| `.contributes(token, value)` | Contribute to other plugins |
+| `.services(...classes)` | Register services/controllers |
+| `.config(token, value)` | Set primary configuration token |
+| `.set(token, value)` | Add additional token-value pairs |
+| `.build()` | Build final NajmPlugin object |
+
+## Creating Plugins
+
+### Simple Plugin
+
+```typescript
+import { plugin } from 'najm-core';
+
+@Service()
+class CacheService {
+  private cache = new Map();
+
+  get(key: string) {
+    return this.cache.get(key);
+  }
+
+  set(key: string, value: any) {
+    this.cache.set(key, value);
+  }
+}
+
+export const cache = () =>
+  plugin('cache')
+    .version('1.0.0')
+    .services(CacheService)
+    .build();
+```
+
+### Plugin with Configuration
+
+```typescript
+import { plugin } from 'najm-core';
+
+// Configuration token
+export const CACHE_CONFIG = Symbol('CACHE_CONFIG');
+
+// Configuration interface
+export interface CacheConfig {
+  ttl?: number;
+  maxSize?: number;
+  strategy?: 'LRU' | 'LFU';
+}
+
+// Default configuration
+const defaultConfig: CacheConfig = {
+  ttl: 3600,
+  maxSize: 1000,
+  strategy: 'LRU',
+};
+
+@Service()
+class CacheService {
+  @Inject(CACHE_CONFIG) config: CacheConfig;
+
+  private cache = new Map();
+
+  get(key: string) {
+    // Use config.ttl, config.strategy, etc.
+    return this.cache.get(key);
+  }
+}
+
+export const cache = (config?: CacheConfig) =>
+  plugin('cache')
+    .version('1.0.0')
+    .services(CacheService)
+    .config(CACHE_CONFIG, { ...defaultConfig, ...config })
+    .build();
+```
+
+Usage:
+```typescript
+const server = new Server()
+  .use(cache({ ttl: 7200, strategy: 'LFU' }))
+  .listen(3000);
+```
+
+### Plugin with Dependencies
+
+Plugins can depend on other plugins. Dependencies are automatically registered if not already present.
+
+```typescript
+import { plugin } from 'najm-core';
+import { guards } from 'najm-guard';
+import { database } from 'najm-database';
+
+@Service()
+class AuthService {
+  @Inject() guardService: GuardService;
+  @DB() db: Database;
+
+  async authenticate(credentials: any) {
+    // Use guardService and db
+  }
+}
+
+export const auth = (config?: AuthConfig) =>
+  plugin('auth')
+    .version('1.0.0')
+    .depends(guards(), database())  // Auto-register if not present
+    .services(AuthService)
+    .config(AUTH_CONFIG, config ?? {})
+    .build();
+```
+
+### Plugin with Required Dependencies
+
+Use `.requires()` for dependencies that must be registered by the user (not auto-registered).
+
+```typescript
+export const advanced = () =>
+  plugin('advanced')
+    .requires('database', 'cache')  // Must be registered by user
+    .services(AdvancedService)
+    .build();
+```
+
+If user doesn't register required plugins:
+```typescript
+const server = new Server()
+  .use(advanced());  // Throws: Missing dependency 'database'
+```
+
+### Plugin with Contributions
+
+Plugins can contribute data to other plugins (e.g., i18n translations).
+
+```typescript
+import { I18N_CONTRIBUTIONS } from 'najm-i18n';
+
+const authTranslations = {
+  en: {
+    auth: {
+      invalid_credentials: 'Invalid credentials',
+      token_expired: 'Token expired',
+    },
+  },
+  fr: {
+    auth: {
+      invalid_credentials: 'Identifiants invalides',
+      token_expired: 'Jeton expiré',
+    },
+  },
+};
+
+export const auth = (config?: AuthConfig) =>
+  plugin('auth')
+    .depends(i18n())
+    .contributes(I18N_CONTRIBUTIONS, authTranslations)  // Contribute translations
+    .services(AuthService)
+    .build();
+```
+
+The i18n plugin accumulates all contributions:
+```typescript
+// Inside i18n plugin
+const allTranslations = container.get(I18N_CONTRIBUTIONS);
+// [authTranslations, emailTranslations, ...]
+```
+
+### Complete Plugin Example
+
+```typescript
+import { plugin } from 'najm-core';
+import { guards } from 'najm-guard';
+import { cookies } from 'najm-cookies';
+import { i18n, I18N_CONTRIBUTIONS } from 'najm-i18n';
+
+// Tokens
+export const AUTH_CONFIG = Symbol('AUTH_CONFIG');
+export const JWT_SECRET = Symbol('JWT_SECRET');
+
+// Config
+export interface AuthConfig {
+  jwtSecret: string;
+  tokenExpiry?: number;
+  refreshTokenExpiry?: number;
+}
+
+// Services
+@Service()
+class AuthService {
+  @Inject(AUTH_CONFIG) config: AuthConfig;
+  @Inject() guardService: GuardService;
+  @Inject() cookieService: CookieService;
+
+  async authenticate(credentials: any) {
+    // Authentication logic
+  }
+}
+
+@Controller('/api/auth')
+class AuthController {
+  constructor(private authService: AuthService) {}
+
+  @Post('/login')
+  async login(@Body() credentials: LoginDto) {
+    return this.authService.authenticate(credentials);
+  }
+}
+
+// Translations
+const authLocales = {
+  en: { auth: { invalid_credentials: 'Invalid credentials' } },
+  fr: { auth: { invalid_credentials: 'Identifiants invalides' } },
+};
+
+// Plugin
+export const auth = (config: AuthConfig) => {
+  if (!config.jwtSecret) {
+    throw new Error('Auth plugin requires jwtSecret');
+  }
+
+  const finalConfig: AuthConfig = {
+    tokenExpiry: 3600,
+    refreshTokenExpiry: 86400,
+    ...config,
+  };
+
+  return plugin('auth')
+    .version('1.0.0')
+    .depends(guards(), cookies(), i18n())  // Auto-register
+    .contributes(I18N_CONTRIBUTIONS, authLocales)
+    .services(AuthService, AuthController)
+    .config(AUTH_CONFIG, finalConfig)
+    .set(JWT_SECRET, finalConfig.jwtSecret)
+    .build();
+};
+```
+
+Usage:
+```typescript
+const server = new Server()
+  .use(auth({ jwtSecret: process.env.JWT_SECRET! }))
+  .listen(3000);
+```
+
+## Plugin Lifecycle
+
+Plugin services can implement lifecycle methods to participate in the boot process.
+
+### Lifecycle Methods
+
+```typescript
+interface CoreService {
+  scan?(): Promise<void> | void;           // Phase 1: Scan and discover
+  configure?(): Promise<void> | void;      // Phase 2: Configure services
+  activate?(): Promise<void> | void;       // Phase 3: Activate features
+  onReady?(): Promise<void> | void;        // Phase 4: Post-boot actions
+}
+```
+
+### Service Ordering
+
+Use `@Meta` to control service order within a phase:
+
+```typescript
+import { Meta } from 'najm-di';
+
+@Service()
+@Meta({ layer: 'plugin', order: 1 })
+class DatabaseService {
+  async configure() {
+    // Runs first (order: 1)
+    await this.connect();
+  }
+}
+
+@Service()
+@Meta({ layer: 'plugin', order: 2 })
+class CacheService {
+  @Inject() db: DatabaseService;
+
+  async configure() {
+    // Runs second (order: 2), after database
+    await this.warmupCache();
+  }
+}
+```
+
+### Example Plugin Service
+
+```typescript
+@Service()
+@Meta({ layer: 'plugin', order: 5 })
+class RouterService {
+  @Inject(ROUTES) routes: RouteMetadata[];
+  @Inject(APP) app: Hono;
+
+  // Phase 1: Scan
+  async scan() {
+    this.logger.info('Scanning routes...');
+    // Scan @Get, @Post decorators
+  }
+
+  // Phase 2: Configure
+  async configure() {
+    this.logger.info('Configuring router...');
+    // Process route metadata
+  }
+
+  // Phase 3: Activate
+  async activate() {
+    this.logger.info('Activating routes...');
+    // Register routes with Hono
+    this.routes.forEach(route => {
+      this.app[route.method](route.path, route.handler);
+    });
+  }
+
+  // Phase 4: Ready
+  async onReady() {
+    this.logger.info('Router ready');
+    this.printRoutes();
+  }
+}
+```
+
+## Default Plugins
+
+Najm auto-registers these plugins if not explicitly added:
+
+| Plugin | Package | Purpose |
+|--------|---------|---------|
+| `middleware()` | najm-middleware | Middleware management |
+| `params()` | najm-params | Parameter resolution (40+ decorators) |
+| `router()` | najm-router | HTTP routing |
+
+**All other plugins must be explicitly registered via `.use()`.**
+
+## Optional Plugins
+
+These plugins must be explicitly registered:
+
+```typescript
+import { guards } from 'najm-guard';
+import { database } from 'najm-database';
+import { events } from 'najm-event';
+import { cors } from 'najm-cors';
+import { cookies } from 'najm-cookies';
+import { i18n } from 'najm-i18n';
+import { validation } from 'najm-validation';
+import { rateLimit } from 'najm-rate-limit';
+
+const server = new Server()
+  .use(guards())
+  .use(database({ default: db }))
+  .use(events())
+  .use(cors({ origin: '*' }))
+  .use(cookies({ secret: 'secret' }))
+  .use(i18n({ translations: { en, fr } }))
+  .use(validation())
+  .use(rateLimit({ max: 100 }))
+  .listen(3000);
+```
+
+## Plugin Registration
+
+### Using Plugins
+
+```typescript
+import { Server } from 'najm-core';
+import { guards } from 'najm-guard';
+import { database } from 'najm-database';
+
+const server = new Server()
+  .use(guards())                      // Register plugin
+  .use(database({ default: db }))     // Register with config
+  .load(UserController, UserService)  // Load app classes
+  .listen(3000);
+```
+
+### Plugin Order
+
+Register plugins **before** loading app classes:
+
+**✓ Good: Plugins first**
+```typescript
+const server = new Server()
+  .use(guards())                      // Plugins
+  .use(database())
+  .load(UserController, UserService); // App classes
+```
+
+**✗ Bad: Classes before plugins**
+```typescript
+const server = new Server()
+  .load(UserController, UserService)  // Too late!
+  .use(guards());                     // Won't work correctly
+```
+
+### Circular Dependencies
+
+Najm detects circular plugin dependencies:
+
+```typescript
+// Plugin A depends on B
+const pluginA = () =>
+  plugin('a')
+    .depends(pluginB())
+    .build();
+
+// Plugin B depends on A
+const pluginB = () =>
+  plugin('b')
+    .depends(pluginA())  // Circular!
+    .build();
+
+const server = new Server()
+  .use(pluginA());
+// Throws: Circular dependency detected: a -> b -> a
+```
+
+## Best Practices
+
+### 1. Use Fluent Builder
+
+**✓ Good: Use builder API**
+```typescript
+export const cache = (config?: CacheConfig) =>
+  plugin('cache')
+    .version('1.0.0')
+    .services(CacheService)
+    .config(CACHE_CONFIG, config ?? {})
+    .build();
+```
+
+**✗ Avoid: Manual object creation**
+```typescript
+export const cache = (config?: CacheConfig): NajmPlugin => ({
+  name: 'cache',
+  version: '1.0.0',
+  services: [CacheService],
+  token: CACHE_CONFIG,
+  config: config ?? {},
+});
+```
+
+### 2. Provide Type-Safe Configuration
+
+**✓ Good: Typed configuration**
+```typescript
+export interface CacheConfig {
+  ttl?: number;
+  maxSize?: number;
+}
+
+export const cache = (config?: CacheConfig) =>
+  plugin('cache')
+    .config(CACHE_CONFIG, { ttl: 3600, ...config })
+    .build();
+```
+
+### 3. Use Contribution System
+
+**✓ Good: Contribute to other plugins**
+```typescript
+export const auth = () =>
+  plugin('auth')
+    .depends(i18n())
+    .contributes(I18N_CONTRIBUTIONS, authTranslations)
+    .build();
+```
+
+### 4. Validate Required Config
+
+**✓ Good: Validate early**
+```typescript
+export const auth = (config: AuthConfig) => {
+  if (!config.jwtSecret) {
+    throw new Error('jwtSecret is required');
+  }
+
+  return plugin('auth')
+    .config(AUTH_CONFIG, config)
+    .build();
+};
+```
+
+### 5. Document Dependencies
+
+**✓ Good: Clear dependencies**
+```typescript
+/**
+ * Email plugin
+ *
+ * Dependencies:
+ * - najm-i18n (optional) - For translated email templates
+ * - najm-event (optional) - For email event triggers
+ */
+export const email = (config: EmailConfig) =>
+  plugin('email')
+    .depends(i18n(), events())
+    .services(EmailService)
+    .build();
+```
+
+## Official Plugins
+
+### Core Plugins (Auto-registered)
+- `najm-middleware` - Middleware management
+- `najm-params` - Parameter decorators (40+)
+- `najm-router` - HTTP routing
+
+### Optional Plugins
+- `najm-guard` - Authorization guards
+- `najm-database` - Database & transactions
+- `najm-event` - Event system
+- `najm-cors` - CORS handling
+- `najm-cookies` - Cookie management
+- `najm-i18n` - Internationalization
+- `najm-validation` - Request validation
+- `najm-rate-limit` - Rate limiting
+- `najm-auth` - Authentication (coming soon)
+- `najm-email` - Email sending (coming soon)
+
+## Summary
+
+Najm's plugin architecture provides:
+
+✓ **Fluent API** - Clean, chainable plugin builder
+✓ **Auto-registration** - Dependencies register automatically
+✓ **Contribution System** - Share data between plugins
+✓ **Lifecycle Integration** - Participate in boot phases
+✓ **Type Safety** - Full TypeScript support
+✓ **Circular Detection** - Prevents dependency cycles
+✓ **Extensible** - Build custom plugins easily
+
+The plugin system makes Najm highly modular and extensible, allowing you to build reusable features that integrate seamlessly with the framework.

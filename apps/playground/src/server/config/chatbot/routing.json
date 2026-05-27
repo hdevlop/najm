@@ -1,0 +1,10 @@
+{
+  "embedding": {
+    "baseUrl": "http://localhost:11434",
+    "model": "embeddinggemma"
+  },
+  "maxTools": 10,
+  "similarityThreshold": 0.45,
+  "indexOnBoot": true,
+  "chatLogging": true
+}

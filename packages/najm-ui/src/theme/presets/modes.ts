@@ -1,0 +1,41 @@
+import type { NajmThemeTokens } from '../types';
+
+export const lightMode: NajmThemeTokens = {
+  background: '#ffffff',
+  foreground: '#0a0a0a',
+  card: '#ffffff',
+  'card-foreground': '#0a0a0a',
+  popover: '#ffffff',
+  'popover-foreground': '#0a0a0a',
+  secondary: '#f4f4f5',
+  'secondary-foreground': '#18181b',
+  muted: '#f4f4f5',
+  'muted-foreground': '#71717a',
+  accent: '#f4f4f5',
+  'accent-foreground': '#18181b',
+  destructive: '#ef4444',
+  'destructive-foreground': '#ffffff',
+  border: '#e4e4e7',
+  input: '#e4e4e7',
+  radius: '0.5rem',
+};
+
+export const darkMode: NajmThemeTokens = {
+  background: '#06060a',
+  foreground: '#f1f1f4',
+  card: '#0f0f16',
+  'card-foreground': '#f1f1f4',
+  popover: '#0f0f16',
+  'popover-foreground': '#f1f1f4',
+  secondary: '#14141c',
+  'secondary-foreground': '#f1f1f4',
+  muted: '#14141c',
+  'muted-foreground': '#9ca3af',
+  accent: '#14141c',
+  'accent-foreground': '#f1f1f4',
+  destructive: '#ef4444',
+  'destructive-foreground': '#ffffff',
+  border: 'rgba(255,255,255,0.06)',
+  input: '#14141c',
+  radius: '0.5rem',
+};

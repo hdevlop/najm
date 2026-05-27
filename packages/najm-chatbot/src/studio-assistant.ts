@@ -1,0 +1,1 @@
+export { StudioAssistantProviderService, studioAssistant } from './studio-assistant/index';

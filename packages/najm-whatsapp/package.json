@@ -1,0 +1,74 @@
+{
+  "name": "najm-whatsapp",
+  "version": "1.0.4",
+  "description": "WhatsApp plugin for Najm framework — Cloud API and Baileys engine support",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./sqlite": {
+      "types": "./dist/schema/sqlite.d.ts",
+      "import": "./dist/schema/sqlite.mjs",
+      "default": "./dist/schema/sqlite.mjs"
+    },
+    "./pg": {
+      "types": "./dist/schema/pg.d.ts",
+      "import": "./dist/schema/pg.mjs",
+      "default": "./dist/schema/pg.mjs"
+    },
+    "./mysql": {
+      "types": "./dist/schema/mysql.d.ts",
+      "import": "./dist/schema/mysql.mjs",
+      "default": "./dist/schema/mysql.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "keywords": [
+    "najm",
+    "whatsapp",
+    "cloud-api",
+    "webhook",
+    "messaging"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@whiskeysockets/baileys": "^6.7.0",
+    "@hapi/boom": "^10.0.1",
+    "qrcode": "^1.5.3",
+    "pino": "^9.0.0",
+    "najm-core": "workspace:*",
+    "najm-cache": "workspace:*",
+    "najm-event": "workspace:*",
+    "najm-database": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/qrcode": "^1.5.5",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3"
+  },
+  "peerDependencies": {
+    "najm-auth": "workspace:*",
+    "najm-rate": "workspace:*",
+    "najm-validation": "workspace:*",
+    "hono": "^4.0.0",
+    "reflect-metadata": "^0.2.0",
+    "zod": "^3.0.0 || ^4.0.0"
+  }
+}

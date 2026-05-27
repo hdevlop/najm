@@ -1,0 +1,244 @@
+---
+title: Events
+description: Event-driven architecture with Najm's event system.
+order: 4
+---
+
+## Overview
+
+The event system enables loose coupling between services through event-driven communication. Built on a lightweight event emitter.
+
+## Installation
+
+```bash
+bun add najm-event
+```
+
+## Setup
+
+Register the events plugin:
+
+```typescript
+import { Server } from 'najm-core';
+import { events } from 'najm-event';
+
+const server = new Server()
+  .use(events())
+  .load(UserService, EmailService);
+```
+
+## Emitting Events
+
+Use the `@Events` decorator to access event methods:
+
+```typescript
+@Service()
+class UserService {
+  @Events() events: {
+    emit: (event: string, data: any) => void;
+    on: (event: string, handler: Function) => void;
+    off: (event: string, handler: Function) => void;
+  };
+
+  async createUser(data: CreateUserDto) {
+    const user = await this.userRepo.create(data);
+
+    // Emit event after user creation
+    this.events.emit('user.created', {
+      userId: user.id,
+      email: user.email,
+    });
+
+    return user;
+  }
+
+  async deleteUser(id: string) {
+    await this.userRepo.delete(id);
+
+    this.events.emit('user.deleted', { userId: id });
+  }
+}
+```
+
+## Listening to Events
+
+### Using @On Decorator
+
+The `@On` decorator automatically registers methods as event listeners:
+
+```typescript
+@Service()
+class EmailService {
+  @On('user.created')
+  async sendWelcomeEmail({ userId, email }: { userId: string; email: string }) {
+    await this.mailer.send({
+      to: email,
+      template: 'welcome',
+      data: { userId },
+    });
+  }
+
+  @On('user.deleted')
+  async sendGoodbyeEmail({ userId }: { userId: string }) {
+    const user = await this.userRepo.findById(userId);
+    if (user) {
+      await this.mailer.send({
+        to: user.email,
+        template: 'goodbye',
+      });
+    }
+  }
+}
+```
+
+### Multiple Listeners
+
+Multiple services can listen to the same event:
+
+```typescript
+@Service()
+class AnalyticsService {
+  @On('user.created')
+  trackUserCreation({ userId }: { userId: string }) {
+    this.analytics.track('user_signup', { userId });
+  }
+}
+
+@Service()
+class NotificationService {
+  @On('user.created')
+  notifyAdmins({ userId, email }: { userId: string; email: string }) {
+    this.slack.notify(`New user: ${email}`);
+  }
+}
+```
+
+## Event Patterns
+
+### Domain Events
+
+Organize events by domain:
+
+```typescript
+// User events
+this.events.emit('user.created', data);
+this.events.emit('user.updated', data);
+this.events.emit('user.deleted', data);
+
+// Order events
+this.events.emit('order.placed', data);
+this.events.emit('order.shipped', data);
+this.events.emit('order.delivered', data);
+
+// Payment events
+this.events.emit('payment.received', data);
+this.events.emit('payment.failed', data);
+this.events.emit('payment.refunded', data);
+```
+
+### Typed Events
+
+Create type-safe events:
+
+```typescript
+interface UserEvents {
+  'user.created': { userId: string; email: string };
+  'user.updated': { userId: string; changes: Partial<User> };
+  'user.deleted': { userId: string };
+}
+
+@Service()
+class UserService {
+  @Events() events: TypedEventEmitter<UserEvents>;
+
+  async createUser(data: CreateUserDto) {
+    const user = await this.userRepo.create(data);
+
+    // Type-safe event emission
+    this.events.emit('user.created', {
+      userId: user.id,
+      email: user.email,
+    });
+
+    return user;
+  }
+}
+```
+
+## Async Event Handlers
+
+Event handlers can be async:
+
+```typescript
+@Service()
+class SyncService {
+  @On('user.created')
+  async syncToExternalSystem({ userId }: { userId: string }) {
+    const user = await this.userRepo.findById(userId);
+
+    await this.externalApi.createUser(user);
+    await this.cache.invalidate(`users:${userId}`);
+  }
+}
+```
+
+## Error Handling
+
+Handle errors in event listeners:
+
+```typescript
+@Service()
+class EmailService {
+  @On('user.created')
+  async sendWelcomeEmail(data: { email: string }) {
+    try {
+      await this.mailer.send({
+        to: data.email,
+        template: 'welcome',
+      });
+    } catch (error) {
+      // Log error but don't throw
+      // Event handlers shouldn't break the main flow
+      this.logger.error('Failed to send welcome email', error);
+    }
+  }
+}
+```
+
+## Event Queue
+
+For high-volume events, consider using a queue:
+
+```typescript
+@Service()
+class QueuedEmailService {
+  @Events() events;
+
+  @On('user.created')
+  async queueWelcomeEmail(data: { userId: string; email: string }) {
+    // Add to queue instead of sending immediately
+    await this.queue.add('send-welcome-email', data);
+  }
+}
+```
+
+## Testing Events
+
+Test event emission and handling:
+
+```typescript
+import { describe, test, expect, mock } from 'bun:test';
+
+test('should emit user.created event', async () => {
+  const emitSpy = mock(() => {});
+  const service = new UserService();
+  service.events = { emit: emitSpy };
+
+  await service.createUser({ email: 'test@example.com' });
+
+  expect(emitSpy).toHaveBeenCalledWith('user.created', {
+    userId: expect.any(String),
+    email: 'test@example.com',
+  });
+});
+```
