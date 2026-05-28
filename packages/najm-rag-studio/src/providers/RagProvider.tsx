@@ -2,7 +2,6 @@
 
 import React from 'react';
 import { RagStudioContext } from '../lib/context';
-import { setStudioBasePath } from '../shared/utils/studioBasePath';
 import type { RagStudioProviderProps } from './types';
 
 export function RagStudioProvider({
@@ -15,7 +14,7 @@ export function RagStudioProvider({
   appearance,
   children,
 }: RagStudioProviderProps) {
-  if (basePath !== undefined) setStudioBasePath(basePath);
+  const normalizedBasePath = basePath?.replace(/\/+$/, '') || '';
   const value = React.useMemo(
     () => ({
       apiBase,
@@ -23,8 +22,9 @@ export function RagStudioProvider({
       chatbotSettingsUrl,
       chatbotSettingsApiPath,
       chatbotSettingsTestApiPath,
+      basePath: normalizedBasePath,
     }),
-    [apiBase, getAuthHeaders, chatbotSettingsUrl, chatbotSettingsApiPath, chatbotSettingsTestApiPath]
+    [apiBase, getAuthHeaders, chatbotSettingsUrl, chatbotSettingsApiPath, chatbotSettingsTestApiPath, normalizedBasePath]
   );
 
   return (

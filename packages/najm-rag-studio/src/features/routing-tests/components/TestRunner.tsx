@@ -18,10 +18,28 @@ import { TestSubRow } from './TestSubRow';
 import { makeTestCard } from './TestCard';
 import type { TestCase } from '../types';
 import type { JsonViewColors, TestRunnerViewMode } from '@/features/routing-tests/types';
-import { getStoredFileViewMode, readFileViewUrlState, writeFileViewUrl } from '@/shared/utils/fileViewUrl';
 import { LogicalFilesBreadcrumb } from '@/features/storage';
 
 import type { PendingTestDraft } from '@/lib/chatDraftsContext';
+
+function getStoredFileViewMode(
+  key: string,
+  legacyKey: string,
+  fallback: 'table' | 'json' | 'files' = 'table',
+): 'table' | 'json' | 'files' {
+  if (typeof window === 'undefined') return fallback;
+  for (const candidateKey of [key, legacyKey]) {
+    try {
+      const raw = window.localStorage.getItem(candidateKey);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (['table', 'json', 'files'].includes(parsed)) return parsed;
+    } catch {
+      // Ignore malformed localStorage values.
+    }
+  }
+  return fallback;
+}
 
 interface TestRunnerProps {
   availableTools: string[];
@@ -45,6 +63,10 @@ interface TestRunnerProps {
   showRunPage?: boolean;
   responsiveCards?: boolean;
   resetNonce?: number;
+  initialView?: 'table' | 'json' | 'files';
+  initialGroup?: string;
+  initialLang?: string;
+  onSearchStateChange?: (state: { view?: string; group?: string; lang?: string }) => void;
 }
 
 const STATUS_OPTIONS = [
@@ -73,6 +95,10 @@ export function TestRunner({
   showRunPage = true,
   responsiveCards = true,
   resetNonce,
+  initialView,
+  initialGroup,
+  initialLang,
+  onSearchStateChange,
 }: TestRunnerProps) {
   const {
     tests,
@@ -102,10 +128,9 @@ export function TestRunner({
     refresh,
   } = useRoutingTests({ initialPageSize });
 
-  const initialUrlState = useMemo(() => readFileViewUrlState(), []);
   const [testsViewMode, setTestsViewMode] = useLocalStorageState<TestRunnerViewMode>(
     'najm-rag-studio:tests:view-mode',
-    (initialUrlState.view ?? getStoredFileViewMode(
+    (initialView ?? getStoredFileViewMode(
       'najm-rag-studio:tests:view-mode',
       'najm-rag-studio:testsViewMode',
       'table',
@@ -123,7 +148,7 @@ export function TestRunner({
   const [fileScope, setFileScope] = useState<{
     group: string;
     lang?: string;
-  } | null>(() => initialUrlState.group ? { group: initialUrlState.group, lang: initialUrlState.lang } : null);
+  } | null>(() => initialGroup ? { group: initialGroup, lang: initialLang } : null);
 
   const { banner, showBanner, dismissBanner } = useBanner();
   const viewCtx = useContextMenu();
@@ -142,12 +167,12 @@ export function TestRunner({
     : null);
 
   useEffect(() => {
-    writeFileViewUrl('/tests', {
+    onSearchStateChange?.({
       view: testsViewMode,
       group: fileScope?.group,
       lang: fileScope?.lang,
     });
-  }, [testsViewMode, fileScope]);
+  }, [testsViewMode, fileScope, onSearchStateChange]);
 
   useEffect(() => {
     if (!resetNonce) return;

@@ -59,7 +59,7 @@ export default defineConfig({
       jsx: 'react-jsx',
     },
   },
-  external: ['react', 'react-dom', 'react/jsx-runtime', 'lucide-react', 'recharts', 'clsx', 'tailwind-merge', 'swr'],
+  external: ['@tanstack/react-router', 'react', 'react-dom', 'react/jsx-runtime', 'lucide-react', 'recharts', 'clsx', 'tailwind-merge', 'swr'],
   esbuildPlugins: [aliasPlugin],
   outExtension: () => ({ js: '.mjs' }),
   async onSuccess() {

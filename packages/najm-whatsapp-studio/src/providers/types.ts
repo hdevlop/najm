@@ -4,11 +4,8 @@
 export interface StudioConfig {
   apiBase: string;
   getAuthHeaders: () => Record<string, string> | Promise<Record<string, string>>;
-  /**
-   * Called when the API returns 401/403. Use this to trigger a re-login flow
-   * (e.g., refresh the token or redirect to the host app's login page).
-   */
   onUnauthorized?: () => void;
+  basePath?: string;
 }
 
 // Forward declaration — ApiClient is created by lib/api and stored in context
@@ -23,6 +20,7 @@ export interface StudioContextValue extends StudioConfig {
   client: ApiClient;
   selectedInstanceId: string | null;
   setSelectedInstanceId: (id: string | null) => void;
+  basePath: string;
 }
 
 export type PanelId =

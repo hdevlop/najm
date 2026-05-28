@@ -15,6 +15,22 @@ export interface BucketConfig {
   protected?: boolean;
 }
 
+export interface PreviewOptions {
+  width?: number;
+  height?: number;
+  quality?: number;
+  format?: 'jpeg' | 'png' | 'webp' | 'original';
+  fit?: 'cover' | 'contain' | 'inside' | 'outside';
+}
+
+export interface PreviewConfig {
+  enabled?: boolean;
+  cacheDir?: string;
+  defaultQuality?: number;
+  maxDimension?: number;
+  maxCacheBytes?: number;
+}
+
 export interface StorageConfig {
   /** Storage backend: 'local' (filesystem) or 'database' (drizzle via @DB()). Default: 'local' */
   provider?: StorageBackend;
@@ -55,6 +71,8 @@ export interface StorageConfig {
    * Can be a list of names or full BucketConfig objects.
    */
   buckets?: (string | BucketConfig)[];
+  /** Preview/thumbnail generation options (requires sharp for local provider) */
+  preview?: PreviewConfig;
 }
 
 // ============================================================================
@@ -131,6 +149,7 @@ export interface IStorageProvider {
   softDelete?(namespace: string, filePath: string): Promise<boolean>;
   restore?(namespace: string, filePath: string): Promise<boolean>;
   presign?(namespace: string, filePath: string, method: string, ttlSeconds: number): Promise<string>;
+  getPreview?(namespace: string, filePath: string, options: PreviewOptions): Promise<Uint8Array | null>;
   // Bucket management
   listBuckets?(): Promise<BucketConfig[]>;
   createBucket?(config: BucketConfig): Promise<void>;

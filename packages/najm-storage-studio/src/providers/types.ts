@@ -5,6 +5,7 @@ export interface StorageStudioProviderProps {
   storageApiBase?: string;
   getAuthHeaders?: () => Record<string, string>;
   onUnauthorized?: () => void;
+  basePath?: string;
   children: ReactNode;
 }
 

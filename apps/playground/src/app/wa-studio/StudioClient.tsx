@@ -7,6 +7,7 @@ export default function StudioClient() {
   return (
     <WhatsAppStudioProvider
       apiBase="/api/wa-studio"
+      basePath="/wa-studio"
       getAuthHeaders={() => ({})}
       onUnauthorized={() => {
         if (typeof window !== 'undefined') {

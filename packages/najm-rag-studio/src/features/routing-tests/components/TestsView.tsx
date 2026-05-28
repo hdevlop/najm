@@ -14,9 +14,11 @@ import type { PendingTestDraft } from '@/lib/chatDraftsContext';
 interface TestsViewProps {
   onViewContextChange?: (context: Record<string, unknown>) => void;
   resetNonce?: number;
+  initialView?: 'table' | 'json' | 'files';
+  onSearchStateChange?: (state: { view?: string; group?: string; lang?: string }) => void;
 }
 
-export function TestsView({ onViewContextChange, resetNonce }: TestsViewProps) {
+export function TestsView({ onViewContextChange, resetNonce, initialView, onSearchStateChange }: TestsViewProps) {
   const { banner, showBanner, dismissBanner } = useBanner();
   const { consumeTestDraft } = useCrossFeatureDrafts(() => {});
   const [consumedTestDraft, setConsumedTestDraft] = useState<PendingTestDraft | null>(null);
@@ -61,6 +63,8 @@ export function TestsView({ onViewContextChange, resetNonce }: TestsViewProps) {
             jsonViewColors={jsonViewColors}
             pendingDraft={consumedTestDraft}
             resetNonce={resetNonce}
+            initialView={initialView}
+            onSearchStateChange={onSearchStateChange}
           />
         </NErrorBoundary>
       </div>

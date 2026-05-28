@@ -2,10 +2,11 @@
 // najm-storage - Storage Controller
 // ============================================================================
 
-import { Controller, Get, Post, Delete } from 'najm-core';
+import { Controller, Get, Post, Delete, Query } from 'najm-core';
 import { Params, Ctx, ArrayBufferBody, ContentType } from 'najm-core';
 import type { Context } from 'hono';
 import { StorageService } from './StorageService';
+import type { PreviewOptions } from './types';
 
 @Controller('')
 export class StorageController {
@@ -61,6 +62,43 @@ export class StorageController {
   ): Promise<Response> {
     const filePath = this.extractFilePath(c, namespace, 'files/serve/');
     return this.storageService.serveFile(namespace, filePath);
+  }
+
+  @Get('/:namespace/files/preview/*')
+  async servePreview(
+    @Ctx() c: Context,
+    @Params('namespace') namespace: string,
+    @Query('w') w: string | undefined,
+    @Query('h') h: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('format') format: string | undefined,
+    @Query('fit') fit: string | undefined,
+  ): Promise<Response> {
+    const filePath = this.extractFilePath(c, namespace, 'files/preview/');
+    const opts: PreviewOptions = {
+      width: w ? parseInt(w, 10) : undefined,
+      height: h ? parseInt(h, 10) : undefined,
+      quality: q ? parseInt(q, 10) : undefined,
+      format: this.clampFormat(format),
+      fit: this.clampFit(fit),
+    };
+    const preview = await this.storageService.servePreview(namespace, filePath, opts);
+    if (preview) return preview;
+    // Fallback: redirect to original serve URL
+    const serveUrl = this.storageService.getServePath(namespace, filePath);
+    return c.redirect(serveUrl, 302);
+  }
+
+  private clampFormat(format: string | undefined): PreviewOptions['format'] {
+    if (!format) return 'original';
+    const allowed = ['jpeg', 'png', 'webp', 'original'];
+    return (allowed.includes(format) ? format : 'original') as PreviewOptions['format'];
+  }
+
+  private clampFit(fit: string | undefined): PreviewOptions['fit'] {
+    if (!fit) return 'cover';
+    const allowed = ['cover', 'contain', 'inside', 'outside'];
+    return (allowed.includes(fit) ? fit : 'cover') as PreviewOptions['fit'];
   }
 
   // ============================================================================

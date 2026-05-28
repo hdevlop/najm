@@ -8,6 +8,7 @@ export function WhatsAppStudioProvider({
   apiBase,
   getAuthHeaders,
   onUnauthorized,
+  basePath,
 }: React.PropsWithChildren<StudioConfig>) {
   const getAuthHeadersRef = useRef(getAuthHeaders);
   const onUnauthorizedRef = useRef(onUnauthorized);
@@ -56,9 +57,11 @@ export function WhatsAppStudioProvider({
     }
   }, [selectedInstanceId]);
 
+  const normalizedBasePath = basePath?.replace(/\/+$/, '') || '';
+
   return (
     <StudioContext.Provider
-      value={{ ...config, client, selectedInstanceId, setSelectedInstanceId }}
+      value={{ ...config, client, selectedInstanceId, setSelectedInstanceId, basePath: normalizedBasePath }}
     >
       {children}
     </StudioContext.Provider>

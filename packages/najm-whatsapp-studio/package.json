@@ -25,6 +25,7 @@
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
+    "@tanstack/react-router": "^1.170.8",
     "clsx": "^2.1.1",
     "lucide-react": "^0.468.0",
     "najm-ui": "workspace:*",

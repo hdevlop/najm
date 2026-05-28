@@ -2,10 +2,11 @@
 // najm-storage - Studio Controller (admin API)
 // ============================================================================
 
-import { Controller, Get, Post, Delete, Params, Body, Ctx, ArrayBufferBody, ContentType } from 'najm-core';
+import { Controller, Get, Post, Delete, Params, Body, Ctx, ArrayBufferBody, ContentType, Query } from 'najm-core';
 import type { Context } from 'hono';
 import { StorageService } from './StorageService';
 import { AuditService } from './AuditService';
+import type { PreviewOptions } from './types';
 
 @Controller('/storage-studio')
 export class StorageStudioController {
@@ -166,5 +167,62 @@ export class StorageStudioController {
   async restore(@Body() body: { namespace: string; path: string }) {
     const ok = await this.storage.restoreFile(body.namespace, body.path);
     return { restored: ok };
+  }
+
+  @Get('/preview-url')
+  async previewUrl(
+    @Query('namespace') namespace: string,
+    @Query('path') path: string,
+    @Query('w') w: string | undefined,
+    @Query('h') h: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('format') format: string | undefined,
+    @Query('fit') fit: string | undefined,
+  ) {
+    const opts: PreviewOptions = {
+      width: w ? parseInt(w, 10) : undefined,
+      height: h ? parseInt(h, 10) : undefined,
+      quality: q ? parseInt(q, 10) : undefined,
+      format: this.clampFormat(format),
+      fit: this.clampFit(fit),
+    };
+    const url = this.storage.getPreviewPath(namespace, path, opts);
+    return { url };
+  }
+
+  @Get('/preview')
+  async preview(
+    @Ctx() c: Context,
+    @Query('namespace') namespace: string,
+    @Query('path') path: string,
+    @Query('w') w: string | undefined,
+    @Query('h') h: string | undefined,
+    @Query('q') q: string | undefined,
+    @Query('format') format: string | undefined,
+    @Query('fit') fit: string | undefined,
+  ): Promise<Response> {
+    const opts: PreviewOptions = {
+      width: w ? parseInt(w, 10) : undefined,
+      height: h ? parseInt(h, 10) : undefined,
+      quality: q ? parseInt(q, 10) : undefined,
+      format: this.clampFormat(format),
+      fit: this.clampFit(fit),
+    };
+    const preview = await this.storage.servePreview(namespace, path, opts);
+    if (preview) return preview;
+    // Fallback: stream original file through studio auth
+    return this.storage.serveFile(namespace, path);
+  }
+
+  private clampFormat(format: string | undefined): PreviewOptions['format'] {
+    if (!format) return 'original';
+    const allowed = ['jpeg', 'png', 'webp', 'original'];
+    return (allowed.includes(format) ? format : 'original') as PreviewOptions['format'];
+  }
+
+  private clampFit(fit: string | undefined): PreviewOptions['fit'] {
+    if (!fit) return 'cover';
+    const allowed = ['cover', 'contain', 'inside', 'outside'];
+    return (allowed.includes(fit) ? fit : 'cover') as PreviewOptions['fit'];
   }
 }

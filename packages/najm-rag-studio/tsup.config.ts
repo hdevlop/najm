@@ -65,6 +65,7 @@ export default defineConfig({
     },
   },
   external: [
+    '@tanstack/react-router',
     '@najm/rag',
     'najm-chatbot/react',
     'lucide-react',

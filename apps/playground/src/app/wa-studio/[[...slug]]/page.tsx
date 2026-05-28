@@ -1,4 +1,4 @@
-import StudioClient from './StudioClient';
+import StudioClient from '../StudioClient';
 
 export const dynamic = 'force-dynamic';
 

@@ -70,7 +70,7 @@ export const mcpConfig = () => mcp({
   cors: true,
 });
 
-export const storageConfig = () => storage({ provider: 'local', basePath: 'storage', studio: true, maxFileSize: 100 * 1024 * 1024 });
+export const storageConfig = () => storage({ provider: 'local', basePath: 'storage', studio: true, maxFileSize: 100 * 1024 * 1024, preview: { enabled: true, cacheDir: '.cache/thumbnails' } });
 
 export const ragConfig = () => rag({
   dialect: process.env.PLAYGROUND_DB === 'pg' ? 'pg' : 'sqlite',

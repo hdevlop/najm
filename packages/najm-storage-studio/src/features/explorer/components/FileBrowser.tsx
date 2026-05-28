@@ -11,11 +11,14 @@ export type FileRow = FileNode & {
   url?: string;
   tags?: string[];
   isCut?: boolean;
+  namespace?: string;
+  filePath?: string;
 };
 
 export interface FileBrowserProps {
   files: FileItem[];
   folders: string[];
+  namespace: string;
   mode: 'table' | 'cards';
   onModeChange?: (mode: 'table' | 'cards') => void;
   selected: Set<string>;
@@ -33,6 +36,7 @@ export interface FileBrowserProps {
 export function FileBrowser({
   files,
   folders,
+  namespace,
   mode,
   onModeChange,
   selected,
@@ -65,6 +69,8 @@ export function FileBrowser({
       url: f.url,
       tags: f.tags,
       isCut: cutPaths?.has(f.filePath) ?? false,
+      namespace: f.namespace,
+      filePath: f.filePath,
     })),
   ], [files, folders, cutPaths]);
 
@@ -72,7 +78,7 @@ export function FileBrowser({
     const row = node as FileRow;
     return row.isFolder
       ? <FolderThumbnail size={size} />
-      : <FileThumbnail mimeType={row.mimeType ?? ''} url={row.url} fileName={row.name} size={size} />;
+      : <FileThumbnail mimeType={row.mimeType ?? ''} url={row.url} fileName={row.name} size={size} namespace={row.namespace} filePath={row.filePath} />;
   }, []);
 
   const columns = useMemo<ColumnDef<FileNode>[]>(() => {

@@ -10,6 +10,7 @@ import type { SortingState } from '@tanstack/react-table';
 import type { SortKey, SortDir, FileItem } from '../types';
 import { Breadcrumb } from './Breadcrumb';
 import { PreviewSheet } from '../../preview/components/PreviewSheet';
+import { FilePropertiesSheet } from '../../preview/components/FilePropertiesSheet';
 
 import { useExplorerMutations } from '../hooks/useExplorerMutations';
 import { useExplorerClipboard } from '../hooks/useExplorerClipboard';
@@ -40,6 +41,7 @@ export function ExplorerView({ bucket, view, onViewChange, prefix, onPrefixChang
   const { selected, toggle, clear, setAll } = useSelection() as any;
 
   const [previewFile, setPreviewFile] = useState<FileItem | null>(null);
+  const [propertiesFile, setPropertiesFile] = useState<FileItem | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const sorting = useMemo<SortingState>(
@@ -87,6 +89,7 @@ export function ExplorerView({ bucket, view, onViewChange, prefix, onPrefixChang
     sortKey, sortDir, onSortChange, onSelectAll: selectAll,
     onUploadClick: openUpload,
     view, onViewChange,
+    onProperties: (file) => setPropertiesFile(file),
   });
 
   useBackgroundContextMenu(rootRef, ctx.openBackground);
@@ -180,6 +183,7 @@ export function ExplorerView({ bucket, view, onViewChange, prefix, onPrefixChang
           <FileBrowser
             files={files}
             folders={folders}
+            namespace={bucket}
             mode={view === 'grid' ? 'cards' : 'table'}
             onModeChange={(m) => onViewChange(m === 'cards' ? 'grid' : 'list')}
             selected={selected}
@@ -202,7 +206,8 @@ export function ExplorerView({ bucket, view, onViewChange, prefix, onPrefixChang
       </NPageHeader>
 
       {ctx.menu}
-      <PreviewSheet file={previewFile} onClose={() => setPreviewFile(null)} />
+      <PreviewSheet file={previewFile} files={files} onClose={() => setPreviewFile(null)} onNavigate={(f) => setPreviewFile(f)} />
+      <FilePropertiesSheet file={propertiesFile} onClose={() => setPropertiesFile(null)} />
 
       <NewFolderSheet state={dialogs.newFolder.state} prefix={prefix} onChange={dialogs.newFolder.change} onSubmit={dialogs.newFolder.submit} onClose={dialogs.newFolder.close} />
       <RenameSheet    state={dialogs.rename.state}    onChange={dialogs.rename.change}    onSubmit={dialogs.rename.submit}    onClose={dialogs.rename.close} />

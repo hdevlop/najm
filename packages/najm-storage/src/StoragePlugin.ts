@@ -27,6 +27,13 @@ const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provi
   enableCascadeDelete: config.enableCascadeDelete ?? true,
   cacheMaxAge: config.cacheMaxAge ?? 31536000,
   studio: config.studio ?? false,
+  preview: {
+    enabled: config.preview?.enabled ?? false,
+    cacheDir: config.preview?.cacheDir ?? '.thumbnails',
+    defaultQuality: config.preview?.defaultQuality ?? 80,
+    maxDimension: config.preview?.maxDimension ?? 2048,
+    maxCacheBytes: config.preview?.maxCacheBytes,
+  },
 });
 
 /**

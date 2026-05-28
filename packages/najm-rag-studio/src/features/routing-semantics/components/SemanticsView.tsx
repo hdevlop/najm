@@ -11,18 +11,40 @@ import { useCrossFeatureDrafts } from '@/features/chat/hooks/useCrossFeatureDraf
 import type { JsonViewColors, SemanticsViewMode } from '@/features/routing-semantics/types';
 import { defaultJsonViewColors } from '../utils/json-view-presets';
 import type { PendingSemanticDraft } from '@/lib/chatDraftsContext';
-import { getStoredFileViewMode, readFileViewUrlState, writeFileViewUrl } from '@/shared/utils/fileViewUrl';
 
 interface SemanticsViewProps {
   onViewContextChange?: (context: Record<string, unknown>) => void;
   resetNonce?: number;
+  initialView?: 'table' | 'json' | 'files';
+  initialGroup?: string;
+  initialLang?: string;
+  onSearchStateChange?: (state: { view?: string; group?: string; lang?: string }) => void;
 }
 
-export function SemanticsView({ onViewContextChange, resetNonce }: SemanticsViewProps) {
+function getStoredFileViewMode(
+  key: string,
+  legacyKey: string,
+  fallback: 'table' | 'json' | 'files' = 'table',
+): 'table' | 'json' | 'files' {
+  if (typeof window === 'undefined') return fallback;
+  for (const candidateKey of [key, legacyKey]) {
+    try {
+      const raw = window.localStorage.getItem(candidateKey);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (['table', 'json', 'files'].includes(parsed)) return parsed;
+    } catch {
+      // Ignore malformed localStorage values.
+    }
+  }
+  return fallback;
+}
+
+export function SemanticsView({ onViewContextChange, resetNonce, initialView, initialGroup, initialLang, onSearchStateChange }: SemanticsViewProps) {
   const { banner, showBanner, dismissBanner } = useBanner();
   const { consumeSemanticDraft } = useCrossFeatureDrafts(() => {});
+
   const [consumedSemanticDraft, setConsumedSemanticDraft] = useState<PendingSemanticDraft | null>(null);
-  const initialUrlState = useMemo(() => readFileViewUrlState(), []);
 
   const [jsonViewColors, setJsonViewColors] = useLocalStorageState<JsonViewColors>(
     'najm-rag-studio:jsonViewColors',
@@ -30,7 +52,7 @@ export function SemanticsView({ onViewContextChange, resetNonce }: SemanticsView
   );
   const [semanticsViewMode, setSemanticsViewMode] = useLocalStorageState<SemanticsViewMode>(
     'najm-rag-studio:semantics:view-mode',
-    (initialUrlState.view ?? getStoredFileViewMode(
+    (initialView ?? getStoredFileViewMode(
       'najm-rag-studio:semantics:view-mode',
       'najm-rag-studio:semanticsViewMode',
       'table',
@@ -75,20 +97,20 @@ export function SemanticsView({ onViewContextChange, resetNonce }: SemanticsView
   } = useSemanticsWorkspace();
 
   useEffect(() => {
-    if (!initialUrlState.group && !initialUrlState.lang) return;
+    if (!initialGroup && !initialLang) return;
     setSearchQuery('');
     setToolFilter('');
-    setToolGroupFilter(initialUrlState.group ?? '');
-    setLangFilter(initialUrlState.lang ?? '');
-  }, [initialUrlState.group, initialUrlState.lang, setLangFilter, setSearchQuery, setToolFilter, setToolGroupFilter]);
+    setToolGroupFilter(initialGroup ?? '');
+    setLangFilter(initialLang ?? '');
+  }, [initialGroup, initialLang, setLangFilter, setSearchQuery, setToolFilter, setToolGroupFilter]);
 
   useEffect(() => {
-    writeFileViewUrl('/semantics', {
+    onSearchStateChange?.({
       view: semanticsViewMode,
       group: toolGroupFilter || undefined,
       lang: langFilter || undefined,
     });
-  }, [semanticsViewMode, toolGroupFilter, langFilter]);
+  }, [semanticsViewMode, toolGroupFilter, langFilter, onSearchStateChange]);
 
   useEffect(() => {
     if (!resetNonce) return;

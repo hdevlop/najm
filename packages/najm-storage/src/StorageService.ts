@@ -7,14 +7,14 @@ import { resolve as resolvePath } from 'node:path';
 import { Service, Meta, Inject, DI, Container, LoggerService } from 'najm-core';
 import { Events } from 'najm-event';
 import { STORAGE_CONFIG } from './tokens';
-import type { StorageConfig, IStorageProvider, FileInfo, StorageSchema, StorageDialect, ProcessFileOptions, ListOptions, ListResult, NamespaceInfo, UsageSummary, UsageCategory, BucketConfig } from './types';
+import type { StorageConfig, IStorageProvider, FileInfo, StorageSchema, StorageDialect, ProcessFileOptions, ListOptions, ListResult, NamespaceInfo, UsageSummary, UsageCategory, BucketConfig, PreviewOptions } from './types';
 import { LocalStorageProvider } from './providers/LocalStorageProvider';
 import { DbStorageProvider } from './providers/DbStorageProvider';
 import { storageSchema as pgSchema } from './schema/pg';
 import { storageSchema as sqliteSchema } from './schema/sqlite';
 import { storageSchema as mysqlSchema } from './schema/mysql';
 import { StorageValidator } from './StorageValidator';
-import { isStoragePath, isFileObject, getFileExtension } from './fileUtils';
+import { isStoragePath, isFileObject, getFileExtension, FileCategory } from './fileUtils';
 
 function detectDialect(db: any): StorageDialect {
   const name: string = db?.dialect?.constructor?.name?.toLowerCase() ?? '';
@@ -52,6 +52,15 @@ function summarizeUsage(files: FileInfo[]): UsageSummary {
   };
 }
 
+function encodePathSegments(path: string): string {
+  return path.split('/').map((segment) => encodeURIComponent(segment)).join('/');
+}
+
+function parseBoundedInt(value: number | undefined, min: number, max: number): number | undefined {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return undefined;
+  return Math.min(Math.max(min, Math.round(value)), max);
+}
+
 @Service()
 @Meta({ layer: 'plugin' })
 export class StorageService {
@@ -78,7 +87,7 @@ export class StorageService {
       this.provider = new DbStorageProvider(db, schema, dialect);
     } else {
       const basePath = this.config.basePath ?? 'storage';
-      this.provider = new LocalStorageProvider(basePath);
+      this.provider = new LocalStorageProvider(basePath, this.config.preview);
     }
 
     // Auto-create fixed buckets from config
@@ -149,6 +158,37 @@ export class StorageService {
         'Cache-Control': `public, max-age=${cacheMaxAge}`,
       },
     });
+  }
+
+  async servePreview(namespace: string, rawPath: string, opts: PreviewOptions): Promise<Response | null> {
+    if (!this.config.preview?.enabled) return null;
+    const target = this.validator.resolveTarget(namespace, rawPath);
+    const info = await this.getInfoOrThrow(target.namespace, target.filePath);
+    if (info.category !== FileCategory.IMAGE) return null;
+    if (!this.provider.getPreview) return null;
+    const previewOptions = this.normalizePreviewOptions(opts);
+    const data = await this.provider.getPreview!(target.namespace, target.filePath, previewOptions);
+    if (!data) return null;
+    const contentType = previewOptions.format === 'original'
+      ? info.mimeType
+      : `image/${previewOptions.format}`;
+    return new Response(data as any, {
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000',
+      },
+    });
+  }
+
+  private normalizePreviewOptions(opts: PreviewOptions): PreviewOptions {
+    const maxDimension = this.config.preview?.maxDimension ?? 2048;
+    const defaultQuality = this.config.preview?.defaultQuality ?? 80;
+    const width = parseBoundedInt(opts.width, 1, maxDimension);
+    const height = parseBoundedInt(opts.height, 1, maxDimension);
+    const quality = parseBoundedInt(opts.quality, 1, 100) ?? defaultQuality;
+    const format = opts.format ?? 'original';
+    const fit = opts.fit ?? 'cover';
+    return { width, height, quality, format, fit };
   }
 
   async uploadFile(
@@ -430,7 +470,19 @@ export class StorageService {
    */
   getServePath(namespace: string, filePath: string): string {
     const prefix = this.config.servePrefix ?? '';
-    return `${prefix}/${namespace}/files/serve/${filePath}`;
+    return `${prefix}/${encodeURIComponent(namespace)}/files/serve/${encodePathSegments(filePath)}`;
+  }
+
+  getPreviewPath(namespace: string, filePath: string, opts?: PreviewOptions): string {
+    const prefix = this.config.servePrefix ?? '';
+    const qs = new URLSearchParams();
+    if (opts?.width) qs.set('w', String(opts.width));
+    if (opts?.height) qs.set('h', String(opts.height));
+    if (opts?.quality) qs.set('q', String(opts.quality));
+    if (opts?.format && opts.format !== 'original') qs.set('format', opts.format);
+    if (opts?.fit) qs.set('fit', opts.fit);
+    const query = qs.toString();
+    return `${prefix}/${encodeURIComponent(namespace)}/files/preview/${encodePathSegments(filePath)}${query ? `?${query}` : ''}`;
   }
 
   /**

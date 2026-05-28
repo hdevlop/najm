@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { NFileTypeIcon } from 'najm-ui';
+import { useStudio } from '../../../providers';
 
 export function FolderThumbnail({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) {
   const dim =
@@ -24,16 +25,89 @@ export function FolderThumbnail({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' | '
   );
 }
 
+function buildPreviewUrl(storageApiBase: string, namespace: string, filePath: string): string {
+  const qs = new URLSearchParams();
+  qs.set('w', '256');
+  qs.set('h', '256');
+  qs.set('format', 'webp');
+  const encodedPath = filePath.split('/').map(encodeURIComponent).join('/');
+  return `${storageApiBase}/${encodeURIComponent(namespace)}/files/preview/${encodedPath}?${qs}`;
+}
+
+function buildProxyUrl(apiBase: string, namespace: string, filePath: string): string {
+  const qs = new URLSearchParams();
+  qs.set('namespace', namespace);
+  qs.set('path', filePath);
+  qs.set('w', '256');
+  qs.set('h', '256');
+  qs.set('format', 'webp');
+  return `${apiBase}/preview?${qs}`;
+}
+
 export function FileThumbnail({
   mimeType,
   url,
   fileName,
   size = 'md',
+  namespace,
+  filePath,
 }: {
   mimeType: string;
   url?: string;
   fileName?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
+  namespace?: string;
+  filePath?: string;
 }) {
-  return <NFileTypeIcon mimeType={mimeType} url={url} fileName={fileName} size={size} />;
+  const { apiBase, storageApiBase, getAuthHeaders } = useStudio();
+  const [blobUrl, setBlobUrl] = useState<string | undefined>(url);
+  const isImage = /^image\//.test(mimeType);
+  const isGrid = size === 'xl';
+
+  useEffect(() => {
+    if (!isImage || !isGrid || !namespace || !filePath) {
+      setBlobUrl(url);
+      return;
+    }
+
+    const directUrl = buildPreviewUrl(storageApiBase, namespace, filePath);
+    const headers = getAuthHeaders();
+    const hasAuth = Object.keys(headers).length > 0;
+
+    if (!hasAuth) {
+      setBlobUrl(directUrl);
+      return;
+    }
+
+    const controller = new AbortController();
+    let objectUrl: string | undefined;
+    const proxyUrl = buildProxyUrl(apiBase, namespace, filePath);
+
+    fetch(proxyUrl, { headers, credentials: 'same-origin', signal: controller.signal })
+      .then((res) => (res.ok ? res.blob() : Promise.reject(new Error(`HTTP ${res.status}`))))
+      .then((blob) => {
+        if (controller.signal.aborted) return;
+        objectUrl = URL.createObjectURL(blob);
+        setBlobUrl(objectUrl);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setBlobUrl(directUrl);
+      });
+
+    return () => {
+      controller.abort();
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    };
+  }, [url, mimeType, size, namespace, filePath, apiBase, storageApiBase, getAuthHeaders, isImage, isGrid]);
+
+  // Cleanup previous blob URLs when they change
+  useEffect(() => {
+    return () => {
+      if (blobUrl && blobUrl !== url) {
+        URL.revokeObjectURL(blobUrl);
+      }
+    };
+  }, [blobUrl, url]);
+
+  return <NFileTypeIcon mimeType={mimeType} url={blobUrl} fileName={fileName} size={size} />;
 }

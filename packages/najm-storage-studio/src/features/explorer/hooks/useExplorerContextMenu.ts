@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
-import { LayoutGrid, List } from 'lucide-react';
+import { Info, LayoutGrid, List } from 'lucide-react';
 import { useStorageContextMenu, type StorageTarget } from 'najm-ui';
 import type { SortKey, SortDir, FileItem } from '../types';
 import type { ExplorerMutations } from './useExplorerMutations';
@@ -20,6 +20,7 @@ interface Options {
   onUploadClick: () => void;
   view: 'list' | 'grid';
   onViewChange: (view: 'list' | 'grid') => void;
+  onProperties: (file: FileItem) => void;
 }
 
 /**
@@ -28,7 +29,7 @@ interface Options {
  * standard `{ openItem, openBackground, close, menu }` shape from najm-ui.
  */
 export function useExplorerContextMenu({
-  files, selected, dialogs, clipboard, mutations, sortKey, sortDir, onSortChange, onSelectAll, onUploadClick, view, onViewChange,
+  files, selected, dialogs, clipboard, mutations, sortKey, sortDir, onSortChange, onSelectAll, onUploadClick, view, onViewChange, onProperties,
 }: Options) {
   const switchView = useCallback(() => {
     onViewChange(view === 'grid' ? 'list' : 'grid');
@@ -90,9 +91,18 @@ export function useExplorerContextMenu({
     onNewFile:   onUploadClick,
     onSelectAll,
     onSort:      (id) => onSortChange(id as SortKey),
-    itemExtras:        () => [switchViewItem()],
+    itemExtras:        (target) => [
+      ...(target.isFolder ? [] : [{ id: 'properties', label: 'Properties', icon: Info, separatorBefore: true }]),
+      switchViewItem(),
+    ],
     backgroundExtras:  () => [switchViewItem()],
-    onItemExtraAction: (action) => { if (action === 'switch-view') switchView(); },
+    onItemExtraAction: (action, target) => {
+      if (action === 'switch-view') switchView();
+      if (action === 'properties') {
+        const file = files.find((f) => f.filePath === target.key);
+        if (file) onProperties(file);
+      }
+    },
     onBackgroundExtraAction: (action) => { if (action === 'switch-view') switchView(); },
   });
 }

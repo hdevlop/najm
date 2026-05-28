@@ -65,6 +65,7 @@ export default defineConfig({
     },
   },
   external: [
+    '@tanstack/react-router',
     'lucide-react',
     'react',
     'react-dom',

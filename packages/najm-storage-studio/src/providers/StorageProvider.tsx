@@ -6,6 +6,7 @@ interface StudioContextValue {
   storageApiBase: string;
   getAuthHeaders: () => Record<string, string>;
   onUnauthorized?: () => void;
+  basePath: string;
 }
 
 const StudioContext = createContext<StudioContextValue | null>(null);
@@ -15,11 +16,13 @@ export function StorageStudioProvider({
   storageApiBase,
   getAuthHeaders = () => ({}),
   onUnauthorized,
+  basePath,
   children,
 }: StorageStudioProviderProps) {
+  const normalizedBasePath = basePath?.replace(/\/+$/, '') || '';
   const value = useMemo(
-    () => ({ apiBase, storageApiBase: storageApiBase ?? apiBase, getAuthHeaders, onUnauthorized }),
-    [apiBase, storageApiBase, getAuthHeaders, onUnauthorized]
+    () => ({ apiBase, storageApiBase: storageApiBase ?? apiBase, getAuthHeaders, onUnauthorized, basePath: normalizedBasePath }),
+    [apiBase, storageApiBase, getAuthHeaders, onUnauthorized, normalizedBasePath]
   );
   return <StudioContext.Provider value={value}>{children}</StudioContext.Provider>;
 }

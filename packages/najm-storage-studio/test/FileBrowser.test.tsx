@@ -2,6 +2,7 @@ import { describe, test, expect, mock } from 'bun:test';
 import React from 'react';
 import { render, fireEvent } from '@testing-library/react';
 import { FileBrowser } from '../src/features/explorer/components/FileBrowser';
+import { StorageStudioProvider } from '../src/providers';
 import type { FileItem } from '../src/features/explorer/types';
 
 // Re-export the drag handlers type for use in test
@@ -27,18 +28,21 @@ describe('FileBrowser smoke test', () => {
 
     // Minimal render to confirm the module works
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={makeFiles(1)}
-          folders={folders}
-          mode="table"
-          selected={new Set()}
-          onSelectAll={onSelectAll}
-          onNavigate={onNavigate}
-          onRowContextMenu={onRowContextMenu}
-          onMoveToFolder={onMoveToFolder}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={makeFiles(1)}
+            folders={folders}
+            namespace="test"
+            mode="table"
+            selected={new Set()}
+            onSelectAll={onSelectAll}
+            onNavigate={onNavigate}
+            onRowContextMenu={onRowContextMenu}
+            onMoveToFolder={onMoveToFolder}
+          />
+        </div>
+      </StorageStudioProvider>
     );
     // If we get here without throwing, the module is importable
     expect(container).toBeTruthy();
@@ -46,18 +50,21 @@ describe('FileBrowser smoke test', () => {
 
   test('renders table mode with column headers present', () => {
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={makeFiles(3)}
-          folders={['/folder/afolder']}
-          mode="table"
-          selected={new Set()}
-          onSelectAll={mock()}
-          onNavigate={mock()}
-          onRowContextMenu={mock()}
-          onMoveToFolder={mock()}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={makeFiles(3)}
+            folders={['/folder/afolder']}
+            namespace="test"
+            mode="table"
+            selected={new Set()}
+            onSelectAll={mock()}
+            onNavigate={mock()}
+            onRowContextMenu={mock()}
+            onMoveToFolder={mock()}
+          />
+        </div>
+      </StorageStudioProvider>
     );
 
     // Wait for NTable to render
@@ -74,18 +81,21 @@ describe('FileBrowser smoke test', () => {
 
   test('renders cards mode without table element', () => {
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={makeFiles(3)}
-          folders={['/folder/afolder']}
-          mode="cards"
-          selected={new Set()}
-          onSelectAll={mock()}
-          onNavigate={mock()}
-          onRowContextMenu={mock()}
-          onMoveToFolder={mock()}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={makeFiles(3)}
+            folders={['/folder/afolder']}
+            namespace="test"
+            mode="cards"
+            selected={new Set()}
+            onSelectAll={mock()}
+            onNavigate={mock()}
+            onRowContextMenu={mock()}
+            onMoveToFolder={mock()}
+          />
+        </div>
+      </StorageStudioProvider>
     );
 
     // No table in cards mode
@@ -94,18 +104,21 @@ describe('FileBrowser smoke test', () => {
 
   test('mode=table renders with table element present', () => {
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={makeFiles(2)}
-          folders={[]}
-          mode="table"
-          selected={new Set()}
-          onSelectAll={mock()}
-          onNavigate={mock()}
-          onRowContextMenu={mock()}
-          onMoveToFolder={mock()}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={makeFiles(2)}
+            folders={[]}
+            namespace="test"
+            mode="table"
+            selected={new Set()}
+            onSelectAll={mock()}
+            onNavigate={mock()}
+            onRowContextMenu={mock()}
+            onMoveToFolder={mock()}
+          />
+        </div>
+      </StorageStudioProvider>
     );
 
     // In table mode, a table element should be present
@@ -115,18 +128,21 @@ describe('FileBrowser smoke test', () => {
 
   test('mode=cards renders FileTile tiles with w-36 class', () => {
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={makeFiles(2)}
-          folders={['/folder/myfolder']}
-          mode="cards"
-          selected={new Set()}
-          onSelectAll={mock()}
-          onNavigate={mock()}
-          onRowContextMenu={mock()}
-          onMoveToFolder={mock()}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={makeFiles(2)}
+            folders={['/folder/myfolder']}
+            namespace="test"
+            mode="cards"
+            selected={new Set()}
+            onSelectAll={mock()}
+            onNavigate={mock()}
+            onRowContextMenu={mock()}
+            onMoveToFolder={mock()}
+          />
+        </div>
+      </StorageStudioProvider>
     );
 
     // Cards use w-36 class
@@ -137,18 +153,21 @@ describe('FileBrowser smoke test', () => {
   test('onNavigate fires when tile content is clicked (mode=cards)', () => {
     const onNavigate = mock();
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={makeFiles(1)}
-          folders={[]}
-          mode="cards"
-          selected={new Set()}
-          onSelectAll={mock()}
-          onNavigate={onNavigate}
-          onRowContextMenu={mock()}
-          onMoveToFolder={mock()}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={makeFiles(1)}
+            folders={[]}
+            namespace="test"
+            mode="cards"
+            selected={new Set()}
+            onSelectAll={mock()}
+            onNavigate={onNavigate}
+            onRowContextMenu={mock()}
+            onMoveToFolder={mock()}
+          />
+        </div>
+      </StorageStudioProvider>
     );
 
     // Find tile and click its name span
@@ -164,18 +183,21 @@ describe('FileBrowser smoke test', () => {
   test('onNavigate fires when folder tile is clicked (mode=cards)', () => {
     const onNavigate = mock();
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={[]}
-          folders={['/folder/afolder']}
-          mode="cards"
-          selected={new Set()}
-          onSelectAll={mock()}
-          onNavigate={onNavigate}
-          onRowContextMenu={mock()}
-          onMoveToFolder={mock()}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={[]}
+            folders={['/folder/afolder']}
+            namespace="test"
+            mode="cards"
+            selected={new Set()}
+            onSelectAll={mock()}
+            onNavigate={onNavigate}
+            onRowContextMenu={mock()}
+            onMoveToFolder={mock()}
+          />
+        </div>
+      </StorageStudioProvider>
     );
 
     const tiles = container.querySelectorAll('.w-36');
@@ -189,18 +211,21 @@ describe('FileBrowser smoke test', () => {
     const onSelectAll = mock();
     const onNavigate = mock();
     const { container } = render(
-      <div style={{ height: 600 }}>
-        <FileBrowser
-          files={makeFiles(1)}
-          folders={[]}
-          mode="cards"
-          selected={new Set()}
-          onSelectAll={onSelectAll}
-          onNavigate={onNavigate}
-          onRowContextMenu={mock()}
-          onMoveToFolder={mock()}
-        />
-      </div>
+      <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
+        <div style={{ height: 600 }}>
+          <FileBrowser
+            files={makeFiles(1)}
+            folders={[]}
+            namespace="test"
+            mode="cards"
+            selected={new Set()}
+            onSelectAll={onSelectAll}
+            onNavigate={onNavigate}
+            onRowContextMenu={mock()}
+            onMoveToFolder={mock()}
+          />
+        </div>
+      </StorageStudioProvider>
     );
 
     // Click the tile body (not checkbox)
