@@ -15,6 +15,9 @@ const statements = [
   `CREATE TABLE IF NOT EXISTS chatbot_studio_audit_logs (id TEXT PRIMARY KEY, action TEXT NOT NULL, user_id TEXT, details TEXT NOT NULL DEFAULT '', created_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS chatbot_interaction_logs (id TEXT PRIMARY KEY, session_key TEXT, user_query TEXT NOT NULL, query_lang TEXT, routing_enabled INTEGER NOT NULL DEFAULT 0, routing_status TEXT NOT NULL, routed_tools TEXT, actual_tool_names TEXT, model_tool_calls TEXT, model_answer TEXT, steps_count TEXT, success INTEGER, error TEXT, metadata TEXT, created_at TEXT)`,
   `CREATE TABLE IF NOT EXISTS storage_files (id TEXT PRIMARY KEY, namespace TEXT NOT NULL, path TEXT NOT NULL, filename TEXT NOT NULL, mime TEXT, size INTEGER, metadata TEXT, created_at TEXT, updated_at TEXT)`,
+  `CREATE TABLE IF NOT EXISTS storage_audit_log (id INTEGER PRIMARY KEY AUTOINCREMENT, actor TEXT NOT NULL, action TEXT NOT NULL, namespace TEXT NOT NULL, path TEXT, meta TEXT, ts TEXT NOT NULL)`,
+  `CREATE INDEX IF NOT EXISTS storage_audit_log_ts_idx ON storage_audit_log(ts)`,
+  `CREATE INDEX IF NOT EXISTS storage_audit_log_namespace_idx ON storage_audit_log(namespace)`,
 ];
 
 for (const sql of statements) {

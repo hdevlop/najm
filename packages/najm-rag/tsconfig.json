@@ -13,8 +13,10 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist",
-    "composite": true
+    "jsx": "react-jsx",
+    "baseUrl": ".",
+    "paths": { "@/*": ["./src/studio/*"] }
   },
-  "include": ["src/**/*", "test/**/*"],
+  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*"],
   "exclude": ["node_modules", "dist"]
 }

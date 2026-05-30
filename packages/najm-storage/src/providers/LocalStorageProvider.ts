@@ -5,7 +5,7 @@
 import { promises as fs } from 'fs';
 import { join, dirname, extname } from 'path';
 import { createHash } from 'crypto';
-import type { IStorageProvider, FileInfo, ListOptions, ListResult, NamespaceInfo, BucketConfig, PreviewOptions, PreviewConfig } from '../types';
+import type { IStorageProvider, FileInfo, ListOptions, ListResult, NamespaceInfo, BucketConfig, PreviewOptions, PreviewConfig, StorageCapabilities } from '../types';
 import { FileCategory, getFileCategoryFromMimeType, inferMimeTypeFromPath } from '../fileUtils';
 
 const FOLDER_PLACEHOLDER = '.keep';
@@ -289,6 +289,15 @@ export class LocalStorageProvider implements IStorageProvider {
       }
     } catch { /* no trash */ }
     return results;
+  }
+
+  getCapabilities(): StorageCapabilities {
+    return {
+      tags: false,
+      presign: false,
+      trash: true,
+      buckets: true,
+    };
   }
 
   async getPreview(namespace: string, filePath: string, options: PreviewOptions): Promise<Uint8Array | null> {

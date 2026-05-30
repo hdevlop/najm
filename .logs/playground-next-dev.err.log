@@ -1,0 +1,2 @@
+$ bun run --cwd apps/playground dev:next
+$ next dev

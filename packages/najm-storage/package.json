@@ -28,23 +28,44 @@
       "types": "./dist/schema/mysql.d.ts",
       "import": "./dist/schema/mysql.js",
       "default": "./dist/schema/mysql.js"
-    }
+    },
+    "./studio": {
+      "types": "./dist/studio/index.d.ts",
+      "import": "./dist/studio/index.mjs",
+      "default": "./dist/studio/index.mjs"
+    },
+    "./studio/styles.css": {
+      "import": "./dist/studio/styles.css",
+      "default": "./dist/studio/styles.css"
+    },
+    "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsup",
-    "test": "bun test",
+    "build": "bun scripts/build.ts",
+    "build:css": "node scripts/build-css.mjs",
+    "test": "bun test --preload ./test/studio/setup.ts",
     "test:watch": "bun test --watch",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
     "najm-core": "workspace:*",
     "najm-event": "workspace:*",
-    "najm-database": "workspace:*"
+    "najm-database": "workspace:*",
+    "@tanstack/react-router": "^1.170.8",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.474.0",
+    "najm-ui": "workspace:*",
+    "recharts": "^2.15.0",
+    "sonner": "^2",
+    "swr": "^2.3.0",
+    "tailwind-merge": "^2.6.0"
   },
   "peerDependencies": {
     "drizzle-orm": "*",
     "hono": "^4.0.0",
     "najm-mcp": "workspace:*",
+    "react": ">=18",
+    "react-dom": ">=18",
     "reflect-metadata": "^0.2.0",
     "zod": "^4.0.0"
   },
@@ -57,11 +78,18 @@
     }
   },
   "devDependencies": {
+    "@testing-library/react": "^16.3.2",
     "@types/node": "^25.0.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.20",
     "drizzle-orm": "^0.45.1",
+    "happy-dom": "^17.6.3",
+    "postcss": "^8.5.1",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^3.4.17",
     "tsup": "^8.5.1",
     "typescript": "^5.7.3",
-    "rimraf": "^6.0.1",
     "zod": "^4.2.1"
   }
 }

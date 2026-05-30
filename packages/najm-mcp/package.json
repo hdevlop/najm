@@ -27,12 +27,19 @@
     "hono": "^4.0.0",
     "najm-core": "workspace:*",
     "najm-guard": "workspace:*",
+    "najm-validation": "workspace:*",
     "reflect-metadata": "^0.2.0",
     "zod": "^3.0.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "najm-validation": {
+      "optional": true
+    }
   },
   "devDependencies": {
     "najm-core": "workspace:*",
     "najm-guard": "workspace:*",
+    "najm-validation": "workspace:*",
     "tsup": "^8.0.0",
     "typescript": "^5.7.3"
   }

@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { eq, and, like, isNull, desc, sql } from 'drizzle-orm';
-import type { IStorageProvider, FileInfo, StorageSchema, StorageDialect, ListOptions, ListResult, NamespaceInfo, BucketConfig } from '../types';
+import type { IStorageProvider, FileInfo, StorageSchema, StorageDialect, ListOptions, ListResult, NamespaceInfo, BucketConfig, StorageCapabilities } from '../types';
 import { FileCategory, getFileCategoryFromMimeType } from '../fileUtils';
 
 const FOLDER_PLACEHOLDER = '.keep';
@@ -13,21 +13,30 @@ function isFolderPlaceholder(filePath: string): boolean {
 }
 
 export class DbStorageProvider implements IStorageProvider {
-  private readonly table: any;
+  private readonly _table: any;
   private readonly bucketTable: any;
+  readonly tagTable: any;
+  readonly fileTagTable: any;
+  private readonly _dialect: StorageDialect;
 
   constructor(
-    private readonly db: any,
+    readonly db: any,
     schema: StorageSchema,
-    private readonly dialect: StorageDialect = 'sqlite',
+    dialect: StorageDialect = 'sqlite',
   ) {
-    this.table = schema.storageFiles;
+    this._table = schema.storageFiles;
     this.bucketTable = schema.storageBuckets;
+    this.tagTable = schema.storageTags;
+    this.fileTagTable = schema.storageFileTags;
+    this._dialect = dialect;
   }
+
+  get table(): any { return this._table; }
+  get dialect(): StorageDialect { return this._dialect; }
 
   private async upsert(values: any, updateSet: any): Promise<void> {
     const query = this.db.insert(this.table).values(values);
-    if (this.dialect === 'mysql') {
+    if (this._dialect === 'mysql') {
       await query.onDuplicateKeyUpdate({ set: updateSet });
     } else {
       await query.onConflictDoUpdate({ target: this.table.id, set: updateSet });
@@ -67,6 +76,11 @@ export class DbStorageProvider implements IStorageProvider {
       .limit(1);
 
     if (!existing) return false;
+
+    const fileId = `${namespace}/${filePath}`;
+    if (this.fileTagTable) {
+      await this.db.delete(this.fileTagTable).where(eq(this.fileTagTable.fileId, fileId));
+    }
 
     await this.db
       .delete(this.table)
@@ -120,6 +134,15 @@ export class DbStorageProvider implements IStorageProvider {
   }
 
   async deleteAll(namespace: string): Promise<void> {
+    if (this.fileTagTable) {
+      const rows = await this.db
+        .select({ id: this.table.id })
+        .from(this.table)
+        .where(eq(this.table.namespace, namespace));
+      for (const row of rows) {
+        await this.db.delete(this.fileTagTable).where(eq(this.fileTagTable.fileId, row.id));
+      }
+    }
     await this.db.delete(this.table).where(eq(this.table.namespace, namespace));
   }
 
@@ -145,21 +168,21 @@ export class DbStorageProvider implements IStorageProvider {
 
   async listObjects(namespace: string, options?: ListOptions): Promise<ListResult> {
     const { prefix = '', delimiter, limit = 1000, includeDeleted } = options ?? {};
-    const cond = [eq(this.table.namespace, namespace)];
-    if (!includeDeleted && this.table.deletedAt) cond.push(isNull(this.table.deletedAt));
-    if (prefix) cond.push(like(this.table.filePath, `${prefix}%`));
+    const cond = [eq(this._table.namespace, namespace)];
+    if (!includeDeleted && this._table.deletedAt) cond.push(isNull(this._table.deletedAt));
+    if (prefix) cond.push(like(this._table.filePath, `${prefix}%`));
 
     const rows = await this.db
       .select({
-        namespace: this.table.namespace,
-        filePath: this.table.filePath,
-        mimeType: this.table.mimeType,
-        size: this.table.size,
-        category: this.table.category,
-        createdAt: this.table.createdAt,
-        updatedAt: this.table.updatedAt,
+        namespace: this._table.namespace,
+        filePath: this._table.filePath,
+        mimeType: this._table.mimeType,
+        size: this._table.size,
+        category: this._table.category,
+        createdAt: this._table.createdAt,
+        updatedAt: this._table.updatedAt,
       })
-      .from(this.table)
+      .from(this._table)
       .where(and(...cond))
       .limit(limit + 1);
 
@@ -179,6 +202,29 @@ export class DbStorageProvider implements IStorageProvider {
       if (isFolderPlaceholder(rel)) continue;
       files.push(this.toFileInfo(row));
       if (files.length >= limit) break;
+    }
+
+    if (this.tagTable && this.fileTagTable && files.length > 0) {
+      const fileIds = files.map((f) => `${namespace}/${f.filePath}`);
+      const tagRows = await this.db
+        .select({
+          fileId: this.fileTagTable.fileId,
+          tagName: this.tagTable.name,
+        })
+        .from(this.fileTagTable)
+        .innerJoin(this.tagTable, sql`${this.fileTagTable.tagId} = ${this.tagTable.id}`)
+        .where(sql`${this.fileTagTable.fileId} IN (${sql.join(fileIds.map((id) => sql`${id}`), sql`, `)})`);
+
+      const tagMap = new Map<string, string[]>();
+      for (const tr of tagRows) {
+        const arr = tagMap.get(tr.fileId) ?? [];
+        arr.push(tr.tagName);
+        tagMap.set(tr.fileId, arr);
+      }
+
+      for (const file of files) {
+        file.tags = tagMap.get(`${namespace}/${file.filePath}`) ?? [];
+      }
     }
 
     return { files, folders: Array.from(folderSet).sort() };
@@ -201,7 +247,6 @@ export class DbStorageProvider implements IStorageProvider {
       fileRows.map((r: any) => [String(r.namespace), { count: Number(r.count), bytes: Number(r.totalBytes) }]),
     );
 
-    // Include registered buckets even if empty
     const bucketRows = this.bucketTable
       ? await this.db.select({ name: this.bucketTable.name }).from(this.bucketTable)
       : [];
@@ -246,12 +291,10 @@ export class DbStorageProvider implements IStorageProvider {
     if (patch.allowedMimeTypes !== undefined) set.allowedMimeTypes = patch.allowedMimeTypes ? JSON.stringify(patch.allowedMimeTypes) : null;
     if (patch.protected !== undefined) set.protected = patch.protected ? 1 : 0;
     if (patch.name !== undefined && patch.name !== name) {
-      // rename: insert new, delete old
       const [existing] = await this.db.select().from(this.bucketTable).where(eq(this.bucketTable.name, name)).limit(1);
       if (!existing) throw new Error(`Bucket "${name}" not found`);
       await this.db.insert(this.bucketTable).values({ ...existing, name: patch.name });
       await this.db.delete(this.bucketTable).where(eq(this.bucketTable.name, name));
-      // update files table namespace
       await this.db.update(this.table).set({ namespace: patch.name }).where(eq(this.table.namespace, name));
     } else {
       await this.db.update(this.bucketTable).set(set).where(eq(this.bucketTable.name, name));
@@ -262,6 +305,12 @@ export class DbStorageProvider implements IStorageProvider {
     if (!this.bucketTable) throw new Error('Bucket table not configured');
     const [existing] = await this.db.select().from(this.bucketTable).where(eq(this.bucketTable.name, name)).limit(1);
     if (existing?.protected) throw new Error(`Bucket "${name}" is protected and cannot be deleted`);
+    if (this.fileTagTable) {
+      const rows = await this.db.select({ id: this.table.id }).from(this.table).where(eq(this.table.namespace, name));
+      for (const row of rows) {
+        await this.db.delete(this.fileTagTable).where(eq(this.fileTagTable.fileId, row.id));
+      }
+    }
     await this.db.delete(this.bucketTable).where(eq(this.bucketTable.name, name));
     await this.db.delete(this.table).where(eq(this.table.namespace, name));
   }
@@ -271,13 +320,23 @@ export class DbStorageProvider implements IStorageProvider {
     if (this.table.deletedAt) cond.push(isNull(this.table.deletedAt));
 
     const now = new Date().toISOString();
+    const newId = `${namespace}/${to}`;
+
     const result = await this.db
       .update(this.table)
-      .set({ id: `${namespace}/${to}`, filePath: to, updatedAt: now })
+      .set({ id: newId, filePath: to, updatedAt: now })
       .where(and(...cond));
 
     const affected = (result as any).changes ?? (result as any).rowCount ?? 0;
     if (affected === 0) throw new Error('Source not found');
+
+    if (this.fileTagTable) {
+      const oldId = `${namespace}/${from}`;
+      await this.db
+        .update(this.fileTagTable)
+        .set({ fileId: newId })
+        .where(eq(this.fileTagTable.fileId, oldId));
+    }
   }
 
   async copyFile(namespace: string, from: string, to: string): Promise<void> {
@@ -336,6 +395,15 @@ export class DbStorageProvider implements IStorageProvider {
       ...this.toFileInfo(row),
       deletedAt: row.deletedAt,
     }));
+  }
+
+  getCapabilities(): StorageCapabilities {
+    return {
+      tags: !!this.tagTable && !!this.fileTagTable,
+      presign: false,
+      trash: !!this._table.deletedAt,
+      buckets: !!this.bucketTable,
+    };
   }
 
   private toFileInfo(row: any): FileInfo {

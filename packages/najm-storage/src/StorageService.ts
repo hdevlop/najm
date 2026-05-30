@@ -7,7 +7,7 @@ import { resolve as resolvePath } from 'node:path';
 import { Service, Meta, Inject, DI, Container, LoggerService } from 'najm-core';
 import { Events } from 'najm-event';
 import { STORAGE_CONFIG } from './tokens';
-import type { StorageConfig, IStorageProvider, FileInfo, StorageSchema, StorageDialect, ProcessFileOptions, ListOptions, ListResult, NamespaceInfo, UsageSummary, UsageCategory, BucketConfig, PreviewOptions } from './types';
+import type { StorageConfig, IStorageProvider, FileInfo, StorageSchema, StorageDialect, ProcessFileOptions, ListOptions, ListResult, NamespaceInfo, UsageSummary, UsageCategory, BucketConfig, PreviewOptions, TagInfo, StorageCapabilities } from './types';
 import { LocalStorageProvider } from './providers/LocalStorageProvider';
 import { DbStorageProvider } from './providers/DbStorageProvider';
 import { storageSchema as pgSchema } from './schema/pg';
@@ -15,6 +15,7 @@ import { storageSchema as sqliteSchema } from './schema/sqlite';
 import { storageSchema as mysqlSchema } from './schema/mysql';
 import { StorageValidator } from './StorageValidator';
 import { isStoragePath, isFileObject, getFileExtension, FileCategory } from './fileUtils';
+import { eq, and, isNull, sql } from 'drizzle-orm';
 
 function detectDialect(db: any): StorageDialect {
   const name: string = db?.dialect?.constructor?.name?.toLowerCase() ?? '';
@@ -379,20 +380,27 @@ export class StorageService {
     return { files: await this.provider.list(safeNamespace), folders: [], nextCursor: null };
   }
 
-  async moveFile(namespace: string, from: string, to: string): Promise<void> {
+  async moveFile(namespace: string, from: string, to: string, options: { overwrite?: boolean } = {}): Promise<void> {
     if (!this.provider.move) throw new Error('Provider does not support move');
     const safeNs = this.validator.validateNamespace(namespace);
     const safeFrom = this.validator.normalizePath(from);
     const safeTo = this.validator.normalizePath(to);
+    if (options.overwrite && safeFrom !== safeTo) {
+      await this.provider.delete(safeNs, safeTo);
+    }
     await this.provider.move(safeNs, safeFrom, safeTo);
     this.events.emit('storage.moved', { namespace: safeNs, from: safeFrom, to: safeTo });
   }
 
-  async copyFile(namespace: string, from: string, to: string): Promise<void> {
+  async copyFile(namespace: string, from: string, to: string, options: { overwrite?: boolean } = {}): Promise<void> {
     if (!this.provider.copyFile) throw new Error('Provider does not support copyFile');
     const safeNs = this.validator.validateNamespace(namespace);
     const safeFrom = this.validator.normalizePath(from);
     const safeTo = this.validator.normalizePath(to);
+    if (options.overwrite === false) {
+      const existing = await this.provider.getInfo(safeNs, safeTo);
+      if (existing) throw new Error(`File already exists: ${safeTo}`);
+    }
     await this.provider.copyFile(safeNs, safeFrom, safeTo);
     this.events.emit('storage.copied', { namespace: safeNs, from: safeFrom, to: safeTo });
   }
@@ -451,9 +459,352 @@ export class StorageService {
   async getUsage(): Promise<UsageSummary> {
     const namespaces = await this.listNamespaces();
     const allFiles = (await Promise.all(namespaces.map((ns) => this.provider.list(ns.name)))).flat();
-    // Exclude soft-deleted files from usage accounting
     const activeFiles = allFiles.filter((f) => !f.deletedAt);
     return summarizeUsage(activeFiles);
+  }
+
+  async getCapabilities(): Promise<StorageCapabilities> {
+    if (this.provider.getCapabilities) return this.provider.getCapabilities();
+    return {
+      tags: false,
+      presign: !!this.provider.presign,
+      trash: !!this.provider.listTrash,
+      buckets: !!this.provider.listBuckets,
+    };
+  }
+
+  // ============================================================================
+  // TAG API
+  // ============================================================================
+
+  private get tagTable(): any { return (this.provider as DbStorageProvider).tagTable; }
+  private get fileTagTable(): any { return (this.provider as DbStorageProvider).fileTagTable; }
+  private get db(): any { return (this.provider as DbStorageProvider).db; }
+  private get dbDialect(): StorageDialect { return (this.provider as DbStorageProvider).dialect; }
+
+  private ensureTagSupport(): void {
+    if (!this.tagTable || !this.fileTagTable) {
+      throw new Error('Tag operations require a database storage provider');
+    }
+  }
+
+  private normalizeTagName(name: string): string {
+    return name.toLowerCase().trim();
+  }
+
+  private async insertFileTag(fileId: string, tagId: string, createdAt: string): Promise<void> {
+    const insertQ = this.db.insert(this.fileTagTable).values({ fileId, tagId, createdAt });
+    if (this.dbDialect === 'mysql') {
+      await insertQ.onDuplicateKeyUpdate({ set: { fileId } });
+    } else {
+      await insertQ.onConflictDoNothing();
+    }
+  }
+
+  async listTags(namespace: string): Promise<TagInfo[]> {
+    const safeNamespace = this.validator.validateNamespace(namespace);
+    if (!this.tagTable || !this.fileTagTable) return [];
+    const tagsTable = this.tagTable;
+    const fileTagsTable = this.fileTagTable;
+
+    const rows = await this.db
+      .select({
+        id: tagsTable.id,
+        namespace: tagsTable.namespace,
+        name: tagsTable.name,
+        color: tagsTable.color,
+        count: sql<number>`count(${fileTagsTable.fileId})`.as('count'),
+      })
+      .from(tagsTable)
+      .leftJoin(fileTagsTable, sql`${tagsTable.id} = ${fileTagsTable.tagId}`)
+      .where(eq(tagsTable.namespace, safeNamespace))
+      .groupBy(tagsTable.id);
+
+    return rows.map((r: any) => ({
+      id: r.id,
+      namespace: r.namespace,
+      name: r.name,
+      color: r.color,
+      count: Number(r.count),
+    }));
+  }
+
+  async createTag(namespace: string, name: string, color?: string): Promise<TagInfo> {
+    this.ensureTagSupport();
+    const safeNamespace = this.validator.validateNamespace(namespace);
+    const normalizedName = this.normalizeTagName(name);
+    if (!normalizedName || normalizedName.length > 40) {
+      throw new Error('Tag name must be 1-40 characters');
+    }
+    const id = `${safeNamespace}:tag:${normalizedName}`;
+    const now = new Date().toISOString();
+
+    const insertQ = this.db.insert(this.tagTable).values({
+      id,
+      namespace: safeNamespace,
+      name: normalizedName,
+      color: color ?? null,
+      createdAt: now,
+    });
+
+    if (this.dbDialect === 'mysql') {
+      await insertQ.onDuplicateKeyUpdate({ set: { name: normalizedName } });
+    } else {
+      await insertQ.onConflictDoNothing();
+    }
+
+    const [existing] = await this.db
+      .select()
+      .from(this.tagTable)
+      .where(eq(this.tagTable.id, id))
+      .limit(1);
+
+    const tag = existing ?? { id, namespace: safeNamespace, name: normalizedName, color: color ?? null };
+    return { id: tag.id, namespace: tag.namespace, name: tag.name, color: tag.color };
+  }
+
+  async updateTag(namespace: string, tagId: string, data: { name?: string; color?: string | null }): Promise<TagInfo> {
+    this.ensureTagSupport();
+    const safeNamespace = this.validator.validateNamespace(namespace);
+
+    const [existing] = await this.db
+      .select()
+      .from(this.tagTable)
+      .where(eq(this.tagTable.id, tagId))
+      .limit(1);
+
+    if (!existing || existing.namespace !== safeNamespace) {
+      throw new Error('Tag not found');
+    }
+
+    const updates: Record<string, any> = {};
+    if (data.name !== undefined) {
+      const normalizedName = this.normalizeTagName(data.name);
+      if (!normalizedName || normalizedName.length > 40) {
+        throw new Error('Tag name must be 1-40 characters');
+      }
+      updates.name = normalizedName;
+    }
+    if (data.color !== undefined) {
+      updates.color = data.color ?? null;
+    }
+
+    if (Object.keys(updates).length > 0) {
+      await this.db
+        .update(this.tagTable)
+        .set(updates)
+        .where(eq(this.tagTable.id, tagId));
+    }
+
+    return {
+      id: tagId,
+      namespace: safeNamespace,
+      name: updates.name ?? existing.name,
+      color: updates.color !== undefined ? updates.color : existing.color,
+    };
+  }
+
+  async deleteTag(namespace: string, tagId: string): Promise<void> {
+    this.ensureTagSupport();
+    const safeNamespace = this.validator.validateNamespace(namespace);
+
+    const [tag] = await this.db
+      .select({ id: this.tagTable.id })
+      .from(this.tagTable)
+      .where(and(eq(this.tagTable.id, tagId), eq(this.tagTable.namespace, safeNamespace)))
+      .limit(1);
+
+    if (!tag) throw new Error(`Tag not found: ${tagId}`);
+
+    await this.db.delete(this.fileTagTable).where(eq(this.fileTagTable.tagId, tagId));
+    await this.db.delete(this.tagTable).where(eq(this.tagTable.id, tagId));
+  }
+
+  async setFileTags(namespace: string, filePath: string, tagNames: string[]): Promise<TagInfo[]> {
+    this.ensureTagSupport();
+    const safeNamespace = this.validator.validateNamespace(namespace);
+    const safeFilePath = this.validator.normalizePath(filePath);
+    const file = await this.provider.getInfo(safeNamespace, safeFilePath);
+    if (!file) throw new Error(`File not found: ${safeFilePath}`);
+
+    const fileId = `${safeNamespace}/${safeFilePath}`;
+    const now = new Date().toISOString();
+    const tags: TagInfo[] = [];
+    const names = Array.from(new Set(tagNames.map((raw) => this.normalizeTagName(raw)).filter(Boolean)));
+
+    await this.db.delete(this.fileTagTable).where(eq(this.fileTagTable.fileId, fileId));
+
+    for (const name of names) {
+      let tagId = `${safeNamespace}:tag:${name}`;
+
+      const [existing] = await this.db
+        .select({ id: this.tagTable.id, name: this.tagTable.name, color: this.tagTable.color })
+        .from(this.tagTable)
+        .where(and(eq(this.tagTable.namespace, safeNamespace), eq(this.tagTable.name, name)))
+        .limit(1);
+
+      if (!existing) {
+        await this.db.insert(this.tagTable).values({
+          id: tagId,
+          namespace: safeNamespace,
+          name,
+          color: null,
+          createdAt: now,
+        });
+        tags.push({ id: tagId, namespace: safeNamespace, name, color: null });
+      } else {
+        tagId = existing.id;
+        tags.push({ id: existing.id, namespace: safeNamespace, name: existing.name, color: existing.color });
+      }
+
+      await this.insertFileTag(fileId, tagId, now);
+    }
+
+    return tags;
+  }
+
+  async getFileTags(namespace: string, filePath: string): Promise<TagInfo[]> {
+    const safeNamespace = this.validator.validateNamespace(namespace);
+    const safeFilePath = this.validator.normalizePath(filePath);
+    if (!this.tagTable || !this.fileTagTable) return [];
+    const fileId = `${safeNamespace}/${safeFilePath}`;
+
+    const rows = await this.db
+      .select({
+        id: this.tagTable.id,
+        namespace: this.tagTable.namespace,
+        name: this.tagTable.name,
+        color: this.tagTable.color,
+      })
+      .from(this.fileTagTable)
+      .innerJoin(this.tagTable, sql`${this.fileTagTable.tagId} = ${this.tagTable.id}`)
+      .where(eq(this.fileTagTable.fileId, fileId));
+
+    return rows.map((r: any) => ({
+      id: r.id,
+      namespace: r.namespace,
+      name: r.name,
+      color: r.color,
+    }));
+  }
+
+  async listFilesByTag(namespace: string, tagName: string, opts?: ListOptions): Promise<ListResult> {
+    const safeNamespace = this.validator.validateNamespace(namespace);
+    const normalizedName = this.normalizeTagName(tagName);
+    if (!this.tagTable || !this.fileTagTable) return { files: [], folders: [], nextCursor: null };
+
+    const [tag] = await this.db
+      .select({ id: this.tagTable.id })
+      .from(this.tagTable)
+      .where(and(eq(this.tagTable.namespace, safeNamespace), eq(this.tagTable.name, normalizedName)))
+      .limit(1);
+
+    if (!tag) return { files: [], folders: [], nextCursor: null };
+
+    const limit = opts?.limit ?? 1000;
+    const rows = await this.db
+      .select({
+        namespace: this.table.namespace,
+        filePath: this.table.filePath,
+        mimeType: this.table.mimeType,
+        size: this.table.size,
+        category: this.table.category,
+        createdAt: this.table.createdAt,
+        updatedAt: this.table.updatedAt,
+      })
+      .from(this.fileTagTable)
+      .innerJoin(this.table, sql`${this.fileTagTable.fileId} = ${this.table.id}`)
+      .where(and(
+        eq(this.fileTagTable.tagId, tag.id),
+        eq(this.table.namespace, safeNamespace),
+        ...(this.table.deletedAt ? [isNull(this.table.deletedAt)] : []),
+      ))
+      .limit(limit + 1);
+
+    const files = rows.slice(0, limit).map((row: any) => this.toFileInfoFromRow(row, normalizedName));
+    return { files, folders: [], nextCursor: rows.length > limit ? String(limit) : null };
+  }
+
+  async patchFileTags(namespace: string, paths: string[], patch: { add?: string[]; remove?: string[] }): Promise<{ updated: string[]; failed: string[] }> {
+    this.ensureTagSupport();
+    const safeNamespace = this.validator.validateNamespace(namespace);
+    const updated: string[] = [];
+    const failed: string[] = [];
+
+    for (const rawPath of paths) {
+      const filePath = this.validator.normalizePath(rawPath);
+      try {
+        const fileId = `${safeNamespace}/${filePath}`;
+        const file = await this.provider.getInfo(safeNamespace, filePath);
+        if (!file) { failed.push(filePath); continue; }
+
+        const now = new Date().toISOString();
+
+        if (patch.remove?.length) {
+          for (const rawName of Array.from(new Set(patch.remove))) {
+            const name = this.normalizeTagName(rawName);
+            const [tag] = await this.db
+              .select({ id: this.tagTable.id })
+              .from(this.tagTable)
+              .where(and(eq(this.tagTable.namespace, safeNamespace), eq(this.tagTable.name, name)))
+              .limit(1);
+            if (tag) {
+              await this.db.delete(this.fileTagTable)
+                .where(and(eq(this.fileTagTable.fileId, fileId), eq(this.fileTagTable.tagId, tag.id)));
+            }
+          }
+        }
+
+        if (patch.add?.length) {
+          for (const rawName of Array.from(new Set(patch.add))) {
+            const name = this.normalizeTagName(rawName);
+            if (!name) continue;
+            let tagId = `${safeNamespace}:tag:${name}`;
+
+            const [existing] = await this.db
+              .select({ id: this.tagTable.id })
+              .from(this.tagTable)
+              .where(and(eq(this.tagTable.namespace, safeNamespace), eq(this.tagTable.name, name)))
+              .limit(1);
+
+            if (!existing) {
+              await this.db.insert(this.tagTable).values({
+                id: tagId,
+                namespace: safeNamespace,
+                name,
+                color: null,
+                createdAt: now,
+              });
+            } else {
+              tagId = existing.id;
+            }
+
+            await this.insertFileTag(fileId, tagId, now);
+          }
+        }
+
+        updated.push(filePath);
+      } catch {
+        failed.push(filePath);
+      }
+    }
+
+    return { updated, failed };
+  }
+
+  private get table(): any { return (this.provider as DbStorageProvider).table; }
+
+  private toFileInfoFromRow(row: any, tag?: string): FileInfo {
+    return {
+      namespace: row.namespace,
+      filePath: row.filePath,
+      mimeType: row.mimeType,
+      size: row.size,
+      category: (row.category as FileCategory) ?? FileCategory.UNKNOWN,
+      createdAt: row.createdAt,
+      updatedAt: row.updatedAt,
+      tags: tag ? [tag] : [],
+    };
   }
 
   // ============================================================================

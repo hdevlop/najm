@@ -3,10 +3,14 @@ import { Slot } from '@radix-ui/react-slot';
 import type { NajmThemeProviderProps, NajmThemeTokens } from './types';
 import { composePreset, resolvePreset } from './presets/compose';
 
-function tokensToStyle(tokens: NajmThemeTokens): React.CSSProperties {
+const ACCENT_KEYS = new Set(['primary', 'primary-foreground', 'ring', 'accent', 'accent-foreground']);
+
+function tokensToStyle(tokens: NajmThemeTokens, accentOnly?: boolean): React.CSSProperties {
   const style: Record<string, string> = {};
   for (const [key, value] of Object.entries(tokens)) {
-    if (value) style[`--${key}`] = value;
+    if (value && (!accentOnly || ACCENT_KEYS.has(key))) {
+      style[`--najm-${key}`] = value;
+    }
   }
   return style as React.CSSProperties;
 }
@@ -16,6 +20,7 @@ export function NajmThemeProvider({
   mode,
   accent,
   tokens,
+  accentOnly,
   className,
   asChild,
   children,
@@ -27,7 +32,7 @@ export function NajmThemeProvider({
     return resolvePreset('light');
   }, [preset, mode, accent, tokens]);
 
-  const style = React.useMemo(() => tokensToStyle(resolved), [resolved]);
+  const style = React.useMemo(() => tokensToStyle(resolved, accentOnly), [resolved, accentOnly]);
   const Comp: any = asChild ? Slot : 'div';
 
   return (

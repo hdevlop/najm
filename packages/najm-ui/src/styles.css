@@ -10,7 +10,7 @@
     --najm-card-foreground: 0 0% 3.9%;
     --najm-popover: 0 0% 100%;
     --najm-popover-foreground: 0 0% 3.9%;
-    --najm-primary: 0 0% 9%;
+    --najm-primary: 240 4% 11%;
     --najm-primary-foreground: 0 0% 98%;
     --najm-secondary: 0 0% 96.1%;
     --najm-secondary-foreground: 0 0% 9%;
@@ -18,38 +18,38 @@
     --najm-tertiary-foreground: 210 40% 20%;
     --najm-muted: 0 0% 96.1%;
     --najm-muted-foreground: 0 0% 45.1%;
-    --najm-accent: 0 0% 96.1%;
-    --najm-accent-foreground: 0 0% 9%;
+    --najm-accent: 240 4% 16%;
+    --najm-accent-foreground: 0 0% 98%;
     --najm-destructive: 0 84.2% 60.2%;
     --najm-destructive-foreground: 0 0% 98%;
     --najm-border: 0 0% 89.8%;
     --najm-input: 0 0% 89.8%;
-    --najm-ring: 0 0% 3.9%;
-    --najm-radius: 0.375rem;
+    --najm-ring: 240 4% 11%;
+    --najm-radius: 0.5rem;
   }
 
   .dark {
-    --najm-background: 0 0% 3.9%;
-    --najm-foreground: 0 0% 86%;
-    --najm-card: 0 0% 3.9%;
-    --najm-card-foreground: 0 0% 86%;
-    --najm-popover: 0 0% 3.9%;
-    --najm-popover-foreground: 0 0% 86%;
-    --najm-primary: 0 0% 98%;
-    --najm-primary-foreground: 0 0% 9%;
-    --najm-secondary: 0 0% 14.9%;
-    --najm-secondary-foreground: 0 0% 86%;
+    --najm-background: 240 10% 4%;
+    --najm-foreground: 240 5% 96%;
+    --najm-card: 240 8% 8%;
+    --najm-card-foreground: 240 5% 96%;
+    --najm-popover: 240 8% 8%;
+    --najm-popover-foreground: 240 5% 96%;
+    --najm-primary: 240 4% 11%;
+    --najm-primary-foreground: 0 0% 98%;
+    --najm-secondary: 240 6% 12%;
+    --najm-secondary-foreground: 240 5% 90%;
     --najm-tertiary: 210 40% 20%;
     --najm-tertiary-foreground: 210 40% 82%;
-    --najm-muted: 0 0% 14.9%;
-    --najm-muted-foreground: 0 0% 58%;
-    --najm-accent: 0 0% 14.9%;
-    --najm-accent-foreground: 0 0% 86%;
-    --najm-destructive: 0 62.8% 30.6%;
-    --najm-destructive-foreground: 0 0% 98%;
-    --najm-border: 0 0% 14.9%;
-    --najm-input: 0 0% 14.9%;
-    --najm-ring: 0 0% 83.1%;
+    --najm-muted: 240 6% 12%;
+    --najm-muted-foreground: 240 5% 55%;
+    --najm-accent: 240 6% 12%;
+    --najm-accent-foreground: 240 5% 96%;
+    --najm-destructive: 0 84% 60%;
+    --najm-destructive-foreground: 0 0% 100%;
+    --najm-border: 240 6% 15%;
+    --najm-input: 240 6% 15%;
+    --najm-ring: 240 4% 11%;
   }
 }
 

@@ -28,7 +28,7 @@ bun add najm-storage
 
 ## Storage Studio (Admin UI)
 
-When the `storage` plugin is registered, a `StorageStudioController` is automatically mounted at `/storage-studio`. This provides REST endpoints consumed by the `najm-storage-studio` React frontend.
+When the `storage` plugin is registered, a `StorageStudioController` is automatically mounted at `/storage-studio`. This provides REST endpoints consumed by the `najm-storage/studio` React frontend.
 
 ### Studio Routes
 
@@ -66,13 +66,16 @@ server.use(storage({
 }));
 ```
 
-To use the React UI, install the companion package:
+To use the React UI, import the studio from the parent package:
 
 ```bash
-bun add najm-storage-studio
+bun add najm-storage
 ```
 
-See `najm-storage-studio` README for frontend integration instructions.
+```ts
+import { StorageStudio, StorageStudioProvider } from 'najm-storage/studio';
+import 'najm-storage/studio/styles.css';
+```
 
 ## Example
 

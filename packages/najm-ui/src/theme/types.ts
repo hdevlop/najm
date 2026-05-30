@@ -39,6 +39,9 @@ export interface NajmThemeProviderProps {
   mode?: NajmMode;
   accent?: NajmAccent;
   tokens?: NajmThemeTokens;
+  /** When true, only inject accent tokens (primary, ring, accent and their foregrounds).
+   *  Everything else (bg, card, fg…) is inherited from the parent cascade. */
+  accentOnly?: boolean;
   className?: string;
   asChild?: boolean;
   children: React.ReactNode;

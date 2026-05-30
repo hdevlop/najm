@@ -1,7 +1,7 @@
 'use client';
 
-import { WhatsAppStudioProvider, WhatsAppStudio } from 'najm-whatsapp-studio';
-import 'najm-whatsapp-studio/styles.css';
+import { WhatsAppStudioProvider, WhatsAppStudio } from 'najm-whatsapp/studio';
+import 'najm-whatsapp/studio/styles.css';
 
 export default function StudioClient() {
   return (
@@ -16,7 +16,7 @@ export default function StudioClient() {
       }}
     >
       <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden">
-        <WhatsAppStudio />
+        <WhatsAppStudio inheritTheme />
       </div>
     </WhatsAppStudioProvider>
   );

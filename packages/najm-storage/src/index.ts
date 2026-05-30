@@ -7,6 +7,7 @@ export * from './tokens';
 export * from './fileUtils';
 export * from './schemas';
 export * from './StoragePlugin';
+export * from './StorageDto';
 export { StorageService } from './StorageService';
 export * from './StorageValidator';
 export { StorageController } from './StorageController';

@@ -16,7 +16,8 @@
 
     "baseUrl": ".",
     "paths": {
-      "najm": ["./packages/najm/src"],
+      "najm-api": ["./packages/najm-api/src"],
+      "najm-api/*": ["./packages/najm-api/src/*"],
       "najm-auth": ["./packages/najm-auth/src"],
       "najm-cache": ["./packages/najm-cache/src"],
       "najm-cli": ["./packages/najm-cli/src"],
@@ -31,12 +32,13 @@
       "najm-mcp": ["./packages/najm-mcp/src"],
       "najm-rag": ["./packages/najm-rag/src"],
       "najm-rate": ["./packages/najm-rate/src"],
+      "najm-storage": ["./packages/najm-storage/src"],
       "najm-validation": ["./packages/najm-validation/src"],
-      "najm-rag-studio": ["./packages/najm-rag-studio/src"],
+      "najm-whatsapp": ["./packages/najm-whatsapp/src"],
     }
   },
   "references": [
-    { "path": "./packages/najm" },
+    { "path": "./packages/najm-api" },
     { "path": "./packages/najm-auth" },
     { "path": "./packages/najm-cache" },
     { "path": "./packages/najm-cli" },
@@ -51,8 +53,7 @@
     { "path": "./packages/najm-mcp" },
     { "path": "./packages/najm-rag" },
     { "path": "./packages/najm-rate" },
-    { "path": "./packages/najm-validation" },
-    { "path": "./packages/najm-rag-studio" }
+    { "path": "./packages/najm-validation" }
   ],
   "include": [
     "src/**/*",

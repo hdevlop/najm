@@ -14,6 +14,71 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
+    },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "import": "./dist/auth.mjs",
+      "default": "./dist/auth.mjs"
+    },
+    "./cache": {
+      "types": "./dist/cache.d.ts",
+      "import": "./dist/cache.mjs",
+      "default": "./dist/cache.mjs"
+    },
+    "./cookies": {
+      "types": "./dist/cookies.d.ts",
+      "import": "./dist/cookies.mjs",
+      "default": "./dist/cookies.mjs"
+    },
+    "./cors": {
+      "types": "./dist/cors.d.ts",
+      "import": "./dist/cors.mjs",
+      "default": "./dist/cors.mjs"
+    },
+    "./database": {
+      "types": "./dist/database.d.ts",
+      "import": "./dist/database.mjs",
+      "default": "./dist/database.mjs"
+    },
+    "./email": {
+      "types": "./dist/email.d.ts",
+      "import": "./dist/email.mjs",
+      "default": "./dist/email.mjs"
+    },
+    "./event": {
+      "types": "./dist/event.d.ts",
+      "import": "./dist/event.mjs",
+      "default": "./dist/event.mjs"
+    },
+    "./guard": {
+      "types": "./dist/guard.d.ts",
+      "import": "./dist/guard.mjs",
+      "default": "./dist/guard.mjs"
+    },
+    "./i18n": {
+      "types": "./dist/i18n.d.ts",
+      "import": "./dist/i18n.mjs",
+      "default": "./dist/i18n.mjs"
+    },
+    "./mcp": {
+      "types": "./dist/mcp.d.ts",
+      "import": "./dist/mcp.mjs",
+      "default": "./dist/mcp.mjs"
+    },
+    "./rate": {
+      "types": "./dist/rate.d.ts",
+      "import": "./dist/rate.mjs",
+      "default": "./dist/rate.mjs"
+    },
+    "./storage": {
+      "types": "./dist/storage.d.ts",
+      "import": "./dist/storage.mjs",
+      "default": "./dist/storage.mjs"
+    },
+    "./validation": {
+      "types": "./dist/validation.d.ts",
+      "import": "./dist/validation.mjs",
+      "default": "./dist/validation.mjs"
     }
   },
   "scripts": {
@@ -22,7 +87,20 @@
     "clean": "rimraf dist"
   },
   "dependencies": {
-    "najm-core": "workspace:*"
+    "najm-auth": "workspace:*",
+    "najm-cache": "workspace:*",
+    "najm-cookies": "workspace:*",
+    "najm-core": "workspace:*",
+    "najm-cors": "workspace:*",
+    "najm-database": "workspace:*",
+    "najm-email": "workspace:*",
+    "najm-event": "workspace:*",
+    "najm-guard": "workspace:*",
+    "najm-i18n": "workspace:*",
+    "najm-mcp": "workspace:*",
+    "najm-rate": "workspace:*",
+    "najm-storage": "workspace:*",
+    "najm-validation": "workspace:*"
   },
   "devDependencies": {
     "rimraf": "^6.0.1",

@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
     WS_NO_BUFFER_UTIL: 'true',
     WS_NO_UTF_8_VALIDATE: 'true',
   },
-  serverExternalPackages: ['reflect-metadata', 'better-sqlite3', 'sqlite-vec'],
+  serverExternalPackages: ['reflect-metadata', 'better-sqlite3', 'sqlite-vec', '@whiskeysockets/baileys', 'sharp'],
 };
 
 export default nextConfig;

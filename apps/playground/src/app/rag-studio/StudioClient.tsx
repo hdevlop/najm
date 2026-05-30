@@ -1,7 +1,7 @@
 'use client';
 
-import { RagStudioProvider, RagStudio } from 'najm-rag-studio';
-import 'najm-rag-studio/styles.css';
+import { RagStudioProvider, RagStudio } from 'najm-rag/studio';
+import 'najm-rag/studio/styles.css';
 
 export default function StudioClient() {
   return (
@@ -13,7 +13,7 @@ export default function StudioClient() {
       chatbotSettingsUrl="/dashboard/chatbot"
     >
       <div className="h-[100dvh] max-h-[100dvh] w-full overflow-hidden">
-        <RagStudio />
+        <RagStudio inheritTheme />
       </div>
     </RagStudioProvider>
   );

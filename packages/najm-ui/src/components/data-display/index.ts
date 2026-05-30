@@ -8,7 +8,7 @@ export { NDetailCard, NDetailItem, NDetailList } from "./NDetailCard";
 export type { NDetailCardProps, NDetailCardClassNames, NDetailItemProps, NDetailListItem, NDetailListProps } from "./NDetailCard";
 
 export { NStatCard } from "./NStatCard";
-export type { NStatCardProps, NStatCardClassNames } from "./NStatCard";
+export type { NStatCardProps, NStatCardClassNames, NStatCardVariant } from "./NStatCard";
 
 export { NAvatarItem } from "./NAvatarItem";
 export type { NAvatarItemProps, NAvatarItemClassNames } from "./NAvatarItem";

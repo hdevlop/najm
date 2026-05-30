@@ -1,1 +1,1 @@
-declare module 'najm-whatsapp-studio/styles.css';
+declare module 'najm-whatsapp/studio/styles.css';

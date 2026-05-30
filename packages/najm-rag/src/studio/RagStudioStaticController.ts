@@ -25,10 +25,10 @@ function resolveDistRoot(): string {
   const here = dirname(fileURLToPath(import.meta.url));
   try {
     const req = createRequire(import.meta.url);
-    const pkgJsonPath = req.resolve('najm-rag-studio/package.json');
-    return join(dirname(pkgJsonPath), 'dist');
+    const pkgJsonPath = req.resolve('najm-rag/package.json');
+    return join(dirname(pkgJsonPath), 'dist', 'studio');
   } catch {
-    return join(here, '..', '..', '..', 'najm-rag-studio', 'dist');
+    return join(here, '..', '..', 'dist', 'studio');
   }
 }
 
@@ -52,7 +52,7 @@ export class RagStudioStaticController {
     }
 
     if (!existsSync(target)) {
-      return new Response('Studio UI not built. Run `bun run build` in najm-rag-studio.', {
+      return new Response('Studio UI not built. Run `bun run build` in packages/najm-rag.', {
         status: 503,
         headers: { 'Content-Type': 'text/plain' },
       });

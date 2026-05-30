@@ -32,7 +32,7 @@ export function NPageHeader({ icon: Icon, title, subtitle, actions, filters, top
     <div className="flex flex-col h-full">
       <div className="flex min-h-14 flex-row items-center justify-between gap-2 border-b border-border px-4 pl-16 sm:px-5 md:pl-5">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="hidden h-8 w-8 shrink-0 rounded-lg bg-primary/10 sm:flex items-center justify-center">
+          <div className="flex h-8 w-8 shrink-0 rounded-lg bg-primary/10 items-center justify-center">
             <Icon className="h-4 w-4 text-primary" />
           </div>
           <div className="min-w-0">

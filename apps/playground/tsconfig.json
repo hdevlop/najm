@@ -21,24 +21,6 @@
       "diject": [
         "../../../diject/src/index.ts"
       ],
-      "najm-rag-studio": [
-        "../../packages/najm-rag-studio/dist/index.mjs"
-      ],
-      "najm-rag-studio/styles.css": [
-        "../../packages/najm-rag-studio/dist/styles.css"
-      ],
-      "najm-rag-studio/package.json": [
-        "../../packages/najm-rag-studio/package.json"
-      ],
-      "najm-storage-studio": [
-        "../../packages/najm-storage-studio/dist/index.mjs"
-      ],
-      "najm-storage-studio/styles.css": [
-        "../../packages/najm-storage-studio/dist/styles.css"
-      ],
-      "najm-storage-studio/package.json": [
-        "../../packages/najm-storage-studio/package.json"
-      ],
       "najm-api": [
         "../../packages/najm-api/src/index.ts"
       ],

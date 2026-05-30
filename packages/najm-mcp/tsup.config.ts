@@ -17,7 +17,7 @@ export default defineConfig({
   outExtension: () => ({ js: '.mjs' }),
   bundle: true,
   skipNodeModulesBundle: true,
-  external: ['reflect-metadata'],
+  external: ['reflect-metadata', 'najm-validation'],
   esbuildOptions(options) {
     options.keepNames = true;
   },

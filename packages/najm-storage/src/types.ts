@@ -155,6 +155,7 @@ export interface IStorageProvider {
   createBucket?(config: BucketConfig): Promise<void>;
   updateBucket?(name: string, config: Partial<BucketConfig>): Promise<void>;
   deleteBucket?(name: string): Promise<void>;
+  getCapabilities?(): StorageCapabilities;
 }
 
 export interface ListOptions {
@@ -203,6 +204,22 @@ export interface UsageSummary {
 export interface StorageSchema {
   storageFiles: any;
   storageBuckets?: any;
-  fileTags?: any;
+  storageTags?: any;
+  storageFileTags?: any;
   auditLog?: any;
+}
+
+export interface TagInfo {
+  id: string;
+  namespace: string;
+  name: string;
+  color?: string | null;
+  count?: number;
+}
+
+export interface StorageCapabilities {
+  tags: boolean;
+  presign: boolean;
+  trash: boolean;
+  buckets: boolean;
 }

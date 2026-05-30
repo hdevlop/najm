@@ -2,7 +2,7 @@
 // najm-storage - Studio Controller (admin API)
 // ============================================================================
 
-import { Controller, Get, Post, Delete, Params, Body, Ctx, ArrayBufferBody, ContentType, Query } from 'najm-core';
+import { Controller, Get, Post, Delete, Put, Patch, Params, Body, Ctx, ArrayBufferBody, ContentType, Query } from 'najm-core';
 import type { Context } from 'hono';
 import { StorageService } from './StorageService';
 import { AuditService } from './AuditService';
@@ -54,9 +54,9 @@ export class StorageStudioController {
   @Post('/:namespace/files/move')
   async moveFile(
     @Params('namespace') namespace: string,
-    @Body() body: { from: string; to: string },
+    @Body() body: { from: string; to: string; overwrite?: boolean },
   ) {
-    await this.storage.moveFile(namespace, body.from, body.to);
+    await this.storage.moveFile(namespace, body.from, body.to, { overwrite: body.overwrite });
     await this.audit.write({ actor: 'studio', action: 'move', namespace, path: body.from, meta: { to: body.to } });
     return { success: true };
   }
@@ -64,9 +64,9 @@ export class StorageStudioController {
   @Post('/:namespace/files/copy')
   async copyFile(
     @Params('namespace') namespace: string,
-    @Body() body: { from: string; to: string },
+    @Body() body: { from: string; to: string; overwrite?: boolean },
   ) {
-    await this.storage.copyFile(namespace, body.from, body.to);
+    await this.storage.copyFile(namespace, body.from, body.to, { overwrite: body.overwrite });
     await this.audit.write({ actor: 'studio', action: 'copy', namespace, path: body.from, meta: { to: body.to } });
     return { success: true };
   }
@@ -146,6 +146,87 @@ export class StorageStudioController {
     return this.audit.list({
       namespace: q.namespace,
       limit: q.limit ? parseInt(q.limit, 10) : 50,
+    });
+  }
+
+  @Get('/capabilities')
+  async capabilities() {
+    return this.storage.getCapabilities();
+  }
+
+  @Get('/:namespace/tags')
+  async listTags(@Params('namespace') namespace: string) {
+    return this.storage.listTags(namespace);
+  }
+
+  @Post('/:namespace/tags')
+  async createTag(
+    @Params('namespace') namespace: string,
+    @Body() body: { name: string; color?: string },
+  ) {
+    const tag = await this.storage.createTag(namespace, body.name, body.color);
+    await this.audit.write({ actor: 'studio', action: 'tag-create', namespace, meta: { tag: tag.name } });
+    return tag;
+  }
+
+  @Delete('/:namespace/tags/:tagId')
+  async deleteTag(
+    @Params('namespace') namespace: string,
+    @Params('tagId') tagId: string,
+  ) {
+    await this.storage.deleteTag(namespace, tagId);
+    await this.audit.write({ actor: 'studio', action: 'tag-delete', namespace, meta: { tagId } });
+    return { success: true };
+  }
+
+  @Put('/:namespace/tags/:tagId')
+  async updateTag(
+    @Params('namespace') namespace: string,
+    @Params('tagId') tagId: string,
+    @Body() body: { name?: string; color?: string | null },
+  ) {
+    const tag = await this.storage.updateTag(namespace, tagId, body);
+    await this.audit.write({ actor: 'studio', action: 'tag-update', namespace, meta: { tagId, ...body } });
+    return tag;
+  }
+
+  @Get('/:namespace/files/tags')
+  async getFileTags(
+    @Params('namespace') namespace: string,
+    @Query('path') path: string,
+  ) {
+    return this.storage.getFileTags(namespace, path);
+  }
+
+  @Put('/:namespace/files/tags')
+  async setFileTags(
+    @Params('namespace') namespace: string,
+    @Body() body: { path: string; tags: string[] },
+  ) {
+    const tags = await this.storage.setFileTags(namespace, body.path, body.tags);
+    await this.audit.write({ actor: 'studio', action: 'tag-assign', namespace, path: body.path, meta: { tags: body.tags } });
+    return tags;
+  }
+
+  @Patch('/:namespace/files/tags')
+  async patchFileTags(
+    @Params('namespace') namespace: string,
+    @Body() body: { paths: string[]; add?: string[]; remove?: string[] },
+  ) {
+    const result = await this.storage.patchFileTags(namespace, body.paths, { add: body.add, remove: body.remove });
+    await this.audit.write({ actor: 'studio', action: 'tag-assign', namespace, meta: { paths: body.paths, add: body.add, remove: body.remove } });
+    return result;
+  }
+
+  @Get('/:namespace/files-by-tag')
+  async listFilesByTag(
+    @Params('namespace') namespace: string,
+    @Query('tag') tag: string,
+    @Ctx() c: Context,
+  ) {
+    const q = c.req.query();
+    return this.storage.listFilesByTag(namespace, tag, {
+      limit: q.limit ? parseInt(q.limit, 10) : undefined,
     });
   }
 

@@ -41,12 +41,12 @@ const server = new Server()
 ### Using in Services
 
 ```typescript
-import { Service, Inject } from 'najm-di';
+import { Service } from 'najm-core';
 import { EmailService } from 'najm-email';
 
 @Service()
 export class NotificationService {
-  @Inject(EmailService) private email!: EmailService;
+  constructor(private email: EmailService) {}
 
   async sendWelcomeEmail(user: { email: string; name: string }) {
     await this.email.send({
@@ -242,7 +242,7 @@ Subscribe to email lifecycle events:
 ```typescript
 @Service()
 export class EmailLogger {
-  @Inject(EmailService) private email!: EmailService;
+  constructor(private email: EmailService) {}
 
   onInit() {
     this.email.on('email:sending', ({ message }) => {
@@ -289,14 +289,16 @@ interface EmailConfig {
 Use email for password reset, verification, etc:
 
 ```typescript
-import { Service, Inject } from 'najm-di';
+import { Service } from 'najm-core';
 import { EmailService } from 'najm-email';
 import { TokenService } from 'najm-auth';
 
 @Service()
 export class PasswordResetService {
-  @Inject(EmailService) private email!: EmailService;
-  @Inject(TokenService) private token!: TokenService;
+  constructor(
+    private email: EmailService,
+    private token: TokenService,
+  ) {}
 
   async sendResetEmail(user: { id: string; email: string }) {
     // Generate reset token
