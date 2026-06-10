@@ -1,0 +1,206 @@
+import { useMemo, useCallback, useState } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+import { cn } from "../../lib/cn";
+import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
+import { NSidebarHeader } from "./NSidebarHeader";
+import { NSidebarLogo } from "./NSidebarLogo";
+import { NSidebarContent } from "./NSidebarContent";
+import { NSidebarFooter } from "./NSidebarFooter";
+import { NSidebarMobile } from "./NSidebarMobile";
+import type { NavItem, NavItemGroup, SidebarProps } from "./types";
+
+export type { SidebarProps } from "./types";
+
+function buildGroups(items: NavItem[]): NavItemGroup[] {
+  const groups: NavItemGroup[] = [];
+  for (const item of items) {
+    const prev = groups[groups.length - 1];
+    if (!item.sectionLabel && prev) {
+      prev.items.push(item);
+    } else if (prev && prev.sectionLabel === item.sectionLabel) {
+      prev.items.push(item);
+    } else {
+      groups.push({ sectionLabel: item.sectionLabel, sectionIcon: item.sectionIcon, items: [item] });
+    }
+  }
+  return groups;
+}
+
+export function NSidebar({
+  logo,
+  navItems = [],
+  activePath = "",
+  isActive,
+  onNavigate,
+  linkComponent,
+  collapsed: collapsedProp,
+  defaultCollapsed = false,
+  onCollapsedChange,
+  showCollapseButton = true,
+  collapseButtonPosition = 'footer',
+  showSectionLabels = true,
+  showSectionIcons = true,
+  showSectionSeparators = false,
+  bordered,
+  borderDegree,
+  footer,
+  className,
+  classNames,
+  mobileBreakpoint = 'md',
+  mobileOpen: mobileOpenProp,
+  defaultMobileOpen = false,
+  onMobileOpenChange,
+  closeOnNavigate = true,
+  hamburgerLabel = "Open sidebar",
+  closeLabel = "Close sidebar",
+  collapseLabel = "Collapse",
+  expandLabel = "Expand",
+  hamburgerClassName,
+  showHamburgerButton = true,
+  logoIcon,
+  logoTitle,
+  logoSubtitle,
+  onLogoClick,
+  onSettings,
+  settingsLabel,
+  onLogout,
+  logoutLabel,
+  widths,
+}: SidebarProps) {
+  const [_mobileOpen, _setMobileOpen] = useState(defaultMobileOpen);
+  const [_collapsed, _setCollapsed] = useState(defaultCollapsed);
+  const isControlled = mobileOpenProp !== undefined;
+  const mobileOpen = isControlled ? mobileOpenProp : _mobileOpen;
+  const collapsed = collapsedProp ?? _collapsed;
+  const setMobileOpen = (open: boolean) => {
+    if (!isControlled) _setMobileOpen(open);
+    onMobileOpenChange?.(open);
+  };
+  const handleToggleCollapsed = useCallback(() => {
+    const next = !collapsed;
+    if (collapsedProp === undefined) _setCollapsed(next);
+    onCollapsedChange?.(next);
+  }, [collapsed, collapsedProp, onCollapsedChange]);
+
+  const handleNavigate = useCallback((href: string) => {
+    onNavigate?.(href);
+    if (closeOnNavigate) setMobileOpen(false);
+  }, [onNavigate, closeOnNavigate]);
+
+  const groups = useMemo(() => buildGroups(navItems), [navItems]);
+
+  const resolvedBorderDegree = useResolvedBorderDegree({
+    borderDegree,
+    bordered,
+    fallback: "default",
+  });
+  const sidebarShellBorderClass = borderColorClassForDegree(resolvedBorderDegree);
+  const isStrong = resolvedBorderDegree === "strong";
+  const isNone = resolvedBorderDegree === "none";
+
+  const desktopClass = mobileBreakpoint === 'sm' ? 'hidden sm:flex'
+    : mobileBreakpoint === 'lg' ? 'hidden lg:flex'
+    : 'hidden md:flex';
+
+  const expandedWidth = widths?.expanded ?? 240;
+  const collapsedWidth = widths?.collapsed ?? 64;
+  const mobileWidth = widths?.mobile ?? expandedWidth;
+  const railVar = typeof collapsedWidth === 'number' ? `${collapsedWidth}px` : collapsedWidth;
+  const showEdgeCollapse = showCollapseButton && collapseButtonPosition === 'edge';
+
+  const defaultLogoContent = logoIcon || logoTitle || logoSubtitle
+    ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={collapsed} />
+    : null;
+  const headerContent = logo ?? defaultLogoContent;
+
+  const contentProps = {
+    groups,
+    activePath,
+    isActive,
+    onNavigate: handleNavigate,
+    linkComponent,
+    collapsed,
+    showSectionLabels,
+    showSectionIcons,
+    showSectionSeparators,
+    classNames,
+  };
+
+  const footerProps = {
+    children: footer,
+    onSettings,
+    settingsLabel,
+    onLogout,
+    logoutLabel,
+    showCollapseButton: showCollapseButton && collapseButtonPosition === 'footer',
+    collapsed,
+    onToggleCollapsed: handleToggleCollapsed,
+    collapseLabel,
+    expandLabel,
+    classNames,
+  };
+
+  const sidebarInner = (
+    <>
+      {headerContent && <NSidebarHeader collapsed={collapsed} classNames={classNames}>{headerContent}</NSidebarHeader>}
+      <NSidebarContent {...contentProps} />
+      <NSidebarFooter {...footerProps} />
+    </>
+  );
+
+  const mobileInner = (
+    <>
+      {headerContent && <NSidebarHeader collapsed={collapsed} classNames={classNames}>{headerContent}</NSidebarHeader>}
+      <NSidebarContent {...contentProps} />
+      <NSidebarFooter {...footerProps} isMobile />
+    </>
+  );
+
+  return (
+    <>
+      <NSidebarMobile
+        open={mobileOpen}
+        onOpen={() => setMobileOpen(true)}
+        onClose={() => setMobileOpen(false)}
+        mobileBreakpoint={mobileBreakpoint}
+        width={mobileWidth}
+        hamburgerLabel={hamburgerLabel}
+        closeLabel={closeLabel}
+        hamburgerClassName={hamburgerClassName}
+        showHamburgerButton={showHamburgerButton}
+        bordered={bordered}
+        borderDegree={borderDegree}
+      >
+        {mobileInner}
+      </NSidebarMobile>
+
+      <aside
+        data-border-degree={resolvedBorderDegree}
+        className={cn(
+          desktopClass,
+          "relative z-10 flex flex-col h-full bg-card transition-all duration-200",
+          isNone ? "border-r border-transparent" : cn("border-r", sidebarShellBorderClass),
+          isStrong && "shadow-none",
+          classNames?.sidebar,
+          className
+        )}
+        style={{ width: collapsed ? collapsedWidth : expandedWidth, ['--rail' as any]: railVar }}
+      >
+        {sidebarInner}
+        {showEdgeCollapse && (
+          <button
+            type="button"
+            onClick={handleToggleCollapsed}
+            aria-label={collapsed ? expandLabel : collapseLabel}
+            title={collapsed ? expandLabel : collapseLabel}
+            className="absolute right-0 top-7 z-20 flex size-6 -translate-y-1/2 translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+          >
+            {collapsed
+              ? <ChevronRight className="h-3.5 w-3.5" />
+              : <ChevronLeft className="h-3.5 w-3.5" />}
+          </button>
+        )}
+      </aside>
+    </>
+  );
+}
