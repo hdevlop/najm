@@ -130,6 +130,12 @@ export interface JwtPayload {
   userId: string;
   /** Unique token ID for blacklist-based revocation */
   jti: string;
+  /**
+   * Refresh-token session/family identifier. Present on both refresh tokens
+   * (required) and access tokens (so a single family's revocation can reject
+   * every access token minted for that session, not just the presented one).
+   */
+  tokenFamily?: string;
   /** Per-user access token generation version for mass invalidation */
   sessionVersion?: number;
   /** User roles (included for client-side RBAC) */

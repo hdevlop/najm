@@ -205,15 +205,15 @@ Rate limit: 30 / 1m by cookie fingerprint.
 
 ### Logout (`POST /auth/logout`)
 
-[TokenService.logout()](packages/najm-auth/src/tokens/TokenService.ts#L372) — **immediate** revocation:
+[TokenService.logout()](packages/najm-auth/src/tokens/TokenService.ts) — **immediate**, **current-session-only** revocation:
 
-1. Blacklist current access token by `jti` for its remaining TTL (`auth:blacklist:<jti>`).
-2. **Bump session version** → `cache.set('auth:session-version:<userId>', v+1, accessTokenTtl)`. Every existing access token for this user now fails step 3 of `verifyAccessToken`.
-3. Delete user cache (`auth:user:<userId>`).
-4. Revoke refresh row in DB.
+1. Resolve the session family — from the verified refresh cookie's `tokenFamily` claim, falling back to the presented access token's `tokenFamily` claim (pure Bearer clients).
+2. Blacklist the current access token by `jti` for its remaining TTL (`auth:blacklist:<jti>`).
+3. **Mark the family revoked** → `cache.set('auth:revoked-family:<tokenFamily>', '1', accessTokenTtl)`. Every access token minted for *this* family (not just the presented one) now fails `verifyAccessToken`; other sessions are untouched.
+4. Delete that family's refresh row in DB.
 5. Clear `refreshToken` + `najm.session` cookies.
 
-Steps 1 + 2 are belt-and-braces: blacklist kills this specific token; session-version bump covers any other access token issued to this user (e.g. another browser tab).
+If no family can be resolved (legacy token, neither cookie nor Bearer present), logout falls back to a full revoke-all for the user (bump `auth:session-version:<userId>` + delete every refresh row). To terminate **all** sessions deliberately, use a password change/reset.
 
 ### Password Change / Reset
 
@@ -221,8 +221,8 @@ Both `changePassword()` and `resetPassword()` end with the same revocation cockt
 
 ```typescript
 await userService.update(userId, { password: newPassword });
-await tokenService.invalidateUserAccessTokens(userId);   // bump session version
-await tokenService.revokeToken(userId);                  // delete refresh row
+await tokenService.invalidateUserAccessTokens(userId);   // bump session version (all sessions)
+await tokenService.revokeAllForUser(userId);             // delete every refresh row for the user
 cookieManager.clearRefreshToken();
 cookieManager.clearSessionCookie();
 ```
@@ -433,17 +433,71 @@ export const schema = {
 };
 ```
 
-**`tokens` table** holds refresh state:
+**`tokens` table** holds refresh state — **one row per login session** (keyed by `tokenFamily`):
 
 | Column | Purpose |
 |---|---|
-| `userId` | FK to users |
+| `userId` | FK to users (indexed, **not** unique — a user has many sessions) |
 | `token` | SHA-256 of current refresh JWT |
-| `tokenFamily` | nanoid — preserved across rotations for session auditing |
-| `expiresAt` | current token expiry |
+| `tokenFamily` | nanoid — **unique**, the session identifier; preserved across rotations |
+| `expiresAt` | current token expiry (indexed; pruned by `deleteExpired`) |
 | `previousHash` | SHA-256 of last token (grace window) |
 | `previousValidUntil` | timestamp — 120s after rotation |
 | `previousUsedAt` | timestamp — set when grace-window token is used (replay detection) |
+
+### Migration: single-session → multi-session
+
+Earlier versions stored **one refresh row per user** (`tokens.userId` unique) and
+refresh JWTs carried only `userId`. The multi-session model makes `tokenFamily`
+the unique key (one row per login) and embeds `tokenFamily` in every JWT.
+
+Because old refresh JWTs have no `tokenFamily`, they cannot be mapped to a family
+row — so the migration **clears existing token rows and users must log in again**.
+Access tokens issued before the deploy stay valid until they expire (default 1h);
+shorten `accessExpiresIn` ahead of the migration if that window matters.
+
+Generate the canonical migration with `drizzle-kit generate` against the updated
+schema. Reference SQL for hand-rolled migrations:
+
+```sql
+-- PostgreSQL
+BEGIN;
+DELETE FROM tokens;                                        -- old sessions can't map to a family
+ALTER TABLE tokens DROP CONSTRAINT IF EXISTS tokens_user_id_unique;
+ALTER TABLE tokens DROP CONSTRAINT IF EXISTS tokens_user_id_key;   -- whichever name exists (\d tokens)
+ALTER TABLE tokens ALTER COLUMN token_family SET NOT NULL;
+ALTER TABLE tokens ADD CONSTRAINT tokens_token_family_unique UNIQUE (token_family);
+CREATE INDEX IF NOT EXISTS tokens_user_id_idx    ON tokens (user_id);
+CREATE INDEX IF NOT EXISTS tokens_expires_at_idx ON tokens (expires_at);
+COMMIT;
+```
+
+```sql
+-- SQLite (a column-level UNIQUE can't be dropped in place → rebuild the table)
+PRAGMA foreign_keys=OFF;
+BEGIN TRANSACTION;
+DELETE FROM tokens;                                        -- table is now empty, no data copy needed
+ALTER TABLE tokens RENAME TO tokens_old;
+CREATE TABLE tokens (
+  id text PRIMARY KEY,
+  created_at text,
+  updated_at text,
+  user_id text NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token text NOT NULL,
+  token_family text NOT NULL UNIQUE,
+  previous_hash text,
+  previous_valid_until text,
+  previous_used_at text,
+  type text DEFAULT 'refresh',
+  status text DEFAULT 'active',
+  expires_at text NOT NULL
+);
+DROP TABLE tokens_old;
+CREATE INDEX tokens_user_id_idx    ON tokens (user_id);
+CREATE INDEX tokens_expires_at_idx ON tokens (expires_at);
+COMMIT;
+PRAGMA foreign_keys=ON;
+```
 
 ## Seeding (`authSeed` factory)
 
@@ -645,7 +699,8 @@ Response; client stores new access token; all tabs sync via BroadcastChannel
 - **Refresh endpoint is the only place that rotates** — `AuthResolver.resolveFromCookie()` is read-only to avoid races with concurrent requests.
 - **Resolver order is Bearer token → refresh cookie when an Authorization header is present; session cookie → refresh cookie otherwise** — a presented Bearer token always goes through full verification (blacklist + session version) and cannot be shadowed by a stale session cookie. Cookie-only requests get the zero-I/O session-cookie hot path. An invalid/expired/blacklisted Bearer token may still fall back to a valid refresh cookie because the refresh row is the durable session source of truth and logout/password flows revoke that row whenever access tokens are invalidated.
 - **Session cookie TTL should stay short** (5 min default) — it caches roles/permissions without checking DB or revocation cache; long TTL increases stale authz and copied-cookie revocation lag.
-- **Sessions are single-device** — `tokens.userId` is unique and refresh writes upsert by user. A second login replaces the first refresh session; stale-token reuse outside the grace window also revokes the active row.
+- **Sessions are multi-device** — `tokens.tokenFamily` is unique (one row per login session) and refresh writes upsert by family. A second login creates a new family without disturbing the first; refresh rotation, logout, and stale-token-reuse revocation are all scoped to a single family. Password change/reset revoke *all* of a user's sessions.
+- **Prune abandoned sessions** — with one row per login, sessions a user never returns to would linger until expiry. Login prunes expired rows opportunistically; for users who never come back, call `authService.pruneExpiredSessions()` from a scheduled job (cron/queue) to reclaim them.
 - **Bumping session version** (`invalidateUserAccessTokens`) is the nuclear option — kills all active sessions for a user in one cache write. Use on password change / reset / account takeover.
 - **Use Redis for production revocation** — memory cache revocation state is process-local and disappears on restart.
 - **Grace window on refresh** (120s) is deliberate — shorter breaks concurrent requests, longer widens replay window.

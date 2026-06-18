@@ -85,21 +85,27 @@ export class TokenService {
     }
 
     const sessionKey = this.sessionVersionKey(payload.userId);
-    let activeSessionVersion: number;
+    const blacklistKey = payload.jti ? `${this.blacklistPrefix}${payload.jti}` : null;
+    const familyKey = payload.tokenFamily ? this.revokedFamilyKey(payload.tokenFamily) : null;
 
-    if (payload.jti) {
-      const [blacklisted, sessionVersion] = await this.getCacheValues([
-        `${this.blacklistPrefix}${payload.jti}`,
-        sessionKey,
-      ]);
-      if (blacklisted !== null) {
-        Err(this.t('errors.tokenRevoked'));
-      }
-      activeSessionVersion = this.parseSessionVersion(sessionVersion);
-    } else {
-      activeSessionVersion = this.parseSessionVersion(await this.cache.get(sessionKey));
+    // Single batched cache read: blacklist (if jti), session version, and
+    // family-revocation marker (if the token carries a family).
+    const keys = [
+      ...(blacklistKey ? [blacklistKey] : []),
+      sessionKey,
+      ...(familyKey ? [familyKey] : []),
+    ];
+    const values = await this.getCacheValues(keys);
+    const valueByKey = new Map(keys.map((key, i) => [key, values[i]]));
+
+    if (blacklistKey && valueByKey.get(blacklistKey) != null) {
+      Err(this.t('errors.tokenRevoked'));
+    }
+    if (familyKey && valueByKey.get(familyKey) != null) {
+      Err(this.t('errors.tokenRevoked'));
     }
 
+    const activeSessionVersion = this.parseSessionVersion(valueByKey.get(sessionKey) ?? null);
     const tokenSessionVersion = payload.sessionVersion ?? 0;
     if (tokenSessionVersion !== activeSessionVersion) {
       Err(this.t('errors.tokenRevoked'));
@@ -108,16 +114,23 @@ export class TokenService {
     return payload;
   }
 
-  verifyRefreshToken(token: string): string {
+  verifyRefreshToken(token: string): { userId: string; tokenFamily: string } {
+    let decoded: JwtPayload & { type?: string };
     try {
-      const decoded = jwt.verify(token, this.config.jwt.refreshSecret) as JwtPayload & { type?: string };
-      if (decoded.type && decoded.type !== 'refresh') {
-        Err(this.t('errors.tokenVerificationFailed'));
-      }
-      return decoded.userId;
+      decoded = jwt.verify(token, this.config.jwt.refreshSecret) as JwtPayload & { type?: string };
     } catch {
       Err(this.t('errors.tokenVerificationFailed'));
     }
+    if (decoded.type && decoded.type !== 'refresh') {
+      Err(this.t('errors.tokenVerificationFailed'));
+    }
+    // Pre-multi-session refresh tokens carry no family — reject so the user
+    // re-authenticates into the family-aware model (see MULTI_SESSION_PLAN.md
+    // migration notes).
+    if (!decoded.tokenFamily) {
+      Err(this.t('errors.tokenVerificationFailed'));
+    }
+    return { userId: decoded.userId, tokenFamily: decoded.tokenFamily };
   }
 
   private static readonly PREVIOUS_GRACE_SECONDS = 120;
@@ -138,10 +151,10 @@ export class TokenService {
     if (!refreshToken) {
       Err(this.t('errors.refreshTokenMissing'));
     }
-    const userId = this.verifyRefreshToken(refreshToken);
+    const { userId, tokenFamily } = this.verifyRefreshToken(refreshToken);
 
-    const stored = await this.tokenRepository.getRefreshTokenWithFamily(userId);
-    if (!stored) {
+    const stored = await this.tokenRepository.getByFamily(tokenFamily);
+    if (!stored || stored.userId !== userId) {
       Err(this.t('errors.refreshTokenInvalid'));
     }
 
@@ -207,6 +220,7 @@ export class TokenService {
     userId: string;
     roles?: string[];
     permissions?: string[];
+    tokenFamily?: string;
   }): Promise<{ token: string; expiresAt: number }> {
     const jti = nanoid(16);
     const sessionVersion = await this.getUserSessionVersion(data.userId);
@@ -225,14 +239,15 @@ export class TokenService {
    * Generate access token with unique jti for blacklist support.
    * Includes roles/permissions for client-side RBAC/PBAC.
    */
-  async generateAccessToken(data: { userId: string; roles?: string[]; permissions?: string[] }): Promise<string> {
+  async generateAccessToken(data: { userId: string; roles?: string[]; permissions?: string[]; tokenFamily?: string }): Promise<string> {
     return (await this.signAccessToken(data)).token;
   }
 
   /**
-   * Generate refresh token with unique jti
+   * Generate refresh token with unique jti. The token carries its session's
+   * family so rotation/revocation can target a single session.
    */
-  private signRefreshToken(data: { userId: string }): { token: string; expiresAt: number } {
+  private signRefreshToken(data: { userId: string; tokenFamily: string }): { token: string; expiresAt: number } {
     const jti = nanoid(16);
     const expiresAt = this.expiresAt(this.config.jwt.refreshExpiresIn);
     const token = jwt.sign(
@@ -242,8 +257,8 @@ export class TokenService {
     return { token, expiresAt };
   }
 
-  generateRefreshToken(data: { userId: string }): string {
-    return this.signRefreshToken(data).token;
+  generateRefreshToken(data: { userId: string; tokenFamily?: string }): string {
+    return this.signRefreshToken({ userId: data.userId, tokenFamily: data.tokenFamily ?? nanoid(16) }).token;
   }
 
   async generateTokens(userId: string, tokenFamily?: string) {
@@ -255,14 +270,16 @@ export class TokenService {
       userId,
       roles: roleName ? [roleName] : [],
       permissions: permissions ?? [],
+      tokenFamily: family,
     };
     const access = await this.signAccessToken(accessTokenData);
-    const refresh = this.signRefreshToken({ userId });
+    const refresh = this.signRefreshToken({ userId, tokenFamily: family });
 
     await this.storeRefreshToken(userId, refresh.token, family);
 
     return {
       userId,
+      tokenFamily: family,
       roles: accessTokenData.roles,
       permissions: accessTokenData.permissions,
       accessToken: access.token,
@@ -327,7 +344,10 @@ export class TokenService {
     const expireInSecond = timestring(this.config.jwt.refreshExpiresIn, 's');
     const hashedToken = this.hashToken(refreshToken);
 
-    const existing = await this.tokenRepository.getRefreshTokenWithFamily(userId);
+    // Carry over the *current* hash of THIS family as the grace-window
+    // previous. Reading by family (not userId) keeps a fresh login on device B
+    // from inheriting device A's previous hash / grace window.
+    const existing = await this.tokenRepository.getByFamily(tokenFamily);
     const previousHash = existing?.token ?? null;
     const previousValidUntil = previousHash
       ? new Date(Date.now() + TokenService.PREVIOUS_GRACE_SECONDS * 1000).toISOString()
@@ -354,17 +374,17 @@ export class TokenService {
       Err(this.t('errors.refreshTokenMissing'));
     }
 
-    const userId = this.verifyRefreshToken(refreshToken);
-    const stored = await this.tokenRepository.getRefreshTokenWithFamily(userId);
+    const { userId, tokenFamily } = this.verifyRefreshToken(refreshToken);
+    const stored = await this.tokenRepository.getByFamily(tokenFamily);
 
-    if (!stored) {
+    if (!stored || stored.userId !== userId) {
       Err(this.t('errors.refreshTokenInvalid'));
     }
 
     const presentedHash = this.hashToken(refreshToken);
 
     if (presentedHash === stored.token) {
-      return this.generateTokens(userId, stored.tokenFamily ?? undefined);
+      return this.generateTokens(userId, tokenFamily);
     }
 
     const canRecover =
@@ -375,22 +395,43 @@ export class TokenService {
       !stored.previousUsedAt;
 
     if (canRecover) {
-      // Atomically claim the grace slot keyed on the presented previous hash.
-      const claimed = await this.tokenRepository.markPreviousUsed(userId, presentedHash);
+      // Atomically claim the grace slot for THIS family, keyed on the presented
+      // previous hash.
+      const claimed = await this.tokenRepository.markPreviousUsed(tokenFamily, presentedHash);
       if (!claimed?.length) {
         // Lost the race: a concurrent request already claimed the grace slot
         // and rotated. Do not revoke — the winner's session is legitimate.
         Err(this.t('errors.refreshTokenInvalid'));
       }
-      return this.generateTokens(userId, stored.tokenFamily ?? undefined);
+      return this.generateTokens(userId, tokenFamily);
     }
 
-    await this.revokeSuspectRefreshFamily(userId, stored.tokenFamily ?? null);
+    // Reuse outside the grace window: revoke only this suspect family.
+    await this.revokeSuspectRefreshFamily(userId, tokenFamily);
     Err(this.t('errors.refreshTokenInvalid'));
   }
 
-  async revokeToken(userId: string) {
-    return this.tokenRepository.revokeToken(userId);
+  /** Revoke every refresh session for a user (password change/reset, logout-all). */
+  async revokeAllForUser(userId: string) {
+    return this.tokenRepository.revokeAllForUser(userId);
+  }
+
+  /** Revoke a single refresh session (one family). */
+  async revokeFamily(tokenFamily: string) {
+    return this.tokenRepository.revokeFamily(tokenFamily);
+  }
+
+  /**
+   * Opportunistic cleanup of expired/abandoned sessions. With one row per
+   * family (no unique userId), abandoned logins would otherwise accumulate.
+   * Best-effort — never let cleanup failure break the calling flow.
+   */
+  async deleteExpiredSessions(): Promise<void> {
+    try {
+      await this.tokenRepository.deleteExpired();
+    } catch {
+      // non-fatal
+    }
   }
 
   async invalidateUserAccessTokens(userId: string): Promise<number> {
@@ -409,33 +450,91 @@ export class TokenService {
     return user;
   }
 
-  private async revokeSuspectRefreshFamily(userId: string, tokenFamily: string | null): Promise<void> {
-    await this.invalidateUserAccessTokens(userId);
-    if (tokenFamily) {
-      await this.tokenRepository.revokeByFamily(tokenFamily);
-      return;
-    }
-    await this.revokeToken(userId);
+  private get revokedFamilyPrefix(): string {
+    return 'auth:revoked-family:';
+  }
+
+  private revokedFamilyKey(tokenFamily: string): string {
+    return `${this.revokedFamilyPrefix}${tokenFamily}`;
   }
 
   /**
-   * Logout user - blacklist access token and revoke refresh token
+   * Mark a family as revoked in cache for the access-token TTL, so every
+   * access token minted for that family (not just the presented one) is
+   * rejected by verifyAccessToken until it would have expired anyway.
+   */
+  private async markFamilyRevoked(tokenFamily: string): Promise<void> {
+    await this.cache.set(this.revokedFamilyKey(tokenFamily), '1', this.accessTokenTtlMs());
+  }
+
+  /**
+   * Revoke only the suspect family — NOT the whole user. Bumping the global
+   * per-user session version here would kill every device's access tokens on a
+   * single family's reuse detection. Instead drop the family's refresh row and
+   * mark the family revoked so its access tokens stop verifying.
+   */
+  private async revokeSuspectRefreshFamily(userId: string, tokenFamily: string | null): Promise<void> {
+    if (tokenFamily) {
+      await this.markFamilyRevoked(tokenFamily);
+      await this.tokenRepository.revokeFamily(tokenFamily);
+      return;
+    }
+    // No family context — fall back to revoke-all for safety.
+    await this.invalidateUserAccessTokens(userId);
+    await this.revokeAllForUser(userId);
+  }
+
+  /**
+   * Logout the CURRENT session only — blacklist the presented access token,
+   * mark its family revoked, and delete that family's refresh row. Other
+   * devices/sessions for the same user keep working. Use a password change or
+   * reset (revoke-all) to terminate every session.
+   *
+   * The family is resolved from, in order: the verified refresh cookie's
+   * `tokenFamily` claim, then the presented access token's `tokenFamily` claim
+   * (pure Bearer clients). If neither is available, fall back to revoke-all.
    */
   async logout(userId: string, authorization?: string): Promise<void> {
-    // Blacklist current access token if authorization header present
+    let tokenFamily: string | null = null;
+
+    // Prefer the refresh cookie's family (verified).
+    const refreshToken = this.cookieManager.getRefreshToken();
+    if (refreshToken) {
+      try {
+        const decoded = jwt.verify(refreshToken, this.config.jwt.refreshSecret) as JwtPayload & { type?: string };
+        if (decoded.userId === userId && decoded.tokenFamily) {
+          tokenFamily = decoded.tokenFamily;
+        }
+      } catch {
+        // Invalid/expired refresh cookie — fall through to the access token.
+      }
+    }
+
+    // Blacklist the presented access token, and fall back to its family claim.
     if (authorization) {
       try {
         const accessToken = this.extractAccessToken(authorization);
         await this.blacklistCurrentToken(accessToken);
+        if (!tokenFamily) {
+          const decoded = this.decodeAccessToken(accessToken);
+          if (decoded?.userId === userId && decoded.tokenFamily) {
+            tokenFamily = decoded.tokenFamily;
+          }
+        }
       } catch {
         // Token extraction failed, skip blacklisting
       }
     }
 
-    await this.invalidateUserAccessTokens(userId);
+    if (tokenFamily) {
+      await this.markFamilyRevoked(tokenFamily);
+      await this.tokenRepository.revokeFamily(tokenFamily);
+      return;
+    }
 
-    // Revoke refresh token from database
-    await this.revokeToken(userId);
+    // No family resolvable — revoke every session for safety.
+    await this.invalidateUserAccessTokens(userId);
+    await this.revokeAllForUser(userId);
   }
 
   // ============ PASSWORD RESET TOKENS ============

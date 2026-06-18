@@ -92,6 +92,10 @@ export class AuthService {
       await this.userService.resetFailedAttempts(user.id);
     }
 
+    // Opportunistic cleanup: prune this user's expired sessions on login so
+    // abandoned families (one row per login) don't accumulate.
+    await this.tokenService.deleteExpiredSessions();
+
     const generated = await this.tokenService.generateTokens(user.id);
     this.cookieManager.setRefreshToken(generated.refreshToken);
     await this.userService.updateLastLogin(user.id);
@@ -105,7 +109,7 @@ export class AuthService {
       permissions,
     });
 
-    const { userId: _userId, roles: _roles, permissions: _permissions, ...tokens } = generated;
+    const { userId: _userId, tokenFamily: _tokenFamily, roles: _roles, permissions: _permissions, ...tokens } = generated;
     return { ...tokens, user: sanitized };
   }
 
@@ -123,7 +127,7 @@ export class AuthService {
       });
     }
 
-    const { userId: _userId, roles: _roles, permissions: _permissions, ...tokens } = generated;
+    const { userId: _userId, tokenFamily: _tokenFamily, roles: _roles, permissions: _permissions, ...tokens } = generated;
     return tokens;
   }
 
@@ -133,6 +137,16 @@ export class AuthService {
     this.cookieManager.clearSessionCookie();
 
     return { data: null, message: this.t('auth.success.logout') };
+  }
+
+  /**
+   * Prune expired refresh sessions for every user. Login already prunes
+   * opportunistically; expose this so consumers can also run it from a
+   * scheduled job (cron / queue) to reclaim rows from users who never return.
+   * Best-effort — safe to call repeatedly.
+   */
+  async pruneExpiredSessions(): Promise<void> {
+    await this.tokenService.deleteExpiredSessions();
   }
 
   async getUserProfile(userData: AuthUser): Promise<AuthUser & { language: string }> {
@@ -227,7 +241,7 @@ export class AuthService {
     this.userValidator.validatePasswordStrength(newPassword);
     await this.userService.update(userId, { password: newPassword });
     await this.tokenService.invalidateUserAccessTokens(userId);
-    await this.tokenService.revokeToken(userId);
+    await this.tokenService.revokeAllForUser(userId);
     this.cookieManager.clearRefreshToken();
     this.cookieManager.clearSessionCookie();
 
@@ -239,7 +253,7 @@ export class AuthService {
     this.userValidator.validatePasswordStrength(newPassword);
     await this.userService.update(userId, { password: newPassword });
     await this.tokenService.invalidateUserAccessTokens(userId);
-    await this.tokenService.revokeToken(userId);
+    await this.tokenService.revokeAllForUser(userId);
     this.cookieManager.clearRefreshToken();
     this.cookieManager.clearSessionCookie();
 

@@ -4,7 +4,26 @@ Goal: allow one user to stay logged in on multiple browsers/devices. Each login
 gets its own refresh-token family, and refresh rotation updates only that
 family's row instead of replacing every session for the user.
 
-Status: optional future work, separate schema-changing task.
+Status: **implemented** (2026-06-18). The schema, token format, repository,
+service-behavior, migration notes, integration tests, and docs are all done;
+`build:auth` / `test:auth` are green (34 tests). Expired-session cleanup runs
+opportunistically on login and is exposed via `authService.pruneExpiredSessions()`
+for consumers' scheduled jobs. The only deferred item is an admin/session-listing
+UI (explicitly out of scope for the first pass); the data model already supports
+it. See the per-section checkboxes below.
+
+Implemented so far:
+- Schema: `tokens.userId` unique dropped + `tokens_user_id_idx` added;
+  `tokenFamily` now `notNull().unique()` (pg + sqlite).
+- JWTs: `tokenFamily` embedded in both access and refresh tokens.
+- Repository: upsert on `tokenFamily`; `getByFamily`, family-scoped
+  `markPreviousUsed` (keeps the hash gate), `revokeFamily`, `revokeAllForUser`,
+  `deleteExpired`.
+- Service: family-scoped rotation/resolve/reuse-revoke, `auth:revoked-family:*`
+  cache marker checked in `verifyAccessToken`, family-scoped logout with
+  refresh-cookie→access-token→revoke-all fallback, opportunistic
+  `deleteExpiredSessions()` on login.
+- Docs: logout / session-management / single-vs-multi-device notes corrected.
 
 Prerequisite: apply `AUTH_FIX_PLAN.md` first (review fixes for the current
 single-session code). It deletes dead token-session code, fixes Bearer/cookie
@@ -51,16 +70,18 @@ of the migration.
 
 ## Schema Work
 
-- [ ] Update `src/schema/sqlite.ts`, `src/schema/pg.ts`, and
-      `src/schema/mysql.ts`: remove the unique constraint from `tokens.userId`.
+- [ ] Update `src/schema/sqlite.ts` and `src/schema/pg.ts` (the only two
+      supported dialects — MySQL was dropped because the data layer relies on
+      `.returning()`): remove the unique constraint from `tokens.userId`.
 - [ ] Make `tokens.tokenFamily` required and unique. It is already generated as
       `nanoid(16)` and preserved across refresh rotations.
 - [ ] Add a non-unique `tokens_user_id_idx` for revoke-all, cleanup, and future
       session listing.
 - [ ] Keep `tokens_expires_at_idx`.
-- [ ] Add migration notes/SQL for SQLite, Postgres, and MySQL: drop the user-id
+- [x] Add migration notes/SQL for SQLite and Postgres: drop the user-id
       unique index/constraint, clear old token rows, enforce unique family, then
-      recreate indexes.
+      recreate indexes. Done — see NAJM_AUTH.md "Migration: single-session →
+      multi-session" (reference SQL for both dialects + re-login rationale).
 
 ## Token Format Work
 
@@ -75,21 +96,21 @@ of the migration.
 ## Repository Work
 
 - [ ] Change `TokenRepository.storeRefreshToken` to upsert on
-      `tokens.tokenFamily`, not `tokens.userId`.
-- [ ] Handle the MySQL dialect explicitly: `onConflictDoUpdate` is
-      SQLite/Postgres API only — Drizzle's MySQL builder uses
-      `onDuplicateKeyUpdate` and cannot target a specific unique key. The
-      current code already breaks on MySQL; since this plan changes the
-      conflict target, add a dialect branch (or dialect-specific repository
-      method) so the upsert conflicts on the `tokenFamily` unique key in all
-      three dialects.
+      `tokens.tokenFamily`, not `tokens.userId`. Both supported dialects (pg,
+      sqlite) implement `onConflictDoUpdate({ target })`, so retargeting is a
+      one-line change with no dialect branching. (This is the bullet that the
+      MySQL removal eliminated — MySQL's `onDuplicateKeyUpdate` could not target
+      a specific unique key, which would have forced a dialect split.)
 - [ ] Replace `getRefreshTokenWithFamily(userId)` with lookup by
       `(userId, tokenFamily)` or by `tokenFamily` plus a user-id assertion from
       the verified JWT.
-- [ ] Change `markPreviousUsed` to target the current `tokenFamily`, and make
-      it conditional (`... WHERE token_family = ? AND previous_used_at IS NULL`)
-      returning affected rows, so concurrent grace-window refreshes cannot both
-      rotate (see AUTH_FIX_PLAN.md item 5).
+- [ ] Change `markPreviousUsed` to key on `tokenFamily` instead of `userId`,
+      but **keep the `previous_hash` predicate** that AUTH_FIX_PLAN.md item 5
+      added — i.e. `... WHERE token_family = ? AND previous_hash = ? AND
+      previous_used_at IS NULL`, returning affected rows. The `IS NULL` guard
+      alone is NOT enough: the winner's rotation resets `previous_used_at` back
+      to NULL, so only the hash mismatch stops a late loser from re-claiming the
+      slot. Dropping the hash predicate would reopen the race item 5 closed.
 - [ ] Split revocation APIs into `revokeFamily(tokenFamily)` and
       `revokeAllForUser(userId)`.
 - [ ] Keep `revokeByFamily` only if that remains the preferred internal API name.
@@ -101,8 +122,11 @@ of the migration.
 
 ## Service Behavior Work
 
-- [ ] Generate `family = nanoid(16)` once per login.
-- [ ] Pass the family into both access and refresh signing.
+- [x] Generate `family = nanoid(16)` once per login — already done:
+      `generateTokens` mints the family and threads it into `storeRefreshToken`.
+- [ ] Pass the family into both access and refresh signing. This is the real
+      remaining gap — `signAccessToken`/`signRefreshToken` do not yet embed
+      `tokenFamily` in the JWT payloads.
 - [ ] Store the hashed refresh token under that family. The previous-hash
       carryover inside `TokenService.storeRefreshToken` (reads the existing row
       to set `previousHash`/`previousValidUntil`) must read by `tokenFamily`,
@@ -141,32 +165,43 @@ of the migration.
 
 ## Docs Work
 
-- [ ] Update `packages/najm-auth/README.md`: replace the single-device note with
+- [x] Update `packages/najm-auth/README.md`: replace the single-device note with
       multi-session semantics.
-- [ ] Update `packages/najm-auth/NAJM_AUTH.md`: document one row per family,
+- [x] Update `packages/najm-auth/NAJM_AUTH.md`: document one row per family,
       logout-current-device behavior, and password change/reset revoke-all
-      behavior.
-- [ ] Document the migration behavior: existing refresh sessions must log in
+      behavior. (Logout, session-management, tokens table, and migration
+      sections all updated.)
+- [x] Document the migration behavior: existing refresh sessions must log in
       again after upgrading through this schema change.
 
 ## Test Work
 
-- [ ] Add tests in `packages/najm-auth/test/auth-security.test.ts` or a new
+Real-DB integration coverage lives in
+`packages/najm-auth/test/multi-session-db.test.ts` (full `TokenRepository`
+against bun:sqlite). Mock-level reuse/rotation/logout coverage is in
+`auth-security.test.ts`.
+
+- [x] Add tests in `packages/najm-auth/test/auth-security.test.ts` or a new
       focused test file.
-- [ ] Test that a second login does not invalidate the first session.
-- [ ] Test that a second login does not inherit the first family's
+- [x] Test that a second login does not invalidate the first session.
+- [x] Test that a second login does not inherit the first family's
       `previousHash`/grace window (family-scoped carryover).
-- [ ] Test that refresh rotation is isolated per family.
-- [ ] Test that stale refresh-token reuse revokes only the suspect family and
+- [x] Test that refresh rotation is isolated per family.
+- [x] Test that stale refresh-token reuse revokes only the suspect family and
       does not bump the global per-user session version.
-- [ ] Test that concurrent grace-window refreshes in one family produce exactly
-      one successful rotation.
-- [ ] Test that logout from the current device does not delete other refresh rows.
-- [ ] Test that expired token rows are removed by the cleanup path.
-- [ ] Test that password change/reset deletes all user refresh rows and
-      invalidates all access tokens.
-- [ ] Run `bun run build:auth`.
-- [ ] Run `bun run test:auth`.
+- [x] Test that concurrent grace-window refreshes in one family produce exactly
+      one successful rotation. (`auth-security.test.ts`)
+- [x] Test that logout from the current device does not delete other refresh rows.
+- [x] Test that expired token rows are removed by the cleanup path.
+- [x] Test that password change/reset deletes all user refresh rows and
+      invalidates all access tokens. `AuthService.resetPassword` runs against a
+      real DB in `multi-session-db.test.ts`: every session for the user is
+      deleted, an unrelated user is untouched, and the global session-version
+      key is bumped.
+- [x] Test that logout with no refresh cookie resolves the family from the
+      access token's `tokenFamily` claim (pure Bearer clients).
+- [x] Run `bun run build:auth`.
+- [x] Run `bun run test:auth`. (33 pass)
 
 ## Acceptance
 

@@ -34,9 +34,9 @@ function createTokenService(overrides: {
   cache?: Record<string, any>;
 } = {}) {
   const repo = {
-    getRefreshTokenWithFamily: async () => null,
-    revokeToken: async () => undefined,
-    revokeByFamily: async () => undefined,
+    getByFamily: async () => null,
+    revokeAllForUser: async () => undefined,
+    revokeFamily: async () => undefined,
     getRoleAndPermissions: async () => ({ roleName: null, permissions: [] }),
     ...overrides.repo,
   };
@@ -217,39 +217,55 @@ describe('auth security regressions', () => {
     ]]);
   });
 
-  test('refresh token mismatch revokes the suspected token family', async () => {
+  test('refresh token mismatch revokes only the suspected family, not the user', async () => {
     const refreshToken = jwt.sign(
-      { userId: 'user-1', type: 'refresh' },
+      { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
       authConfig.jwt.refreshSecret,
       { expiresIn: '7d' },
     );
     const revokedFamilies: string[] = [];
+    const revokedFamilyMarkers: string[] = [];
+    let userRevoked = false;
 
     const { service } = createTokenService({
       cookie: {
         getRefreshToken: () => refreshToken,
       },
+      cache: {
+        get: async () => null,
+        set: async (key: string) => {
+          if (key.startsWith('auth:revoked-family:')) revokedFamilyMarkers.push(key);
+        },
+        del: async () => true,
+      },
       repo: {
-        getRefreshTokenWithFamily: async () => ({
+        getByFamily: async () => ({
+          userId: 'user-1',
           token: 'not-the-presented-token-hash',
           tokenFamily: 'family-1',
           previousHash: null,
           previousValidUntil: null,
           previousUsedAt: null,
         }),
-        revokeByFamily: async (family: string) => {
+        revokeFamily: async (family: string) => {
           revokedFamilies.push(family);
+        },
+        revokeAllForUser: async () => {
+          userRevoked = true;
         },
       },
     });
 
     await expect(service.refreshTokens()).rejects.toThrow();
     expect(revokedFamilies).toEqual(['family-1']);
+    // Family revocation must NOT escalate to a global per-user revoke.
+    expect(userRevoked).toBe(false);
+    expect(revokedFamilyMarkers).toEqual(['auth:revoked-family:family-1']);
   });
 
   test('concurrent grace-window refreshes produce exactly one successful rotation', async () => {
     const refreshToken = jwt.sign(
-      { userId: 'user-1', type: 'refresh' },
+      { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
       authConfig.jwt.refreshSecret,
       { expiresIn: '7d' },
     );
@@ -263,7 +279,8 @@ describe('auth security regressions', () => {
       },
       repo: {
         // Presented token is the PREVIOUS (rotated) token, still in grace.
-        getRefreshTokenWithFamily: async () => ({
+        getByFamily: async () => ({
+          userId: 'user-1',
           token: 'current-token-hash',
           tokenFamily: 'family-1',
           previousHash: presentedHash,
@@ -274,7 +291,7 @@ describe('auth security regressions', () => {
         markPreviousUsed: async () => (claims++ === 0 ? [{ userId: 'user-1' }] : []),
         storeRefreshToken: async () => undefined,
         getRoleAndPermissions: async () => ({ roleName: 'user', permissions: [] }),
-        revokeByFamily: async (family: string) => { revokedFamilies.push(family); },
+        revokeFamily: async (family: string) => { revokedFamilies.push(family); },
       },
     });
 
@@ -285,5 +302,42 @@ describe('auth security regressions', () => {
     await expect(service.refreshTokens()).rejects.toThrow();
     expect(claims).toBe(2);
     expect(revokedFamilies).toEqual([]);
+  });
+
+  test('bearer-only logout resolves the family from the access token and revokes only that session', async () => {
+    const accessToken = jwt.sign(
+      { userId: 'user-1', jti: 'jti-1', tokenFamily: 'family-9' },
+      authConfig.jwt.accessSecret,
+      { expiresIn: '1h' },
+    );
+    const cacheSets: string[] = [];
+    const revokedFamilies: string[] = [];
+    let userRevoked = false;
+
+    const { service } = createTokenService({
+      cookie: {
+        // Pure Bearer client: no refresh cookie present.
+        getRefreshToken: () => undefined,
+      },
+      cache: {
+        get: async () => null,
+        set: async (key: string) => { cacheSets.push(key); },
+        del: async () => true,
+        exists: async () => false,
+      },
+      repo: {
+        revokeFamily: async (family: string) => { revokedFamilies.push(family); },
+        revokeAllForUser: async () => { userRevoked = true; },
+      },
+    });
+
+    await service.logout('user-1', `Bearer ${accessToken}`);
+
+    expect(revokedFamilies).toEqual(['family-9']);
+    expect(userRevoked).toBe(false);
+    expect(cacheSets).toContain('auth:revoked-family:family-9');
+    expect(cacheSets).toContain('auth:blacklist:jti-1');
+    // Must NOT bump the global per-user session version.
+    expect(cacheSets).not.toContain('auth:session-version:user-1');
   });
 });

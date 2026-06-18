@@ -74,9 +74,9 @@ export const permissionsTable = pgTable('permissions', {
  */
 export const tokensTable = pgTable('tokens', {
   ...baseFields(10),
-  userId: text('user_id').references(() => usersTable.id, { onDelete: 'cascade' }).unique().notNull(),
+  userId: text('user_id').references(() => usersTable.id, { onDelete: 'cascade' }).notNull(),
   token: text('token').notNull(),
-  tokenFamily: text('token_family'),
+  tokenFamily: text('token_family').notNull().unique(),
   previousHash: text('previous_hash'),
   previousValidUntil: timestamp('previous_valid_until', { mode: 'string' }),
   previousUsedAt: timestamp('previous_used_at', { mode: 'string' }),
@@ -84,6 +84,7 @@ export const tokensTable = pgTable('tokens', {
   status: tokenStatusEnum('status').default('active'),
   expiresAt: timestamp('expires_at', { mode: 'string' }).notNull(),
 }, (table) => ({
+  userIdIdx: index('tokens_user_id_idx').on(table.userId),
   expiresAtIdx: index('tokens_expires_at_idx').on(table.expiresAt),
 }));
 

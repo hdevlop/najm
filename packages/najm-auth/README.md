@@ -593,8 +593,8 @@ async resetPassword(token: string, newPassword: string) {
 
 ### Session Management
 
-- Sessions are single-device: the token table stores one refresh row per user, so a new login replaces the previous device's refresh session
-- A stale refresh token presented after the 120-second rotation grace window revokes the active refresh session as reuse protection
+- Sessions are multi-device: the token table stores one refresh row per login session (keyed by a unique `tokenFamily`), so a user can stay logged in on several devices at once. Logout and rotation are scoped to the current session; password change/reset revoke every session
+- A stale refresh token presented after the 120-second rotation grace window revokes only that session's family as reuse protection
 - The signed session cookie is accepted for up to its configured TTL (5 minutes by default) without a database or revocation-cache read
 - Use `@RateLimit` on logout for DDoS protection
 

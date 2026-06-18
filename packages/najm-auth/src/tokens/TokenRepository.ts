@@ -1,4 +1,4 @@
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, lt } from 'drizzle-orm';
 import { Repository, Inject } from 'najm-core';
 import { DB, type TDb } from 'najm-database';
 import { AUTH_SCHEMA } from '../auth.tokens';
@@ -17,6 +17,12 @@ export class TokenRepository {
   private queryHelper?: AuthQueries;
   private get q() { return this.queryHelper ??= new AuthQueries(this.db, this.schema); }
 
+  /**
+   * Upsert the refresh-token row for a session, keyed on `tokenFamily` (the
+   * per-login session identifier, unique). A brand-new login inserts a fresh
+   * family row; a refresh rotation updates only that family's row, leaving the
+   * user's other sessions untouched.
+   */
   async storeRefreshToken(tokenData: {
     userId: string;
     token: string;
@@ -30,10 +36,9 @@ export class TokenRepository {
       .insert(this.tokens)
       .values(tokenData)
       .onConflictDoUpdate({
-        target: this.tokens.userId,
+        target: this.tokens.tokenFamily,
         set: {
           token: tokenData.token,
-          tokenFamily: tokenData.tokenFamily,
           expiresAt: tokenData.expiresAt,
           previousHash: tokenData.previousHash ?? null,
           previousValidUntil: tokenData.previousValidUntil ?? null,
@@ -43,37 +48,48 @@ export class TokenRepository {
   }
 
   /**
-   * Claim the previous-token grace slot. Conditional on BOTH the stored
-   * previousHash still matching the presented token AND previousUsedAt being
-   * NULL. Gating on the hash (not just the flag) closes the rotation race: the
-   * winner's rotation rewrites previousHash via storeRefreshToken, so a loser
-   * whose UPDATE lands after that rotation no longer matches and gets zero
-   * rows — exactly one caller ever claims the slot.
+   * Claim the previous-token grace slot for a single family. Conditional on
+   * BOTH the stored previousHash still matching the presented token AND
+   * previousUsedAt being NULL. Gating on the hash (not just the flag) closes
+   * the rotation race: the winner's rotation rewrites previousHash via
+   * storeRefreshToken (and resets previousUsedAt to NULL), so a loser whose
+   * UPDATE lands after that rotation no longer matches and gets zero rows —
+   * exactly one caller ever claims the slot.
    */
-  async markPreviousUsed(userId: string, previousHash: string) {
+  async markPreviousUsed(tokenFamily: string, previousHash: string) {
     return await this.db
       .update(this.tokens)
       .set({ previousUsedAt: new Date().toISOString() })
       .where(and(
-        eq(this.tokens.userId, userId),
+        eq(this.tokens.tokenFamily, tokenFamily),
         eq(this.tokens.previousHash, previousHash),
         isNull(this.tokens.previousUsedAt),
       ))
       .returning();
   }
 
-  async getRefreshTokenWithFamily(userId: string) {
-    const [token] = await this.db.select().from(this.tokens).where(eq(this.tokens.userId, userId));
+  /** Look up a single session's token row by its family identifier. */
+  async getByFamily(tokenFamily: string) {
+    const [token] = await this.db.select().from(this.tokens).where(eq(this.tokens.tokenFamily, tokenFamily));
     return token ?? null;
   }
 
-  async revokeToken(userId: string) {
-    const [deletedToken] = await this.db.delete(this.tokens).where(eq(this.tokens.userId, userId)).returning();
-    return deletedToken;
+  /** Revoke a single session (one family). */
+  async revokeFamily(tokenFamily: string) {
+    return this.db.delete(this.tokens).where(eq(this.tokens.tokenFamily, tokenFamily)).returning();
   }
 
-  async revokeByFamily(tokenFamily: string) {
-    return this.db.delete(this.tokens).where(eq(this.tokens.tokenFamily, tokenFamily)).returning();
+  /** Revoke every session for a user (password change/reset, logout-all). */
+  async revokeAllForUser(userId: string) {
+    return this.db.delete(this.tokens).where(eq(this.tokens.userId, userId)).returning();
+  }
+
+  /**
+   * Opportunistic cleanup: with one row per family (no unique userId), expired
+   * and abandoned sessions accumulate. Delete every expired row.
+   */
+  async deleteExpired() {
+    return this.db.delete(this.tokens).where(lt(this.tokens.expiresAt, new Date().toISOString())).returning();
   }
 
   async isUserExists(userId: string) {

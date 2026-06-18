@@ -26,9 +26,9 @@ const TOKENS_DDL = `
     id text PRIMARY KEY,
     created_at text,
     updated_at text,
-    user_id text NOT NULL UNIQUE,
+    user_id text NOT NULL,
     token text NOT NULL,
-    token_family text,
+    token_family text NOT NULL UNIQUE,
     previous_hash text,
     previous_valid_until text,
     previous_used_at text,
@@ -74,23 +74,23 @@ describe('markPreviousUsed conditional UPDATE (real bun:sqlite)', () => {
   test('first claim wins, second claim gets zero rows', async () => {
     await seedToken(db);
 
-    const first = await repo.markPreviousUsed('user-1', 'prev-hash');
+    const first = await repo.markPreviousUsed('family-1', 'prev-hash');
     expect(first).toHaveLength(1);
     expect(first[0].previousUsedAt).not.toBeNull();
 
     // Grace slot already consumed: the IS NULL guard now fails → zero rows.
-    const second = await repo.markPreviousUsed('user-1', 'prev-hash');
+    const second = await repo.markPreviousUsed('family-1', 'prev-hash');
     expect(second).toHaveLength(0);
   });
 
   test('a stale/wrong previous hash never claims the slot', async () => {
     await seedToken(db);
 
-    const claimed = await repo.markPreviousUsed('user-1', 'wrong-hash');
+    const claimed = await repo.markPreviousUsed('family-1', 'wrong-hash');
     expect(claimed).toHaveLength(0);
 
     // The legitimate previous hash is still claimable afterwards.
-    const legit = await repo.markPreviousUsed('user-1', 'prev-hash');
+    const legit = await repo.markPreviousUsed('family-1', 'prev-hash');
     expect(legit).toHaveLength(1);
   });
 });

@@ -66,9 +66,9 @@ export const permissionsTable = sqliteTable('permissions', {
  */
 export const tokensTable = sqliteTable('tokens', {
   ...baseFields(10),
-  userId: text('user_id').references(() => usersTable.id, { onDelete: 'cascade' }).unique().notNull(),
+  userId: text('user_id').references(() => usersTable.id, { onDelete: 'cascade' }).notNull(),
   token: text('token').notNull(),
-  tokenFamily: text('token_family'),
+  tokenFamily: text('token_family').notNull().unique(),
   previousHash: text('previous_hash'),
   previousValidUntil: text('previous_valid_until'),
   previousUsedAt: text('previous_used_at'),
@@ -76,6 +76,7 @@ export const tokensTable = sqliteTable('tokens', {
   status: text('status').$type<TokenStatus>().default('active'),
   expiresAt: text('expires_at').notNull(),
 }, (table) => ({
+  userIdIdx: index('tokens_user_id_idx').on(table.userId),
   expiresAtIdx: index('tokens_expires_at_idx').on(table.expiresAt),
 }));
 
