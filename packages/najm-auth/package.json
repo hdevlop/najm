@@ -43,11 +43,6 @@
       "types": "./dist/schema/sqlite.d.ts",
       "import": "./dist/schema/sqlite.js",
       "default": "./dist/schema/sqlite.js"
-    },
-    "./mysql": {
-      "types": "./dist/schema/mysql.d.ts",
-      "import": "./dist/schema/mysql.js",
-      "default": "./dist/schema/mysql.js"
     }
   },
   "scripts": {

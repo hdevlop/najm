@@ -8,7 +8,6 @@ import { AUTH_CONFIG, AUTH_ENCRYPTION_KEY, AUTH_SCHEMA } from './auth.tokens';
 import type { AuthPluginConfig, AuthConfig, AuthSchema } from './types';
 import { authSchema as pgSchema } from './schema/pg';
 import { authSchema as sqliteSchema } from './schema/sqlite';
-import { authSchema as mysqlSchema } from './schema/mysql';
 
 import * as AuthModule from './auth';
 import * as UserModule from './users';
@@ -82,8 +81,6 @@ const selectSchema = (config?: AuthPluginConfig): AuthSchema => {
   switch (dialect) {
     case 'sqlite':
       return sqliteSchema;
-    case 'mysql':
-      return mysqlSchema;
     case 'pg':
     default:
       return pgSchema;

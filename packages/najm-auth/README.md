@@ -9,7 +9,7 @@ Production-ready authentication and authorization library for the Najm framework
 - ✅ Permission-based access control (PBAC) with wildcards
 - ✅ Row-level ownership scoping for multi-tenant apps
 - ✅ Built-in password reset flow with email support
-- ✅ Multi-dialect support (PostgreSQL, SQLite, MySQL)
+- ✅ Multi-dialect support (PostgreSQL, SQLite)
 - ✅ Type-safe decorators with TypeScript
 - ✅ Rate limiting on auth endpoints
 - ✅ Internationalization (i18n) for all messages
@@ -103,7 +103,7 @@ FRONTEND_URL=https://app.example.com
 ```typescript
 auth({
   // Database
-  dialect?: 'pg' | 'sqlite' | 'mysql'    // Default: 'pg'
+  dialect?: 'pg' | 'sqlite'              // Default: 'pg' (RETURNING-capable engines only)
   schema?: AuthSchema                      // Override dialect schema
 
   // JWT

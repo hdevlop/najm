@@ -5,7 +5,6 @@ export default defineConfig({
     'src/index.ts',
     'src/schema/pg.ts',
     'src/schema/sqlite.ts',
-    'src/schema/mysql.ts',
     'src/client/index.ts',
     'src/client/edge.ts',
     'src/client/react/index.ts',

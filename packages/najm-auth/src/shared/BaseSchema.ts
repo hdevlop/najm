@@ -3,7 +3,6 @@
 // Please import from the new centralized schema files:
 // - import { baseFields, userStatusEnum, ... } from 'najm-auth/pg'
 // - import { baseFields, ... } from 'najm-auth/sqlite'
-// - import { baseFields, ... } from 'najm-auth/mysql'
 // - import { USER_STATUS, TOKEN_STATUS, TOKEN_TYPE } from 'najm-auth/schema/constants'
 // ============================================================================
 

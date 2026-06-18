@@ -72,7 +72,7 @@ export interface AuthConfig {
  */
 /**
  * Auth schema shape (dialect-agnostic)
- * Import from 'najm-auth/pg', 'najm-auth/sqlite', or 'najm-auth/mysql'
+ * Import from 'najm-auth/pg' or 'najm-auth/sqlite'.
  */
 export interface AuthSchema {
   users: any;
@@ -83,9 +83,17 @@ export interface AuthSchema {
 }
 
 export type AuthPluginConfig = {
-  /** Database dialect (default: 'pg'). Auto-selects the correct schema. */
-  dialect?: 'pg' | 'sqlite' | 'mysql';
-  /** Database schema tables (optional, overrides dialect). Use authSchema from 'najm-auth/sqlite' or 'najm-auth/mysql' */
+  /**
+   * Database dialect (default: 'pg'). Auto-selects the correct schema.
+   * Only RETURNING-capable engines are supported — the auth data layer
+   * relies on `.returning()` for every write. MySQL is not supported.
+   */
+  dialect?: 'pg' | 'sqlite';
+  /**
+   * Database schema tables (optional, overrides dialect). Use authSchema
+   * from 'najm-auth/pg' or 'najm-auth/sqlite'. A custom schema must still be
+   * backed by a RETURNING-capable engine (Postgres or SQLite).
+   */
   schema?: AuthSchema;
   /** JWT configuration (secrets can be set via env vars) */
   jwt?: Partial<JwtConfig>;

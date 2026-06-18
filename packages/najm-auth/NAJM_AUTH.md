@@ -6,7 +6,7 @@ This file provides guidance to Claude Code when working with `najm-auth` — the
 
 **najm-auth** is a complete auth stack built as a Najm plugin. It ships five pieces:
 
-1. **Backend plugin** ([packages/najm-auth/src/AuthPlugin.ts](packages/najm-auth/src/AuthPlugin.ts)) — services, controllers, guards, drizzle schemas (pg/sqlite/mysql).
+1. **Backend plugin** ([packages/najm-auth/src/AuthPlugin.ts](packages/najm-auth/src/AuthPlugin.ts)) — services, controllers, guards, drizzle schemas (pg/sqlite).
 2. **Ownership / Policy system** ([packages/najm-auth/src/ownership/](packages/najm-auth/src/ownership/)) — declarative row-level scoping, fluent `own().for(role, where/join)` DSL, `@Policy` + `@Can*` composition.
 3. **Client SDK** ([packages/najm-auth/src/client/](packages/najm-auth/src/client/)) — zero-dep fetch client with automatic refresh, tab sync, token decoder.
 4. **React bindings** ([packages/najm-auth/src/client/react/](packages/najm-auth/src/client/react/)) — `AuthProvider`, `useLogin`, `useSession`, `Can`, `Protected`, etc.
@@ -41,7 +41,7 @@ plugin('auth')
 
 ```typescript
 auth({
-  dialect: 'sqlite' | 'pg' | 'mysql',     // picks schema automatically
+  dialect: 'sqlite' | 'pg',               // picks schema automatically (RETURNING-capable engines only)
   jwt: {
     accessSecret,  accessExpiresIn:  '1h',
     refreshSecret, refreshExpiresIn: '7d',
@@ -413,7 +413,7 @@ Five tables exported as `authSchema` per dialect: `usersTable`, `rolesTable`, `p
 Import dialect-specific (tree-shakeable):
 
 ```typescript
-import { authSchema } from 'najm-auth/sqlite';   // or /pg, /mysql
+import { authSchema } from 'najm-auth/sqlite';   // or /pg
 ```
 
 Compose with app tables — **never duplicate**:

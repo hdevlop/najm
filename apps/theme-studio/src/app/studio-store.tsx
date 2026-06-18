@@ -7,7 +7,13 @@ import {
   type NajmThemeTokens,
   type NajmTypographyConfig,
 } from "najm-kit";
-import { DEFAULT_PRESET, PRESETS, SMS_DASHBOARD_PRESET_ID } from "../theme/presets";
+import {
+  DEFAULT_PRESET,
+  PRESETS,
+  SMS_DASHBOARD_PRESET_ID,
+  presetConfigForMode,
+  type StudioThemeMode,
+} from "../theme/presets";
 import { type TokenCategoryId, type TokenKey } from "../theme/token-meta";
 
 export type SettingsTab =
@@ -25,6 +31,8 @@ export type PreviewId =
   | "overlays"
   | "charts";
 const STORAGE_CURRENT = "najm-theme-studio/current";
+const STORAGE_CURRENT_DRAFT_KEY = "najm-theme-studio/current-draft-key";
+const STORAGE_MODE_DRAFTS = "najm-theme-studio/mode-drafts";
 const STORAGE_SAVED = "najm-theme-studio/saved";
 const STORAGE_SAVED_SEEDS = "najm-theme-studio/saved-seeds";
 const STORAGE_PREVIEW_LAYOUT = "najm-theme-studio/preview-layout";
@@ -63,7 +71,7 @@ interface StudioActions {
   setToken: (key: TokenKey, value: string) => void;
   resetToken: (key: TokenKey) => void;
   setThemeField: <K extends keyof NajmDesignConfig["theme"]>(key: K, value: NajmDesignConfig["theme"][K]) => void;
-  /** Switches mode AND re-resolves the token palette for that mode + current accent. */
+  /** Switches mode by saving/restoring the temp draft for that mode. */
   setMode: (mode: "light" | "dark") => void;
   /** Switches accent AND re-resolves the token palette for that mode + new accent. */
   setAccent: (accent: NajmDesignConfig["theme"]["accent"]) => void;
@@ -93,11 +101,92 @@ interface StudioActions {
 }
 
 type Store = StudioState & StudioActions;
+type ModeDraftStore = Record<string, Partial<Record<StudioThemeMode, NajmDesignConfig>>>;
 
 const StudioContext = createContext<Store | null>(null);
 
 function clone<T>(v: T): T {
   return JSON.parse(JSON.stringify(v));
+}
+
+function modeOf(config: NajmDesignConfig): StudioThemeMode {
+  return config.theme.mode === "dark" ? "dark" : "light";
+}
+
+function presetDraftKey(id: string): string {
+  return `preset:${id}`;
+}
+
+function savedDraftKey(id: string): string {
+  return `saved:${id}`;
+}
+
+function customDraftKey(): string {
+  return `custom:${crypto.randomUUID()}`;
+}
+
+function presetIdFromDraftKey(key: string | undefined): string | undefined {
+  if (!key?.startsWith("preset:")) return undefined;
+  const id = key.slice("preset:".length);
+  return PRESETS.some((preset) => preset.id === id) ? id : undefined;
+}
+
+function loadCurrentDraftKey(): string {
+  try {
+    const raw = localStorage.getItem(STORAGE_CURRENT_DRAFT_KEY);
+    if (raw) return raw;
+  } catch {
+    /* ignore */
+  }
+  return presetDraftKey(DEFAULT_PRESET.id);
+}
+
+function readModeDrafts(): ModeDraftStore {
+  try {
+    const raw = localStorage.getItem(STORAGE_MODE_DRAFTS);
+    if (!raw) return {};
+    const parsed = JSON.parse(raw);
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeModeDrafts(drafts: ModeDraftStore) {
+  try {
+    localStorage.setItem(STORAGE_MODE_DRAFTS, JSON.stringify(drafts));
+  } catch {
+    /* ignore */
+  }
+}
+
+function rememberModeDraft(key: string | undefined, config: NajmDesignConfig) {
+  if (!key) return;
+  const drafts = readModeDrafts();
+  drafts[key] = { ...(drafts[key] ?? {}), [modeOf(config)]: clone(config) };
+  writeModeDrafts(drafts);
+}
+
+function readModeDraft(key: string, mode: StudioThemeMode): NajmDesignConfig | undefined {
+  const config = readModeDrafts()[key]?.[mode];
+  return config ? clone(config) : undefined;
+}
+
+function configForDraftMode(current: NajmDesignConfig, key: string, mode: StudioThemeMode): NajmDesignConfig {
+  const stored = readModeDraft(key, mode);
+  if (stored) return stored;
+
+  const presetId = presetIdFromDraftKey(key);
+  const preset = presetId ? PRESETS.find((p) => p.id === presetId) : undefined;
+  if (preset) return clone(presetConfigForMode(preset, mode));
+
+  const next = clone(current);
+  next.theme = {
+    ...next.theme,
+    mode,
+    tokens: { ...composePreset(mode, next.theme.accent ?? "neutral") },
+  };
+  return next;
 }
 
 function loadInitial(): NajmDesignConfig {
@@ -197,8 +286,11 @@ function previewLayoutFromConfig(config: NajmDesignConfig, fallback = loadPrevie
 }
 
 export function StudioProvider({ children }: { children: React.ReactNode }) {
+  const [currentDraftKey, setCurrentDraftKey] = useState(loadCurrentDraftKey);
   const [config, setConfig] = useState<NajmDesignConfig>(loadInitial);
-  const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(DEFAULT_PRESET.id);
+  const [selectedPresetId, setSelectedPresetId] = useState<string | undefined>(
+    () => presetIdFromDraftKey(currentDraftKey) ?? DEFAULT_PRESET.id,
+  );
   const [activeSettingsTab, setActiveSettingsTab] = useState<SettingsTab>("colors");
   const [activeTokenCategory, setActiveTokenCategory] = useState<TokenCategoryId>("foundation");
   const [preview, setPreviewState] = useState<PreviewId>("dashboard");
@@ -217,10 +309,12 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     }
     try {
       localStorage.setItem(STORAGE_CURRENT, JSON.stringify(config));
+      localStorage.setItem(STORAGE_CURRENT_DRAFT_KEY, currentDraftKey);
+      rememberModeDraft(currentDraftKey, config);
     } catch {
       /* ignore */
     }
-  }, [config]);
+  }, [config, currentDraftKey]);
 
   useEffect(() => {
     try {
@@ -281,13 +375,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
 
   const setMode = useCallback(
     (mode: "light" | "dark") => {
-      mutateTheme((theme) => {
-        theme.mode = mode;
-        // Regenerate the palette for the new mode so the toggle actually recolors.
-        theme.tokens = { ...composePreset(mode, theme.accent ?? "neutral") } as NajmThemeTokens;
-      });
+      if (modeOf(config) === mode) return;
+      rememberModeDraft(currentDraftKey, config);
+      const next = configForDraftMode(config, currentDraftKey, mode);
+      setConfig(next);
+      setPreviewLayout(previewLayoutFromConfig(next, previewLayout));
+      setDirty(true);
     },
-    [mutateTheme],
+    [config, currentDraftKey, previewLayout],
   );
 
   const setAccent = useCallback(
@@ -424,18 +519,29 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const loadPreset = useCallback((id: string) => {
     const preset = PRESETS.find((p) => p.id === id);
     if (!preset) return;
-    setConfig(clone(preset.config));
-    setPreviewLayout(previewLayoutFromConfig(preset.config, DEFAULT_PREVIEW_LAYOUT));
+    rememberModeDraft(currentDraftKey, config);
+
+    const nextDraftKey = presetDraftKey(id);
+    const next = readModeDraft(nextDraftKey, modeOf(preset.config)) ?? clone(preset.config);
+    setConfig(next);
+    setPreviewLayout(previewLayoutFromConfig(next, DEFAULT_PREVIEW_LAYOUT));
+    setCurrentDraftKey(nextDraftKey);
     setSelectedPresetId(id);
     setDirty(false);
-  }, []);
+  }, [config, currentDraftKey]);
 
   const importConfig = useCallback((cfg: NajmDesignConfig) => {
-    setConfig(clone(cfg));
-    setPreviewLayout(previewLayoutFromConfig(cfg, DEFAULT_PREVIEW_LAYOUT));
+    rememberModeDraft(currentDraftKey, config);
+
+    const next = clone(cfg);
+    const nextDraftKey = customDraftKey();
+    rememberModeDraft(nextDraftKey, next);
+    setConfig(next);
+    setPreviewLayout(previewLayoutFromConfig(next, DEFAULT_PREVIEW_LAYOUT));
+    setCurrentDraftKey(nextDraftKey);
     setSelectedPresetId(undefined);
     setDirty(true);
-  }, []);
+  }, [config, currentDraftKey]);
 
   const openFlyout = useCallback((name: NajmComponentName) => {
     setSelectedComponent(name);
@@ -446,13 +552,14 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
   const saveTheme = useCallback(
     (name: string) => {
       const now = new Date().toISOString();
+      rememberModeDraft(currentDraftKey, config);
       setSaved((prev) => [
         ...prev,
         { id: crypto.randomUUID(), name, createdAt: now, updatedAt: now, config: clone(config) },
       ]);
       setDirty(false);
     },
-    [config],
+    [config, currentDraftKey],
   );
 
   const duplicateTheme = useCallback((id: string) => {
@@ -475,14 +582,19 @@ export function StudioProvider({ children }: { children: React.ReactNode }) {
     setSaved((prev) => {
       const found = prev.find((s) => s.id === id);
       if (found) {
-        setConfig(clone(found.config));
-        setPreviewLayout(previewLayoutFromConfig(found.config, DEFAULT_PREVIEW_LAYOUT));
+        rememberModeDraft(currentDraftKey, config);
+
+        const nextDraftKey = savedDraftKey(id);
+        const next = readModeDraft(nextDraftKey, modeOf(found.config)) ?? clone(found.config);
+        setConfig(next);
+        setPreviewLayout(previewLayoutFromConfig(next, DEFAULT_PREVIEW_LAYOUT));
+        setCurrentDraftKey(nextDraftKey);
         setSelectedPresetId(undefined);
         setDirty(false);
       }
       return prev;
     });
-  }, []);
+  }, [config, currentDraftKey]);
 
   const value = useMemo<Store>(
     () => ({

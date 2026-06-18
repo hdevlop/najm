@@ -1,9 +1,12 @@
 import { composePreset, type NajmDesignConfig } from "najm-kit";
 
+export type StudioThemeMode = "light" | "dark";
+
 export interface StudioPreset {
   id: string;
   name: string;
   config: NajmDesignConfig;
+  modes?: Partial<Record<StudioThemeMode, NajmDesignConfig>>;
 }
 
 /**
@@ -18,6 +21,33 @@ function withResolvedTokens(config: NajmDesignConfig): NajmDesignConfig {
     ...config,
     theme: { ...config.theme, tokens: { ...base, ...(tokens ?? {}) } },
   };
+}
+
+function mapPreset(preset: StudioPreset): StudioPreset {
+  return {
+    ...preset,
+    config: withResolvedTokens(preset.config),
+    modes: preset.modes
+      ? Object.fromEntries(
+          Object.entries(preset.modes).map(([mode, config]) => [mode, withResolvedTokens(config)]),
+        )
+      : undefined,
+  };
+}
+
+export function presetConfigForMode(preset: StudioPreset, mode: StudioThemeMode): NajmDesignConfig {
+  const explicit = preset.modes?.[mode];
+  if (explicit) return explicit;
+  if ((preset.config.theme.mode ?? "light") === mode) return preset.config;
+
+  return withResolvedTokens({
+    ...preset.config,
+    theme: {
+      ...preset.config.theme,
+      mode,
+      tokens: composePreset(mode, preset.config.theme.accent ?? "neutral"),
+    },
+  });
 }
 
 const baseTypography: NajmDesignConfig["typography"] = {
@@ -198,31 +228,29 @@ const RAW_PRESETS: StudioPreset[] = [
       },
       layout: { pageGutter: "24px", sectionGap: "20px" },
     },
-  },
-  {
-    id: "sms-dashboard-dark",
-    name: "SMS Dashboard Dark",
-    config: {
-      version: 1,
-      theme: {
-        mode: "dark",
-        accent: "neutral",
-        radius: "0.375rem",
-        radiusScale: "shadcn",
-        spacing: "0.25rem",
-        tokens: smsDarkTokens,
+    modes: {
+      dark: {
+        version: 1,
+        theme: {
+          mode: "dark",
+          accent: "neutral",
+          radius: "0.375rem",
+          radiusScale: "shadcn",
+          spacing: "0.25rem",
+          tokens: smsDarkTokens,
+        },
+        typography: smsTypography,
+        components: {
+          badge: { radius: "full" },
+          button: { radius: "md" },
+          card: { radius: "lg" },
+          input: { radius: "md" },
+          select: { radius: "md" },
+          table: { density: "compact" },
+          tabs: { radius: "md" },
+        },
+        layout: { pageGutter: "24px", sectionGap: "20px" },
       },
-      typography: smsTypography,
-      components: {
-        badge: { radius: "full" },
-        button: { radius: "md" },
-        card: { radius: "lg" },
-        input: { radius: "md" },
-        select: { radius: "md" },
-        table: { density: "compact" },
-        tabs: { radius: "md" },
-      },
-      layout: { pageGutter: "24px", sectionGap: "20px" },
     },
   },
   {
@@ -256,10 +284,7 @@ const RAW_PRESETS: StudioPreset[] = [
   },
 ];
 
-export const PRESETS: StudioPreset[] = RAW_PRESETS.map((p) => ({
-  ...p,
-  config: withResolvedTokens(p.config),
-}));
+export const PRESETS: StudioPreset[] = RAW_PRESETS.map(mapPreset);
 
 export const SMS_DASHBOARD_PRESET_ID = "sms-dashboard";
 export const DEFAULT_PRESET = PRESETS[0];
