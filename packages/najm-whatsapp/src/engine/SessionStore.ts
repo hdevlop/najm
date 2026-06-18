@@ -12,20 +12,14 @@ import { Service, Meta, Inject } from 'najm-core';
 import { DB } from 'najm-database';
 import { BAILEYS_CONFIG, WA_SCHEMA } from '../tokens';
 import type { SignalKeyStore, AuthenticationState, AuthenticationCreds } from '@whiskeysockets/baileys';
+import { loadBaileys, getBaileysExport } from './BaileysRuntime';
 
 // Keep ws from loading its optional native bufferutil path inside Next bundles.
 if (!process.env['WS_NO_BUFFER_UTIL']) {
   process.env['WS_NO_BUFFER_UTIL'] = 'true';
 }
 
-let baileysModule: Promise<any> | undefined;
-
-const getBaileysModule = async () => {
-  baileysModule ??= import('@whiskeysockets/baileys');
-  return baileysModule;
-};
-
-const getBaileys = (mod: any, key: string) => mod[key] ?? mod.default?.[key];
+const getBaileys = (mod: any, key: string) => getBaileysExport(mod, key);
 
 interface DbReference {
   select(): any;
@@ -45,7 +39,7 @@ export class SessionStore {
     saveCreds: () => Promise<void>;
   }> {
     if (this.config.sessions.driver === 'file') {
-      const baileys = await getBaileysModule();
+      const baileys = await loadBaileys();
       return getBaileys(baileys, 'useMultiFileAuthState')(
         join(this.config.sessions.path ?? './sessions', instanceId),
       );
@@ -82,7 +76,7 @@ export class SessionStore {
     state: AuthenticationState;
     saveCreds: () => Promise<void>;
   }> {
-    const baileys = await getBaileysModule();
+    const baileys = await loadBaileys();
     const BufferJSON = getBaileys(baileys, 'BufferJSON');
     const initAuthCreds = getBaileys(baileys, 'initAuthCreds');
     const makeCacheableSignalKeyStore = getBaileys(baileys, 'makeCacheableSignalKeyStore');

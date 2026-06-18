@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { describe, test, expect, beforeEach, afterEach, jest } from 'bun:test';
 import type { SessionStore } from '../../src/engine/SessionStore';
+import { setBaileysLoaderForTest, resetBaileysLoaderForTest } from '../../src/engine/BaileysRuntime';
 
 // ── Shared mock event emitter ────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ const mockMakeWASocket = jest.fn().mockImplementation(() => {
 
 // ── Module under test ─────────────────────────────────────────────────────────
 
-(jest as any).mock('@whiskeysockets/baileys', () => ({
+const mockBaileys = {
   default: mockMakeWASocket,
   makeWASocket: mockMakeWASocket,
   Browsers: { ubuntu: (name: string) => ['Ubuntu', name, ''] },
@@ -46,14 +47,13 @@ const mockMakeWASocket = jest.fn().mockImplementation(() => {
     state: { creds: {}, keys: {} },
     saveCreds: jest.fn().mockResolvedValue(undefined),
   }),
-}));
+  initAuthCreds: jest.fn().mockReturnValue({}),
+  BufferJSON: { replacer: (_k: string, v: any) => v, reviver: (_k: string, v: any) => v },
+  makeCacheableSignalKeyStore: jest.fn().mockImplementation((s: any) => s),
+  proto: { Message: { AppStateSyncKeyData: { fromObject: (v: any) => v } } },
+};
 
-(jest as any).mock('@hapi/boom', () => ({
-  Boom: class Boom {
-    constructor(public message: string, public statusCode?: number) {}
-    get output() { return { statusCode: this.statusCode }; }
-  },
-}));
+setBaileysLoaderForTest(async () => mockBaileys);
 
 import { BaileysInstance } from '../../src/engine/BaileysInstance';
 import { BaileysAdapter } from '../../src/engine/BaileysAdapter';
@@ -74,6 +74,8 @@ describe('BaileysInstance', () => {
 
   afterEach(async () => {
     try { await sessionStore.deleteSession('test-instance-1'); } catch {}
+    resetBaileysLoaderForTest();
+    setBaileysLoaderForTest(async () => mockBaileys);
   });
 
   // ── connect() loads auth state and creates socket ─────────────────────

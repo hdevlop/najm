@@ -20,7 +20,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
   return <th data-slot="table-head" className={cn("text-foreground h-9 px-3 text-left align-middle text-xs font-medium uppercase tracking-wide whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]", className)} {...props} />
 }
 function TableCell({ className, ...props }: React.ComponentProps<"td">) {
-  return <td data-slot="table-cell" className={cn("p-2 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]", className)} {...props} />
+  return <td data-slot="table-cell" className={cn("px-3 align-middle whitespace-nowrap [&:has([role=checkbox])]:pr-0 [&>[role=checkbox]]:translate-y-[2px]", className)} {...props} />
 }
 function TableCaption({ className, ...props }: React.ComponentProps<"caption">) {
   return <caption data-slot="table-caption" className={cn("text-muted-foreground mt-4 text-sm", className)} {...props} />

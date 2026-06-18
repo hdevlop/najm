@@ -1,421 +1,72 @@
-# AGENTS.md — Najm Monorepo
-
-> This file is intended for AI coding agents. It describes the architecture, conventions, and workflows of the Najm project so you can be productive without prior knowledge.
-
----
-
-## Project Overview
-
-**Najm** is a TypeScript decorator-based web framework library built on [Hono.js](https://hono.dev). It provides dependency injection, 40+ parameter decorators, guards, transactions, events, i18n, MCP (Model Context Protocol) tool exposure, and CLI tooling for rapid API development. The primary runtime target is **Bun**, with Node.js fallback support.
-
-The project lives in a **modular monorepo** managed with **Bun workspaces** and **Turbo**. Each feature is an independently versioned package under `packages/`. Two applications under `apps/` demonstrate and document the framework:
-
-- `apps/playground` — Full-stack reference implementation (Next.js frontend + Najm backend)
-- `apps/website` — Documentation website (Next.js)
-
-**Dependency Injection:** Najm uses [`diject`](https://www.npmjs.com/package/diject) as its DI container. Diject is a standalone library with decorators, scopes (`SINGLETON`, `REQUEST`, `TRANSIENT`), and `AsyncLocalStorage` support. It was originally developed inside this repo and is now maintained as an independent package. The `diject` workspace is referenced from `../diject`.
-
----
-
-## Technology Stack
-
-| Layer | Technology |
-|-------|------------|
-| Runtime | Bun (primary), Node.js (fallback) |
-| Language | TypeScript 5.x |
-| HTTP Framework | Hono.js |
-| DI Container | diject |
-| Monorepo | Bun workspaces + Turbo |
-| Build Tool | tsup (custom esbuild plugin for decorator metadata) |
-| Test Runner | Bun native test runner (`bun:test`) |
-| ORM | Drizzle ORM (used in auth, database, storage, chatbot) |
-| Validation | Zod |
-| Events | mitt |
-| Cache | ioredis (Redis) |
-| Frontend (apps) | Next.js 15 + React 19 + Tailwind CSS |
-
----
-
-## Monorepo Structure
-
-```
-packages/
-├── najm-core/        # Framework core — Server, plugin system, boot, DI re-exports
-├── najm-api/         # Meta-package that simply re-exports najm-core
-├── najm-guard/       # Authorization guards (@Guards, createGuard, composeGuards)
-├── najm-validation/  # Request validation (@Validate, DTOs)
-├── najm-cache/       # Redis caching
-├── najm-rate/        # Rate limiting with route-scoped keys
-├── najm-cors/        # CORS handling
-├── najm-cookies/     # Cookie management
-├── najm-i18n/        # Internationalization
-├── najm-mcp/         # Model Context Protocol tool exposure
-├── najm-event/       # Event system (@On, @Events)
-├── najm-database/    # Database connections & transactions (@DB, @Transaction)
-├── najm-storage/     # File storage (local + DB backends)
-├── najm-email/       # Email sending
-├── najm-auth/        # JWT authentication, RBAC, PBAC, built-in auth controllers
-├── najm-chatbot/     # AI chatbot (LLM providers, MCP adapter, React UI)
-├── najm-whatsapp/    # WhatsApp Cloud API webhooks
-└── najm-cli/         # CLI scaffolding (create, init, new controller/service/module)
-
-apps/
-├── playground/       # Full demo app with Next.js frontend
-└── website/          # Docs website
-```
-
-### Package Dependency Model
-
-- `najm-core` depends on `diject` (external npm package).
-- All plugin packages depend on `najm-core` and `diject`.
-- `najm-api` re-exports `najm-core`.
-- `najm-auth` is the heaviest plugin; it depends on many other plugins (guard, database, cache, cookies, i18n, email, rate, validation) and auto-registers them.
-
----
-
-## Key Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `package.json` (root) | Workspace definition, shared dev deps, root scripts |
-| `turbo.json` | Turbo pipeline: `build` depends on `^build`; `test` depends on `build`; `dev` and `clean` are uncached |
-| `tsconfig.json` (root) | Path mapping for every package (`"najm-core": ["./packages/najm-core/src"]`) and project references |
-| `packages/*/tsup.config.ts` | Per-package build config. ESM output (`.mjs`), bundled, with a custom esbuild plugin that transpiles TypeScript while preserving `experimentalDecorators` and `emitDecoratorMetadata` |
-| `packages/*/package.json` | Per-package metadata, exports, peer dependencies |
-| `scripts/workspaces.ts` | Canonical list of packages in publish/test order |
-| `scripts/publish-all.ts` | Publishes all packages to npm, replacing `workspace:*` with caret semver |
-| `scripts/test-sequential.ts` | Runs tests sequentially (parallel tests cause port collisions) |
-
-### TypeScript Compiler Requirements
-
-Every consuming project **must** enable:
-
-```json
-{
-  "experimentalDecorators": true,
-  "emitDecoratorMetadata": true
-}
-```
-
-Also import `reflect-metadata` before any decorated class is loaded:
-
-```typescript
-import 'reflect-metadata';
-```
-
----
-
-## Build & Development Commands
-
-All commands assume you are in the repo root and have Bun installed.
-
-### Build
-
-```bash
-# Build all packages in dependency order (Turbo)
-bun run build
-
-# Build a single package
-bun run build:core       # najm-core
-bun run build:auth       # najm-auth
-bun run build:cli        # najm-cli
-# ... etc (see root package.json scripts)
-
-# Build diject (external workspace)
-bun run build:diject
-
-# Clean all build artifacts
-bun run clean
-```
-
-### Test
-
-```bash
-# Run all tests sequentially (recommended — avoids port collisions)
-bun run test
-# alias: bun run test:seq
-
-# Run tests for a single package
-bun run test:core
-bun run test:auth
-bun run test:guard
-# ... etc
-
-# Run tests in parallel (Turbo) — only safe if packages don't bind ports
-bun run test:parallel
-```
-
-### Development
-
-```bash
-# Run the playground backend
-bun run playground
-
-# Run the playground Next.js frontend
-bun run playground:next
-
-# Run the docs website
-bun run web
-```
-
-### Publishing
-
-```bash
-# Dry-run publish all packages
-bun run publish:all:dry
-
-# Publish all packages for real
-bun run publish:all
-
-# Publish and bump a single package (example)
-bun run pub:auth    # bumps najm-auth patch version and publishes
-```
-
----
-
-## Code Style Guidelines
-
-1. **Language:** All code, comments, and documentation are in English.
-2. **Module system:** ESM only (`"type": "module"`). No CommonJS.
-3. **Decorators:** Use experimental TypeScript decorators. Framework code and user code rely heavily on them.
-4. **Naming conventions:**
-   - Classes: `PascalCase` (e.g., `AuthService`, `UserController`)
-   - Files: `kebab-case.ts` for general files, but the repo also uses `camelCase.ts` frequently inside packages. Follow the existing folder.
-   - Decorators: `camelCase` with `@` (e.g., `@mcpTool`, `@validate`, `@transaction`)
-   - Tokens / ALS tokens: `SCREAMING_SNAKE_CASE` (e.g., `REQUEST_ID`, `USER`)
-5. **Imports:**
-   - Always import `reflect-metadata` first in entry files.
-   - Prefer absolute imports within a package (no relative `../../` if avoidable).
-   - Cross-package imports use the package name (e.g., `import { Server } from 'najm-core'`).
-6. **Error handling:**
-   - Use framework error classes from `najm-core/errors`: `HttpError`, `AppError`, `DBError`, `GuardError`, `RouterError`.
-   - Use `Err.circularDependency(...)`, `Err.missingDependency(...)` shorthand helpers where available.
-7. **Plugin authoring:**
-   - Use the fluent `plugin()` builder from `najm-core`.
-   - Name the default export factory after the feature (e.g., `export const auth = (config?) => plugin('auth')...`).
-   - Declare dependencies with `.depends(...)` (auto-registers) or `.requires(...)` (must be present).
-   - Services that need lifecycle hooks should implement `scan()`, `configure()`, `activate()`, or `onReady()` and be decorated with `@Meta({ layer: 'plugin', order: N })`.
-
----
-
-## Testing Instructions
-
-### Test Framework
-
-- **Runner:** Bun's built-in test runner (`bun:test`).
-- **Assertion style:** `expect(...).toBe(...)`, `expect(...).toEqual(...)`, etc.
-- **Test files:** Named `*.test.ts` and located in `test/` or `tests/` directories inside each package.
-
-### Writing Tests
-
-A typical integration test spins up a real HTTP server, sends `fetch` requests, and asserts on responses:
-
-```typescript
-import 'reflect-metadata';
-import { describe, test, expect, afterEach } from 'bun:test';
-import { Server, Controller, Get } from 'najm-core';
-import { guards } from 'najm-guard';
-
-describe('My Feature', () => {
-  let server: Server;
-
-  afterEach(async () => {
-    await server?.stop();
-  });
-
-  test('should respond with 200', async () => {
-    @Controller('/api')
-    class TestController {
-      @Get('/')
-      get() {
-        return { ok: true };
-      }
-    }
-
-    server = new Server({ isolated: true })
-      .use(guards())
-      .load(TestController);
-
-    await server.listen(3100);
-
-    const res = await fetch('http://localhost:3100/api');
-    expect(res.status).toBe(200);
-    expect(await res.json()).toEqual({ ok: true });
-  });
-});
-```
-
-### Important Testing Rules
-
-1. **Use `isolated: true`** when creating a `Server` in tests. This gives each test its own DI container and prevents state leakage.
-2. **Always `await server.stop()` in `afterEach`** to free the port.
-3. **Use unique ports** per test file to avoid collisions when running sequentially (the default test runner does not randomize ports).
-4. **Import `reflect-metadata`** at the top of every test file that uses decorators.
-5. **Reset global DI state** with `await reset()` from `diject` if tests register injectables outside of an isolated server.
-
-### Why Sequential Testing?
-
-The default `bun run test` runs `scripts/test-sequential.ts` because multiple packages binding to the same localhost ports would collide if Turbo ran them in parallel. `turbo run test` is available as `bun run test:parallel` but is mainly useful when you know the filtered packages do not conflict.
-
----
-
-## Runtime Architecture
-
-### Server Lifecycle
-
-The `Server` class in `najm-core` manages initialization through a state machine (`IDLE` → `INITIALIZING` → `READY` → `FAILED`).
-
-```typescript
-const server = new Server(opts?)
-  .use(guards())
-  .use(database({ default: db }))
-  .use(events())
-  .base('/api')
-  .load(UserController, UserService)
-  .set('port', 3000);
-
-await server.listen(3000);
-```
-
-**Boot sequence:**
-1. `.use(plugin)` registers plugins immediately with circular-dependency detection.
-2. `.load(...classes)` queues application services/controllers.
-3. `.listen(port)` or `.fetch` triggers initialization (if not `READY`):
-   - Auto-registers default plugins (`middleware`, `params`, `router`) if missing.
-   - Collects plugin services and app services.
-   - Runs `BootService.boot()` across three stations:
-     1. `bootInfrastructure()` — resolve core + plugin services.
-     2. `runLifecycle()` — execute `scan` → `configure` → `activate` → `onReady`.
-     3. `bootAppServices()` — resolve all user-defined services/controllers.
-   - Starts the Hono server via `Bun.serve` or returns a `fetch` handler for serverless.
-
-### Request Processing Pipeline
-
-1. **Hono router** receives the request.
-2. **MiddlewareService** stores context, assigns `requestId`, runs user middleware.
-3. **RouterService** matches the route and resolves the controller.
-4. **GuardService / GuardExecutor** runs guards; stores results in ALS.
-5. **ParamResolver** resolves parameter decorators (`@Body`, `@Params`, `@Query`, `@User`, etc.).
-6. **Controller method** executes with injected arguments.
-7. **ResponseFormatter** formats the return value (JSON, HTML, text, stream).
-
-### Dependency Injection Scopes
-
-- `SINGLETON` (default) — one instance for the application lifetime.
-- `REQUEST` — one instance per HTTP request (backed by `AsyncLocalStorage`).
-- `TRANSIENT` — new instance on every injection.
-
-### ALS Store (Request Context)
-
-Access request-scoped values inside services:
-
-```typescript
-import { REQUEST_ID } from 'najm-core';
-import { CONTEXT, USER, LANG } from 'najm-core'; // and other tokens
-
-@Service()
-class MyService {
-  @DI() container!: Container;
-
-  doSomething() {
-    const requestId = this.container.get(REQUEST_ID);
-    const user = this.container.get(USER);
-  }
-}
-```
-
----
-
-## Project-Specific Conventions
-
-### Decorator Taxonomy
-
-| Type | Examples |
-|------|----------|
-| Class decorators | `@Controller('/path')`, `@Service()`, `@Repository('db')`, `@Injectable()` |
-| Method decorators | `@Get('/'), @Post('/'), @Put('/:id'), @Patch('/:id'), @Delete('/:id')`, `@Guards(...)`, `@Transaction({ retries: 3 })`, `@On('event.name')`, `@McpTool('desc')` |
-| Property decorators | `@Inject()`, `@DB('postgres')`, `@I18n('prefix')`, `@Log()`, `@Events()` |
-| Parameter decorators | `@Body(), @Params(), @Query(), @Headers(), @Ctx(), @Cookie(), @User(), @IP(), @GuardParams()`, and 30+ more |
-
-### Recommended Application Structure
-
-The playground (`apps/playground/src/server/`) demonstrates the recommended layout:
-
-```
-src/
-├── features/           # Feature modules (co-located controller, service, repository)
-│   ├── product/
-│   │   ├── product.controller.ts
-│   │   ├── product.service.ts
-│   │   ├── product.repository.ts
-│   │   └── index.ts
-├── config/             # Plugin configuration factories
-├── shared/             # Guards, middleware, utilities
-├── database/           # Drizzle schema & connection
-├── locales/            # i18n translation files
-├── listeners/          # Event listeners
-└── main.ts             # Server entry point
-```
-
-### Schema Composition (Critical)
-
-When using `najm-auth`, **never duplicate auth tables**. Import the schema and spread it:
-
-```typescript
-import { authSchema } from 'najm-auth';
-import { sqliteTable, text } from 'drizzle-orm/sqlite-core';
-
-export const products = sqliteTable('products', { /* ... */ });
-
-export const schema = {
-  ...authSchema,   // users, roles, permissions, tokens, rolePermissions
-  products,
-};
-```
-
-### Next.js Integration
-
-In bundled environments (Next.js, Vite SSR), **do not use `.scan()`** (it relies on dynamic filesystem imports). Use `.load(moduleObject)` instead — `Server` extracts all `@Injectable` classes from the module exports.
-
-Required `next.config.ts`:
-
-```typescript
-const nextConfig = {
-  serverExternalPackages: ['reflect-metadata', 'better-sqlite3'],
-};
-```
-
----
-
-## Security Considerations
-
-1. **JWT Secrets:** `najm-auth` requires `JWT_ACCESS_SECRET` and `JWT_REFRESH_SECRET`. Generate them with `openssl rand -base64 32`. Never commit secrets.
-2. **Cookie Secrets:** Cookie plugin requires a strong `secret` for signing.
-3. **Password Hashing:** Uses bcrypt (via `bcryptjs` in auth).
-4. **Token Revocation:** Refresh tokens are blacklisted in Redis/cache on logout for immediate revocation.
-5. **Rate Limiting:** Built-in rate-limit plugin supports global and per-route keys.
-6. **Guard Authorization:** Guards run before route handlers. Return `true` to allow, `false` or throw to deny (returns 401/403).
-7. **Environment Files:** `.env` and `.env.*.local` are gitignored. Use `.env.example` to document required variables.
-
----
-
-## Deployment Notes
-
-- **Package publishing** is done via custom scripts, not `changesets` or `lerna`.
-- `workspace:*` dependencies are automatically rewritten to caret semver (`^version`) during publish.
-- The publish order is defined in `scripts/workspaces.ts` and ensures dependencies are published before dependents.
-- Each package builds to a `dist/` folder which is the only folder included in the npm tarball (`"files": ["dist"]`).
-
----
-
-## Quick Reference
-
-| Task | Command |
-|------|---------|
-| Install dependencies | `bun install` |
-| Build everything | `bun run build` |
-| Test everything | `bun run test` |
-| Clean build artifacts | `bun run clean` |
-| Run playground | `bun run playground` |
-| Publish all (dry run) | `bun run publish:all:dry` |
-| Publish all | `bun run publish:all` |
+# AGENTS.md - Najm Monorepo
+
+## Scope
+
+- Work from the repo root unless a command explicitly uses `--cwd`; the root package manager is `bun@1.2.10`.
+- Workspaces are `packages/*` and `apps/*`; `diject` is consumed from npm, not a sibling checkout.
+- `CLAUDE.md` exists but is stale in package names and test behavior; prefer `package.json`, `turbo.json`, and `scripts/workspaces.ts`.
+- There is no root README, no root CI workflow, and no root lint/typecheck script as of this file; do not invent those verification steps.
+
+## Package Map
+
+- Core framework: `packages/najm-core`; `packages/najm-api` is the app-facing aggregate re-export surface.
+- Plugins: `najm-guard`, `najm-validation`, `najm-cache`, `najm-rate`, `najm-cors`, `najm-cookies`, `najm-i18n`, `najm-mcp`, `najm-event`, `najm-database`, `najm-storage`, `najm-email`, `najm-auth`, `najm-rag`, `najm-chatbot`, `najm-whatsapp`.
+- Tooling/UI: `najm-cli`, `najm-kit`; standalone RAG Studio app is `apps/rag-studio`.
+- Apps: `apps/playground` is the real integration harness; `apps/website` is docs; `apps/rag-studio` is a standalone Next static-export studio on port `4100`.
+- Package source entrypoints are `packages/*/src/index.ts`; update these plus `package.json` `exports`, `tsup.config.ts`, and root `tsconfig.json` paths/references when changing public surfaces.
+
+## Commands
+
+- Install: `bun install`.
+- Build all packages: `bun run build` (`turbo run build`, with dependency builds from `turbo.json`).
+- Build one package with root shortcuts when present, for example `bun run build:core`, `bun run build:auth`, `bun run build:mcp`, `bun run build:ui`.
+- If no shortcut exists, use `turbo run build --filter=<package-name>` or `bun run --cwd <workspace> build`.
+- `najm-rag` uses a custom Bun build script; prefer `bun run build:rag`. The standalone RAG Studio app uses `bun run build:rag-studio`.
+- `najm-kit` build runs `tsup` and `scripts/build-css.mjs`; use `bun run build:ui` for package output.
+- Clean all package build output: `bun run clean`.
+
+## Tests
+
+- Full test: `bun run test`; this is an alias for `bun run test:seq`, which first runs `turbo run build` and then runs `bun test <workspace>` sequentially in `scripts/workspaces.ts` order, including `apps/playground`.
+- `bun run test:parallel` runs `turbo run test`; avoid it for integration suites that bind ports unless you know the package is safe.
+- Focused package tests: use root shortcuts such as `bun run test:core`, `bun run test:auth`, `bun run test:mcp`, `bun run test:rag`, `bun run test:ui`, or run `bun test packages/<name>`.
+- Focused file tests: `bun test packages/<name>/test/<file>.test.ts`.
+- Decorator tests usually need `import 'reflect-metadata';` first, `new Server({ isolated: true })`, and `await server.stop()` in cleanup; use `await reset()` from `diject` when registering global injectables outside an isolated server.
+- Use unique ports in tests that call `server.listen`; the sequential runner avoids package-level collisions but not duplicate ports inside a file.
+
+## Apps And Runtime
+
+- Playground backend: `bun run playground`; entrypoint is `apps/playground/src/server/main.ts`, server wiring is `apps/playground/src/server/index.ts`.
+- Playground Next frontend: `bun run playground:next`; production path is `bun run playground:next:prod`.
+- Background Next helpers: `bun run playground:next:bg`, `bun run playground:next:status`, `bun run playground:next:stop`.
+- Docs site: `bun run web`; website-local lint exists as `bun run --cwd apps/website lint`.
+- RAG Studio app: `bun run --cwd apps/rag-studio dev`.
+- Playground backend defaults to SQLite `./playground.db`; reset/seed with `bun run --cwd apps/playground db:reset-seed`.
+- Playground MCP endpoint is `/api/mcp` because the server base is `/api` and the MCP plugin path is `/mcp`.
+- Playground uses `.load(modulesModule, listenersModule)`, not `.scan()`; preserve this for bundled/Next-compatible code paths.
+- `apps/playground/next.config.ts` externalizes `reflect-metadata`, `better-sqlite3`, `sqlite-vec`, `@whiskeysockets/baileys`, and `sharp`; keep this in mind for server-side dependency changes.
+
+## Build And Export Quirks
+
+- Packages are ESM-only (`"type": "module"`) and publish only `dist`.
+- Most framework packages build with `tsup`, bundle ESM, emit `.mjs`, and use a custom `preserve-metadata` esbuild plugin so decorators keep `experimentalDecorators` and `emitDecoratorMetadata`; do not remove it casually.
+- `najm-kit` and `apps/rag-studio` have React/Tailwind/CSS outputs; verify CSS/static export when touching UI build config.
+- `najm-api` intentionally re-exports common plugin factories, decorators, auth helpers, tokens, and types; package-level exports may also need aggregate exports here.
+
+## Najm Conventions
+
+- Import `reflect-metadata` before decorated classes are loaded in entrypoints and tests.
+- Cross-package imports should use package names (`najm-core`, `najm-auth/sqlite`, etc.), not deep relative paths across workspaces.
+- In Next.js or other bundled environments, load exported module objects with `.load(moduleObject)` instead of filesystem `.scan()`.
+- Keep module boundaries consistent with the playground: controllers own decorators/transport, services orchestrate business logic, repositories own database access, validators own reusable domain checks, DTO files own Zod schemas.
+- Prefer constructor injection or `@Inject()`/`@DI()` property injection; use `container.get(...)` mainly for dynamic tokens, request ALS values, or framework internals.
+- Use the `plugin()` builder from `najm-core` for plugins; lifecycle services that need ordering use `@Meta({ layer: 'plugin', order: N })` and implement `scan`, `configure`, `activate`, or `onReady`.
+- When using auth schemas, import dialect-specific schemas such as `najm-auth/sqlite` and spread `authSchema`; do not duplicate auth tables. The playground schema also spreads chatbot, RAG, storage, and WhatsApp schemas.
+
+## Publishing
+
+- Publishing is custom script based, not changesets/lerna.
+- Publish order is the exact `PACKAGE_TARGETS` order in `scripts/workspaces.ts`: `najm-core`, `najm-guard`, `najm-validation`, `najm-cache`, `najm-rate`, `najm-cors`, `najm-cookies`, `najm-i18n`, `najm-mcp`, `najm-event`, `najm-database`, `najm-storage`, `najm-email`, `najm-auth`, `najm-api`, `najm-rag`, `najm-chatbot`, `najm-whatsapp`, `najm-cli`, `najm-kit`.
+- `publish-all.ts` replaces `workspace:*` dependencies with `^<version>` in the publish manifest, applies `publishConfig` export overrides, then restores package files.
+- Dry-run all packages: `bun run publish:all:dry`; publish all: `bun run publish:all`.
+- Single package publish shortcuts bump patch versions, for example `bun run pub:core`, `bun run pub:auth`, `bun run pub:ui`; generic form is `bun scripts/publish-package.ts <name> [--dry-run|--patch|--minor|--major|--tag <tag>|--otp <code>]`.

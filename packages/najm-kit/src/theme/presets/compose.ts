@@ -2,11 +2,19 @@ import type { NajmAccent, NajmMode, NajmPreset, NajmThemeTokens } from '../types
 import { darkMode, lightMode } from './modes';
 import { accents } from './accents';
 
+// Derive a light-mode accent pair from the primary's hue/chroma: a pale tint
+// for the surface and a darker, more saturated tone for its foreground.
 function lightAccentFromPrimary(primary = ''): Pick<NajmThemeTokens, 'accent' | 'accent-foreground'> {
-  const parts = primary.trim().split(/\s+/);
-  if (parts.length < 2) return { accent: '0 0% 94%', 'accent-foreground': '0 0% 30%' };
-  const [h, s] = parts;
-  return { accent: `${h} ${s} 93%`, 'accent-foreground': `${h} ${s} 35%` };
+  const m = primary.trim().match(/^oklch\(\s*([\d.]+)\s+([\d.]+)\s+([\d.]+)\s*\)$/i);
+  if (!m) return { accent: 'oklch(0.95 0 0)', 'accent-foreground': 'oklch(0.42 0 0)' };
+  const c = Number(m[2]);
+  const h = Number(m[3]);
+  const tint = Math.min(c, 0.05);
+  const fg = Math.min(c, 0.12);
+  return {
+    accent: `oklch(0.95 ${tint} ${h})`,
+    'accent-foreground': `oklch(0.42 ${fg} ${h})`,
+  };
 }
 
 export function composePreset(mode: NajmMode, accent: NajmAccent): NajmThemeTokens {

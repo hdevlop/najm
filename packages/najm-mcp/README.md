@@ -674,6 +674,13 @@ Lists registered tools, resources, prompts, and argument names.
 curl http://localhost:3000/mcp/tools
 ```
 
+> **Discovery is gated by `config.auth` only.** When you configure `auth`, the
+> auth middleware covers `GET /mcp` and `GET /mcp/tools`, so tool names,
+> descriptions, and argument shapes require a valid token. When you rely on the
+> najm-auth Bearer fallback (no `config.auth`), discovery is **unauthenticated**
+> — tool metadata is public even though tool *execution* still resolves auth.
+> If your tool names/descriptions are sensitive, set `config.auth`.
+
 ---
 
 ### `serveMcpStdio(server, options?)` — stdio entrypoint
@@ -755,6 +762,14 @@ Protect your MCP endpoints with bearer tokens or API keys:
   },
 }))
 ```
+
+> ⚠️ **The built-in `oauth` option mounts a DEV-ONLY stub.** It authenticates
+> *nobody* (any visitor who clicks "Allow" gets a code) and exchanges codes for
+> a single static token. It is intended for local development against MCP
+> clients that require an OAuth flow. It **refuses to mount when
+> `NODE_ENV=production`** unless you explicitly set `oauth: { unsafeDevStub:
+> true }` (do not). For real deployments use a proper OAuth provider (Auth0,
+> Keycloak, …) or the `najm-auth` plugin with JWT.
 
 ---
 

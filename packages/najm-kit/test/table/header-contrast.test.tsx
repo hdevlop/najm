@@ -82,4 +82,16 @@ describe("NTable header text contrast", () => {
     const cls = headerRow!.className;
     expect(cls).not.toContain("text-rose-700");
   });
+
+  test("colored header tokens use a darker dark-mode text shade (>=300) for less harsh contrast", () => {
+    const { container: rose } = render(<TableWrapper headerColor="rose" />);
+    const { container: violet } = render(<TableWrapper headerColor="violet" />);
+    const { container: emerald } = render(<TableWrapper headerColor="emerald" />);
+    const roseCls = rose.querySelector('[data-ntable-table-header]')!.className;
+    const violetCls = violet.querySelector('[data-ntable-table-header]')!.className;
+    const emeraldCls = emerald.querySelector('[data-ntable-table-header]')!.className;
+    expect(roseCls).toMatch(/dark:\[&_th\]:text-rose-(300|400|500)\b/);
+    expect(violetCls).toMatch(/dark:\[&_th\]:text-violet-(300|400|500)\b/);
+    expect(emeraldCls).toMatch(/dark:\[&_th\]:text-emerald-(300|400|500)\b/);
+  });
 });

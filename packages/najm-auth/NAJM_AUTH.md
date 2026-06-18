@@ -49,6 +49,7 @@ auth({
   refreshCookieName: 'refreshToken',      // cookie that holds the refresh JWT
   defaultRole: 'user' | null,             // auto-assigned on /auth/register
   registrationMode: 'active' | 'pending',
+  bcryptRounds: 10,                       // bcrypt cost, valid range 4-31
   lockout: { maxAttempts: 5, duration: '15m' },
   session: {
     name: 'najm.session',                 // signed session cache cookie
@@ -99,7 +100,7 @@ export const server = new Server()
 | **Refresh JWT** | `refreshToken` cookie (HttpOnly, Secure, SameSite=Lax) | 7d (default) | Exchanges for a new access+refresh pair. Rotated on every use. |
 | **Session cookie** | `najm.session` cookie (HttpOnly, HMAC-signed) | 5m (configurable) | Cache of `{user, roles, permissions}` for zero-DB SSR. Short TTL = freshness. |
 | **Blacklist entry** | Cache (`auth:blacklist:<jti>`) | until token natural expiry | Instant revocation of access tokens on logout. |
-| **Session version** | Cache (`auth:session-version:<userId>`) | persistent | Bumping it invalidates **all** outstanding access tokens for that user. |
+| **Session version** | Cache (`auth:session-version:<userId>`) | refreshed to the access-token TTL while non-zero | Bumping it invalidates **all** outstanding access tokens for that user. |
 | **Refresh row** | `tokens` table | 7d | Stores SHA-256 hash of current refresh token + previous hash (grace window). |
 
 ### Login (`POST /auth/login`)
@@ -110,7 +111,7 @@ export const server = new Server()
 2. `@RateLimit` — 5 attempts / 15m, bucketed per `ip:email` composite key (prevents shared-IP DoS).
 3. Fetch user; if lockout expired, auto-reset `failedLoginAttempts`.
 4. If still locked → `423 Locked`.
-5. `bcrypt.compare(password, user.password || DUMMY_HASH)` — dummy hash branch prevents **timing-attack** enumeration when the email doesn't exist.
+5. Native `Bun.password.verify` (bcryptjs fallback on Node) compares against the stored hash or a lazily generated configured-cost dummy hash, preventing timing-based email enumeration.
 6. On failure: `incrementFailedAttempts`; at `maxAttempts` → `setLockout(now + duration)`.
 7. On success:
    - `tokenService.generateTokens(userId)`:
@@ -143,8 +144,10 @@ this.app.use('*', async (c, next) => {
 });
 ```
 
-- **Priority:** Bearer token first, refresh cookie fallback. Lets browsers (cookie-only) and API clients (bearer) share the same routes.
+- **Priority:** a presented Bearer token is authoritative (full blacklist + session-version verification, refresh-cookie fallback on failure). The signed session cookie is the zero-I/O hot path **only for cookie-only requests** (no Authorization header), followed by the refresh-cookie fallback. A stale session cookie can never shadow or bypass Bearer verification.
+- **Cookie-only revocation lag:** the session-cookie hot path performs no revocation checks, so logout from another tab/device or a role change can take up to `session.maxAge` (default 300s) to reach a copied cookie. Logout and password flows clear the responding browser's cookies immediately.
 - Populates ALS (`USER`, `ROLE`, `PERMISSIONS` from `najm-guard`). Decorators like `@User('id')`, `@Policy`, `@Can(...)`, `@Owned(...)` all read from this.
+- **USER contract:** every resolution path guarantees at least the `AuthUser` fields (`id`, `email`, plus `name`/`role`/`status`/`permissions` when known). DB-backed paths include more; guards and handlers must not rely on fields outside `AuthUser`.
 - Falls through on failure — protected routes enforce via `@isAuth()`.
 
 ### Access Token Verification ([TokenService.verifyAccessToken](packages/najm-auth/src/tokens/TokenService.ts#L54))
@@ -152,8 +155,8 @@ this.app.use('*', async (c, next) => {
 Three gates must all pass:
 
 1. `jwt.verify(token, accessSecret)` — signature + expiry.
-2. **Blacklist check** — cache lookup on `auth:blacklist:<jti>` (populated by logout).
-3. **Session version check** — `payload.sessionVersion === cache.get(auth:session-version:<userId>)`. Mismatch → `tokenRevoked` error. Bumping this version nukes every outstanding access token for that user (used by logout / change-password / reset-password).
+2. **Blacklist check** — `auth:blacklist:<jti>` (populated by logout).
+3. **Session version check** — `payload.sessionVersion === auth:session-version:<userId>`. Mismatch → `tokenRevoked`. Redis reads both keys in one `MGET`; bumping the version invalidates every outstanding access token for that user.
 
 ### Refresh Flow (`POST /auth/refresh`) — Rotation with Grace Window
 
@@ -188,14 +191,14 @@ cookie.refreshToken ──► jwt.verify(refreshSecret) ──► userId
 
 The cookie is written with the fresh refresh token every rotation, and the signed session cookie is re-baked with fresh roles/permissions extracted from the new JWT.
 
-Rate limit: 15 / 15m, bucketed by `cookieFingerprint` (ip + last 8 chars of cookie) so a compromised cookie can't exhaust the whole IP bucket.
+Rate limit: 15 / 15m, bucketed by `cookieFingerprint` (IP + SHA-256 of the request cookie header) so sessions behind the same NAT do not share one bucket. Hashing the complete cookie header avoids module-global cookie-name state when multiple servers use different refresh-cookie names.
 
 ### `GET /auth/me`
 
 [AuthService.getMe()](packages/najm-auth/src/auth/AuthService.ts#L172):
 
 1. If `Authorization: Bearer` present → verify + decode → return user; re-bake session cookie from fresh JWT roles/permissions.
-2. Else → `tokenService.resolveUserFromCookie()` → read refresh cookie, verify, load user from DB (no rotation here — rotation is reserved for `/auth/refresh` to avoid races).
+2. Else → validate the refresh cookie, then load the user through the shared 30-second user cache (no rotation here — rotation is reserved for `/auth/refresh` to avoid races).
 3. **Does not** refresh the session cookie in the cookie-only path (no authoritative roles/permissions without a DB round-trip; next login/refresh will bake it).
 
 Rate limit: 30 / 1m by cookie fingerprint.
@@ -205,7 +208,7 @@ Rate limit: 30 / 1m by cookie fingerprint.
 [TokenService.logout()](packages/najm-auth/src/tokens/TokenService.ts#L372) — **immediate** revocation:
 
 1. Blacklist current access token by `jti` for its remaining TTL (`auth:blacklist:<jti>`).
-2. **Bump session version** → `cache.set('auth:session-version:<userId>', v+1)`. Every existing access token for this user now fails step 3 of `verifyAccessToken`.
+2. **Bump session version** → `cache.set('auth:session-version:<userId>', v+1, accessTokenTtl)`. Every existing access token for this user now fails step 3 of `verifyAccessToken`.
 3. Delete user cache (`auth:user:<userId>`).
 4. Revoke refresh row in DB.
 5. Clear `refreshToken` + `najm.session` cookies.
@@ -268,12 +271,14 @@ setSessionCookie(data: Omit<SessionCookieData, 'iat'>): void {
 - Contains `{user, roles, permissions, iat}`.
 - Short TTL (5 min) bounds staleness — role changes propagate on next login/refresh/me.
 - Used by Next.js Server Components via `getServerSession()` for SSR header/nav rendering — zero DB round-trip on every page render.
+- Used first by `AuthResolver`; a valid cookie populates user, role, and permissions with zero DB/cache I/O.
+- Revocation and role changes can take up to the session-cookie TTL to reach a copied cookie. Logout/password flows clear the browser cookie immediately, and the short default TTL bounds external reuse.
 - Read path double-checks the TTL (`Date.now() - data.iat > maxAge*1000` → null) as defence against clock-skew cookie reuse.
 
 ### 3. Cookie fingerprint (rate-limit key)
 
 ```typescript
-const cookieFingerprint = (ctx) => `${ip}:${cookie.refreshToken.slice(-8)}`;
+const cookieFingerprint = (ctx) => `${ip}:${sha256(ctx.req.header('cookie') ?? '')}`;
 ```
 
 Used as the rate-limit key on `/auth/refresh` and `/auth/me` — different cookies from the same NAT don't share a single bucket.
@@ -638,10 +643,13 @@ Response; client stores new access token; all tabs sync via BroadcastChannel
 - **Don't duplicate auth tables** — always spread `...authSchema` into your combined schema.
 - **Run seeds under `server.runAs(actor, …)`** — ALS `USER` needs populating for ownership-aware inserts.
 - **Refresh endpoint is the only place that rotates** — `AuthResolver.resolveFromCookie()` is read-only to avoid races with concurrent requests.
-- **Session cookie TTL should stay short** (5 min default) — it caches roles/permissions without re-checking DB; long TTL = stale authz after role changes.
+- **Resolver order is Bearer token → refresh cookie when an Authorization header is present; session cookie → refresh cookie otherwise** — a presented Bearer token always goes through full verification (blacklist + session version) and cannot be shadowed by a stale session cookie. Cookie-only requests get the zero-I/O session-cookie hot path. An invalid/expired/blacklisted Bearer token may still fall back to a valid refresh cookie because the refresh row is the durable session source of truth and logout/password flows revoke that row whenever access tokens are invalidated.
+- **Session cookie TTL should stay short** (5 min default) — it caches roles/permissions without checking DB or revocation cache; long TTL increases stale authz and copied-cookie revocation lag.
+- **Sessions are single-device** — `tokens.userId` is unique and refresh writes upsert by user. A second login replaces the first refresh session; stale-token reuse outside the grace window also revokes the active row.
 - **Bumping session version** (`invalidateUserAccessTokens`) is the nuclear option — kills all active sessions for a user in one cache write. Use on password change / reset / account takeover.
+- **Use Redis for production revocation** — memory cache revocation state is process-local and disappears on restart.
 - **Grace window on refresh** (120s) is deliberate — shorter breaks concurrent requests, longer widens replay window.
-- **Rate-limit keys matter**: `ip:email` for login (shared IP fairness), `cookieFingerprint` for refresh/me (per-session fairness), `ip` for reset-password (prevents token farming).
+- **Rate-limit keys matter**: login/register hash the normalized email before it becomes part of the key; `cookieFingerprint` for refresh/me gives per-session fairness. Trust forwarded IP headers only behind a known proxy or provide custom rate-limit config.
 
 ## Key Files
 

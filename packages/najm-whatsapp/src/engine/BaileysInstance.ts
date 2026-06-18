@@ -8,6 +8,7 @@ import { Boom } from '@hapi/boom';
 import { EventEmitter } from 'events';
 import { SessionStore } from './SessionStore';
 import { BaileysAdapter } from './BaileysAdapter';
+import { loadBaileys, getBaileysExport } from './BaileysRuntime';
 
 export type InstanceStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
@@ -18,13 +19,6 @@ if (!process.env['WS_NO_BUFFER_UTIL']) {
   process.env['WS_NO_BUFFER_UTIL'] = 'true';
 }
 
-let baileysModule: Promise<any> | undefined;
-
-const getBaileysModule = async () => {
-  baileysModule ??= import('@whiskeysockets/baileys');
-  return baileysModule;
-};
-
 const makeSocket = (mod: any) => {
   if (typeof mod.default === 'function') return mod.default;
   if (typeof mod.makeWASocket === 'function') return mod.makeWASocket;
@@ -32,7 +26,7 @@ const makeSocket = (mod: any) => {
   throw new Error('Baileys makeWASocket export not found');
 };
 
-const getBaileys = (mod: any, key: string) => mod[key] ?? mod.default?.[key];
+const getBaileys = (mod: any, key: string) => getBaileysExport(mod, key);
 
 const RECONNECT_INITIAL_DELAY_MS = 1_000;
 const RECONNECT_MAX_DELAY_MS = 60_000;
@@ -68,7 +62,7 @@ export class BaileysInstance {
     // Tear down any previous socket listeners before reconnect
     this.detachSocket();
 
-    const baileys = await getBaileysModule();
+    const baileys = await loadBaileys();
     const { state, saveCreds } = await this.sessionStore.loadAuthState(this.id);
 
     const silentLogger = {
@@ -148,6 +142,18 @@ export class BaileysInstance {
           timestamp: msg.messageTimestamp,
           type: m.type,
           raw: msg,
+        });
+      }
+    });
+
+    this.socket.ev.on('messages.update', (updates: any[]) => {
+      for (const u of updates ?? []) {
+        this.emitEvent('status', {
+          messageId: u?.key?.id ?? '',
+          jid: u?.key?.remoteJid ?? '',
+          status: u?.update?.status ?? 'unknown',
+          timestamp: Date.now(),
+          raw: u,
         });
       }
     });

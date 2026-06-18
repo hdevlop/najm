@@ -38,6 +38,30 @@ export class TokenService {
     return 'auth:session-version:';
   }
 
+  private sessionVersionKey(userId: string): string {
+    return `${this.sessionVersionPrefix}${userId}`;
+  }
+
+  private accessTokenTtlMs(): number {
+    return timestring(this.config.jwt.accessExpiresIn, 'ms');
+  }
+
+  private expiresAt(expiresIn: string): number {
+    return Math.floor((Date.now() + timestring(expiresIn, 'ms')) / 1000);
+  }
+
+  private async getCacheValues(keys: string[]): Promise<Array<string | null>> {
+    const cache = this.cache as CacheService & { getMany?: (keys: string[]) => Promise<Array<string | null>> };
+    if (cache.getMany) return cache.getMany(keys);
+    return Promise.all(keys.map((key) => cache.get(key)));
+  }
+
+  private parseSessionVersion(raw: string | null): number {
+    if (!raw) return 0;
+    const parsed = Number(raw);
+    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+  }
+
   // ============ TOKEN VALIDATION ============
 
   extractAccessToken(authorization: string): string {
@@ -60,15 +84,22 @@ export class TokenService {
       Err(this.t('errors.tokenVerificationFailed'));
     }
 
-    // Check if token is blacklisted
+    const sessionKey = this.sessionVersionKey(payload.userId);
+    let activeSessionVersion: number;
+
     if (payload.jti) {
-      const isBlacklisted = await this.isTokenBlacklisted(payload.jti);
-      if (isBlacklisted) {
+      const [blacklisted, sessionVersion] = await this.getCacheValues([
+        `${this.blacklistPrefix}${payload.jti}`,
+        sessionKey,
+      ]);
+      if (blacklisted !== null) {
         Err(this.t('errors.tokenRevoked'));
       }
+      activeSessionVersion = this.parseSessionVersion(sessionVersion);
+    } else {
+      activeSessionVersion = this.parseSessionVersion(await this.cache.get(sessionKey));
     }
 
-    const activeSessionVersion = await this.getUserSessionVersion(payload.userId);
     const tokenSessionVersion = payload.sessionVersion ?? 0;
     if (tokenSessionVersion !== activeSessionVersion) {
       Err(this.t('errors.tokenRevoked'));
@@ -92,52 +123,15 @@ export class TokenService {
   private static readonly PREVIOUS_GRACE_SECONDS = 120;
 
   /**
-   * Validate a refresh token as an active session:
-   * 1. Verify JWT signature and type claim
-   * 2. Compare hash against current stored token
-   * 3. If mismatch, check previous hash within short grace window
-   * 4. Reject anything older or outside the grace window
-   */
-  async validateRefreshSession(refreshToken: string): Promise<{
-    userId: string;
-    rotatedTokens?: { refreshToken: string; tokenFamily: string };
-  }> {
-    const userId = this.verifyRefreshToken(refreshToken);
-
-    const stored = await this.tokenRepository.getRefreshTokenWithFamily(userId);
-    if (!stored) {
-      Err(this.t('errors.refreshTokenInvalid'));
-    }
-
-    const presentedHash = this.hashToken(refreshToken);
-
-    if (presentedHash === stored.token) {
-      return { userId };
-    }
-
-    const canRecover =
-      stored.previousHash &&
-      presentedHash === stored.previousHash &&
-      stored.previousValidUntil &&
-      new Date(stored.previousValidUntil).getTime() > Date.now() &&
-      !stored.previousUsedAt;
-
-    if (canRecover) {
-      await this.tokenRepository.markPreviousUsed(userId);
-      const tokens = await this.generateTokens(userId, stored.tokenFamily ?? undefined);
-      return {
-        userId,
-        rotatedTokens: { refreshToken: tokens.refreshToken, tokenFamily: stored.tokenFamily },
-      };
-    }
-
-    Err(this.t('errors.refreshTokenInvalid'));
-  }
-
-  /**
    * Read the refresh cookie and return the userId it belongs to.
    * Validates against current/previous token state with bounded recovery.
    * Throws if the cookie is missing, invalid, or outside the grace window.
+   *
+   * Intentionally side-effect-free: unlike refreshTokens(), a mismatch here
+   * does NOT revoke the suspect family. This is a read path (e.g. GET
+   * /auth/me) — a stray stale cookie on a read must not be able to destroy
+   * the active session. Reuse detection and revocation belong to the
+   * rotation path only.
    */
   async resolveUserFromCookie(): Promise<string> {
     const refreshToken = this.cookieManager.getRefreshToken();
@@ -179,14 +173,19 @@ export class TokenService {
     const token = this.extractAccessToken(auth);
     const { userId } = await this.verifyAccessToken(token);
 
+    return this.getUserById(userId);
+  }
+
+  async getUserById(userId: string) {
     const cacheKey = `auth:user:${userId}`;
+    if (typeof (this.cache as any).getOrSet === 'function') {
+      return this.cache.getOrSet(cacheKey, () => this.tokenRepository.getUser(userId), 30_000);
+    }
+
     const cached = await this.cache.get(cacheKey);
     if (cached) return JSON.parse(cached);
-
     const user = await this.tokenRepository.getUser(userId);
-    if (user) {
-      await this.cache.set(cacheKey, JSON.stringify(user), 30_000);
-    }
+    if (user) await this.cache.set(cacheKey, JSON.stringify(user), 30_000);
     return user;
   }
 
@@ -200,26 +199,51 @@ export class TokenService {
     return (jwt.decode(token) as JwtPayload | null)?.exp;
   }
 
+  decodeAccessToken(token: string): JwtPayload | null {
+    return jwt.decode(token) as JwtPayload | null;
+  }
+
+  private async signAccessToken(data: {
+    userId: string;
+    roles?: string[];
+    permissions?: string[];
+  }): Promise<{ token: string; expiresAt: number }> {
+    const jti = nanoid(16);
+    const sessionVersion = await this.getUserSessionVersion(data.userId);
+    const expiresAt = this.expiresAt(this.config.jwt.accessExpiresIn);
+    if (sessionVersion > 0) {
+      await this.cache.set(this.sessionVersionKey(data.userId), String(sessionVersion), this.accessTokenTtlMs());
+    }
+    const token = jwt.sign(
+      { ...data, jti, sessionVersion, exp: expiresAt },
+      this.config.jwt.accessSecret,
+    );
+    return { token, expiresAt };
+  }
+
   /**
    * Generate access token with unique jti for blacklist support.
    * Includes roles/permissions for client-side RBAC/PBAC.
    */
   async generateAccessToken(data: { userId: string; roles?: string[]; permissions?: string[] }): Promise<string> {
-    const jti = nanoid(16); // Unique token ID
-    const sessionVersion = await this.getUserSessionVersion(data.userId);
-    return jwt.sign({ ...data, jti, sessionVersion }, this.config.jwt.accessSecret, {
-      expiresIn: this.config.jwt.accessExpiresIn
-    } as any);
+    return (await this.signAccessToken(data)).token;
   }
 
   /**
    * Generate refresh token with unique jti
    */
-  generateRefreshToken(data: { userId: string }): string {
+  private signRefreshToken(data: { userId: string }): { token: string; expiresAt: number } {
     const jti = nanoid(16);
-    return jwt.sign({ ...data, jti, type: 'refresh' }, this.config.jwt.refreshSecret, {
-      expiresIn: this.config.jwt.refreshExpiresIn
-    } as any);
+    const expiresAt = this.expiresAt(this.config.jwt.refreshExpiresIn);
+    const token = jwt.sign(
+      { ...data, jti, type: 'refresh', exp: expiresAt },
+      this.config.jwt.refreshSecret,
+    );
+    return { token, expiresAt };
+  }
+
+  generateRefreshToken(data: { userId: string }): string {
+    return this.signRefreshToken(data).token;
   }
 
   async generateTokens(userId: string, tokenFamily?: string) {
@@ -232,16 +256,19 @@ export class TokenService {
       roles: roleName ? [roleName] : [],
       permissions: permissions ?? [],
     };
-    const accessToken = await this.generateAccessToken(accessTokenData);
-    const refreshToken = this.generateRefreshToken({ userId });
+    const access = await this.signAccessToken(accessTokenData);
+    const refresh = this.signRefreshToken({ userId });
 
-    await this.storeRefreshToken(userId, refreshToken, family);
+    await this.storeRefreshToken(userId, refresh.token, family);
 
     return {
-      accessToken,
-      refreshToken,
-      accessTokenExpiresAt: this.getTokenExpire(accessToken),
-      refreshTokenExpiresAt: this.getTokenExpire(refreshToken),
+      userId,
+      roles: accessTokenData.roles,
+      permissions: accessTokenData.permissions,
+      accessToken: access.token,
+      refreshToken: refresh.token,
+      accessTokenExpiresAt: access.expiresAt,
+      refreshTokenExpiresAt: refresh.expiresAt,
     };
   }
 
@@ -273,7 +300,7 @@ export class TokenService {
       // Decode without verification to get jti and exp
       const decoded = jwt.decode(token) as JwtPayload | null;
 
-      if (!decoded.jti) {
+      if (!decoded?.jti) {
         // Token doesn't have jti (old token format), skip blacklisting
         return;
       }
@@ -348,10 +375,17 @@ export class TokenService {
       !stored.previousUsedAt;
 
     if (canRecover) {
-      await this.tokenRepository.markPreviousUsed(userId);
+      // Atomically claim the grace slot keyed on the presented previous hash.
+      const claimed = await this.tokenRepository.markPreviousUsed(userId, presentedHash);
+      if (!claimed?.length) {
+        // Lost the race: a concurrent request already claimed the grace slot
+        // and rotated. Do not revoke — the winner's session is legitimate.
+        Err(this.t('errors.refreshTokenInvalid'));
+      }
       return this.generateTokens(userId, stored.tokenFamily ?? undefined);
     }
 
+    await this.revokeSuspectRefreshFamily(userId, stored.tokenFamily ?? null);
     Err(this.t('errors.refreshTokenInvalid'));
   }
 
@@ -361,9 +395,27 @@ export class TokenService {
 
   async invalidateUserAccessTokens(userId: string): Promise<number> {
     const nextVersion = (await this.getUserSessionVersion(userId)) + 1;
-    await this.cache.set(`${this.sessionVersionPrefix}${userId}`, String(nextVersion));
+    await this.cache.set(this.sessionVersionKey(userId), String(nextVersion), this.accessTokenTtlMs());
     await this.cache.del(`auth:user:${userId}`);
     return nextVersion;
+  }
+
+  async getUserFromCookie() {
+    const userId = await this.resolveUserFromCookie();
+    const user = await this.getUserById(userId);
+    if (!user) {
+      Err(this.t('errors.refreshTokenInvalid'));
+    }
+    return user;
+  }
+
+  private async revokeSuspectRefreshFamily(userId: string, tokenFamily: string | null): Promise<void> {
+    await this.invalidateUserAccessTokens(userId);
+    if (tokenFamily) {
+      await this.tokenRepository.revokeByFamily(tokenFamily);
+      return;
+    }
+    await this.revokeToken(userId);
   }
 
   /**
@@ -439,10 +491,6 @@ export class TokenService {
   }
 
   private async getUserSessionVersion(userId: string): Promise<number> {
-    const raw = await this.cache.get(`${this.sessionVersionPrefix}${userId}`);
-    if (!raw) return 0;
-
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    return this.parseSessionVersion(await this.cache.get(this.sessionVersionKey(userId)));
   }
 }

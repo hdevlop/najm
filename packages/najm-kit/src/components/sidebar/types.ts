@@ -1,5 +1,4 @@
 import type { ReactNode, ComponentType, MouseEventHandler } from "react";
-import type { NajmBorderDegree } from "../../theme/types";
 
 export type LinkComponentType = ComponentType<{
   href: string;
@@ -62,7 +61,6 @@ export interface SidebarProps {
   showSectionSeparators?: boolean;
   /** Use a border instead of the default flat sidebar edge. */
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   footer?: ReactNode;
   className?: string;
   classNames?: NAppShellClassNames;
@@ -170,5 +168,4 @@ export interface NSidebarMobileProps {
   showHamburgerButton?: boolean;
   children?: ReactNode;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
 }

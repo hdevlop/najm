@@ -4,7 +4,7 @@ import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Button } from "../src/components/Button";
 import { Dialog, DialogContent, DialogTitle, NConfirmDialog, NDialog } from "../src/components/Dialog";
 import { Dialog as LegacyDialog } from "../src/components/ui/dialog";
-import { NConfirmDialog as LegacyNConfirmDialog } from "../src/components/feedback/NConfirmDialog";
+import { NConfirmDialog as LegacyNConfirmDialog } from "../src/components/Dialog/NConfirmDialog";
 
 describe("NDialog", () => {
   test("keeps Dialog primitives available from folder and legacy shim", () => {

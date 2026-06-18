@@ -44,7 +44,7 @@ mock.module('sonner', () => ({
   toast: { error: mock(() => {}), success: mock(() => {}), info: mock(() => {}) },
 }));
 
-mock.module('najm-ui', () => ({
+mock.module('najm-kit', () => ({
   Dialog: ({ children, open, onOpenChange }: any) => {
     if (!open) return null;
     return (

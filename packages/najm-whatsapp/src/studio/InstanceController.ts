@@ -48,6 +48,54 @@ export class InstanceController {
     }));
   }
 
+  @Get('/dashboard')
+  async dashboard() {
+    const infos = this.instances.list();
+    const messages = this.schema?.whatsappMessages;
+    const webhookEvents = this.schema?.whatsappWebhookEvents;
+
+    const [msgRows, totalMsg, recentEvents, messageTypes] = await Promise.all([
+      messages
+        ? this.db
+            .select({ instanceId: messages.instanceId, count: sql<number>`count(*)` })
+            .from(messages)
+            .groupBy(messages.instanceId)
+        : Promise.resolve([] as Array<{ instanceId: string; count: number }>),
+      messages
+        ? this.db.select({ count: sql<number>`count(*)` }).from(messages)
+        : Promise.resolve([{ count: 0 }]),
+      webhookEvents
+        ? this.db.select().from(webhookEvents).orderBy(sql`created_at desc`).limit(20)
+        : Promise.resolve([] as any[]),
+      this.computeTypeBreakdown(),
+    ]);
+
+    const connected = infos.filter((r) => r.status === 'connected').length;
+
+    return {
+      instances: {
+        total: infos.length,
+        connected,
+        disconnected: Math.max(0, infos.length - connected),
+      },
+      messages: {
+        total: Number((totalMsg as any)[0]?.count ?? 0),
+        byInstance: Object.fromEntries(msgRows.map((r: any) => [r.instanceId, Number(r.count)])),
+      },
+      recentEvents,
+      messageTypes,
+    };
+  }
+
+  private async computeTypeBreakdown() {
+    if (!this.schema?.whatsappMessages) return {};
+    const rows = await this.db
+      .select({ type: this.schema.whatsappMessages.type, count: sql<number>`count(*)` })
+      .from(this.schema.whatsappMessages)
+      .groupBy(this.schema.whatsappMessages.type);
+    return Object.fromEntries(rows.map((r: any) => [r.type, Number(r.count)]));
+  }
+
   @Post('/')
   @Validate(CreateInstanceDto)
   async create(@Body() dto: any) {

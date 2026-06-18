@@ -15,6 +15,7 @@ export interface WebhookRecord {
   events: string[] | null;
   headers: Record<string, string> | null;
   enabled: boolean;
+  signingSecret: string | null;
 }
 
 interface DbRow {
@@ -24,6 +25,7 @@ interface DbRow {
   events: string | null;
   headers: string | null;
   enabled: boolean;
+  signingSecret: string | null;
 }
 
 function parseJson<T>(value: string | null): T | null {
@@ -43,6 +45,7 @@ function hydrate(row: DbRow): WebhookRecord {
     events: parseJson<string[]>(row.events),
     headers: parseJson<Record<string, string>>(row.headers),
     enabled: row.enabled,
+    signingSecret: row.signingSecret ?? null,
   };
 }
 
@@ -76,6 +79,7 @@ export class WebhookService {
     headers?: Record<string, string>;
     instanceId?: string;
     enabled?: boolean;
+    signingSecret?: string;
   }): Promise<WebhookRecord> {
     const t = this.schema.whatsappWebhooks;
     const id = randomUUID();
@@ -86,6 +90,7 @@ export class WebhookService {
       events: input.events ? JSON.stringify(input.events) : null,
       headers: input.headers ? JSON.stringify(input.headers) : null,
       enabled: input.enabled ?? true,
+      signingSecret: input.signingSecret ?? null,
     });
     const rows: DbRow[] = await this.db.select().from(t).where(eq(t.id, id)).limit(1);
     return hydrate(rows[0]);
@@ -99,6 +104,7 @@ export class WebhookService {
       headers?: Record<string, string>;
       instanceId?: string | null;
       enabled?: boolean;
+      signingSecret?: string | null;
     },
   ): Promise<WebhookRecord | null> {
     const t = this.schema.whatsappWebhooks;
@@ -108,6 +114,7 @@ export class WebhookService {
     if (patch.headers !== undefined) updates.headers = JSON.stringify(patch.headers);
     if (patch.instanceId !== undefined) updates.instanceId = patch.instanceId;
     if (patch.enabled !== undefined) updates.enabled = patch.enabled;
+    if (patch.signingSecret !== undefined) updates.signingSecret = patch.signingSecret;
     if (Object.keys(updates).length === 0) {
       const rows: DbRow[] = await this.db.select().from(t).where(eq(t.id, id)).limit(1);
       return rows[0] ? hydrate(rows[0]) : null;

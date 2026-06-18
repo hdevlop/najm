@@ -1,6 +1,6 @@
 import { Controller } from 'najm-core';
 import { Get, Post, Put, Delete, ResMsg } from 'najm-core';
-import { Params, Body } from 'najm-core';
+import { Params, Body, Query } from 'najm-core';
 import { UserService } from './UserService';
 import { isAdmin } from '../roles';
 import { isAuth } from '../auth';
@@ -13,13 +13,15 @@ import {
   createUserDto,
   updateUserDto,
   assignRoleParams,
+  userListQuery,
   type LanguageParam,
   type EmailParam,
   type UserIdParam,
   type UserIdInParam,
   type CreateUserDto,
   type UpdateUserDto,
-  type AssignRoleParams
+  type AssignRoleParams,
+  type UserListQuery,
 } from './UserDto';
 
 @Controller('/users')
@@ -28,9 +30,10 @@ export class UserController {
 
   @Get()
   @isAdmin()
+  @Validate({ query: userListQuery })
   @ResMsg('users.success.retrieved')
-  async getUsers() {
-    return this.userService.getAll();
+  async getUsers(@Query() query: UserListQuery) {
+    return this.userService.getAll(userListQuery.parse(query ?? {}));
   }
 
   @Get('/lang')

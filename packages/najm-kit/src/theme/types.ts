@@ -9,15 +9,11 @@ export type NajmPreset =
   | 'dark-blue'
   | 'dark-violet';
 
-/**
- * Semantic border contrast preference. Components interpret this based on
- * their role (surface container, input, floating surface, etc.) so a single
- * app-wide value can drive border contrast for many components at once.
- */
-export type NajmBorderDegree = 'none' | 'subtle' | 'default' | 'strong';
+export type NajmRadiusScale = 'shadcn' | 'uniform';
 
 export interface NajmAppearance {
-  borderDegree?: NajmBorderDegree;
+  /** Global border thickness, e.g. `'0'`, `'1px'`, `'2px'`. `'0'` hides borders. */
+  borderWidth?: string;
 }
 
 export interface NajmThemeTokens {
@@ -40,14 +36,46 @@ export interface NajmThemeTokens {
   destructive?: string;
   'destructive-foreground'?: string;
   border?: string;
-  'border-subtle'?: string;
-  'border-strong'?: string;
   input?: string;
   ring?: string;
+  sidebar?: string;
+  'sidebar-foreground'?: string;
+  'sidebar-primary'?: string;
+  'sidebar-primary-foreground'?: string;
+  'sidebar-accent'?: string;
+  'sidebar-accent-foreground'?: string;
+  'sidebar-border'?: string;
+  'sidebar-ring'?: string;
+  'chart-1'?: string;
+  'chart-2'?: string;
+  'chart-3'?: string;
+  'chart-4'?: string;
+  'chart-5'?: string;
   radius?: string;
 }
 
+/** Serializable theme settings suitable for JSON files, APIs, or local storage. */
+export interface NajmThemeConfig {
+  preset?: NajmPreset;
+  mode?: NajmMode;
+  accent?: NajmAccent;
+  tokens?: NajmThemeTokens;
+  accentOnly?: boolean;
+  appearance?: NajmAppearance;
+  radius?: string;
+  radiusScale?: NajmRadiusScale;
+  /**
+   * Global spacing base that scales every spacing utility (padding, gap,
+   * margin, sizing) in the subtree. Maps to Tailwind v4's `--spacing` token,
+   * for example `'0.25rem'` (default), `'0.2rem'` (compact), `'0.3rem'`
+   * (comfortable). Acts as a single density dial for the whole UI.
+   */
+  spacing?: string;
+}
+
 export interface NajmThemeProviderProps {
+  /** Serializable theme settings. Explicit provider props override this config. */
+  config?: NajmThemeConfig;
   preset?: NajmPreset;
   mode?: NajmMode;
   accent?: NajmAccent;
@@ -55,8 +83,18 @@ export interface NajmThemeProviderProps {
   /** When true, only inject accent tokens (primary, ring, accent and their foregrounds).
    *  Everything else (bg, card, fg…) is inherited from the parent cascade. */
   accentOnly?: boolean;
-  /** App-wide UI preferences (currently border contrast). */
+  /** App-wide UI preferences (currently global border width). */
   appearance?: NajmAppearance;
+  /** Global base radius, for example `0`, `0.5rem`, or `0.75rem`. */
+  radius?: string;
+  /**
+   * `shadcn` keeps the standard sm/md/lg offsets around the base radius.
+   * `uniform` makes every non-pill radius utility use the same value.
+   */
+  radiusScale?: NajmRadiusScale;
+  /** Global spacing base mapped to Tailwind's `--spacing` token. Scales all
+   *  padding/gap/margin/sizing utilities in the subtree (density dial). */
+  spacing?: string;
   className?: string;
   asChild?: boolean;
   children: React.ReactNode;

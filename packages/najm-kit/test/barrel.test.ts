@@ -6,6 +6,12 @@ describe("Root barrel import", () => {
     expect(typeof najmUI.cn).toBe("function");
   });
 
+  test("exports JSON theme config helpers", () => {
+    expect(typeof najmUI.defineNajmThemeConfig).toBe("function");
+    expect(typeof najmUI.parseNajmThemeConfig).toBe("function");
+    expect(typeof najmUI.stringifyNajmThemeConfig).toBe("function");
+  });
+
   test("exports Button component", () => {
     expect(najmUI.Button).toBeDefined();
   });

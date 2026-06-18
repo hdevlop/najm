@@ -4,7 +4,7 @@ import { useApiClient } from '@/lib/api';
 import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, NForm, FormInput, useNForm } from 'najm-ui';
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, NForm, FormInput, useNForm } from 'najm-kit';
 
 const WHATSAPP_LABEL_COLORS = [
   '#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd',

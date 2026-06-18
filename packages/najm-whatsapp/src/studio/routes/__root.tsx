@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { createRootRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { NSidebar, NErrorBoundary } from 'najm-ui';
+import { NSidebar, NErrorBoundary } from 'najm-kit';
 import {
   LayoutDashboard,
   Server,

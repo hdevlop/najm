@@ -1,8 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import postcss from 'postcss';
-import tailwindcss from 'tailwindcss';
-import autoprefixer from 'autoprefixer';
+import tailwindPostcss from '@tailwindcss/postcss';
 import { fileURLToPath } from 'url';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -14,18 +13,17 @@ const prefixPlugin = () => ({
     if (rule.parent?.type === 'atrule' && /keyframes|font-face/i.test(rule.parent.name)) {
       return;
     }
-    rule.selectors = rule.selectors.map((selector) => {
-      if (selector.startsWith('html') || selector.startsWith('body')) {
-        return selector;
-      }
-      if (selector.includes('.wa-studio')) {
-        return selector;
-      }
+    const mapped = rule.selectors.map((selector) => {
+      if (selector === ':root' || selector === ':host') return '.wa-studio';
+      if (selector === '.dark') return ['.wa-studio.dark', '.wa-studio .dark'];
+      if (selector.startsWith('html') || selector.startsWith('body')) return selector;
+      if (selector.includes('.wa-studio')) return selector;
       if (selector.startsWith('.') || selector.startsWith('#') || selector.startsWith('[')) {
         return `.wa-studio ${selector}`;
       }
       return selector;
     });
+    rule.selectors = Array.from(new Set(mapped.flat()));
   },
 });
 
@@ -34,12 +32,10 @@ prefixPlugin.postcss = true;
 async function build() {
   const input = path.join(rootDir, 'src', 'studio', 'styles', 'index.css');
   const output = path.join(rootDir, 'dist', 'studio', 'styles.css');
-
   const css = fs.readFileSync(input, 'utf8');
 
   const result = await postcss([
-    tailwindcss(path.join(rootDir, 'tailwind.config.ts')),
-    autoprefixer,
+    tailwindPostcss(),
     prefixPlugin(),
   ]).process(css, { from: input, to: output });
 

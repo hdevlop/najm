@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Check, Clock, Copy, Database, FileText, HardDrive, Link, Tag, Type } from 'lucide-react';
-import { NSheet } from 'najm-ui';
+import { NSheet } from 'najm-kit';
 import { formatBytes, formatRelativeTime } from '../../../lib/format';
 import type { FileItem } from '../types';
 

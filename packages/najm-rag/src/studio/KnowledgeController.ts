@@ -14,7 +14,7 @@ import {
 import { Validate } from 'najm-validation';
 import { isAdmin } from 'najm-auth';
 import { McpTool, ToolGroup } from 'najm-mcp';
-import { KnowledgeDocumentService } from '../knowledge';
+import { KnowledgeDocumentService } from '../knowledge/KnowledgeDocumentService';
 import {
   knowledgeSearchDto,
   ingestTextDto,

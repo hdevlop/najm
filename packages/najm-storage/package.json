@@ -1,6 +1,6 @@
 {
   "name": "najm-storage",
-  "version": "1.1.17",
+  "version": "1.1.21",
   "description": "File storage plugin for najm framework — local filesystem and database backends",
   "type": "module",
   "files": [
@@ -54,7 +54,7 @@
     "@tanstack/react-router": "^1.170.8",
     "clsx": "^2.1.1",
     "lucide-react": "^0.474.0",
-    "najm-ui": "workspace:*",
+    "najm-kit": "workspace:*",
     "recharts": "^2.15.0",
     "sonner": "^2",
     "swr": "^2.3.0",
@@ -78,16 +78,16 @@
     }
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.2",
     "@types/node": "^25.0.2",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "autoprefixer": "^10.4.20",
     "drizzle-orm": "^0.45.1",
     "happy-dom": "^17.6.3",
     "postcss": "^8.5.1",
     "rimraf": "^6.0.1",
-    "tailwindcss": "^3.4.17",
+    "tailwindcss": "^4",
     "tsup": "^8.5.1",
     "typescript": "^5.7.3",
     "zod": "^4.2.1"

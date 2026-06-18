@@ -1,7 +1,11 @@
+import { createHash } from 'node:crypto';
+
 interface AuthCode {
   clientId: string;
   redirectUri: string;
   state?: string;
+  codeChallenge?: string;
+  codeChallengeMethod?: string;
   expiresAt: number;
 }
 
@@ -71,9 +75,12 @@ export function createOAuthHandlers(config: { issuer: string; token: string }): 
         const clientName = clients.get(clientId)?.clientName ?? clientId;
         const redirectUri = url.searchParams.get('redirect_uri') ?? '';
         const state = url.searchParams.get('state') ?? '';
-        return new Response(approveHtml(clientName, clientId, redirectUri, state), {
-          headers: { 'Content-Type': 'text/html' },
-        });
+        const codeChallenge = url.searchParams.get('code_challenge') ?? '';
+        const codeChallengeMethod = url.searchParams.get('code_challenge_method') ?? '';
+        return new Response(
+          approveHtml({ clientName, clientId, redirectUri, state, codeChallenge, codeChallengeMethod }),
+          { headers: { 'Content-Type': 'text/html' } },
+        );
       }
 
       const form = await req.formData();
@@ -81,6 +88,20 @@ export function createOAuthHandlers(config: { issuer: string; token: string }): 
       const clientId = form.get('client_id') as string;
       const redirectUri = form.get('redirect_uri') as string;
       const state = (form.get('state') as string) ?? '';
+      const codeChallenge = (form.get('code_challenge') as string) || undefined;
+      const codeChallengeMethod = (form.get('code_challenge_method') as string) || undefined;
+
+      // Validate redirect_uri against the registered client BEFORE issuing a
+      // code or redirecting. An attacker-supplied redirect_uri must never
+      // receive an authorization code.
+      const client = clients.get(clientId);
+      if (!client || !client.redirectUris.includes(redirectUri)) {
+        return Response.json(
+          { error: 'invalid_request', error_description: 'redirect_uri is not registered for this client' },
+          { status: 400 },
+        );
+      }
+
       const dest = new URL(redirectUri);
 
       if (action !== 'allow') {
@@ -90,7 +111,14 @@ export function createOAuthHandlers(config: { issuer: string; token: string }): 
       }
 
       const code = crypto.randomUUID().replace(/-/g, '');
-      codes.set(code, { clientId, redirectUri, state, expiresAt: Date.now() + 5 * 60_000 });
+      codes.set(code, {
+        clientId,
+        redirectUri,
+        state,
+        codeChallenge,
+        codeChallengeMethod,
+        expiresAt: Date.now() + 5 * 60_000,
+      });
       dest.searchParams.set('code', code);
       if (state) dest.searchParams.set('state', state);
       return Response.redirect(dest.toString(), 302);
@@ -120,18 +148,49 @@ export function createOAuthHandlers(config: { issuer: string; token: string }): 
         codes.delete(code ?? '');
         return Response.json({ error: 'invalid_grant' }, { status: 400 });
       }
+
+      // PKCE: when the authorization request bound a challenge, the token
+      // request must present a matching verifier. We advertise S256, so verify
+      // it rather than trusting the presence of code_challenge.
+      if (entry.codeChallenge) {
+        const verifier = body['code_verifier'];
+        if (!verifier || !verifyPkce(verifier, entry.codeChallenge, entry.codeChallengeMethod)) {
+          codes.delete(code!);
+          return Response.json(
+            { error: 'invalid_grant', error_description: 'PKCE verification failed' },
+            { status: 400 },
+          );
+        }
+      }
+
       codes.delete(code!);
       return Response.json({ access_token: token, token_type: 'Bearer', scope: 'mcp' });
     },
   };
 }
 
-function approveHtml(
-  clientName: string,
-  clientId: string,
-  redirectUri: string,
-  state: string,
-): string {
+/**
+ * Verify a PKCE code_verifier against the stored code_challenge.
+ * Defaults to S256 (the only method we advertise); 'plain' supported for
+ * completeness. RFC 7636 §4.6.
+ */
+function verifyPkce(verifier: string, challenge: string, method?: string): boolean {
+  if (method === 'plain') {
+    return verifier === challenge;
+  }
+  const hashed = createHash('sha256').update(verifier).digest('base64url');
+  return hashed === challenge;
+}
+
+function approveHtml(fields: {
+  clientName: string;
+  clientId: string;
+  redirectUri: string;
+  state: string;
+  codeChallenge: string;
+  codeChallengeMethod: string;
+}): string {
+  const { clientName, clientId, redirectUri, state, codeChallenge, codeChallengeMethod } = fields;
   const safe = (s: string) => s.replace(/"/g, '&quot;').replace(/</g, '&lt;');
   return `<!DOCTYPE html>
 <html>
@@ -151,9 +210,11 @@ function approveHtml(
   <h2>Allow access?</h2>
   <p><strong>${safe(clientName)}</strong> wants to access your MCP server.</p>
   <form method="POST">
-    <input type="hidden" name="client_id"    value="${safe(clientId)}">
-    <input type="hidden" name="redirect_uri" value="${safe(redirectUri)}">
-    <input type="hidden" name="state"        value="${safe(state)}">
+    <input type="hidden" name="client_id"             value="${safe(clientId)}">
+    <input type="hidden" name="redirect_uri"          value="${safe(redirectUri)}">
+    <input type="hidden" name="state"                 value="${safe(state)}">
+    <input type="hidden" name="code_challenge"        value="${safe(codeChallenge)}">
+    <input type="hidden" name="code_challenge_method" value="${safe(codeChallengeMethod)}">
     <div class="row">
       <button type="submit" name="action" value="allow" class="allow">Allow</button>
       <button type="submit" name="action" value="deny"  class="deny">Deny</button>

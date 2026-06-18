@@ -1,4 +1,4 @@
-import { Dialog, DialogContent } from 'najm-ui';
+import { Dialog, DialogContent } from 'najm-kit';
 import { TrashView } from './TrashView';
 
 interface Props {

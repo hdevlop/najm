@@ -1,5 +1,4 @@
 import React, { createContext, useContext } from "react";
-import type { NajmBorderDegree } from "../../theme/types";
 
 export type FormVariant = "default" | "studio" | "compact";
 
@@ -21,10 +20,10 @@ const VARIANT_PRESETS: Record<FormVariant, FormSlotClassNames> = {
   },
   studio: {
     item: "space-y-1.5 w-full",
-    label: "text-[11px] uppercase tracking-[0.16em] text-txt-muted flex items-center gap-2",
+    label: "text-[11px] uppercase tracking-[0.16em] text-muted-foreground flex items-center gap-2",
     input: "h-10 bg-card",
-    description: "text-xs text-txt-muted",
-    error: "text-xs text-status-red",
+    description: "text-xs text-muted-foreground",
+    error: "text-xs text-destructive",
   },
   compact: {
     item: "flex flex-col w-full gap-1",
@@ -38,7 +37,6 @@ const VARIANT_PRESETS: Record<FormVariant, FormSlotClassNames> = {
 interface VariantContextValue {
   variant: FormVariant;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
 }
 
 const VariantContext = createContext<VariantContextValue>({ variant: "default" });
@@ -46,10 +44,9 @@ const VariantContext = createContext<VariantContextValue>({ variant: "default" }
 export const VariantProvider: React.FC<{
   variant?: FormVariant;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   children: React.ReactNode;
-}> = ({ variant = "default", bordered, borderDegree, children }) => (
-  <VariantContext.Provider value={{ variant, bordered, borderDegree }}>
+}> = ({ variant = "default", bordered, children }) => (
+  <VariantContext.Provider value={{ variant, bordered }}>
     {children}
   </VariantContext.Provider>
 );
@@ -57,7 +54,5 @@ export const VariantProvider: React.FC<{
 export const useVariant = (): FormVariant => useContext(VariantContext).variant;
 
 export const useBordered = (): boolean | undefined => useContext(VariantContext).bordered;
-
-export const useBorderDegree = (): NajmBorderDegree | undefined => useContext(VariantContext).borderDegree;
 
 export const useVariantPreset = (): FormSlotClassNames => VARIANT_PRESETS[useContext(VariantContext).variant];

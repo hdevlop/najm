@@ -5,6 +5,36 @@ import { Controller, reset, Service, Injectable } from "najm-core";
 import { cache, CacheService } from "../src";
 import { Get, Post, Body, Params, Query } from "najm-core";
 
+describe('CacheService focused behavior', () => {
+  test('getMany preserves key order', async () => {
+    const service = new CacheService({ driver: 'memory' });
+    await service.set('a', '1');
+    await service.set('b', '2');
+    expect(await service.getMany(['b', 'missing', 'a'])).toEqual(['2', null, '1']);
+    await service.destroy();
+  });
+
+  test('getOrSet deduplicates concurrent cache misses', async () => {
+    const service = new CacheService({ driver: 'memory' });
+    let calls = 0;
+    const factory = async () => {
+      calls++;
+      await Bun.sleep(10);
+      return { value: 42 };
+    };
+
+    const values = await Promise.all([
+      service.getOrSet('shared', factory),
+      service.getOrSet('shared', factory),
+      service.getOrSet('shared', factory),
+    ]);
+
+    expect(values).toEqual([{ value: 42 }, { value: 42 }, { value: 42 }]);
+    expect(calls).toBe(1);
+    await service.destroy();
+  });
+});
+
 // ==========================================
 // TEST FIXTURES - CONTROLLERS & SERVICES
 // ==========================================

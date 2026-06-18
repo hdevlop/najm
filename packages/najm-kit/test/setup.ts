@@ -4,10 +4,42 @@ import { afterEach } from "bun:test";
 
 const win = new Window({ url: "http://localhost" });
 
+// happy-dom never fires <img> load events, so Radix Avatar (which only renders
+// the <img> after `new window.Image()` fires `load`) would never show the image.
+// Mark the preload image complete when `src` is set so Radix can resolve it as loaded.
+class MockImage {
+  onload: (() => void) | null = null;
+  onerror: (() => void) | null = null;
+  referrerPolicy = "";
+  complete = false;
+  naturalWidth = 0;
+  #src = "";
+  #listeners: Record<string, Array<() => void>> = { load: [], error: [] };
+  addEventListener(type: string, cb: () => void) {
+    (this.#listeners[type] ??= []).push(cb);
+  }
+  removeEventListener(type: string, cb: () => void) {
+    this.#listeners[type] = (this.#listeners[type] ?? []).filter((f) => f !== cb);
+  }
+  set src(value: string) {
+    this.#src = value;
+    if (!value) return;
+    this.complete = true;
+    this.naturalWidth = 1;
+    this.onload?.();
+    for (const cb of this.#listeners.load ?? []) cb();
+  }
+  get src() {
+    return this.#src;
+  }
+}
+(win as any).Image = MockImage;
+
 const globals: Record<string, any> = {
   window: win,
   document: win.document,
   navigator: win.navigator,
+  Element: win.Element,
   Node: win.Node,
   NodeFilter: win.NodeFilter,
   HTMLElement: win.HTMLElement,

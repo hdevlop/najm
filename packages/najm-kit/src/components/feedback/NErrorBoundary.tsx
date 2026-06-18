@@ -34,8 +34,8 @@ export class NErrorBoundary extends React.Component<ErrorBoundaryProps, ErrorBou
     if (this.state.hasError) {
       return (
         <div className="flex flex-col items-center justify-center h-full p-8 text-center">
-          <div className="h-12 w-12 rounded-xl bg-status-red/10 flex items-center justify-center mb-4">
-            <AlertTriangle className="h-6 w-6 text-status-red" />
+          <div className="h-12 w-12 rounded-xl bg-destructive/10 flex items-center justify-center mb-4">
+            <AlertTriangle className="h-6 w-6 text-destructive" />
           </div>
           <h3 className="text-sm font-semibold text-foreground mb-1">
             {this.props.fallbackTitle ?? 'Something went wrong'}

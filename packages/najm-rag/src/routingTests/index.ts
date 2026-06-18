@@ -11,4 +11,5 @@ export {
   type RoutingTestRow,
   type RoutingTestScore,
   type RoutingTestStatus,
+  type PaginatedRoutingTestsResponse,
 } from './RoutingTestsDto';

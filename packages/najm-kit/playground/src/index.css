@@ -1,0 +1,16 @@
+/*
+ * Playground stylesheet.
+ * Loads Tailwind v4 + najm-kit's theme contract; the playground scans the
+ * kit's source directory so utility classes used in components are emitted.
+ */
+@import "tailwindcss";
+@import "najm-kit/theme.css";
+
+@source "../../src/**/*.{ts,tsx}";
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}

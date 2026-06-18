@@ -67,14 +67,15 @@ describe("cards-renderCard-root.test.tsx", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
 
-    // The grid container (cards container) should have no intermediate wrapper around CardComponent root
-    const cardsContainer = container.querySelector(".flex.flex-wrap.gap-3.p-3");
-    expect(cardsContainer).toBeTruthy();
-    const directChildren = cardsContainer?.children;
-    expect(directChildren?.length).toBe(data.length);
-    for (let i = 0; i < (directChildren?.length ?? 0); i++) {
-      const child = directChildren?.item(i);
-      expect(child?.getAttribute("data-testid")).toBe(`card-${data[i].id}`);
+    // The grid container holds the cards. Each row shell wraps the CardComponent
+    // and forwards data-row + data-row-id attributes, so the CardComponent is
+    // discoverable as a child of the row shell.
+    const rowShells = container.querySelectorAll("[data-row-id]");
+    expect(rowShells.length).toBe(data.length);
+    for (let i = 0; i < rowShells.length; i++) {
+      const shell = rowShells[i];
+      const inner = shell.querySelector(`[data-testid="card-${data[i].id}"]`);
+      expect(inner).toBeTruthy();
     }
   });
 

@@ -5,7 +5,7 @@ import type { RagMergedConfig } from '../config';
 import { EmbeddingService } from '../embeddings';
 import { ToolIndexRepository } from '../toolIndex';
 import type { ToolRouterResult } from './ToolRouterDto';
-import { normalizeQuery, EmbeddingLru } from './ToolRouterUtils';
+import { normalizeQuery } from './ToolRouterUtils';
 import { ToolRoutingLoader } from './ToolRoutingLoader';
 import { UnmatchedQueryService } from '../unmatched';
 import { getRoutableTools } from '../toolVisibility';
@@ -14,8 +14,6 @@ import { selectPrimaryTool, filterAlternativeMutations } from './RoutingLogic';
 @Service()
 @Meta({ layer: 'plugin', order: 56 })
 export class ToolRouterService {
-  private queryCache: EmbeddingLru;
-
   constructor(
     @Inject(RAG_CONFIG) private config: RagMergedConfig,
     @Inject() private registry: McpRegistryService,
@@ -24,13 +22,7 @@ export class ToolRouterService {
     @Inject(LoggerService) private log: LoggerService,
     @Inject() private provider: ToolRoutingLoader,
     @Inject() private unmatched?: UnmatchedQueryService,
-  ) {
-    const cacheSize =
-      this.config.rag?.queryEmbeddingCacheSize ??
-      (this.config as any).toolRouting?.queryEmbeddingCacheSize ??
-      256;
-    this.queryCache = new EmbeddingLru(Math.max(0, cacheSize));
-  }
+  ) {}
 
   async findRelevantTools(userText: string): Promise<ToolRouterResult> {
     const routing = await this.provider.getRoutingConfig();
@@ -45,30 +37,47 @@ export class ToolRouterService {
     }
 
     try {
-      let embedding = this.queryCache.get(normalized);
-      if (!embedding) {
-        embedding = await this.embedding.embed(normalized);
-        this.queryCache.set(normalized, embedding);
-      }
+      const embedding = await this.embedding.embed(normalized);
 
       const maxTools = routing.maxTools ?? 12;
       const topSemanticHits = routing.topSemanticHits ?? 8;
       const threshold = routing.similarityThreshold ?? 0.45;
 
       const registeredToolNames = new Set(routableTools.map((tool) => tool.name));
-      let matches = this.filterRegisteredMatches(
-        await this.repository.searchSemantics(embedding, topSemanticHits, threshold),
+      // Phase 5.P6: probe at threshold 0 once per table, reuse the top-1
+      // similarity for the miss record instead of re-running two more
+      // searches with the threshold filter. Fall back to tool embeddings
+      // when the filtered semantic matches are empty, not when raw
+      // (threshold-zero) semantic matches are empty, so a low-confidence
+      // semantic hit no longer masks a valid embedding match.
+      const probeLimit = Math.max(topSemanticHits, 1);
+      const rawSemanticMatches = this.filterRegisteredMatches(
+        await this.repository.searchSemantics(embedding, probeLimit, 0),
         registeredToolNames,
       );
-      if (matches.length === 0) {
-        matches = this.filterRegisteredMatches(
-          await this.repository.searchEmbeddings(embedding, topSemanticHits, threshold),
+      let semanticMatches = rawSemanticMatches.filter((m) => m.similarity >= threshold);
+
+      let rawEmbeddingMatches: typeof rawSemanticMatches = [];
+      if (semanticMatches.length === 0) {
+        rawEmbeddingMatches = this.filterRegisteredMatches(
+          await this.repository.searchEmbeddings(embedding, probeLimit, 0),
           registeredToolNames,
         );
       }
 
+      const matches = semanticMatches.length > 0
+        ? semanticMatches
+        : rawEmbeddingMatches.filter((m) => m.similarity >= threshold);
+
       if (matches.length === 0) {
-        await this.recordUnmatchedQuery(userText, normalized, embedding, threshold, topSemanticHits);
+        const probeSource = rawSemanticMatches.length > 0 ? rawSemanticMatches : rawEmbeddingMatches;
+        await this.recordUnmatchedQuery(
+          userText,
+          normalized,
+          probeSource[0]?.similarity ?? 0,
+          threshold,
+          probeSource.length > 0 ? 'low_confidence' : 'no_match',
+        );
         return this.applyFallbackResult(routing.fallbackOnNoMatch ?? 'none');
       }
 
@@ -135,21 +144,17 @@ export class ToolRouterService {
   private async recordUnmatchedQuery(
     userText: string,
     normalized: string,
-    embedding: number[],
+    score: number,
     threshold: number,
-    topSemanticHits: number,
+    source: 'low_confidence' | 'no_match',
   ): Promise<void> {
     try {
-      let probe = await this.repository.searchSemantics(embedding, 1, 0);
-      if (probe.length === 0) {
-        probe = await this.repository.searchEmbeddings(embedding, Math.max(1, Math.min(topSemanticHits, 1)), 0);
-      }
       await this.unmatched?.recordMiss({
         query: userText,
         normalized,
-        score: probe[0]?.similarity ?? 0,
+        score,
         threshold,
-        source: probe.length > 0 ? 'low_confidence' : 'no_match',
+        source,
       });
     } catch (err) {
       this.log.warn?.('[chatbot-rag] Failed to record unmatched query:', err);

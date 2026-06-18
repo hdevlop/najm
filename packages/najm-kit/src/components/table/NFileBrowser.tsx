@@ -118,7 +118,7 @@ export function buildDefaultFileColumns(
         return (
           <div className="flex items-center gap-2">
             {renderThumb({ node, size: "sm" })}
-            <span className="font-medium text-txt">{node.name}</span>
+            <span className="font-medium text-foreground">{node.name}</span>
           </div>
         );
       },
@@ -145,7 +145,7 @@ export function buildDefaultFileColumns(
       cell: ({ row }) => {
         const node = row.original;
         return (
-          <span className="block text-right text-txt-muted">
+            <span className="block text-right text-muted-foreground">
             {node.isFolder ? "-" : formatFileBytes(node.size ?? 0)}
           </span>
         );
@@ -159,7 +159,7 @@ export function buildDefaultFileColumns(
       cell: ({ row }) => {
         const node = row.original;
         return (
-          <span className="flex items-center gap-1 text-txt-muted">
+            <span className="flex items-center gap-1 text-muted-foreground">
             <Clock size={12} />
             {node.isFolder || !node.updatedAt ? "-" : formatFileRelative(node.updatedAt)}
           </span>
@@ -183,8 +183,8 @@ function DefaultFileTile({
       card={{ onClick, onContextMenu }}
       className={cn(
         "group relative flex w-36 cursor-pointer flex-col items-center justify-start gap-2 rounded-xl border border-transparent p-4 transition-colors",
-        "hover:bg-bg-elev-1 hover:border-white/10",
-        isSel && "bg-brand/10 border-brand/40"
+        "hover:bg-card hover:border-white/10",
+        isSel && "bg-primary/10 border-primary/40"
       )}
     >
       <div className="relative flex h-20 w-20 items-end justify-center">
@@ -195,15 +195,15 @@ function DefaultFileTile({
           onChange={(e) => { e.stopPropagation(); row.toggleSelected(!!e.target.checked); }}
           onClick={(e) => e.stopPropagation()}
           className={cn(
-            "absolute left-0 top-0 rounded border-white/20 bg-bg transition-opacity",
+            "absolute left-0 top-0 rounded border-white/20 bg-background transition-opacity",
             isSel ? "opacity-100" : "opacity-0 group-hover:opacity-100"
           )}
           aria-label={`Select ${data.name}`}
         />
       </div>
       <div className="flex w-full flex-col items-center text-center">
-        <span className="max-w-full truncate text-xs font-semibold text-txt">{data.name}</span>
-        <span className="mt-0.5 text-[10px] text-txt-muted">
+        <span className="max-w-full truncate text-xs font-semibold text-foreground">{data.name}</span>
+        <span className="mt-0.5 text-[10px] text-muted-foreground">
           {data.isFolder ? "Folder" : formatFileBytes(data.size ?? 0)}
         </span>
       </div>

@@ -1,15 +1,15 @@
 import { Body, Controller, Inject, Post, HttpError } from 'najm-core';
 import { isAdmin } from 'najm-auth';
 import { Validate } from 'najm-validation';
-import { studioAssistantChatDto, type StudioAssistantChatDto } from './StudioAssistantDto';
+import { studioAssistantChatDto, type StudioAssistantChatDto } from '../studioContract/StudioAssistantDto';
 import {
   STUDIO_VIEW_TOOL_MAP,
   normalizeStudioAssistantView,
-} from './viewToolMap';
+} from '../studioContract/viewToolMap';
 import {
   STUDIO_ASSISTANT_PROVIDER,
   type StudioAssistantProvider,
-} from './StudioAssistantProvider';
+} from '../studioContract/StudioAssistantProvider';
 
 @Controller('/rag-studio/assistant')
 @isAdmin()

@@ -9,7 +9,7 @@ export function useNajmPortalLayerStyles() {
 
     const style = document.createElement('style');
     style.id = PORTAL_LAYER_STYLE_ID;
-    style.textContent = `[data-radix-popper-content-wrapper]{z-index:var(--najm-portal-z-index,10000)!important;}`;
+    style.textContent = `[data-radix-popper-content-wrapper]{z-index:var(--portal-z-index,10000)!important;}`;
     document.head.appendChild(style);
   }, []);
 }

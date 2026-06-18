@@ -1,6 +1,7 @@
 import 'reflect-metadata';
-import { describe, test, expect, beforeEach, jest } from 'bun:test';
+import { describe, test, expect, beforeEach, afterEach, jest } from 'bun:test';
 import { InstanceManager } from '../../src/engine/InstanceManager';
+import { setBaileysLoaderForTest, resetBaileysLoaderForTest } from '../../src/engine/BaileysRuntime';
 
 // ── Mock BaileysInstance ──────────────────────────────────────────────────
 
@@ -23,6 +24,20 @@ const originalBaileysInstance = jest.fn().mockImplementation((id: string, _sessi
   return { ...mockInstance, id };
 });
 
+const mockBaileysModule = {
+  default: jest.fn(),
+  makeWASocket: jest.fn(),
+  initAuthCreds: jest.fn().mockReturnValue({}),
+  BufferJSON: { replacer: (_k: string, v: any) => v, reviver: (_k: string, v: any) => v },
+  makeCacheableSignalKeyStore: jest.fn().mockImplementation((s: any) => s),
+  proto: { Message: { AppStateSyncKeyData: { fromObject: (v: any) => v } } },
+  Browsers: { ubuntu: (name: string) => ['Ubuntu', name, ''] },
+  DisconnectReason: { loggedOut: 401 },
+  useMultiFileAuthState: jest.fn().mockResolvedValue({ state: { creds: {}, keys: {} }, saveCreds: jest.fn() }),
+};
+
+setBaileysLoaderForTest(async () => mockBaileysModule);
+
 (jest as any).mock('../../src/engine/BaileysInstance', () => ({
   BaileysInstance: originalBaileysInstance,
 }));
@@ -33,6 +48,8 @@ import type { SessionStore } from '../../src/engine/SessionStore';
 describe('InstanceManager', () => {
   let manager: InstanceManager;
   let sessionStore: SessionStore;
+  let repository: any;
+  let repositoryRows: Map<string, any>;
 
   beforeEach(() => {
     instancesCreated = [];
@@ -42,8 +59,48 @@ describe('InstanceManager', () => {
       deleteSession: jest.fn(),
       setDb: jest.fn(),
     } as any;
+    repositoryRows = new Map();
+    repository = {
+      list: jest.fn().mockImplementation(() => Promise.resolve(Array.from(repositoryRows.values()))),
+      findById: jest.fn().mockImplementation((id: string) => Promise.resolve(repositoryRows.get(id) ?? null)),
+      create: jest.fn().mockImplementation(({ id, name, autoConnect }: any) => {
+        const now = new Date().toISOString();
+        const row = {
+          id,
+          name,
+          status: 'disconnected',
+          phone: null,
+          profileName: null,
+          connectedAt: null,
+          lastSeenAt: null,
+          autoConnect: autoConnect ?? false,
+          lastError: null,
+          createdAt: now,
+          updatedAt: now,
+        };
+        repositoryRows.set(id, row);
+        return Promise.resolve(row);
+      }),
+      updateState: jest.fn().mockImplementation((id: string, patch: any) => {
+        const existing = repositoryRows.get(id);
+        if (!existing) return Promise.resolve();
+        Object.assign(existing, patch, { updatedAt: new Date().toISOString() });
+        return Promise.resolve();
+      }),
+      delete: jest.fn().mockImplementation((id: string) => {
+        repositoryRows.delete(id);
+        return Promise.resolve();
+      }),
+    };
     manager = new InstanceManager();
     (manager as any).sessionStore = sessionStore;
+    (manager as any).repository = repository;
+    (manager as any).events = { emit: jest.fn(), emitAsync: jest.fn().mockResolvedValue(undefined) };
+    (manager as any).log = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
+  });
+
+  afterEach(() => {
+    resetBaileysLoaderForTest();
   });
 
   // ── create() ─────────────────────────────────────────────────────────────

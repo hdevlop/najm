@@ -1,7 +1,7 @@
 import React from 'react';
 import { Power, PowerOff, Trash2, QrCode, RotateCcw, MessageSquare, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Button } from 'najm-ui';
+import { Button } from 'najm-kit';
 import type { Instance } from '@/features/instances/types';
 
 interface InstanceCardProps {

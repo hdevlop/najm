@@ -127,7 +127,13 @@ describe("responsive.test.tsx", () => {
   test("cards mode button appears when renderCard is provided and cards is available mode", async () => {
     const { container } = render(<TableWrapper availableModes={["table", "cards"] as const} />);
     await new Promise((r) => setTimeout(r, 100));
-    const cardsBtn = container.querySelector('[aria-label="Cards view"]');
+    const trigger = container.querySelector("[aria-label='Table settings']") as HTMLElement | null;
+    if (trigger) {
+      fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+      fireEvent.click(trigger);
+    }
+    await new Promise((r) => setTimeout(r, 20));
+    const cardsBtn = document.querySelector('[aria-label="Cards view"]');
     expect(cardsBtn).toBeTruthy();
   });
 

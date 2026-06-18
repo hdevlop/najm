@@ -7,7 +7,7 @@ import { MessageThread } from '@/features/messages/components/MessageThread';
 import { SendMessageForm } from '@/features/messages/components/SendMessageForm';
 import { cn } from '@/lib/utils';
 import type { Conversation, Message } from '@/features/conversations/types';
-import { NEmptyState, Input } from 'najm-ui';
+import { NEmptyState, Input } from 'najm-kit';
 
 interface ConversationsViewProps {
   onSelectConversation?: (jid: string | null) => void;

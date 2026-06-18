@@ -1,6 +1,6 @@
 {
   "name": "najm-auth",
-  "version": "1.1.36",
+  "version": "1.1.39",
   "description": "Authentication and authorization library for najm framework",
   "type": "module",
   "files": [
@@ -87,12 +87,9 @@
     "najm-email": "workspace:*",
     "najm-rate": "workspace:*",
     "najm-validation": "workspace:*",
-    "hono": "^4.0.0",
     "jsonwebtoken": "^9.0.3",
     "lodash.isempty": "^4.4.0",
     "nanoid": "^5.1.6",
-    "pino": "^10.1.0",
-    "postgres": "^3.4.7",
     "reflect-metadata": "^0.2.2",
     "timestring": "^7.0.0",
     "zod": "^4.2.1"

@@ -1,11 +1,9 @@
-import React, { useCallback, useRef, useState } from "react";
+﻿import React, { useCallback, useRef, useState } from "react";
 import { UploadCloud, X, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "../Button";
 import { Progress } from "../Progress";
 import { NFileTypeIcon } from "../data-display/NFileTypeIcon";
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
-import type { NajmBorderDegree } from "../../theme/types";
 
 export type NUploaderItemStatus = "uploading" | "done" | "error";
 
@@ -30,7 +28,6 @@ export interface NUploaderProps {
   listTitle?: string;
   className?: string;
   dropzoneClassName?: string;
-  borderDegree?: NajmBorderDegree;
   onFilesSelected?: (files: File[]) => void;
   onCancel?: (id: string) => void;
   onRemove?: (id: string) => void;
@@ -54,18 +51,12 @@ export function NUploader({
   listTitle = "Uploaded files",
   className,
   dropzoneClassName,
-  borderDegree,
   onFilesSelected,
   onCancel,
   onRemove,
 }: NUploaderProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    fallback: "default",
-  });
-  const dropzoneBorderClass = borderColorClassForDegree(resolvedBorderDegree);
 
   const emit = useCallback(
     (files: FileList | File[] | null) => {
@@ -120,8 +111,7 @@ export function NUploader({
         onDragLeave={onDragLeave}
         onDrop={onDrop}
         className={cn(
-          "flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors",
-          dropzoneBorderClass,
+          "flex flex-col items-center justify-center gap-3 rounded-2xl border-2 border-dashed border-border px-6 py-10 text-center transition-colors",
           "bg-muted/40 hover:bg-muted/60",
           isDragging && "border-primary bg-primary/5",
           disabled && "cursor-not-allowed opacity-60",

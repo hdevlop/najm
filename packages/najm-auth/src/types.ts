@@ -60,6 +60,8 @@ export interface AuthConfig {
   registrationMode: 'active' | 'pending';
   /** Per-account lockout settings */
   lockout: LockoutConfig;
+  /** Bcrypt work factor (default: 10) */
+  bcryptRounds: number;
   /** Session cookie cache settings */
   session: SessionCookieConfig;
 }
@@ -101,6 +103,8 @@ export type AuthPluginConfig = {
   registrationMode?: 'active' | 'pending';
   /** Per-account lockout settings */
   lockout?: Partial<LockoutConfig>;
+  /** Bcrypt work factor (default: 10, valid range: 4-31) */
+  bcryptRounds?: number;
   /** Session cookie cache settings (optional — sensible defaults applied) */
   session?: Partial<SessionCookieConfig>;
   /** Optional config forwarded to validation() dependency */
@@ -139,12 +143,19 @@ export interface TokenPair {
 }
 
 /**
- * User data structure for authentication
+ * User data structure for authentication.
+ *
+ * This is the minimal contract the `USER` ALS token is guaranteed to satisfy
+ * on every resolution path (Bearer token, refresh cookie, and the signed
+ * session-cookie hot path). Guards and handlers must not rely on fields
+ * outside this contract — the DB-backed paths include more, the session
+ * cookie does not.
  */
 export interface AuthUser {
   id: string;
   email: string;
   name?: string | null;
   role?: string;
+  status?: string;
   permissions?: string[];
 }

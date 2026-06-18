@@ -6,6 +6,7 @@ import { isAuth } from './AuthGuard';
 import { Validate } from 'najm-validation';
 import { RateLimit } from 'najm-rate';
 import type { Context } from 'hono';
+import { createHash } from 'node:crypto';
 import {
   createUserDto,
   loginDto,
@@ -21,21 +22,15 @@ import {
   type ConfirmResetPasswordDto
 } from '../users/UserDto';
 
-let _configuredCookieName = 'refreshToken';
+const hashKeyPart = (value: string): string =>
+  createHash('sha256').update(value).digest('base64url').slice(0, 32);
 
-export const setConfiguredCookieName = (name: string) => {
-  _configuredCookieName = name;
-};
-
-const cookieFingerprint = (cookieName?: string) => (ctx: Context): string => {
-  const name = cookieName ?? _configuredCookieName;
+const cookieFingerprint = () => (ctx: Context): string => {
   const ip = ctx.req.header('x-forwarded-for')?.split(',')[0]?.trim()
     ?? ctx.req.header('x-real-ip')
     ?? 'unknown';
-  const cookie = ctx.req.raw.headers.get('cookie');
-  const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const match = cookie?.match(new RegExp(`${escaped}=([^;]+)`));
-  const fingerprint = match?.[1]?.slice(-8) ?? 'none';
+  const cookie = ctx.req.raw.headers.get('cookie') ?? '';
+  const fingerprint = cookie ? hashKeyPart(cookie) : 'none';
   return `${ip}:${fingerprint}`;
 };
 
@@ -50,7 +45,10 @@ const ipAndEmail = async (ctx: Context): Promise<string> => {
     ?? 'unknown';
   try {
     const body = await ctx.req.json();
-    if (body?.email) return `${ip}:${body.email}`;
+    if (body?.email && typeof body.email === 'string') {
+      const normalizedEmail = body.email.trim().toLowerCase();
+      if (normalizedEmail) return `${ip}:${hashKeyPart(normalizedEmail)}`;
+    }
   } catch {
     // Body not available or not JSON — fall back to IP only
   }

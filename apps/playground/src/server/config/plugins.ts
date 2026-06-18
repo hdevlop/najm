@@ -9,7 +9,7 @@ import { storage } from 'najm-storage';
 import { translations } from '../locales';
 import { databaseConfig } from './database';
 import { auth } from 'najm-auth';
-import { rag } from 'najm-rag';
+import { rag, ragStudio } from 'najm-rag';
 import { chatbot } from 'najm-chatbot';
 import { studioAssistant } from 'najm-chatbot/studio-assistant';
 import { whatsapp } from 'najm-whatsapp';
@@ -49,8 +49,20 @@ export const cookiesConfig = () => cookies({
   path: '/',
 });
 
+// Reflect any localhost origin (any port) so the standalone RAG Studio app can
+// connect from whatever dev port it runs on, with no CORS_ORIGIN env needed.
+// In production set CORS_ORIGIN to lock it to a specific origin.
+const isLocalhostOrigin = (origin?: string) =>
+  !!origin && /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin);
+
 export const corsConfig = () => cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  // najm-cors passes `origin` straight to Hono's cors, which supports a function
+  // that returns the origin to allow (reflected) or undefined to block.
+  origin: ((origin: string) => {
+    if (isLocalhostOrigin(origin)) return origin;
+    const allowed = process.env.CORS_ORIGIN;
+    return allowed && origin === allowed ? origin : undefined;
+  }) as unknown as string,
   credentials: true,
 });
 
@@ -80,9 +92,12 @@ export const ragConfig = () => rag({
     : undefined,
   toolRouting: { enabled: true },
   knowledge: true,
-  studioApi: true,
   allowedLangs: ['en', 'fr', 'ar', 'darija'],
 });
+
+// RAG Studio admin API (formerly rag({ studioApi: true })). The studio SPA is
+// served separately (here, embedded via the Next.js route in app/rag-studio).
+export const ragStudioConfig = () => ragStudio({ ui: false });
 
 export const chatbotConfig = () => chatbot({
   dialect: process.env.PLAYGROUND_DB === 'pg' ? 'pg' : 'sqlite',

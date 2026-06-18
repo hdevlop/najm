@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+﻿import React, { useState, useEffect } from "react";
 import { Input } from "../ui/input";
 import { BaseInput } from "./BaseInput";
 import { cn } from "../../lib/cn";
@@ -6,7 +6,7 @@ import { getIconColorProps, resolveIcon } from "./utils";
 import { Clock } from "lucide-react";
 import type { TimeInputProps } from "./types";
 
-export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, placeholder = "", icon, showIcon = true, iconColor, className = "", variant = "default", status = "default", bordered, borderDegree, borderColor, format24 = true, showSeconds = false, disabled = false }) => {
+export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, placeholder = "", icon, showIcon = true, iconColor, className = "", variant = "default", status = "default", bordered, borderColor, format24 = true, showSeconds = false, disabled = false }) => {
   const [inputValue, setInputValue] = useState(value);
   const [isValid, setIsValid] = useState(true);
 
@@ -53,7 +53,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, plac
   const currentStatus = !isValid ? "error" : status;
 
   return (
-    <BaseInput variant={variant} status={currentStatus} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={cn("gap-2", className)}>
+    <BaseInput variant={variant} status={currentStatus} bordered={bordered} borderColor={borderColor} className={cn("gap-2", className)}>
       {showIcon && (icon ? <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span> : <Clock className={iconProps.className} style={iconProps.style} />)}
       <Input type="text" placeholder={placeholder || (showSeconds ? "HH:MM:SS" : "HH:MM")} value={inputValue} onChange={(e) => handleInputChange(e.target.value)} onKeyDown={(e) => { if (!/\d/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) e.preventDefault(); }} onBlur={handleBlur} disabled={disabled} className={cn("p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0", !isValid ? "text-red-500" : "text-muted-foreground")} />
     </BaseInput>

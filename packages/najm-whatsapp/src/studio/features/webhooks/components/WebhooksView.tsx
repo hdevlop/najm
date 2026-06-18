@@ -4,7 +4,7 @@ import { useApiClient } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import { WebhookFormModal } from './WebhookFormModal';
 import type { Webhook } from '@/features/webhooks/types';
-import { NPageHeader, NEmptyState, Button } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button } from 'najm-kit';
 
 export function WebhooksView() {
   const api = useApiClient();

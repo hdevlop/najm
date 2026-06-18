@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, fireEvent } from "@testing-library/react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { NTable, type NTableProps } from "../../src/components/table/NTable";
@@ -44,8 +44,17 @@ function TableWrapper(props: Partial<NTableProps<Row, "table" | "json" | "files"
   );
 }
 
+function openSettingsDropdown(container: HTMLElement) {
+  const trigger = container.querySelector("[aria-label='Table settings']") as HTMLElement | null;
+  if (trigger && trigger.getAttribute("data-state") !== "open") {
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.click(trigger);
+  }
+}
+
 function getButtonByLabel(container: HTMLElement, label: string): HTMLElement | null {
-  const all = container.querySelectorAll("[aria-label]");
+  openSettingsDropdown(container);
+  const all = document.querySelectorAll("[aria-label]");
   for (const el of all) {
     if (el.getAttribute("aria-label")?.toLowerCase().includes(label.toLowerCase())) {
       return el as HTMLElement;

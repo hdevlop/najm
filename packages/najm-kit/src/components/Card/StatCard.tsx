@@ -3,7 +3,6 @@ import { cn } from "../../lib/cn";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { NIcon, type NIconSource } from "../Icon";
 import { NCard } from "./Card";
-import type { NajmBorderDegree } from "../../theme/types";
 
 export type NStatCardVariant = "default" | "usage" | "compact";
 
@@ -25,7 +24,6 @@ interface BaseProps {
   label: string;
   onClick?: () => void;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   className?: string;
   classNames?: NStatCardClassNames;
 }
@@ -108,7 +106,6 @@ function DefaultCard({
   change,
   onClick,
   bordered,
-  borderDegree,
   className,
   classNames,
 }: DefaultProps) {
@@ -117,7 +114,6 @@ function DefaultCard({
       noPadding
       onClick={onClick}
       bordered={bordered}
-      borderDegree={borderDegree}
       className={cn(
         "group p-4 transition-colors",
         onClick && "cursor-pointer hover:border-border/60 hover:bg-accent/40",
@@ -181,7 +177,6 @@ function UsageCard({
   countLabel,
   onClick,
   bordered,
-  borderDegree,
   className,
   classNames,
 }: UsageProps) {
@@ -193,7 +188,6 @@ function UsageCard({
       noPadding
       onClick={onClick}
       bordered={bordered}
-      borderDegree={borderDegree}
       className={cn(
         "group min-h-[116px] px-4 py-4 transition-colors",
         onClick && "cursor-pointer hover:bg-accent/30",
@@ -239,13 +233,12 @@ function UsageCard({
 // Compact variant
 // ─────────────────────────────────────────────────────────────
 
-function CompactCard({ icon, label, value, unit, iconColor, onClick, bordered, borderDegree, className, classNames }: CompactProps) {
+function CompactCard({ icon, label, value, unit, iconColor, onClick, bordered, className, classNames }: CompactProps) {
   return (
     <NCard
       noPadding
       onClick={onClick}
       bordered={bordered}
-      borderDegree={borderDegree}
       className={cn(
         !bordered && "border-0",
         "bg-foreground/10 p-3 shadow-none",

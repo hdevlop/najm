@@ -1,6 +1,6 @@
-import { Service, Meta, Inject } from 'najm-core';
+import { Service, Meta, Inject, LoggerService } from 'najm-core';
 import { InstanceManager } from './InstanceManager';
-import { MessageStoreService } from './MessageStoreService';
+import { MessageStoreService, SaveMessageInput } from './MessageStoreService';
 import type { WAMessageKey } from '@whiskeysockets/baileys';
 
 @Service()
@@ -8,13 +8,36 @@ import type { WAMessageKey } from '@whiskeysockets/baileys';
 export class MessageService {
   @Inject(InstanceManager) private instances!: InstanceManager;
   @Inject(MessageStoreService) private messageStore!: MessageStoreService;
+  @Inject(LoggerService) private log?: LoggerService;
 
   private getAdapter(instanceId: string) {
     return this.instances.getInstance(instanceId).getAdapter();
   }
 
   async sendText(instanceId: string, jid: string, text: string, options?: any) {
-    return this.getAdapter(instanceId).sendText(jid, text, options);
+    const result = await this.getAdapter(instanceId).sendText(jid, text, options);
+    try {
+      const key = result?.key ?? {};
+      const ts = result?.messageTimestamp;
+      const tsIso =
+        typeof ts === 'number'
+          ? new Date(ts > 1e12 ? ts : ts * 1000).toISOString()
+          : new Date().toISOString();
+      const input: SaveMessageInput = {
+        direction: 'outbound',
+        jid,
+        fromMe: true,
+        type: 'text',
+        content: { text },
+        waMessageId: key?.id ?? undefined,
+        timestamp: tsIso,
+        status: 'sent',
+      };
+      await this.messageStore.saveMessage(instanceId, input);
+    } catch (err: any) {
+      this.log?.warn?.(`[najm-whatsapp] persist outbound failed: ${err?.message ?? err}`);
+    }
+    return result;
   }
 
   async sendImage(instanceId: string, jid: string, url: string, caption?: string) {

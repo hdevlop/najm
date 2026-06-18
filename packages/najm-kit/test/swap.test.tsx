@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
-import { Swap } from "../src/components/ui/swap";
+import { Swap } from "../src/components/Swap/Swap";
 
 describe("Swap", () => {
   test("renders off content by default", () => {

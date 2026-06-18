@@ -1,5 +1,4 @@
 import type { ComponentType, CSSProperties, ReactNode } from "react";
-import type { NajmBorderDegree } from "../../theme/types";
 
 export type InputIcon = string | ReactNode | ComponentType<{ className?: string; style?: CSSProperties }>;
 
@@ -18,7 +17,6 @@ interface BaseProps {
   variant?: "default" | "rounded" | "ghost";
   status?: "default" | "error";
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   borderColor?: TailwindColor;
   iconColor?: string;
 }
@@ -160,6 +158,17 @@ export interface ColorArrayInputProps extends BaseProps {
   value: string;
   onChange: (color: string) => void;
   colors?: string[];
+}
+
+export interface ColorPickerInputProps extends ColorArrayInputProps {
+  disabled?: boolean;
+  /** `"swatches"` keeps the legacy inline UI. `"popover"` opens a tweakcn-style picker. */
+  mode?: "popover" | "swatches";
+  /** Which format tabs the popover exposes. */
+  formats?: import("./color/convert").ColorFormat[];
+  /** How emitted values are formatted. `"preserve"` keeps the input's own format. */
+  output?: import("./color/convert").ColorFormat | "preserve";
+  hideSwatches?: boolean;
 }
 
 export interface TimeInputProps extends BaseProps {

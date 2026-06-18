@@ -10,7 +10,7 @@ import {
 } from 'najm-auth/client/react';
 import { useAdminUsersQuery } from '@/hooks/useAdminUsersQuery';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import { NBadge } from 'najm-kit';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -40,7 +40,7 @@ export function AdminPanel() {
             fallback={
               <div className="space-y-2 text-center">
                 <p className="text-sm text-muted-foreground">
-                  You need the <Badge variant="secondary">admin</Badge> role to access this page.
+                  You need the <NBadge color="neutral" look="soft">admin</NBadge> role to access this page.
                 </p>
               </div>
             }
@@ -113,7 +113,7 @@ function AdminContent() {
                     <p className="font-medium">{user.email}</p>
                     <p className="text-xs text-muted-foreground">{user.id}</p>
                   </div>
-                  <Badge variant="outline">{user.role ?? 'member'}</Badge>
+                  <NBadge color="neutral" look="outline">{user.role ?? 'member'}</NBadge>
                 </div>
               ))}
             </div>

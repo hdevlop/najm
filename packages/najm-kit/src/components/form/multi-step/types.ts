@@ -1,7 +1,6 @@
 import type { ReactNode } from "react";
 import type { UseFormReturn, FieldValues } from "react-hook-form";
 import type { FormVariant } from "../VariantContext";
-import type { NajmBorderDegree } from "../../../theme/types";
 
 export interface StepConfig {
   id: string;
@@ -36,7 +35,6 @@ export interface WizardFormProps {
   submitLabel?: string;
   variant?: FormVariant;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   className?: string;
   classNames?: WizardClassNames;
   footerSlot?: ReactNode;

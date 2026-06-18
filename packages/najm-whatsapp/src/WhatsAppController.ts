@@ -40,6 +40,7 @@ export class WhatsAppController {
       return ctx.json({ ok: true }, 200);
     }
 
+    const instanceId = this.config.phoneNumberId;
     const entries = parsed?.entry ?? [];
     for (const entry of entries) {
       const changes = entry?.changes ?? [];
@@ -50,14 +51,16 @@ export class WhatsAppController {
         if (value.messages && Array.isArray(value.messages)) {
           for (const msg of value.messages) {
             const incoming = this.parseIncomingMessage(msg, value.contacts);
-            this.events.emit('whatsapp.message', incoming);
+            // Emit both the legacy `from` shape and the new normalized
+            // `instanceId` / `jid` shape.
+            this.events.emit('whatsapp.message', { ...incoming, mode: 'cloud', instanceId, jid: incoming.from });
           }
         }
 
         if (value.statuses && Array.isArray(value.statuses)) {
           for (const status of value.statuses) {
             const statusEvent = this.parseStatusEvent(status);
-            this.events.emit('whatsapp.status', statusEvent);
+            this.events.emit('whatsapp.status', { ...statusEvent, mode: 'cloud', instanceId, jid: statusEvent.from });
           }
         }
       }

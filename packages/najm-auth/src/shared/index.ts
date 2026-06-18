@@ -24,7 +24,7 @@ export const clean = (obj: any): any => {
   const cleaned = {};
 
   for (const [key, value] of Object.entries(obj)) {
-    if (value !== null && value !== undefined && value !== '') {
+    if (value !== undefined && value !== '') {
       cleaned[key] = value;
     }
   }
@@ -121,4 +121,3 @@ export const isPath = (img) =>
 
 export const isFile = (img) =>
   !!img && typeof img !== 'string' && img instanceof File;
-

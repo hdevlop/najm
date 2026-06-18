@@ -1,3 +1,3 @@
 // owner: dashboard (re-exports from instances)
 
-export type { Instance } from './instances/types';
+export type { Instance } from '@/features/instances/types';

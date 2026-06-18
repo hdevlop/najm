@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import React from "react";
 import { render } from "@testing-library/react";
-import { NAvatar } from "../src/components/data-display/NAvatar";
+import { NAvatar } from "../src/components/Avatar/Avatar";
 
 describe("NAvatar", () => {
   test("renders fallback text without a text row by default", () => {
@@ -23,5 +23,16 @@ describe("NAvatar", () => {
     expect(container.textContent).toContain("JD");
     expect(container.textContent).toContain("Jane Doe");
     expect(container.textContent).toContain("Admin");
+  });
+
+  test("hides initials after the avatar image loads", () => {
+    const { container } = render(
+      <NAvatar src="https://example.com/fahd.png" title="Fahd Moujahid" />,
+    );
+
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+      "https://example.com/fahd.png",
+    );
+    expect(container.querySelector("[data-slot=avatar-fallback]")).toBeNull();
   });
 });

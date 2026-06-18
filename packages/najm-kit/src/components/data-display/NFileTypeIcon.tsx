@@ -222,7 +222,7 @@ export function NFileTypeIcon({
 
   if (showThumbnail && /^image\//.test(mimeType) && url) {
     return (
-      <span className={cn(dim, "block shrink-0 overflow-hidden rounded-lg bg-bg-elev-2 shadow-sm", className)}>
+      <span className={cn(dim, "block shrink-0 overflow-hidden rounded-lg bg-secondary shadow-sm", className)}>
         <img
           src={url}
           alt=""

@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Loader2, AlertTriangle } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useApiClient } from '@/lib/api';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'najm-ui';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from 'najm-kit';
 
 interface QrModalProps {
   instanceId: string;

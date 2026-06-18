@@ -149,8 +149,8 @@ describe("menu-unified.test.tsx", () => {
 
     // Right-click on the scroll area (background, not on a row)
     const scrollArea = container.querySelector("[data-radix-scroll-area-viewport]") ?? container.querySelector(".os-viewport");
-    // Fallback: right-click on the table container itself (outside rows)
-    const tableWrapper = container.querySelector(".rounded-md");
+    // Fallback: right-click on the table body element (outside rows)
+    const tableWrapper = scrollArea ?? container.querySelector("tbody") ?? container.querySelector("[data-ntable-body]");
     expect(tableWrapper).toBeTruthy();
 
     fireEvent.contextMenu(tableWrapper!, { clientX: 10, clientY: 10 });
@@ -380,7 +380,7 @@ describe("menu-unified.test.tsx", () => {
     );
     await new Promise((r) => setTimeout(r, 100));
 
-    const tableWrapper = container.querySelector(".rounded-md");
+    const tableWrapper = container.querySelector("tbody") ?? container.querySelector("[data-ntable-body]");
     expect(tableWrapper).toBeTruthy();
 
     fireEvent.contextMenu(tableWrapper!, { clientX: 10, clientY: 10 });

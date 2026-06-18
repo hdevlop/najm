@@ -58,6 +58,11 @@ export const assignRoleParams = z.object({
   roleId: z.string().min(1),
 });
 
+export const userListQuery = z.object({
+  limit: z.coerce.number().int().min(1).max(100).default(50),
+  offset: z.coerce.number().int().min(0).default(0),
+});
+
 // Inferred types
 export type CreateUserDto = z.infer<typeof createUserDto>;
 export type UpdateUserDto = z.infer<typeof updateUserDto>;
@@ -70,3 +75,4 @@ export type LanguageParam = z.infer<typeof languageParam>;
 export type EmailParam = z.infer<typeof emailParam>;
 export type UserIdInParam = z.infer<typeof userIdInParam>;
 export type AssignRoleParams = z.infer<typeof assignRoleParams>;
+export type UserListQuery = z.infer<typeof userListQuery>;

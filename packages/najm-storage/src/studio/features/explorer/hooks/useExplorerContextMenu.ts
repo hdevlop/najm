@@ -1,7 +1,7 @@
 import { useCallback } from 'react';
 import { toast } from 'sonner';
 import { Info, LayoutGrid, List, Tag } from 'lucide-react';
-import { useStorageContextMenu, type StorageTarget } from 'najm-ui';
+import { useStorageContextMenu, type StorageTarget } from 'najm-kit';
 import type { SortKey, SortDir, FileItem } from '../types';
 import type { ExplorerMutations } from './useExplorerMutations';
 import type { ExplorerClipboard } from './useExplorerClipboard';

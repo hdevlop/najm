@@ -12,12 +12,14 @@ import { PhoneLinkController } from './auth/PhoneLinkController';
 
 // Baileys engine services
 import { InstanceManager } from './engine/InstanceManager';
+import { InstanceRepository } from './engine/InstanceRepository';
 import { SessionStore } from './engine/SessionStore';
 
 // Baileys application services
 import {
   MessageService,
   MessageStoreService,
+  MessagePersistenceService,
   GroupService,
   ContactService,
   ProfileService,
@@ -99,9 +101,11 @@ function buildBaileysPlugin(config: WhatsAppBaileysConfig) {
 
   const services: any[] = [
     InstanceManager,
+    InstanceRepository,
     SessionStore,
     MessageService,
     MessageStoreService,
+    MessagePersistenceService,
     GroupService,
     ContactService,
     ProfileService,
@@ -140,6 +144,8 @@ function buildBaileysPlugin(config: WhatsAppBaileysConfig) {
     .set(BAILEYS_CONFIG, {
       sessions: config.sessions ?? { driver: 'file', path: './sessions' },
       webhooks: config.webhooks ?? [],
+      webhookSigningSecret: config.webhookSigningSecret,
+      webhookSecurity: config.webhookSecurity,
       defaultAgent: config.defaultAgent,
     })
     .set(WA_SCHEMA, resolveSchema(config))

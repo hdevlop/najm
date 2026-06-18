@@ -1,7 +1,7 @@
 import React from 'react';
 import { CheckCircle2, Copy, Folder, Move, Settings, Trash2 } from 'lucide-react';
 import { formatRelativeTime } from '../../../lib/format';
-import { NEmptyState as EmptyState, NTable } from 'najm-ui';
+import { NEmptyState as EmptyState, NTable } from 'najm-kit';
 import type { ActivityRow, RecentActivityTableProps } from '../types';
 
 const icons: Record<string, React.ElementType> = {

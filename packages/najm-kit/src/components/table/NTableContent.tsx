@@ -5,7 +5,9 @@ import { NajmScroll } from "../ui/scroll";
 import { flexRender } from "@tanstack/react-table";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
+import { surfaceBorderClasses } from "../../theme/borders";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
 import { useTableStore } from "./TableContext";
 import { HEADER_COLORS, type TableHeaderColor } from "./tableColors";
 
@@ -50,6 +52,15 @@ function EditableCell({ cell, onCellEdit }: { cell: any; onCellEdit: (row: any, 
 }
 
 export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
+  const recipe = useNajmComponentStyle("table");
+  const recipeRadius = resolveRadiusValue(recipe?.radius);
+  const recipeStyle: React.CSSProperties | undefined =
+    recipeRadius || recipe?.borderWidth
+      ? {
+          ...(recipeRadius ? { borderRadius: recipeRadius } : {}),
+          ...(recipe?.borderWidth ? { borderWidth: recipe.borderWidth } : {}),
+        }
+      : undefined;
   const table = useTableStore.use.table();
   const storeIsTableView = useTableStore.use.isTableView();
   const columns = useTableStore.use.columns();
@@ -68,15 +79,6 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   const showContent = useTableStore.use.showContent();
   const classNames = useTableStore.use.classNames();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
-  const tableBorderClass = borderColorClassForDegree(resolvedBorderDegree);
-  const isStrong = resolvedBorderDegree === "strong";
-  const useDegreeBorder = bordered || borderDegree || resolvedBorderDegree !== "default";
   const showCheckbox = useTableStore.use.showCheckbox();
   const selectedRowId = useTableStore.use.selectedRowId();
   const renderSubRow = useTableStore.use.renderSubRow();
@@ -106,21 +108,21 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   return (
     <NajmScroll
       axis="both"
-      data-border-degree={resolvedBorderDegree}
+      data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
       className={cn(
         "min-h-0 flex-1 overflow-hidden rounded-md bg-card",
-        useDegreeBorder ? `border ${tableBorderClass}` : "shadow-sm",
-        isStrong && "shadow-none",
+        bordered === true ? surfaceBorderClasses(true) : "shadow-sm",
         classNames?.content
       )}
+      style={recipeStyle}
       onContextMenu={handleBackgroundContextMenu}
     >
       <Table>
-        <TableHeader data-ntable-table-header className={cn("bg-card sticky top-0 z-10", colorStyle?.text, headerClassName, bordered && "[&_tr]:border-border", classNames?.tableHeader)}>
+        <TableHeader data-ntable-table-header className={cn("bg-card sticky top-0 z-10", colorStyle?.text, headerClassName, bordered === true && "[&_tr]:border-border", classNames?.tableHeader)}>
           {table.getHeaderGroups().map((hg) => (
-            <TableRow key={hg.id} className={cn("hover:bg-transparent", bordered && "border-border")}>
+            <TableRow key={hg.id} className={cn("hover:bg-transparent", bordered === true && "border-border")}>
               {showCheckbox && (
-                <TableHead className={cn("w-10 text-foreground h-12", colorStyle?.bg)}>
+                <TableHead className={cn("w-10 text-foreground h-12 text-center", colorStyle?.bg)}>
                   <Checkbox
                     aria-label="Select all rows"
                     checked={table.getIsAllPageRowsSelected()}
@@ -161,10 +163,10 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                       (e.nativeEvent as any)[ROW_CONTEXT_HANDLED] = true;
                       onRowContextMenu(e, row.original);
                     } : undefined}
-                    className={cn(colorStyle?.row, classNames?.row, onRowClick && "cursor-pointer", isSelectedByRowId && "bg-brand/5 hover:bg-brand/5", bordered && "border-border")}
+                    className={cn(colorStyle?.row, classNames?.row, onRowClick && "cursor-pointer", isSelectedByRowId && "bg-primary/5 hover:bg-primary/5", bordered === true && "border-border")}
                   >
                     {showCheckbox && (
-                      <TableCell className="h-14 w-10">
+                      <TableCell className="h-14 w-10 text-center">
                         <Checkbox
                           aria-label={`Select row ${row.id}`}
                           checked={row.getIsSelected()}
@@ -183,7 +185,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                             onClick={(e) => { e.stopPropagation(); row.toggleExpanded(); }}
                             className={cn(
                               "flex h-6 w-6 items-center justify-center rounded hover:bg-muted",
-                              bordered && `border ${tableBorderClass}`
+                              bordered === true && "border border-border"
                             )}
                           >
                             {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}

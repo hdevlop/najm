@@ -1,15 +1,30 @@
 // Theme
 export { NajmThemeProvider, useNajmAppearance } from "./theme/provider";
-export type { NajmThemeProviderProps, NajmThemeTokens, NajmMode, NajmAccent, NajmPreset, NajmBorderDegree, NajmAppearance } from "./theme/types";
+export { defineNajmThemeConfig, parseNajmThemeConfig, stringifyNajmThemeConfig } from "./theme/config";
+export type { NajmThemeProviderProps, NajmThemeConfig, NajmThemeTokens, NajmMode, NajmAccent, NajmPreset, NajmRadiusScale, NajmAppearance } from "./theme/types";
 export { composePreset, resolvePreset } from "./theme/presets/compose";
+export { NajmDesignProvider, useNajmDesign, useNajmComponentStyle } from "./theme/design-provider";
+export type { NajmDesignProviderProps } from "./theme/design-provider";
+export { defineNajmDesignConfig, parseNajmDesignConfig, stringifyNajmDesignConfig, resolveVariantAlias } from "./theme/design-config";
+export { resolveRadiusValue, RADIUS_VALUE_MAP, NAJM_COMPONENT_NAMES } from "./theme/design-types";
+export type {
+  NajmDesignConfig,
+  NajmComponentThemeConfig,
+  NajmComponentStyleConfig,
+  NajmComponentName,
+  NajmVariantStyle,
+  NajmSlotStyle,
+  NajmDensity,
+  NajmComponentRadius,
+  NajmTypographyConfig,
+  NajmLayoutConfig,
+} from "./theme/design-types";
 export {
-  resolveBorderDegree,
-  borderColorClassForDegree,
-  inputBorderColorClassForDegree,
-  useResolvedBorderDegree,
   surfaceBorderClasses,
+  sidebarBorderClasses,
+  inputBorderClasses,
 } from "./theme/borders";
-export type { BorderResolutionOptions } from "./theme/borders";
+export type { NajmBorderSide } from "./theme/borders";
 
 // Hooks
 export { useKeyboard } from "./hooks/useKeyboard";
@@ -108,6 +123,9 @@ export { NSlider, sliderVariants } from "./components/Slider";
 export type { NSliderProps, SliderVariant, SliderSize, SliderOrientation } from "./components/Slider";
 export { SearchInput, SearchField } from "./components/inputs/SearchInput";
 export { FileImportButton } from "./components/inputs/FileImportButton";
+export { formatColor, parseColor, detectFormat, toPickerHex } from "./components/inputs/color/convert";
+export type { ColorFormat } from "./components/inputs/color/convert";
+export type { ColorPickerInputProps } from "./components/inputs/types";
 
 // Combobox — general-purpose dropdown with free-text, inline search, keyboard nav
 // ComboboxInput — form-friendly with Popover+Command pattern
@@ -150,8 +168,8 @@ export type {
 } from "./components/sidebar";
 
 // Layout
-export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageHeader, NPageHeaderActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet } from "./components/layout";
+export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageLayout, NPageHeader, NPageHeaderActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet } from "./components/layout";
 export type { SidebarProps, SidebarItemProps, LinkComponentType,   NavItem,
   NavItemGroup,
   NAppShellClassNames,
-  SidebarWidths, UserMenuAction, NAppShellUser, NAppShellAction, NAppShellProps, NAppCommandItem, NCommandPaletteProps, NPageHeaderProps } from "./components/layout";
+  SidebarWidths, UserMenuAction, NAppShellUser, NAppShellAction, NAppShellProps, NAppCommandItem, NCommandPaletteProps, NPageLayoutProps, NPageHeaderProps } from "./components/layout";

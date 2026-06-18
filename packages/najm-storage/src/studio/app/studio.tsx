@@ -1,7 +1,6 @@
 'use client';
 import React from 'react';
-import { NajmThemeProvider, NPortalScopeProvider, Toaster } from 'najm-ui';
-import 'najm-ui/styles.css';
+import { NajmThemeProvider, NPortalScopeProvider, Toaster } from 'najm-kit';
 import { StorageStudioApp } from './App';
 import type { StorageStudioProps } from '../providers/types';
 

@@ -38,37 +38,20 @@ export function resolveRegisteredToolInputSchema(tool: RegisteredTool): Record<s
   }
 
   const paramsShape = getSchemaShape(tool.validation.params) ?? {};
+  const queryShape = getSchemaShape(tool.validation.query) ?? {};
   const bodyShape = getSchemaShape(tool.validation.body) ?? {};
-  const merged = { ...paramsShape, ...bodyShape };
+  const merged = { ...paramsShape, ...queryShape, ...bodyShape };
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
+/**
+ * The schema advertised to the SDK for a tool. Always a raw shape record
+ * (ZodRawShape) — a single, consistent form across params-only / body-only /
+ * query / merged cases. This is the shape both `registerTool()` and the legacy
+ * `tool()` SDK signatures expect, and it avoids depending on a specific SDK
+ * version normalizing ZodObject vs. raw-shape inputs (see review item #10).
+ */
 export function resolveRegisteredToolInputObjectSchema(tool: RegisteredTool): unknown {
-  if (!tool.validation) {
-    return undefined;
-  }
-
-  const hasParams = !!tool.validation.params;
-  const hasBody = !!tool.validation.body;
-
-  if (hasParams && !hasBody) {
-    return tool.validation.params;
-  }
-
-  if (hasBody && !hasParams) {
-    return tool.validation.body;
-  }
-
-  const paramsSchema = tool.validation.params as any;
-  const bodySchema = tool.validation.body as any;
-  if (paramsSchema && bodySchema && typeof paramsSchema.merge === 'function') {
-    try {
-      return paramsSchema.merge(bodySchema);
-    } catch {
-      return resolveRegisteredToolInputSchema(tool);
-    }
-  }
-
   return resolveRegisteredToolInputSchema(tool);
 }
 
@@ -168,13 +151,21 @@ export class McpBuilderService {
   }
 
   private async executeClassGuards(target: any, methodKey: string | symbol): Promise<void> {
-    if (!this.resolver) return;
-
     const classGuards = getGuardMetadata(target) ?? [];
     const methodGuards = getGuardMetadata(target, String(methodKey)) ?? [];
     const guards = [...classGuards, ...methodGuards];
 
     if (guards.length === 0) return;
+
+    // Fail closed: a tool carries guard metadata but the resolver was never
+    // initialized (e.g. invokeTool reached without configure() running). We
+    // must not execute a guarded tool with its guards silently skipped.
+    if (!this.resolver) {
+      throw new McpException(
+        `Cannot evaluate guards for tool: ${target.name}.${String(methodKey)} — guard resolver not initialized`,
+        McpErrorCode.FORBIDDEN,
+      );
+    }
 
     const allowed = await runGuards(guards, this.container, this.resolver);
     if (!allowed) {
@@ -246,7 +237,7 @@ export class McpBuilderService {
 
   private resolveControllerArgs(tool: RegisteredTool, method: Function, params: Record<string, any>): any[] {
     const metadata = (getParameterMetadata(method) ?? []) as ParameterMetadata[];
-    const { paramValues, bodyValue, paramKeys } = this.splitControllerInput(tool, metadata, params);
+    const { paramValues, queryValues, bodyValue, paramKeys, queryKeys } = this.splitControllerInput(tool, metadata, params);
     const argCount = Math.max(
       method.length,
       metadata.reduce((max, meta) => Math.max(max, meta.index + 1), 0),
@@ -260,7 +251,7 @@ export class McpBuilderService {
     const decoratedIndices = new Set<number>();
 
     for (const meta of metadata) {
-      args[meta.index] = this.resolveControllerParameter(meta, paramValues, bodyValue);
+      args[meta.index] = this.resolveControllerParameter(meta, paramValues, queryValues, bodyValue);
       decoratedIndices.add(meta.index);
     }
 
@@ -273,6 +264,8 @@ export class McpBuilderService {
         const name = names[i];
         if (name && paramKeys.has(name)) {
           args[i] = paramValues[name];
+        } else if (name && queryKeys.has(name)) {
+          args[i] = queryValues[name];
         } else {
           args[i] = bodyValue;
         }
@@ -288,33 +281,47 @@ export class McpBuilderService {
     params: Record<string, any>,
   ): {
     paramValues: Record<string, any>;
+    queryValues: Record<string, any>;
     bodyValue: any;
     paramKeys: Set<string>;
+    queryKeys: Set<string>;
   } {
     const paramKeys = new Set(tool.validationParamKeys ?? []);
+    const queryKeys = new Set(tool.validationQueryKeys ?? []);
     const hasParamsObject = metadata.some((meta) => meta.type === 'params' && !meta.propertyKey);
+    const hasQueryObject = metadata.some((meta) => (meta.type === 'query' || meta.type === 'queries') && !meta.propertyKey);
     const hasBodyDecorator = metadata.some((meta) => this.isBodyType(meta.type));
 
     for (const meta of metadata) {
       if (meta.type === 'params' && meta.propertyKey) {
         paramKeys.add(meta.propertyKey);
       }
+      if (meta.type === 'query' && meta.propertyKey) {
+        queryKeys.add(meta.propertyKey);
+      }
     }
 
     const paramValues: Record<string, any> = {};
+    const queryValues: Record<string, any> = {};
     const bodyValues: Record<string, any> = {};
 
-    if (hasParamsObject && paramKeys.size === 0 && !hasBodyDecorator) {
+    // Whole-object @Params() with no explicit param/query schema and no body or
+    // query decorator: treat the entire input as route params (legacy behavior).
+    if (hasParamsObject && paramKeys.size === 0 && queryKeys.size === 0 && !hasBodyDecorator && !hasQueryObject) {
       return {
         paramValues: { ...params },
+        queryValues,
         bodyValue: undefined,
         paramKeys,
+        queryKeys,
       };
     }
 
     for (const [key, value] of Object.entries(params)) {
       if (paramKeys.has(key)) {
         paramValues[key] = value;
+      } else if (queryKeys.has(key)) {
+        queryValues[key] = value;
       } else {
         bodyValues[key] = value;
       }
@@ -322,14 +329,17 @@ export class McpBuilderService {
 
     return {
       paramValues,
+      queryValues,
       bodyValue: Object.keys(bodyValues).length > 0 ? bodyValues : undefined,
       paramKeys,
+      queryKeys,
     };
   }
 
   private resolveControllerParameter(
     meta: ParameterMetadata,
     paramValues: Record<string, any>,
+    queryValues: Record<string, any>,
     bodyValue: any,
   ): any {
     const { type, propertyKey } = meta;
@@ -345,6 +355,11 @@ export class McpBuilderService {
 
       case 'params':
         return propertyKey ? paramValues?.[propertyKey] : paramValues;
+
+      case 'query':
+        return propertyKey ? queryValues?.[propertyKey] : queryValues;
+      case 'queries':
+        return queryValues;
 
       case 'user':
         return this.getAlsValue(USER, propertyKey);
@@ -384,22 +399,28 @@ export class McpBuilderService {
 
   private validateInput(tool: RegisteredTool, params: Record<string, any>): Record<string, any> {
     const paramKeys = new Set(tool.validationParamKeys ?? []);
+    const queryKeys = new Set(tool.validationQueryKeys ?? []);
     const paramData: Record<string, any> = {};
+    const queryData: Record<string, any> = {};
     const bodyData: Record<string, any> = {};
 
     for (const [key, value] of Object.entries(params)) {
       if (paramKeys.has(key)) {
         paramData[key] = value;
+      } else if (queryKeys.has(key)) {
+        queryData[key] = value;
       } else {
         bodyData[key] = value;
       }
     }
 
     const validatedParams = this.parseSchema(tool.validation?.params, paramData, tool.validation?.stripUnknown);
+    const validatedQuery = this.parseSchema(tool.validation?.query, queryData, tool.validation?.stripUnknown);
     const validatedBody = this.parseSchema(tool.validation?.body, bodyData, tool.validation?.stripUnknown);
 
     return {
       ...(this.isPlainObject(validatedParams) ? validatedParams : {}),
+      ...(this.isPlainObject(validatedQuery) ? validatedQuery : {}),
       ...(this.isPlainObject(validatedBody) ? validatedBody : {}),
     };
   }
@@ -429,22 +450,104 @@ export class McpBuilderService {
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .replace(/\/\/.*$/gm, '');
 
-    const start = source.indexOf('(');
-    const end = source.indexOf(')');
-
-    if (start === -1 || end === -1 || end <= start) {
-      this.parameterNamesCache.set(func, []);
-      return [];
-    }
-
-    const names = source
-      .slice(start + 1, end)
-      .split(',')
-      .map((param) => param.trim().split(/[=:]/)[0].trim())
-      .filter(Boolean);
-
+    const names = this.parseParameterList(source);
     this.parameterNamesCache.set(func, names);
     return names;
+  }
+
+  /**
+   * Extract parameter names from a function's source. Uses a balanced scan over
+   * (), [], {} and string/template literals so destructured params, defaults
+   * containing parens/commas (`x = f(1, 2)`), and arrow/function-type
+   * annotations don't truncate or mis-split the list.
+   */
+  private parseParameterList(source: string): string[] {
+    const start = source.indexOf('(');
+    if (start === -1) return [];
+
+    let depth = 0;
+    let end = -1;
+    let quote: string | null = null;
+
+    for (let i = start; i < source.length; i++) {
+      const ch = source[i];
+      if (quote) {
+        if (ch === '\\') { i++; continue; }
+        if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+      if (ch === '(' || ch === '[' || ch === '{') depth++;
+      else if (ch === ')' || ch === ']' || ch === '}') {
+        depth--;
+        if (depth === 0) { end = i; break; }
+      }
+    }
+
+    if (end === -1) return [];
+
+    return this.splitTopLevel(source.slice(start + 1, end), ',')
+      .map((param) => this.parameterName(param))
+      .filter((name): name is string => Boolean(name));
+  }
+
+  private splitTopLevel(input: string, separator: string): string[] {
+    const parts: string[] = [];
+    let depth = 0;
+    let quote: string | null = null;
+    let current = '';
+
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (quote) {
+        current += ch;
+        if (ch === '\\' && i + 1 < input.length) { current += input[++i]; continue; }
+        if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === '`') { quote = ch; current += ch; continue; }
+      if (ch === '(' || ch === '[' || ch === '{') { depth++; current += ch; continue; }
+      if (ch === ')' || ch === ']' || ch === '}') { depth--; current += ch; continue; }
+      if (ch === separator && depth === 0) { parts.push(current); current = ''; continue; }
+      current += ch;
+    }
+
+    if (current.trim()) parts.push(current);
+    return parts;
+  }
+
+  private parameterName(param: string): string {
+    let p = this.sliceBeforeTopLevel(param.trim(), '=').trim();
+
+    // Destructured ({...}/[...]) and rest (...x) params have no single name we
+    // can map a flat MCP key onto.
+    if (!p || p.startsWith('{') || p.startsWith('[') || p.startsWith('...')) {
+      return '';
+    }
+
+    p = this.sliceBeforeTopLevel(p, ':').trim();
+    const tokens = p.split(/\s+/).filter(Boolean);
+    return tokens[tokens.length - 1] ?? '';
+  }
+
+  private sliceBeforeTopLevel(input: string, char: string): string {
+    let depth = 0;
+    let quote: string | null = null;
+
+    for (let i = 0; i < input.length; i++) {
+      const ch = input[i];
+      if (quote) {
+        if (ch === '\\') { i++; continue; }
+        if (ch === quote) quote = null;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === '`') { quote = ch; continue; }
+      if (ch === '(' || ch === '[' || ch === '{') depth++;
+      else if (ch === ')' || ch === ']' || ch === '}') depth--;
+      else if (ch === char && depth === 0) return input.slice(0, i);
+    }
+
+    return input;
   }
 
   private withTimeout<T>(fn: () => Promise<T>, ms: number): Promise<T> {

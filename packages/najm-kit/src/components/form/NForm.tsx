@@ -7,7 +7,7 @@ import { cn } from "../../lib/cn";
 import type { FormProps } from "./types";
 import { VariantProvider } from "./VariantContext";
 
-function NFormInner<T extends ZodTypeAny>({ schema, defaultValues, onSubmit, form: externalForm, variant = "default", bordered, borderDegree, as = "form", className = "", id, devTools, children }: FormProps<T>) {
+function NFormInner<T extends ZodTypeAny>({ schema, defaultValues, onSubmit, form: externalForm, variant = "default", bordered, as = "form", className = "", id, devTools, children }: FormProps<T>) {
   const resolver = useMemo(() => (schema ? zodResolver(schema as any) : undefined), [schema]);
   const internalForm = useForm({
     resolver,
@@ -43,7 +43,7 @@ function NFormInner<T extends ZodTypeAny>({ schema, defaultValues, onSubmit, for
 
   const inner = (
     <Form {...form}>
-      <VariantProvider variant={variant} bordered={bordered} borderDegree={borderDegree}>
+      <VariantProvider variant={variant} bordered={bordered}>
         {as === "form" ? (
           <form id={id} onSubmit={submit} className={wrapperClass} autoComplete="off">
             {children}

@@ -1,4 +1,4 @@
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { Repository, Inject } from 'najm-core';
 import { DB, type TDb } from 'najm-database';
 import { AUTH_SCHEMA } from '../auth.tokens';
@@ -12,10 +12,10 @@ export class TokenRepository {
 
   private get tokens() { return this.schema.tokens; }
   private get users() { return this.schema.users; }
-  private get roles() { return this.schema.roles; }
 
   /** Shared query helper */
-  private get q() { return new AuthQueries(this.db, this.schema); }
+  private queryHelper?: AuthQueries;
+  private get q() { return this.queryHelper ??= new AuthQueries(this.db, this.schema); }
 
   async storeRefreshToken(tokenData: {
     userId: string;
@@ -42,11 +42,23 @@ export class TokenRepository {
       }).returning();
   }
 
-  async markPreviousUsed(userId: string) {
+  /**
+   * Claim the previous-token grace slot. Conditional on BOTH the stored
+   * previousHash still matching the presented token AND previousUsedAt being
+   * NULL. Gating on the hash (not just the flag) closes the rotation race: the
+   * winner's rotation rewrites previousHash via storeRefreshToken, so a loser
+   * whose UPDATE lands after that rotation no longer matches and gets zero
+   * rows — exactly one caller ever claims the slot.
+   */
+  async markPreviousUsed(userId: string, previousHash: string) {
     return await this.db
       .update(this.tokens)
       .set({ previousUsedAt: new Date().toISOString() })
-      .where(eq(this.tokens.userId, userId))
+      .where(and(
+        eq(this.tokens.userId, userId),
+        eq(this.tokens.previousHash, previousHash),
+        isNull(this.tokens.previousUsedAt),
+      ))
       .returning();
   }
 
@@ -86,18 +98,6 @@ export class TokenRepository {
   }
 
   async getUser(userId: string) {
-    const [user] = await this.db
-      .select(this.q.userSelection())
-      .from(this.users)
-      .leftJoin(this.roles, eq(this.users.roleId, this.roles.id))
-      .where(eq(this.users.id, userId))
-      .limit(1);
-
-    if (!user) return null;
-
-    return {
-      ...user,
-      permissions: await this.q.getUserPermissions(userId)
-    };
+    return await this.q.getUserWithPermissions(eq(this.users.id, userId)) ?? null;
   }
 }

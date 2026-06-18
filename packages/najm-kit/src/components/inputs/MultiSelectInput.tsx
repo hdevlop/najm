@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "../ui/command";
 import { Checkbox } from "../ui/checkbox";
@@ -9,7 +9,7 @@ import { getIconColorProps, resolveIcon } from "./utils";
 import { ChevronUp, ChevronDown, X } from "lucide-react";
 import type { MultiSelectInputProps } from "./types";
 
-export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder = "Select items...", value = [], onChange, icon, showIcon = true, iconColor, items, className = "", variant = "default", status = "default", bordered, borderDegree, borderColor, disabled = false, searchPlaceholder = "Search...", emptyMessage = "No items found.", maxDisplay = 3, showSearch = true }) => {
+export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder = "Select items...", value = [], onChange, icon, showIcon = true, iconColor, items, className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, searchPlaceholder = "Search...", emptyMessage = "No items found.", maxDisplay = 3, showSearch = true }) => {
   const [open, setOpen] = useState(false);
   const shouldDisplayIcon = Boolean(icon) && showIcon && value.length === 0;
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
@@ -29,7 +29,7 @@ export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
-        <BaseInput variant={variant} status={status} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={cn("gap-2 cursor-pointer", className, disabled && "cursor-not-allowed opacity-50")}>
+        <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("gap-2 cursor-pointer", className, disabled && "cursor-not-allowed opacity-50")}>
           {shouldDisplayIcon && <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span>}
           <div className="flex items-center gap-1 flex-1 overflow-hidden">
             {value.length === 0 ? (

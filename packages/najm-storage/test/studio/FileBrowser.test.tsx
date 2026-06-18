@@ -271,7 +271,8 @@ describe('FileBrowser tag chips', () => {
       </StorageStudioProvider>
     );
 
-    const tagButtons = container.querySelectorAll('td button.rounded-md');
+    const tagButtons = Array.from(container.querySelectorAll('td button.rounded-md'))
+      .filter((button) => button.textContent?.startsWith('tag-'));
     expect(tagButtons.length).toBe(2);
     expect(tagButtons[0].textContent).toBe('tag-1');
     expect(tagButtons[1].textContent).toBe('tag-2');

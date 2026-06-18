@@ -1,4 +1,4 @@
-import { eq, ne } from 'drizzle-orm';
+import { eq, ne, sql } from 'drizzle-orm';
 import { Repository, Inject } from 'najm-core';
 import { DB, type TDb } from 'najm-database';
 import { AUTH_SCHEMA } from '../auth.tokens';
@@ -21,14 +21,17 @@ export class UserRepository {
   private get roles() { return this.schema.roles; }
 
   /** Shared query helper */
-  private get q() { return new AuthQueries(this.db, this.schema); }
+  private queryHelper?: AuthQueries;
+  private get q() { return this.queryHelper ??= new AuthQueries(this.db, this.schema); }
 
-  async getAll(): Promise<UserWithPermissions[]> {
+  async getAll(limit = 50, offset = 0): Promise<UserWithPermissions[]> {
     // Fix N+1: Load users in one query
     const allUsers = await this.db
       .select(this.q.userSelection())
       .from(this.users)
-      .leftJoin(this.roles, eq(this.users.roleId, this.roles.id));
+      .leftJoin(this.roles, eq(this.users.roleId, this.roles.id))
+      .limit(limit)
+      .offset(offset);
 
     // Fix N+1: Batch load ALL permissions at once (1 query instead of N)
     const permissionsByRole = await this.q.batchLoadPermissionsByRole();
@@ -41,19 +44,16 @@ export class UserRepository {
   }
 
   async getById(id: string): Promise<UserWithPermissions | undefined> {
+    return this.q.getUserWithPermissions(eq(this.users.id, id));
+  }
+
+  async existsById(id: string): Promise<boolean> {
     const [user] = await this.db
-      .select(this.q.userSelection())
+      .select({ id: this.users.id })
       .from(this.users)
-      .leftJoin(this.roles, eq(this.users.roleId, this.roles.id))
       .where(eq(this.users.id, id))
       .limit(1);
-
-    if (!user) return user;
-
-    return {
-      ...user,
-      permissions: await this.q.getUserPermissions(user.id)
-    };
+    return Boolean(user);
   }
 
   async getRawById(id: string): Promise<User | undefined> {
@@ -84,7 +84,7 @@ export class UserRepository {
     return newUser;
   }
 
-  async update(id: string, data: Partial<NewUser>): Promise<User> {
+  async update(id: string, data: Partial<NewUser>): Promise<User | undefined> {
     const [updatedUser] = await this.db.update(this.users).set(data).where(eq(this.users.id, id)).returning();
     return updatedUser;
   }
@@ -99,10 +99,9 @@ export class UserRepository {
   }
 
   async incrementFailedAttempts(id: string): Promise<User> {
-    const user = await this.getRawById(id);
     const [updatedUser] = await this.db
       .update(this.users)
-      .set({ failedLoginAttempts: (user?.failedLoginAttempts ?? 0) + 1 })
+      .set({ failedLoginAttempts: sql`coalesce(${this.users.failedLoginAttempts}, 0) + 1` })
       .where(eq(this.users.id, id))
       .returning();
     return updatedUser;
@@ -126,7 +125,7 @@ export class UserRepository {
     return updatedUser;
   }
 
-  async delete(id: string): Promise<User> {
+  async delete(id: string): Promise<User | undefined> {
     const [deletedUser] = await this.db.delete(this.users).where(eq(this.users.id, id)).returning();
     return deletedUser;
   }
@@ -155,32 +154,7 @@ export class UserRepository {
   }
 
   async findByPhone(phone: string): Promise<UserWithPermissions | undefined> {
-    const [user] = await this.db
-      .select(this.q.userSelection())
-      .from(this.users)
-      .leftJoin(this.roles, eq(this.users.roleId, this.roles.id))
-      .where(eq(this.users.phone, phone))
-      .limit(1);
-
-    if (!user) return undefined;
-
-    return {
-      ...user,
-      permissions: await this.q.getUserPermissions(user.id),
-    };
-  }
-
-  async getUserPassword(email: string): Promise<string | undefined> {
-    const [user] = await this.db
-      .select({
-        id: this.users.id,
-        email: this.users.email,
-        password: this.users.password
-      })
-      .from(this.users)
-      .where(eq(this.users.email, email))
-      .limit(1);
-    return user?.password;
+    return this.q.getUserWithPermissions(eq(this.users.phone, phone));
   }
 
   async getUserPermissions(userId: string): Promise<string[]> {

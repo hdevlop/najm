@@ -7,6 +7,7 @@ import type { UpdateRoutingSettingsDto, EffectiveRoutingSettings } from './Routi
 @Service()
 export class RoutingSettingsService {
   private cache: EffectiveRoutingSettings | null = null;
+  private cacheKey: unknown = null;
   private cacheExpiry = 0;
   private readonly CACHE_TTL_MS = 5000;
 
@@ -17,8 +18,12 @@ export class RoutingSettingsService {
 
   async getEffectiveSettings(baseConfig?: Partial<RagToolRoutingConfig>): Promise<EffectiveRoutingSettings> {
     const now = Date.now();
-    // Skip cache when a custom base config is provided (e.g. hot-reloaded file)
-    if (!baseConfig && this.cache && now < this.cacheExpiry) {
+    // Cache key: identity of the base config (reference) when provided,
+    // otherwise a fixed symbol. Identity check keeps repeated calls with the
+    // same hot-reloaded file config (stable reference until mtime changes)
+    // off the DB read path.
+    const cacheKey = baseConfig ?? CACHE_KEY_NO_BASE;
+    if (this.cache && cacheKey === this.cacheKey && now < this.cacheExpiry) {
       return this.cache;
     }
 
@@ -43,11 +48,9 @@ export class RoutingSettingsService {
       source: dbRow ? 'db' : 'boot',
     };
 
-    // Only cache when using the stable boot config (no custom base)
-    if (!baseConfig) {
-      this.cache = settings;
-      this.cacheExpiry = now + this.CACHE_TTL_MS;
-    }
+    this.cache = settings;
+    this.cacheKey = cacheKey;
+    this.cacheExpiry = now + this.CACHE_TTL_MS;
     return settings;
   }
 
@@ -91,6 +94,9 @@ export class RoutingSettingsService {
 
   invalidateCache() {
     this.cache = null;
+    this.cacheKey = null;
     this.cacheExpiry = 0;
   }
 }
+
+const CACHE_KEY_NO_BASE = Symbol.for('najm:rag:routing-settings:no-base');

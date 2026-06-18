@@ -40,8 +40,32 @@ export interface McpConfig {
   path?: string;
   transports?: McpTransport[];
   cors?: boolean | McpCorsConfig;
+  /**
+   * Best-effort response timeout per tool invocation, in ms (default 30000;
+   * <= 0 disables it). NOTE: this races the controller method — on timeout the
+   * client receives UNAVAILABLE but the underlying method keeps running to
+   * completion (DB writes, emails, etc. are not cancelled). A client retry can
+   * therefore double-execute. Make timeout-sensitive tools idempotent.
+   */
   toolTimeout?: number;
+  /**
+   * Max request body size in bytes for streamable HTTP (default 1 MiB; <= 0
+   * disables the check). NOTE: enforced via the Content-Length header only —
+   * chunked/streamed requests without a Content-Length bypass it, and the body
+   * is buffered in full by the transport. Put a proxy-level limit in front for
+   * a hard guarantee.
+   */
   maxBodySize?: number;
+  /**
+   * DNS-rebinding protection for streamable HTTP (MCP spec recommendation for
+   * localhost/dev servers). When enabled, the transport validates Host/Origin
+   * against the allowlists below. Off by default for backwards compatibility.
+   */
+  enableDnsRebindingProtection?: boolean;
+  /** Allowed Host header values (used when DNS-rebinding protection is on). */
+  allowedHosts?: string[];
+  /** Allowed Origin header values (used when DNS-rebinding protection is on). */
+  allowedOrigins?: string[];
   sse?: {
     maxSessions?: number;
     sessionTtl?: number;
@@ -53,6 +77,12 @@ export interface McpConfig {
   oauth?: boolean | {
     issuer?: string;
     token?: string;
+    /**
+     * Opt-in to mount the DEV-ONLY OAuth stub even when NODE_ENV=production.
+     * The stub authenticates nobody and issues a static token — never enable
+     * this in a real deployment.
+     */
+    unsafeDevStub?: boolean;
   };
 }
 
@@ -111,6 +141,7 @@ export interface RegisteredTool extends ToolMeta {
   validation?: McpValidationConfig;
   validationArgs?: string[];
   validationParamKeys?: string[];
+  validationQueryKeys?: string[];
   annotations?: McpAnnotations;
   confirmation?: McpToolConfirmation;
 }

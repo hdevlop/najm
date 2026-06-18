@@ -12,7 +12,7 @@ export { SharedLinksView } from './features/shared';
 export { StorageOverviewCard } from './features/dashboard/components/StorageOverviewCard';
 export { RecentActivityTable } from './features/dashboard/components/RecentActivityTable';
 export { NamespaceBreakdown } from './features/dashboard/components/NamespaceBreakdown';
-export { NEmptyState as EmptyState, NLoadingState as LoadingState, NErrorState as ErrorState } from 'najm-ui';
+export { NEmptyState as EmptyState, NLoadingState as LoadingState, NErrorState as ErrorState } from 'najm-kit';
 
 // Hooks
 export { useUsage } from './features/dashboard/hooks/useUsage';

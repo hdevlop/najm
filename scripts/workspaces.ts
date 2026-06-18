@@ -23,7 +23,7 @@ export const PACKAGE_TARGETS: PackageTarget[] = [
   { name: 'najm-chatbot', workspace: 'packages/najm-chatbot' },
   { name: 'najm-whatsapp', workspace: 'packages/najm-whatsapp' },
   { name: 'najm-cli', workspace: 'packages/najm-cli' },
-  { name: 'najm-ui', workspace: 'packages/najm-ui' },
+  { name: 'najm-kit', workspace: 'packages/najm-kit' },
 ];
 
 export const TEST_TARGETS: PackageTarget[] = [

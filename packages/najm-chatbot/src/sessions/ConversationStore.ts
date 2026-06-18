@@ -37,7 +37,7 @@ export class DbConversationStore implements ConversationStore {
   }
 
   async save(key: string, messages: UIMessage[], meta: ChatSessionMeta & { title?: string | null } = {}): Promise<void> {
-    await this.repository.upsert({
+    await this.repository.save({
       sessionKey: key,
       messages,
       userId: meta.userId ?? null,

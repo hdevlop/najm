@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { RadioGroup, RadioGroupItem } from "../ui/radio-group";
 import { Label } from "../ui/label";
 import { BaseInput } from "./BaseInput";
@@ -8,8 +8,8 @@ import type { RadioGroupInputProps } from "./types";
 
 const layoutVariants = cva("flex items-start", { variants: { layout: { column: "flex-col gap-4", row: "flex-row gap-7" } }, defaultVariants: { layout: "row" } });
 
-export const RadioGroupInput: React.FC<RadioGroupInputProps> = ({ value, onChange, className = "", variant = "default", status = "default", bordered, borderDegree, borderColor, layout = "row", items }) => (
-  <BaseInput variant={variant} status={status} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={className}>
+export const RadioGroupInput: React.FC<RadioGroupInputProps> = ({ value, onChange, className = "", variant = "default", status = "default", bordered, borderColor, layout = "row", items }) => (
+  <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={className}>
     <RadioGroup onValueChange={onChange} value={value} className={layoutVariants({ layout })}>
       {items.map((item) => {
         const itemValue = typeof item === "string" ? item : item.value;

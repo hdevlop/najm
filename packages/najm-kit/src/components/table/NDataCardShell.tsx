@@ -3,8 +3,9 @@ import { Checkbox } from "../ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Eye, Edit, Trash2, MoreVertical, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
-import type { NajmBorderDegree } from "../../theme/types";
+import { surfaceBorderClasses } from "../../theme/borders";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
 import type { Row } from "@tanstack/react-table";
 
 export interface NDataCardShellActions {
@@ -25,37 +26,37 @@ export interface NDataCardShellProps {
   openRowMenu?: ((e: React.MouseEvent, row: any) => void) | null;
   menuButton?: boolean;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
 }
 
-export function NDataCardShell({ row, onClick, onContextMenu, actions, children, className, showCheckbox = true, selectedRowId, openRowMenu, menuButton, bordered, borderDegree }: NDataCardShellProps) {
+export function NDataCardShell({ row, onClick, onContextMenu, actions, children, className, showCheckbox = true, selectedRowId, openRowMenu, menuButton, bordered }: NDataCardShellProps) {
+  const recipe = useNajmComponentStyle("table");
+  const recipeRadius = resolveRadiusValue(recipe?.radius);
+  const recipeStyle: React.CSSProperties | undefined =
+    recipeRadius || recipe?.borderWidth
+      ? {
+          ...(recipeRadius ? { borderRadius: recipeRadius } : {}),
+          ...(recipe?.borderWidth ? { borderWidth: recipe.borderWidth } : {}),
+        }
+      : undefined;
   const canExpand = row.getCanExpand();
   const isExpanded = canExpand && row.getIsExpanded();
   const isSelected = row.getIsSelected();
   const isHighlighted = selectedRowId != null && (row.original as any)?.id === selectedRowId;
   const isActive = isSelected || isHighlighted;
   const useMenuButton = menuButton && openRowMenu;
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
-  const isStrong = resolvedBorderDegree === "strong";
-  const isNone = resolvedBorderDegree === "none";
-  const borderClass = borderColorClassForDegree(resolvedBorderDegree);
 
   return (
     <div
       data-row="true"
       data-row-id={row.id}
-      data-border-degree={resolvedBorderDegree}
+      data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
       onClick={onClick}
       onContextMenu={onContextMenu}
+      style={recipeStyle}
       className={cn(
         "relative group w-full rounded-lg bg-card",
-        isNone ? "border-transparent" : `border ${borderClass}`,
-        isStrong && "shadow-none",
-        isActive && (bordered || resolvedBorderDegree !== "default" || borderDegree ? "border-primary" : "ring-2 ring-primary ring-offset-1 ring-offset-background"),
+        surfaceBorderClasses(bordered),
+        isActive && (bordered ? "border-primary" : "ring-2 ring-primary ring-offset-1 ring-offset-background"),
         onClick && "cursor-pointer",
         className
       )}
@@ -138,7 +139,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
           onClick={(e) => { e.stopPropagation(); row.toggleExpanded(); }}
           className={cn(
             "absolute bottom-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded hover:bg-muted",
-            bordered && `border ${borderClass}`
+            bordered && "border border-border"
           )}
         >
           {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}

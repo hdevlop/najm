@@ -3,6 +3,7 @@ import { RAG_CONFIG } from '../tokens';
 import type { RagMergedConfig } from '../config';
 import { EmbeddingService } from '../embeddings';
 import { KnowledgeRepository } from './KnowledgeRepository';
+import { normalizeQuery } from '../toolRouter/ToolRouterUtils';
 import type { KnowledgeCitation, KnowledgeSearchResult } from './KnowledgeDto';
 
 @Service()
@@ -16,7 +17,11 @@ export class KnowledgeService {
   async search(query: string, limit = 5, threshold?: number): Promise<KnowledgeSearchResult> {
     const resolvedThreshold = threshold ?? this.config.toolRouting?.similarityThreshold ?? 0.45;
 
-    const queryEmbedding = await this.embedding.embed(query);
+    // Normalize the query so the embedding cache key matches the router's
+    // key, allowing the shared `EmbeddingService` LRU to dedupe a single
+    // chat message's router + knowledge embed into one provider call.
+    const normalized = normalizeQuery(query);
+    const queryEmbedding = await this.embedding.embed(normalized);
     const matches = await this.repository.searchChunks(queryEmbedding, limit, resolvedThreshold);
 
     if (matches.length === 0) {

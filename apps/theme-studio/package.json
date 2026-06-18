@@ -1,0 +1,33 @@
+{
+  "name": "najm-theme-studio",
+  "private": true,
+  "version": "0.0.1",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 4110",
+    "build": "vite build",
+    "preview": "vite preview --host 127.0.0.1 --port 4110",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "lucide-react": "^0.474",
+    "najm-kit": "workspace:*",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-hook-form": "^7",
+    "@hookform/resolvers": "^5",
+    "zod": "^4",
+    "recharts": "^2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4",
+    "postcss": "^8",
+    "rimraf": "^6",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vite": "^6"
+  }
+}

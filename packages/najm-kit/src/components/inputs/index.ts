@@ -23,6 +23,8 @@ export { PhoneInput } from "./PhoneInput";
 export { TimeInput } from "./TimeInput";
 export { SliderInput } from "./SliderInput";
 export { getIconColorProps } from "./utils";
+export { formatColor, parseColor, detectFormat, toPickerHex } from "./color/convert";
+export type { ColorFormat } from "./color/convert";
 export type {
   TextInputProps,
   NumberInputProps,
@@ -40,6 +42,7 @@ export type {
   ImageInputProps,
   StarRatingInputProps,
   ColorArrayInputProps,
+  ColorPickerInputProps,
   EmojiInputProps,
   LangInputProps,
   PhoneInputProps,

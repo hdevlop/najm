@@ -44,7 +44,7 @@ export type { ChatAgentInput, ChatChannel } from './agent/ChatAgent';
 export { ChatController } from './chat/ChatController';
 export { ChatDebugController } from './chat/ChatDebugController';
 export { ChatSessionController } from './chat/ChatSessionController';
-export type { ChatDebugRequest } from './chat/ChatDebugController';
+export type { ChatDebugRequest } from 'najm-rag';
 
 export {
   ChatSessionRepository,

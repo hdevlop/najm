@@ -7,6 +7,7 @@ export { PhoneLinkService } from './auth/PhoneLinkService';
 export { PhoneLinkController } from './auth/PhoneLinkController';
 export { OnWhatsApp } from './decorators/OnWhatsApp';
 export type { WhatsAppEventType } from './decorators/OnWhatsApp';
+export * from './events';
 export * from './studio';
 export * from './dto';
 export * from './engine';

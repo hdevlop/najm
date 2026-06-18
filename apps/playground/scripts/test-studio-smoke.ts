@@ -10,7 +10,7 @@
  * Prerequisites:
  *   - bun install (workspace deps resolved)
  *   - najm-rag dist built (bun run build in packages/najm-rag)
- *   - studio SPA built (bun run build in packages/najm-rag/studio)
+ *   - standalone studio app built (`bun run build:rag-studio`) when UI smoke is needed
  *   - playground.db has RAG tables (bun scripts/add-rag-tables.ts)
  *
  * Run:  bun run test:studio

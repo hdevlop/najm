@@ -1,5 +1,7 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { ToolRouterService } from '../src/toolRouter';
+import { EmbeddingService, EmbeddingValidator } from '../src/embeddings';
+import { KnowledgeService } from '../src/knowledge';
 
 describe('ToolRouterService', () => {
   const makeRegistry = (tools: any[]) => ({ tools } as any);
@@ -375,44 +377,211 @@ describe('ToolRouterService', () => {
     expect(result.tools.length).toBe(1);
   });
 
-  test('uses embedding cache for repeated queries', async () => {
-    const tools = [{ name: 'a', description: 'A' }];
-    const embedMock = mock(() => Promise.resolve(new Array(768).fill(0.1)));
+  test('falls back to tool embeddings when semantic hits are below threshold', async () => {
+    const tools = [
+      { name: 'students_get_students', description: 'List students' },
+      { name: 'fees_get_by_student', description: 'Get fees' },
+    ];
     const repo = makeRepository({
-      semantics: [{ toolName: 'a', similarity: 0.8 }],
+      semantics: [{ toolName: 'fees_get_by_student', similarity: 0.2 }],
+      embeddings: [{ toolName: 'students_get_students', similarity: 0.9 }],
     });
-
     const service = createToolRouterService(
-      { toolRouting: { enabled: true, queryEmbeddingCacheSize: 10 } } as any,
+      {
+        toolRouting: {
+          enabled: true,
+          maxTools: 12,
+          topSemanticHits: 8,
+          similarityThreshold: 0.45,
+          fallbackOnNoMatch: 'none',
+          fallbackOnRouterError: 'all',
+        },
+      } as any,
       makeRegistry(tools),
-      { embed: embedMock } as any,
+      makeEmbedding(new Array(768).fill(0.1)),
       repo,
       { error: undefined } as any,
     );
 
-    await service.findRelevantTools('hello');
-    await service.findRelevantTools('hello');
-    expect(embedMock).toHaveBeenCalledTimes(1);
+    const result = await service.findRelevantTools('hello');
+    expect(result.status).toBe('routed');
+    expect(result.tools.map((t) => t.name)).toEqual(['students_get_students']);
+  });
+
+  test('records low_confidence miss when both tables probe below threshold', async () => {
+    const tools = [{ name: 'a', description: 'A' }];
+    const repo = makeRepository({
+      semantics: [{ toolName: 'a', similarity: 0.1 }],
+      embeddings: [{ toolName: 'a', similarity: 0.2 }],
+    });
+    const service = createToolRouterService(
+      {
+        toolRouting: {
+          enabled: true,
+          maxTools: 12,
+          topSemanticHits: 8,
+          similarityThreshold: 0.45,
+          fallbackOnNoMatch: 'none',
+          fallbackOnRouterError: 'all',
+        },
+      } as any,
+      makeRegistry(tools),
+      makeEmbedding(new Array(768).fill(0.1)),
+      repo,
+      { error: undefined } as any,
+    );
+
+    const result = await service.findRelevantTools('hello');
+    expect(result.status).toBe('fallback_none');
+    expect(result.tools.length).toBe(0);
+  });
+
+  test('uses embedding cache for repeated queries', async () => {
+    const tools = [{ name: 'a', description: 'A' }];
+    const fetchMock = mock(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () => Promise.resolve({ embeddings: [new Array(768).fill(0.1)] }),
+      } as any),
+    );
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as any;
+    try {
+      const embedService = new EmbeddingService(
+        { rag: { queryEmbeddingCacheSize: 10, embedding: { baseUrl: 'http://x', model: 'm' } } } as any,
+        new EmbeddingValidator(),
+      );
+      const repo = makeRepository({
+        semantics: [{ toolName: 'a', similarity: 0.8 }],
+      });
+      const service = createToolRouterService(
+        { toolRouting: { enabled: true } } as any,
+        makeRegistry(tools),
+        embedService,
+        repo,
+        { error: undefined } as any,
+      );
+
+      await service.findRelevantTools('hello');
+      await service.findRelevantTools('hello');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   test('queryEmbeddingCacheSize: 0 disables cache', async () => {
     const tools = [{ name: 'a', description: 'A' }];
-    const embedMock = mock(() => Promise.resolve(new Array(768).fill(0.1)));
-    const repo = makeRepository({
-      semantics: [{ toolName: 'a', similarity: 0.8 }],
-    });
-
-    const service = createToolRouterService(
-      { toolRouting: { enabled: true, queryEmbeddingCacheSize: 0 } } as any,
-      makeRegistry(tools),
-      { embed: embedMock } as any,
-      repo,
-      { error: undefined } as any,
+    const fetchMock = mock(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () => Promise.resolve({ embeddings: [new Array(768).fill(0.1)] }),
+      } as any),
     );
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as any;
+    try {
+      const embedService = new EmbeddingService(
+        { rag: { queryEmbeddingCacheSize: 0, embedding: { baseUrl: 'http://x', model: 'm' } } } as any,
+        new EmbeddingValidator(),
+      );
+      const repo = makeRepository({
+        semantics: [{ toolName: 'a', similarity: 0.8 }],
+      });
+      const service = createToolRouterService(
+        { toolRouting: { enabled: true } } as any,
+        makeRegistry(tools),
+        embedService,
+        repo,
+        { error: undefined } as any,
+      );
 
-    await service.findRelevantTools('hello');
-    await service.findRelevantTools('hello');
-    expect(embedMock).toHaveBeenCalledTimes(2);
+      await service.findRelevantTools('hello');
+      await service.findRelevantTools('hello');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('shared embedding cache dedupes router and knowledge for same user text', async () => {
+    const tools = [{ name: 'a', description: 'A' }];
+    const fetchMock = mock(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () => Promise.resolve({ embeddings: [new Array(768).fill(0.1)] }),
+      } as any),
+    );
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as any;
+    try {
+      const embedService = new EmbeddingService(
+        { rag: { queryEmbeddingCacheSize: 10, embedding: { baseUrl: 'http://x', model: 'm' } } } as any,
+        new EmbeddingValidator(),
+      );
+      const router = createToolRouterService(
+        { toolRouting: { enabled: true } } as any,
+        makeRegistry(tools),
+        embedService,
+        makeRepository({ semantics: [{ toolName: 'a', similarity: 0.8 }] }),
+        { error: undefined } as any,
+      );
+      const knowledge = new KnowledgeService(
+        { searchChunks: mock(() => Promise.resolve([])) } as any,
+        embedService,
+        { toolRouting: { similarityThreshold: 0.45 } } as any,
+      );
+
+      await router.findRelevantTools(' Hello ');
+      await knowledge.search(' Hello ');
+      expect(fetchMock).toHaveBeenCalledTimes(1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  test('shared embedding cache can be disabled for router and knowledge', async () => {
+    const tools = [{ name: 'a', description: 'A' }];
+    const fetchMock = mock(() =>
+      Promise.resolve({
+        ok: true,
+        status: 200,
+        statusText: 'OK',
+        json: () => Promise.resolve({ embeddings: [new Array(768).fill(0.1)] }),
+      } as any),
+    );
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = fetchMock as any;
+    try {
+      const embedService = new EmbeddingService(
+        { rag: { queryEmbeddingCacheSize: 0, embedding: { baseUrl: 'http://x', model: 'm' } } } as any,
+        new EmbeddingValidator(),
+      );
+      const router = createToolRouterService(
+        { toolRouting: { enabled: true } } as any,
+        makeRegistry(tools),
+        embedService,
+        makeRepository({ semantics: [{ toolName: 'a', similarity: 0.8 }] }),
+        { error: undefined } as any,
+      );
+      const knowledge = new KnowledgeService(
+        { searchChunks: mock(() => Promise.resolve([])) } as any,
+        embedService,
+        { toolRouting: { similarityThreshold: 0.45 } } as any,
+      );
+
+      await router.findRelevantTools(' Hello ');
+      await knowledge.search(' Hello ');
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
 });

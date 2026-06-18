@@ -15,7 +15,7 @@ export function NSidebarLogo({
   const IconNode = React.isValidElement(icon)
     ? icon
     : typeof icon === 'function' || (typeof icon === 'object' && icon !== null && '$$typeof' in icon)
-      ? React.createElement(icon as ComponentType<{ className?: string }>, { className: 'h-6 w-6 text-primary' })
+      ? React.createElement(icon as ComponentType<{ className?: string }>, { className: 'h-6 w-6 text-sidebar-primary' })
       : icon;
   // When collapsed, nudge the box back to the rail's center: rail/2 − boxHalf(1.25rem) − headerPad(1rem).
   const collapsedCenter = collapsed
@@ -32,7 +32,7 @@ export function NSidebarLogo({
     >
       {IconNode && (
         <div
-          className="size-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0"
+          className="size-10 rounded-lg bg-sidebar-primary/10 flex items-center justify-center shrink-0"
           style={collapsedCenter}
         >
           {IconNode}
@@ -40,8 +40,8 @@ export function NSidebarLogo({
       )}
       {!collapsed && (title || subtitle) && (
         <div className="flex flex-col ">
-          {title && <span className="text-sm font-semibold text-foreground leading-tight truncate">{title}</span>}
-          {subtitle && <span className="text-xs text-muted-foreground leading-tight truncate">{subtitle}</span>}
+          {title && <span className="text-sm font-semibold text-sidebar-foreground leading-tight truncate">{title}</span>}
+          {subtitle && <span className="text-xs text-sidebar-foreground/60 leading-tight truncate">{subtitle}</span>}
         </div>
       )}
     </button>

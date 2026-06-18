@@ -7,7 +7,7 @@ import { CreateInstanceModal } from './CreateInstanceModal';
 import { QrModal } from './QrModal';
 import { cn } from '@/lib/utils';
 import type { Instance } from '@/features/instances/types';
-import { NPageHeader, NEmptyState, Button } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button } from 'najm-kit';
 
 interface StatSummaryProps {
   icon: React.ElementType;

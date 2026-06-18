@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Link, Copy, Trash2, ExternalLink, X } from 'lucide-react';
-import { NEmptyState, NTable, Button, NConfirmDialog, NPageHeader } from 'najm-ui';
+import { NEmptyState, NTable, Button, NConfirmDialog, NPageHeader } from 'najm-kit';
 import { useSharedLinks } from '../hooks/useSharedLinks';
 import { formatRelativeTime } from '../../../lib/format';
 import type { SharedLink } from '../types';

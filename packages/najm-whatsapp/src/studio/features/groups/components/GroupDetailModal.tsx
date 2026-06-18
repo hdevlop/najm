@@ -3,7 +3,7 @@ import { Shield, User, UserPlus, UserMinus, ShieldOff, Plus } from 'lucide-react
 import { useApiClient } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import type { GroupMetadata } from '@/features/groups/types';
-import { Button, FormInput, NForm, Switch, Dialog, DialogContent, DialogHeader, DialogTitle, useNForm } from 'najm-ui';
+import { Button, FormInput, NForm, Switch, Dialog, DialogContent, DialogHeader, DialogTitle, useNForm } from 'najm-kit';
 
 interface GroupDetailModalProps {
   instanceId: string;

@@ -16,7 +16,7 @@ import { Validate } from 'najm-validation';
 import { z } from 'zod';
 import { isAdmin } from 'najm-auth';
 import { McpTool, ToolGroup } from 'najm-mcp';
-import { RoutingTestsService } from '../routingTests';
+import { RoutingTestsService } from '../routingTests/RoutingTestsService';
 import {
   createRoutingTestDto,
   updateRoutingTestDto,
@@ -25,7 +25,7 @@ import {
   type CreateRoutingTestDto,
   type UpdateRoutingTestDto,
   type ImportRoutingTestsDto,
-} from '../routingTests';
+} from '../routingTests/RoutingTestsDto';
 import { StudioAuditService } from './StudioAuditService';
 
 const idsBatchDto = z.object({ ids: z.array(z.string().min(1)).min(1) });

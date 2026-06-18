@@ -21,6 +21,7 @@ export class AiConfigController {
       model: null,
       systemPrompt: null,
       temperature: null,
+      limits: null,
     };
   }
 
@@ -37,6 +38,7 @@ export class AiConfigController {
       model: dto.model,
       systemPrompt: dto.systemPrompt,
       temperature: dto.temperature,
+      limits: dto.limits,
     });
     await this.audit.log('ai-config.save', { instanceId, enabled: config.enabled });
     return config;

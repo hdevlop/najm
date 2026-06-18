@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+﻿import React, { useRef } from "react";
 import { Label } from "../ui/label";
 import { BaseInput } from "./BaseInput";
 import { cn } from "../../lib/cn";
@@ -14,7 +14,7 @@ function truncateFilename(filename: string, maxLength = 25) {
   return `${name.slice(0, maxLength - ext.length - 3)}...${ext}`;
 }
 
-export const FileInput: React.FC<FileInputProps> = ({ value, onChange, placeholder = "No file chosen", icon, showIcon = true, iconColor, className = "", variant = "default", status = "default", bordered, borderDegree, borderColor }) => {
+export const FileInput: React.FC<FileInputProps> = ({ value, onChange, placeholder = "No file chosen", icon, showIcon = true, iconColor, className = "", variant = "default", status = "default", bordered, borderColor }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
 
@@ -25,7 +25,7 @@ export const FileInput: React.FC<FileInputProps> = ({ value, onChange, placehold
   };
 
   return (
-    <BaseInput variant={variant} status={status} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={cn("flex px-0 p-0 text-muted-foreground", className)} onClick={() => fileInputRef.current?.click()}>
+    <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("flex px-0 p-0 text-muted-foreground", className)} onClick={() => fileInputRef.current?.click()}>
       <input type="file" ref={fileInputRef} onChange={(e) => onChange(e.target.files?.[0] || null)} className="hidden" />
       <div className="bg-muted flex h-full items-center px-3">
         {showIcon && (icon ? <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span> : <FileUp className={cn(iconProps.className)} />)}

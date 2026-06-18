@@ -123,6 +123,7 @@ auth({
 
   // Registration
   defaultRole?: string | null              // Auto-assign role to new users
+  bcryptRounds?: number                    // Default: 10 (valid: 4-31)
 
   // Frontend
   frontendUrl?: string                     // Password reset link base URL
@@ -155,7 +156,7 @@ All routes are prefixed with `/auth` and auto-registered by the plugin.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| `GET` | `/users` | List all users |
+| `GET` | `/users?limit=50&offset=0` | List users (limit 1-100) |
 | `GET` | `/users/:id` | Get user by ID |
 | `POST` | `/users` | Create new user |
 | `PUT` | `/users/:id` | Update user |
@@ -510,8 +511,8 @@ Auth routes have built-in rate limiting to prevent brute force attacks.
 |-------|-------|--------|--------------|
 | `POST /auth/register` | 5 | 15 minutes | IP |
 | `POST /auth/login` | 5 | 15 minutes | IP |
-| `GET /auth/refresh` | 10 | 15 minutes | IP |
-| `GET /auth/logout` | 10 | 15 minutes | User ID |
+| `POST /auth/refresh` | 15 | 15 minutes | Cookie fingerprint |
+| `POST /auth/logout` | 10 | 15 minutes | User ID |
 | `GET /auth/me` | 30 | 1 minute | User ID |
 | `POST /auth/forgot-password` | 3 | 15 minutes | IP |
 | `POST /auth/reset-password` | 5 | 15 minutes | IP |
@@ -592,15 +593,18 @@ async resetPassword(token: string, newPassword: string) {
 
 ### Session Management
 
-- Single refresh token per user (upsert on login)
-- Previous sessions invalidated on new login
+- Sessions are single-device: the token table stores one refresh row per user, so a new login replaces the previous device's refresh session
+- A stale refresh token presented after the 120-second rotation grace window revokes the active refresh session as reuse protection
+- The signed session cookie is accepted for up to its configured TTL (5 minutes by default) without a database or revocation-cache read
 - Use `@RateLimit` on logout for DDoS protection
 
 ### Token Blacklist
 
 - Built-in cache-based blacklist for immediate revocation
 - Supports Redis via `cache()` plugin configuration
-- Default: in-memory store (suitable for single-instance servers)
+- Default: in-memory store (development/single-process only; entries are lost on restart)
+- Use Redis in production when immediate revocation must survive restarts or propagate across instances
+- Session-version revocation keys are cache-backed and TTL-bound to active access tokens
 
 ### Timing Attack Prevention
 
@@ -635,7 +639,8 @@ Test files include:
 - ✅ Set `FRONTEND_URL` environment variable
 - ✅ Enable HTTPS in production
 - ✅ Store secrets in environment variables (never in code)
-- ✅ Use Redis for token blacklist in distributed systems
+- ✅ Use Redis for token blacklist/session-version revocation in production and distributed systems
+- ✅ Trust forwarded IP headers only behind a known proxy; otherwise provide a custom rate-limit key generator
 - ✅ Enable rate limiting on all auth routes
 - ✅ Log authentication events for audit trails
 - ✅ Test ownership scoping rules with multi-user scenarios

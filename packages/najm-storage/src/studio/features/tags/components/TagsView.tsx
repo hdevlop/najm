@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Tag, Trash2, Pencil, Plus, X, Palette } from 'lucide-react';
-import { NEmptyState, NTable, Button, NConfirmDialog, NPageHeader } from 'najm-ui';
+import { NEmptyState, NTable, Button, NConfirmDialog, NPageHeader } from 'najm-kit';
 import { useTags } from '../hooks/useTags';
 import { useTagCapabilities } from '../hooks/useTagCapabilities';
 import { useTagApi, type TagInfo } from '../api';

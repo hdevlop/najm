@@ -1,7 +1,7 @@
 import React from 'react';
 import { Send } from 'lucide-react';
 import { useApiClient } from '@/lib/api';
-import { Button, FormInput, NForm, useNForm } from 'najm-ui';
+import { Button, FormInput, NForm, useNForm } from 'najm-kit';
 
 interface SendMessageFormProps {
   instanceId: string;

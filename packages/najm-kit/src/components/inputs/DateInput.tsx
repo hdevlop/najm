@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { format } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
@@ -9,12 +9,12 @@ import { cn } from "../../lib/cn";
 import { getIconColorProps } from "./utils";
 import type { DateInputProps } from "./types";
 
-export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placeholder = "Pick a date", className = "", icon, showIcon = true, iconColor, variant = "default", status = "default", bordered, borderDegree, borderColor }) => {
+export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placeholder = "Pick a date", className = "", icon, showIcon = true, iconColor, variant = "default", status = "default", bordered, borderColor }) => {
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
   const toDateString = (date: Date | undefined) => date?.toISOString().split("T")[0];
 
   return (
-    <BaseInput variant={variant} status={status} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={className}>
+    <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={className}>
       <Popover>
         <PopoverTrigger asChild>
           <div className={cn("w-full flex items-center cursor-pointer gap-2 justify-start text-left font-normal", !value && "text-foreground")}>

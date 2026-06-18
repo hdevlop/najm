@@ -98,7 +98,7 @@ export function NSmartPasteDialog({
     >
       <div className="flex flex-1 flex-col gap-3 min-h-0">
         {description && (
-          <p className="text-xs text-txt-muted leading-relaxed">{description}</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">{description}</p>
         )}
         <Textarea
           className="flex-1 min-h-[400px] font-mono text-xs resize-none"

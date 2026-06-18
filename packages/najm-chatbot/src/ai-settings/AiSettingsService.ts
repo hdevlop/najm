@@ -4,6 +4,13 @@ import { AiSettingsRepository } from './AiSettingsRepository';
 import type { CreateAiSettingsDto, LlmProvider, UpdateAiSettingsDto } from './AiSettingsDto';
 import { PROVIDERS, buildModel } from '../agent/LlmProviderFactory';
 
+type InternalSettings = ReturnType<AiSettingsRepository['decryptApiKey']>;
+
+interface InternalCacheEntry {
+  value: InternalSettings | null;
+  expiresAt: number;
+}
+
 function normalizeText(value: string | null | undefined): string | null {
   if (value == null) return null;
   const trimmed = value.trim();
@@ -12,6 +19,11 @@ function normalizeText(value: string | null | undefined): string | null {
 
 @Service()
 export class AiSettingsService {
+  private internalCache: InternalCacheEntry | null = null;
+  private internalLoad: Promise<InternalSettings | null> | null = null;
+  private cacheGeneration = 0;
+  private readonly cacheTtlMs = 5_000;
+
   constructor(
     private repo: AiSettingsRepository,
     private encryption: EncryptionService,
@@ -24,9 +36,38 @@ export class AiSettingsService {
     return this.repo.toPublic(row);
   }
 
-  async getInternal() {
+  async getInternal(): Promise<InternalSettings | null> {
+    const now = Date.now();
+    if (this.internalCache && this.internalCache.expiresAt > now) {
+      return this.internalCache.value;
+    }
+    if (this.internalLoad) {
+      return this.internalLoad;
+    }
+    const generation = this.cacheGeneration;
+    const load = this.loadInternalSettings(generation)
+      .finally(() => {
+        if (this.internalLoad === load) {
+          this.internalLoad = null;
+        }
+      });
+    this.internalLoad = load;
+    return load;
+  }
+
+  private async loadInternalSettings(generation: number): Promise<InternalSettings | null> {
     const row = await this.repo.get();
-    return row ? this.repo.decryptApiKey(row) : null;
+    const value = row ? this.repo.decryptApiKey(row) : null;
+    if (generation === this.cacheGeneration) {
+      this.internalCache = { value, expiresAt: Date.now() + this.cacheTtlMs };
+    }
+    return value;
+  }
+
+  private invalidateInternalCache() {
+    this.cacheGeneration += 1;
+    this.internalCache = null;
+    this.internalLoad = null;
   }
 
   async upsert(dto: CreateAiSettingsDto) {
@@ -57,9 +98,13 @@ export class AiSettingsService {
     if (dto.id) data.id = dto.id;
 
     if (existing) {
-      return this.repo.toPublic(await this.repo.update(existing.id, data));
+      const updated = await this.repo.update(existing.id, data);
+      this.invalidateInternalCache();
+      return this.repo.toPublic(updated);
     }
-    return this.repo.toPublic(await this.repo.create(data));
+    const created = await this.repo.create(data);
+    this.invalidateInternalCache();
+    return this.repo.toPublic(created);
   }
 
   async update(dto: UpdateAiSettingsDto) {
@@ -107,7 +152,7 @@ export class AiSettingsService {
     }
 
     if (!existing) {
-      return this.repo.toPublic(await this.repo.create({
+      const created = await this.repo.create({
         provider: data.provider ?? 'ollama',
         ...data,
         model: data.model ?? this.repo.serializeProviderModels({ [provider]: 'llama3.1' }, provider),
@@ -115,10 +160,14 @@ export class AiSettingsService {
         useMemory: data.useMemory ?? true,
         maxStoredMessages: data.maxStoredMessages ?? 100,
         maxPromptMessages: data.maxPromptMessages ?? 10,
-      }));
+      });
+      this.invalidateInternalCache();
+      return this.repo.toPublic(created);
     }
 
-    return this.repo.toPublic(await this.repo.update(existing.id, data));
+    const updated = await this.repo.update(existing.id, data);
+    this.invalidateInternalCache();
+    return this.repo.toPublic(updated);
   }
 
   async testConnection(dto: UpdateAiSettingsDto) {

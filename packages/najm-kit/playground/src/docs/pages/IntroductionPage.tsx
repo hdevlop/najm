@@ -80,7 +80,8 @@ export function IntroductionPage() {
           </div>
           <pre className="bg-slate-950 p-4 font-mono text-sm leading-relaxed text-slate-300">
             <code>{`// main.tsx or layout.tsx
-import 'najm-kit/styles.css';
+@import "tailwindcss";
+@import "najm-kit/theme.css";
 import { NajmThemeProvider } from 'najm-kit';
 
 export default function Root({ children }) {

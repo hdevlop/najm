@@ -1,5 +1,5 @@
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
+import { sidebarBorderClasses } from "../../theme/borders";
 import { Menu, X } from "lucide-react";
 import type { NSidebarMobileProps } from "./types";
 
@@ -15,22 +15,10 @@ export function NSidebarMobile({
   showHamburgerButton = true,
   children,
   bordered,
-  borderDegree,
 }: NSidebarMobileProps) {
   const mobileClass = mobileBreakpoint === 'sm' ? 'sm:hidden'
     : mobileBreakpoint === 'lg' ? 'lg:hidden'
     : 'md:hidden';
-
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
-  const isStrong = resolvedBorderDegree === "strong";
-  const isNone = resolvedBorderDegree === "none";
-  const mobileBorderClass = isNone
-    ? "border-transparent"
-    : borderColorClassForDegree(resolvedBorderDegree);
 
   return (
     <>
@@ -39,7 +27,7 @@ export function NSidebarMobile({
           type="button"
           onClick={onOpen}
           className={cn(
-            "fixed top-3 left-3 z-50 p-2 rounded-lg bg-card border shadow-md text-muted-foreground hover:text-foreground hover:bg-accent transition-colors",
+            "fixed top-3 left-3 z-50 p-2 rounded-lg bg-sidebar najm-border border-sidebar-border shadow-md text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors",
             mobileClass,
             hamburgerClassName,
             open && "hidden"
@@ -58,15 +46,10 @@ export function NSidebarMobile({
         />
       )}
       <aside
-        data-border-degree={resolvedBorderDegree}
+        data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-card flex flex-col transition-transform duration-200",
-          // When global strong is on, we want a strong border, not a soft `border-r` edge.
-          isStrong
-            ? `border ${mobileBorderClass} shadow-none`
-            : isNone
-              ? "border-transparent"
-              : `border-r ${mobileBorderClass}`,
+          "fixed inset-y-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-200",
+          sidebarBorderClasses(bordered, 'right'),
           mobileClass,
           open ? 'translate-x-0' : '-translate-x-full'
         )}
@@ -75,7 +58,7 @@ export function NSidebarMobile({
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-3 right-3 z-10 p-1 rounded-md hover:bg-accent text-muted-foreground"
+          className="absolute top-3 right-3 z-10 p-1 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/70"
           aria-label={closeLabel}
         >
           <X className="h-4 w-4" />

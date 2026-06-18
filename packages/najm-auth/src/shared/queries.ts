@@ -30,26 +30,50 @@ export class AuthQueries {
     };
   }
 
-  /**
-   * Get permissions for a user by their userId
-   */
-  async getUserPermissions(userId: string): Promise<string[]> {
-    const [user] = await this.db
-      .select({ roleId: this.schema.users.roleId })
+  async getUserWithPermissions(where: any): Promise<any | undefined> {
+    const rows = await this.db
+      .select({
+        ...this.userSelection(),
+        permissionName: this.schema.permissions.name,
+      })
       .from(this.schema.users)
-      .where(eq(this.schema.users.id, userId))
-      .limit(1);
-
-    if (!user?.roleId) return [];
-
-    const perms = await this.db
-      .select({ name: this.schema.permissions.name })
-      .from(this.schema.rolePermissions)
+      .leftJoin(this.schema.roles, eq(this.schema.users.roleId, this.schema.roles.id))
+      .leftJoin(
+        this.schema.rolePermissions,
+        eq(this.schema.users.roleId, this.schema.rolePermissions.roleId),
+      )
       .leftJoin(
         this.schema.permissions,
         eq(this.schema.rolePermissions.permissionId, this.schema.permissions.id),
       )
-      .where(eq(this.schema.rolePermissions.roleId, user.roleId));
+      .where(where);
+
+    if (rows.length === 0) return undefined;
+
+    const { permissionName: _permissionName, ...user } = rows[0];
+    const permissions = [...new Set(
+      rows.map((row: any) => row.permissionName).filter(Boolean),
+    )] as string[];
+
+    return { ...user, permissions };
+  }
+
+  /**
+   * Get permissions for a user by their userId
+   */
+  async getUserPermissions(userId: string): Promise<string[]> {
+    const perms = await this.db
+      .select({ name: this.schema.permissions.name })
+      .from(this.schema.users)
+      .leftJoin(
+        this.schema.rolePermissions,
+        eq(this.schema.users.roleId, this.schema.rolePermissions.roleId),
+      )
+      .leftJoin(
+        this.schema.permissions,
+        eq(this.schema.rolePermissions.permissionId, this.schema.permissions.id),
+      )
+      .where(eq(this.schema.users.id, userId));
 
     return perms.map((p: any) => p.name).filter(Boolean);
   }
@@ -73,40 +97,28 @@ export class AuthQueries {
    * Returns { roleName: string | null, permissions: string[] }
    */
   async getRoleAndPermissions(userId: string): Promise<{ roleName: string | null; permissions: string[] }> {
-    const [user] = await this.db
-      .select({ roleId: this.schema.users.roleId })
+    const rows = await this.db
+      .select({
+        roleName: this.schema.roles.name,
+        permissionName: this.schema.permissions.name,
+      })
       .from(this.schema.users)
-      .where(eq(this.schema.users.id, userId))
-      .limit(1);
-
-    if (!user?.roleId) {
-      const [roleRow] = await this.db
-        .select({ roleName: this.schema.roles.name })
-        .from(this.schema.users)
-        .leftJoin(this.schema.roles, eq(this.schema.users.roleId, this.schema.roles.id))
-        .where(eq(this.schema.users.id, userId))
-        .limit(1);
-      return { roleName: roleRow?.roleName ?? null, permissions: [] };
-    }
-
-    const [roleRow] = await this.db
-      .select({ roleName: this.schema.roles.name })
-      .from(this.schema.roles)
-      .where(eq(this.schema.roles.id, user.roleId))
-      .limit(1);
-
-    const perms = await this.db
-      .select({ name: this.schema.permissions.name })
-      .from(this.schema.rolePermissions)
+      .leftJoin(this.schema.roles, eq(this.schema.users.roleId, this.schema.roles.id))
+      .leftJoin(
+        this.schema.rolePermissions,
+        eq(this.schema.users.roleId, this.schema.rolePermissions.roleId),
+      )
       .leftJoin(
         this.schema.permissions,
         eq(this.schema.rolePermissions.permissionId, this.schema.permissions.id),
       )
-      .where(eq(this.schema.rolePermissions.roleId, user.roleId));
+      .where(eq(this.schema.users.id, userId));
 
     return {
-      roleName: roleRow?.roleName ?? null,
-      permissions: perms.map((p: any) => p.name).filter(Boolean),
+      roleName: rows[0]?.roleName ?? null,
+      permissions: [...new Set(
+        rows.map((row: any) => row.permissionName).filter(Boolean),
+      )] as string[],
     };
   }
 

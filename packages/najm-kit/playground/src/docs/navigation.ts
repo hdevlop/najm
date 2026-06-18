@@ -16,6 +16,7 @@ export const navGroups: NavGroup[] = [
       { slug: 'introduction', label: 'Introduction' },
       { slug: 'installation', label: 'Installation' },
       { slug: 'theming', label: 'Theming' },
+      { slug: 'theme-json-dashboard', label: 'JSON Theme Dashboard', badge: 'New' },
     ],
   },
   {

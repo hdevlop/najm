@@ -35,14 +35,6 @@ import {
   KnowledgeDocumentService,
 } from './rag-index';
 import { PgVectorStrategy, SqliteVecStrategy } from './vectorStore';
-import { SemanticsController } from './studio/SemanticsController';
-import { KnowledgeController } from './studio/KnowledgeController';
-import { RoutingTestsController } from './studio/RoutingTestsController';
-import { ToolManagementController } from './studio/ToolManagementController';
-import { StudioSettingsController } from './studio/StudioSettingsController';
-import { StudioAuditService } from './studio/StudioAuditService';
-import { StudioAssistantController } from './studio/StudioAssistantController';
-import { RagStudioStaticController } from './studio/RagStudioStaticController';
 import { ragSchema as sqliteSchema } from './schema/sqlite';
 import { ragSchema as pgSchema } from './schema/pg';
 import { ragSchema as mysqlSchema } from './schema/mysql';
@@ -56,6 +48,7 @@ const defaultRag = {
     baseUrl: 'http://localhost:11434',
     model: 'embeddinggemma',
     dimensions: 768,
+    timeoutMs: 8000,
   },
   queryEmbeddingCacheSize: 256,
   indexOnBoot: true,
@@ -126,8 +119,6 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
   return {
     dialect: dialect as RagDialect,
     configPath: effective.configPath,
-    studioApi: effective.studioApi === true,
-    studioUi: effective.studioUi === true,
     allowedLangs: Array.isArray(effective.allowedLangs) && effective.allowedLangs.length > 0
       ? effective.allowedLangs
       : undefined,
@@ -154,8 +145,6 @@ export const rag = (config?: RagConfig) => {
   const ragEnabled = merged.rag.enabled;
   const routingEnabled = merged.toolRouting.enabled;
   const knowledgeEnabled = (merged as any).knowledge?.enabled === true;
-  const studioApi = (merged as any).studioApi === true;
-  const studioUi = (merged as any).studioUi === true;
   const vectorStrategy = merged.dialect === 'sqlite' ? new SqliteVecStrategy() : new PgVectorStrategy();
 
   const services: any[] = [];
@@ -191,11 +180,20 @@ export const rag = (config?: RagConfig) => {
     );
   }
 
+  // ChatbotRagController (registered when routingEnabled) eagerly injects
+  // KnowledgeDocumentService, so the service must be registered whenever
+  // routing is on even if knowledge is disabled. Its constructor dependencies
+  // are optional and gracefully degrade when knowledge-only repos are absent.
+  if (routingEnabled && !knowledgeEnabled) {
+    services.push(KnowledgeDocumentService);
+  }
+
   if (knowledgeEnabled) {
     services.push(
       KnowledgeValidator,
       KnowledgeRepository,
       KnowledgeService,
+      KnowledgeDocumentService,
       DocumentSourceRepository,
       DocumentIngestionService,
       FileExtractor,
@@ -205,22 +203,6 @@ export const rag = (config?: RagConfig) => {
 
   if (knowledgeEnabled && routingEnabled) {
     services.push(KnowledgeContextProvider);
-  }
-
-  if (studioApi) {
-    services.push(
-      SemanticsController,
-      KnowledgeController,
-      RoutingTestsController,
-      ToolManagementController,
-      StudioSettingsController,
-      StudioAuditService,
-      StudioAssistantController,
-    );
-  }
-
-  if (studioUi) {
-    services.push(RagStudioStaticController);
   }
 
   const requiredPlugins: string[] = ['auth', 'database'];

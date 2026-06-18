@@ -34,7 +34,7 @@ describe("SidebarItem", () => {
     const item: NavItem = { id: "home", label: "Home", href: "/home" };
     const { container } = render(<NSidebarItem item={item} activePath="/home" />);
     const btn = container.querySelector("button");
-    expect(btn?.className).toContain("bg-primary");
+    expect(btn?.className).toContain("bg-sidebar-primary");
   });
 
   test("renders LinkComponent when href + linkComponent provided", () => {
@@ -111,6 +111,38 @@ describe("Sidebar", () => {
     { id: "tools", label: "Tools" },
   ];
 
+  test("root <aside> uses sidebar surface tokens", () => {
+    const { container } = render(<NSidebar navItems={navItems} mobileOpen />);
+    const asides = Array.from(container.querySelectorAll("aside"));
+    const desktop = asides.find((a) => a.className.includes("md:flex")) as HTMLElement;
+    const mobile = asides.find((a) => a.className.includes("md:hidden")) as HTMLElement;
+
+    expect(desktop.className).toContain("bg-sidebar");
+    expect(desktop.className).toContain("text-sidebar-foreground");
+    expect(mobile.className).toContain("bg-sidebar");
+    expect(mobile.className).toContain("text-sidebar-foreground");
+  });
+
+  test("hamburger trigger uses sidebar surface tokens", () => {
+    const { container } = render(<NSidebar navItems={navItems} mobileOpen />);
+    const hamburger = container.querySelector("button[aria-label='Open sidebar']") as HTMLButtonElement;
+    expect(hamburger).toBeTruthy();
+    expect(hamburger.className).toContain("bg-sidebar");
+    expect(hamburger.className).toContain("border-sidebar-border");
+  });
+
+  test("active item uses sidebar-primary background", () => {
+    const { container } = render(
+      <NSidebar navItems={navItems} activePath="dashboard" />
+    );
+    const active = Array.from(container.querySelectorAll("button")).find(
+      (b) => b.textContent?.includes("Dashboard")
+    ) as HTMLElement;
+    expect(active).toBeTruthy();
+    expect(active.className).toContain("bg-sidebar-primary");
+    expect(active.className).toContain("text-sidebar-primary-foreground");
+  });
+
   test("can hide section labels", () => {
     const { container } = render(<NSidebar navItems={navItems} showSectionLabels={false} />);
     expect(container.textContent).not.toContain("Main");
@@ -152,7 +184,7 @@ describe("Sidebar", () => {
     ) as HTMLElement;
     expect(desktopSidebar.style.width).toBe("240px");
 
-    const button = container.querySelector("button[aria-label='Collapse sidebar']") as HTMLButtonElement;
+    const button = container.querySelector("button[aria-label='Collapse']") as HTMLButtonElement;
     fireEvent.click(button);
 
     expect(desktopSidebar.style.width).toBe("64px");
@@ -168,7 +200,7 @@ describe("Sidebar", () => {
       />
     );
 
-    const button = container.querySelector("button[aria-label='Collapse sidebar']") as HTMLButtonElement;
+    const button = container.querySelector("button[aria-label='Collapse']") as HTMLButtonElement;
     fireEvent.click(button);
 
     expect(onCollapsedChange).toHaveBeenCalledWith(true);
@@ -197,10 +229,10 @@ describe("Sidebar", () => {
     const desktop = asides.find((a) => a.className.includes("md:flex")) as HTMLElement;
     const mobile = asides.find((a) => a.className.includes("md:hidden")) as HTMLElement;
 
-    expect(desktop.className).toContain("border");
-    expect(desktop.className).toContain("border-border-strong");
-    expect(mobile.className).toContain("border");
-    expect(mobile.className).toContain("border-border-strong");
+    expect(desktop.className).toContain("najm-border-r");
+    expect(desktop.className).toContain("border-sidebar-border");
+    expect(mobile.className).toContain("najm-border-r");
+    expect(mobile.className).toContain("border-sidebar-border");
   });
 
   test("mobile width falls back to expanded width when not provided", () => {

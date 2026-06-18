@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Trash2, RotateCcw, X } from 'lucide-react';
-import { NEmptyState, NConfirmDialog, useContextMenu, Button, NTable, NPageHeader } from 'najm-ui';
+import { NEmptyState, NConfirmDialog, useContextMenu, Button, NTable, NPageHeader } from 'najm-kit';
 import { useTrash } from '../hooks/useTrash';
 import { useApiClient } from '../../../lib/api';
 import { formatBytes, formatRelativeTime } from '../../../lib/format';
@@ -123,49 +123,51 @@ export function TrashView() {
   ], [removing, restoring]);
 
   return (
-    <NPageHeader
-      icon={Trash2}
-      title="Trash"
-      subtitle="Restore or permanently delete files"
-      contentClassName="flex flex-1 flex-col min-h-0 overflow-hidden p-4 sm:p-5"
-    >
-      <div className="flex-1 min-h-0 overflow-auto">
-        <NTable<FileInfo, 'table'>
-          data={data ?? []}
-          columns={columns}
-          loading={isLoading}
-          error={error}
-          getRowId={(file) => `${file.namespace}/${file.filePath}`}
-          availableModes={['table']}
-          mode="table"
-          showCheckbox={false}
-          showViewToggle={false}
-          loadingText="Loading trash..."
-          renderEmpty={() => <NEmptyState icon={Trash2} title="Trash is empty" description="Deleted files will appear here." />}
-          renderError={(err) => <NEmptyState icon={Trash2} title="Error" description={err?.message ?? 'Failed to load trash.'} />}
-          onRowContextMenu={(e, file) => ctx.open(e, [
-            { label: 'Restore', icon: RotateCcw, onSelect: () => void handleRestore(file) },
-            { label: 'Delete forever', icon: X, danger: true, separatorBefore: true, onSelect: () => setConfirmRemove(file) },
-          ])}
+    <div className="flex h-full flex-col">
+      <NPageHeader
+        icon={Trash2}
+        title="Trash"
+        subtitle="Restore or permanently delete files"
+      />
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-4 sm:p-5">
+        <div className="min-h-0 flex-1 overflow-auto">
+          <NTable<FileInfo, 'table'>
+            data={data ?? []}
+            columns={columns}
+            loading={isLoading}
+            error={error}
+            getRowId={(file) => `${file.namespace}/${file.filePath}`}
+            availableModes={['table']}
+            mode="table"
+            showCheckbox={false}
+            showViewToggle={false}
+            loadingText="Loading trash..."
+            renderEmpty={() => <NEmptyState icon={Trash2} title="Trash is empty" description="Deleted files will appear here." />}
+            renderError={(err) => <NEmptyState icon={Trash2} title="Error" description={err?.message ?? 'Failed to load trash.'} />}
+            onRowContextMenu={(e, file) => ctx.open(e, [
+              { label: 'Restore', icon: RotateCcw, onSelect: () => void handleRestore(file) },
+              { label: 'Delete forever', icon: X, danger: true, separatorBefore: true, onSelect: () => setConfirmRemove(file) },
+            ])}
+          />
+        </div>
+        {!!data?.length && (
+          <div className="mt-2 px-1 text-[10px] text-txt-muted">
+            Soft-deleted files remain here until permanently removed or restored.
+          </div>
+        )}
+        {ctx.menu}
+        <NConfirmDialog
+          open={!!confirmRemove}
+          onOpenChange={(open) => { if (!open) setConfirmRemove(null); }}
+          onConfirm={handleRemove}
+          title="Delete file permanently?"
+          description={confirmRemove ? `This will permanently delete "${confirmRemove.filePath}". This action cannot be undone.` : 'This action cannot be undone.'}
+          confirmLabel="Yes, delete"
+          cancelLabel="Cancel"
+          variant="destructive"
+          loading={removeBusy}
         />
       </div>
-      {!!data?.length && (
-        <div className="mt-2 px-1 text-[10px] text-txt-muted">
-          Soft-deleted files remain here until permanently removed or restored.
-        </div>
-      )}
-      {ctx.menu}
-      <NConfirmDialog
-        open={!!confirmRemove}
-        onOpenChange={(open) => { if (!open) setConfirmRemove(null); }}
-        onConfirm={handleRemove}
-        title="Delete file permanently?"
-        description={confirmRemove ? `This will permanently delete "${confirmRemove.filePath}". This action cannot be undone.` : 'This action cannot be undone.'}
-        confirmLabel="Yes, delete"
-        cancelLabel="Cancel"
-        variant="destructive"
-        loading={removeBusy}
-      />
-    </NPageHeader>
+    </div>
   );
 }

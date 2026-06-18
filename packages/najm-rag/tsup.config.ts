@@ -1,52 +1,13 @@
-import { existsSync, statSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'tsup';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const studioSrcDir = resolve(__dirname, 'src', 'studio');
-
-function resolveStudioImport(importPath: string) {
-  const basePath = resolve(studioSrcDir, importPath.slice(2));
-  const candidates = [
-    `${basePath}.ts`, `${basePath}.tsx`, `${basePath}.js`, `${basePath}.jsx`,
-    basePath, resolve(basePath, 'index.ts'), resolve(basePath, 'index.tsx'),
-    resolve(basePath, 'index.js'), resolve(basePath, 'index.jsx'),
-  ];
-  return candidates.find((candidate) => {
-    try { return existsSync(candidate) && statSync(candidate).isFile(); }
-    catch { return false; }
-  }) ?? basePath;
-}
-
-const studioAliasPlugin = {
-  name: 'najm-rag-studio-alias',
-  setup(build: any) {
-    build.onResolve({ filter: /^najm-chatbot\/react$/ }, () => ({
-      path: resolve(__dirname, '..', 'najm-chatbot', 'src', 'react', 'index.ts'),
-    }));
-
-    build.onResolve({ filter: /^@\// }, (args: { path: string }) => ({
-      path: resolveStudioImport(args.path),
-    }));
+export default defineConfig({
+  entry: {
+    'index': 'src/index.ts',
+    'studio-contract': 'src/studioContract/index.ts',
+    'schema/sqlite': 'src/schema/sqlite.ts',
+    'schema/pg': 'src/schema/pg.ts',
+    'schema/mysql': 'src/schema/mysql.ts',
   },
-};
-
-function buildStyles() {
-  const result = spawnSync(process.execPath, [resolve(__dirname, 'scripts', 'build-css.mjs')], {
-    cwd: __dirname, stdio: 'inherit',
-  });
-  if (result.status !== 0) throw new Error('Failed to build rag studio styles.css');
-}
-
-const backend = defineConfig({
-  entry: [
-    'src/index.ts',
-    'src/schema/sqlite.ts',
-    'src/schema/pg.ts',
-    'src/schema/mysql.ts',
-  ],
   format: ['esm'],
   dts: {
     compilerOptions: {
@@ -57,7 +18,7 @@ const backend = defineConfig({
   },
   splitting: false,
   sourcemap: false,
-  clean: false,
+  clean: true,
   outDir: 'dist',
   outExtension: () => ({ js: '.mjs' }),
   bundle: true,
@@ -92,31 +53,3 @@ const backend = defineConfig({
     },
   ],
 });
-
-const studio = defineConfig({
-  entry: { 'studio/index': 'src/studio/ui.ts' },
-  format: ['esm'],
-  target: 'es2022',
-  clean: false,
-  sourcemap: false,
-  splitting: false,
-  treeshake: true,
-  esbuildPlugins: [studioAliasPlugin],
-  dts: { compilerOptions: { jsx: 'react-jsx' } },
-  external: [
-    '@tanstack/react-router', 'lucide-react',
-    'react', 'react-dom', 'react/jsx-runtime', '@uiw/react-codemirror',
-    '@codemirror/lang-json', '@codemirror/theme-one-dark', '@codemirror/state',
-    '@codemirror/view', '@codemirror/language', '@lezer/highlight',
-  ],
-  outExtension() { return { js: '.mjs' }; },
-  async onSuccess() { buildStyles(); },
-});
-
-const buildTarget = process.env.NAJM_RAG_BUILD_TARGET;
-
-export default buildTarget === 'backend'
-  ? backend
-  : buildTarget === 'studio'
-    ? studio
-    : [backend, studio];

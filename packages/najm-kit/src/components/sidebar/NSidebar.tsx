@@ -1,7 +1,7 @@
 import { useMemo, useCallback, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
+import { sidebarBorderClasses } from "../../theme/borders";
 import { NSidebarHeader } from "./NSidebarHeader";
 import { NSidebarLogo } from "./NSidebarLogo";
 import { NSidebarContent } from "./NSidebarContent";
@@ -42,7 +42,6 @@ export function NSidebar({
   showSectionIcons = true,
   showSectionSeparators = false,
   bordered,
-  borderDegree,
   footer,
   className,
   classNames,
@@ -88,15 +87,6 @@ export function NSidebar({
   }, [onNavigate, closeOnNavigate]);
 
   const groups = useMemo(() => buildGroups(navItems), [navItems]);
-
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
-  const sidebarShellBorderClass = borderColorClassForDegree(resolvedBorderDegree);
-  const isStrong = resolvedBorderDegree === "strong";
-  const isNone = resolvedBorderDegree === "none";
 
   const desktopClass = mobileBreakpoint === 'sm' ? 'hidden sm:flex'
     : mobileBreakpoint === 'lg' ? 'hidden lg:flex'
@@ -169,18 +159,16 @@ export function NSidebar({
         hamburgerClassName={hamburgerClassName}
         showHamburgerButton={showHamburgerButton}
         bordered={bordered}
-        borderDegree={borderDegree}
       >
         {mobileInner}
       </NSidebarMobile>
 
       <aside
-        data-border-degree={resolvedBorderDegree}
+        data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
         className={cn(
           desktopClass,
-          "relative z-10 flex flex-col h-full bg-card transition-all duration-200",
-          isNone ? "border-r border-transparent" : cn("border-r", sidebarShellBorderClass),
-          isStrong && "shadow-none",
+          "relative z-10 flex flex-col h-full bg-sidebar text-sidebar-foreground transition-all duration-200",
+          sidebarBorderClasses(bordered, 'right'),
           classNames?.sidebar,
           className
         )}
@@ -193,7 +181,7 @@ export function NSidebar({
             onClick={handleToggleCollapsed}
             aria-label={collapsed ? expandLabel : collapseLabel}
             title={collapsed ? expandLabel : collapseLabel}
-            className="absolute right-0 top-7 z-20 flex size-6 -translate-y-1/2 translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-border bg-card text-muted-foreground shadow-sm transition-colors hover:bg-accent hover:text-foreground"
+            className="absolute right-0 top-7 z-20 flex size-6 -translate-y-1/2 translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             {collapsed
               ? <ChevronRight className="h-3.5 w-3.5" />

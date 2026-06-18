@@ -189,7 +189,6 @@ export function useTable() {
   const openRowMenu = useTableStore.use.openRowMenu();
   const menuButton = useTableStore.use.menuButton();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
   const CardComponent = useTableStore.use.CardComponent();
   const dynamicHeight = useTableStore.use.dynamicHeight();
   const viewMode = useTableStore.use.viewMode();
@@ -227,14 +226,14 @@ export function useTable() {
           header: () => isMenuActions
             ? null
             : React.createElement("div", { className: "flex w-full justify-start text-left" }, "Actions"),
-          cell: ({ row }: any) => React.createElement(TableActionCell, { row, onView, onEdit, onDelete, openRowMenu, menuButton, bordered, borderDegree }),
+          cell: ({ row }: any) => React.createElement(TableActionCell, { row, onView, onEdit, onDelete, openRowMenu, menuButton, bordered }),
           enableSorting: false,
           enableHiding: false,
         },
       ];
     }
     return effectiveColumns;
-  }, [columns, CardComponent, hasActions, onView, onEdit, onDelete, openRowMenu, menuButton, bordered, borderDegree]);
+  }, [columns, CardComponent, hasActions, onView, onEdit, onDelete, openRowMenu, menuButton, bordered]);
 
   const notifyStateChange = useCallback((state: { sorting: SortingState; columnFilters: ColumnFiltersState; columnVisibility: VisibilityState; rowSelection: RowSelectionState; globalFilter: string }) => {
     onStateChange?.(state);

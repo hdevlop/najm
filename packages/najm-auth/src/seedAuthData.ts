@@ -62,6 +62,7 @@ export async function seedAuthData(
         authSeed({
           adminEmail: config.adminEmail,
           adminPass: config.adminPassword,
+          bcryptRounds: config.bcryptRounds,
           roles: config.roles,
           permissions: config.permissions,
           additionalUsers: config.users,

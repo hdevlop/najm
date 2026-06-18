@@ -18,6 +18,16 @@ export class McpRegistryService {
   public tools: RegisteredTool[] = [];
 
   registerTool(tool: RegisteredTool): void {
+    const existing = this.tools.find((t) => t.name === tool.name);
+    if (existing) {
+      const owner = (ctor: any) => ctor?.name ?? 'unknown';
+      throw new Error(
+        `[najm-mcp] Duplicate MCP tool name "${tool.name}": ` +
+        `declared by both ${owner(existing.target)} and ${owner(tool.target)}. ` +
+        `Use @ToolGroup() to namespace one of them, or rename the method.`,
+      );
+    }
+
     this.tools.push(this.withAutoConfirmation(tool));
   }
 

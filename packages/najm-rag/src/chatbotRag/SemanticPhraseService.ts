@@ -292,7 +292,7 @@ export class SemanticPhraseService {
       createdAt: row.createdAt ?? null,
       updatedAt: row.updatedAt ?? null,
     };
-    const confirmation = getRoutableTools(this.registry.tools).find((tool) => tool.name === row.toolName)?.confirmation;
+    const confirmation = this.registry.tools.find((tool) => tool.name === row.toolName)?.confirmation;
     if (confirmation) {
       response.confirmation = this.resolveConfirmation(confirmation);
     }

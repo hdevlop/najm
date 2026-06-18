@@ -5,11 +5,13 @@ import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig } from '../types';
 
 export interface SessionCookieData {
+  /** Must satisfy the AuthUser contract — see AuthUser in ../types. */
   user: {
     id: string;
     email: string;
     name?: string | null;
     role?: string;
+    status?: string;
   };
   roles: string[];
   permissions: string[];

@@ -3,7 +3,7 @@ import { CacheService } from 'najm-cache';
 import { WHATSAPP_CONFIG } from '../tokens';
 import { WhatsAppService } from '../WhatsAppService';
 import type { WhatsAppConfig } from '../types';
-import { randomInt } from 'crypto';
+import { randomInt, timingSafeEqual } from 'crypto';
 
 const OTP_TTL_MS = 5 * 60 * 1000;
 const RATE_LIMIT_MAX = 3;
@@ -53,7 +53,18 @@ export class PhoneLinkService {
       return { valid: false, error: 'OTP expired or not found.' };
     }
 
-    if (stored !== otp) {
+    // Constant-time comparison with equal-length buffers prevents timing
+    // attacks against the OTP comparison. We pad both sides to the OTP
+    // length so different-length inputs always return false without
+    // short-circuiting.
+    const expected = stored;
+    const provided = otp ?? '';
+    if (expected.length !== provided.length) {
+      return { valid: false, error: 'Invalid OTP.' };
+    }
+    const a = Buffer.from(expected, 'utf8');
+    const b = Buffer.from(provided, 'utf8');
+    if (!timingSafeEqual(a, b)) {
       return { valid: false, error: 'Invalid OTP.' };
     }
 

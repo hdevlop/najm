@@ -3,21 +3,17 @@ import {
   RefreshCw,
   Settings,
   Activity,
-  MessageSquare,
-  Image,
   Bot,
-  Gauge,
+  Webhook,
   Power,
   Copy,
   CheckCircle2,
   AlertTriangle,
-  XCircle,
   Wifi,
 } from 'lucide-react';
-import { NPageHeader, NEmptyState, Button, Input, Switch, Slider, Dialog, DialogContent, DialogHeader, DialogTitle } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button, Input, Dialog, DialogContent, DialogHeader, DialogTitle } from 'najm-kit';
 import { useApiClient } from '@/lib/api';
 import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
-import { useActiveView } from '@/shared/hooks/useActiveView';
 import { useToast } from '@/lib/toast';
 import { cn } from '@/lib/utils';
 import type { StudioSettings } from '@/features/settings/types';
@@ -35,15 +31,6 @@ export function SettingsView() {
   const [showResetModal, setShowResetModal] = useState(false);
   const [resetConfirmName, setResetConfirmName] = useState('');
   const [resetting, setResetting] = useState(false);
-
-  // Local UI state for toggles/sliders (backend wiring TBD)
-  const [readReceipts, setReadReceipts] = useState(true);
-  const [typingIndicator, setTypingIndicator] = useState(false);
-  const [onlinePresence, setOnlinePresence] = useState(true);
-  const [autoDownload, setAutoDownload] = useState(true);
-  const [maxFileSize, setMaxFileSize] = useState(50);
-  const [messagesPerMinute, setMessagesPerMinute] = useState(50);
-  const [messageDelay, setMessageDelay] = useState(200);
 
   async function fetchSettings() {
     setLoading(true);
@@ -142,7 +129,7 @@ export function SettingsView() {
 
         {settings && (
           <>
-            {/* Connection Settings */}
+            {/* Connection Settings — read-only, derived from BAILEYS_CONFIG */}
             <SettingsGroup icon={Activity} title="Connection Settings">
               <SettingsRow label="Session Name">
                 <Input
@@ -176,55 +163,11 @@ export function SettingsView() {
                   <span className="capitalize">{instance.status}</span>
                   <span>·</span>
                   <span>Baileys</span>
-                  <span>·</span>
-                  <span>v6.x</span>
                 </div>
               )}
             </SettingsGroup>
 
-            {/* Message Settings */}
-            <SettingsGroup icon={MessageSquare} title="Message Settings">
-              <ToggleRow
-                label="Read Receipts"
-                description="Auto-mark incoming messages as read"
-                checked={readReceipts}
-                onChange={setReadReceipts}
-              />
-              <ToggleRow
-                label="Typing Indicator"
-                description="Show typing when the bot is preparing a reply"
-                checked={typingIndicator}
-                onChange={setTypingIndicator}
-              />
-              <ToggleRow
-                label="Online Presence"
-                description="Appear online when connected"
-                checked={onlinePresence}
-                onChange={setOnlinePresence}
-              />
-            </SettingsGroup>
-
-            {/* Media Settings */}
-            <SettingsGroup icon={Image} title="Media Settings">
-              <ToggleRow
-                label="Auto-Download Media"
-                description="Fetch and persist incoming media automatically"
-                checked={autoDownload}
-                onChange={setAutoDownload}
-              />
-              <SettingsRow label="Max File Size (MB)">
-                <Input
-                  type="number"
-                  min={1}
-                  max={100}
-                  value={maxFileSize}
-                  onChange={(e) => setMaxFileSize(Number(e.target.value))}
-                  className="h-8 w-20 text-right"
-                />
-              </SettingsRow>
-            </SettingsGroup>
-
-            {/* Agents */}
+            {/* Agents / Webhooks — read-only counters */}
             <SettingsGroup icon={Bot} title="Agents">
               <SettingsRow label="Default Agent">
                 {settings.defaultAgent ? (
@@ -233,7 +176,7 @@ export function SettingsView() {
                   <span className="text-sm text-txt-muted">No agents configured</span>
                 )}
               </SettingsRow>
-              <SettingsRow label="Webhook Count">
+              <SettingsRow label="Webhook Subscribers">
                 <Button
                   variant="link"
                   size="sm"
@@ -242,35 +185,12 @@ export function SettingsView() {
                   }}
                   className="text-sm font-medium text-brand hover:underline h-auto p-0"
                 >
-                  {String(settings.webhooks ?? 0)}
+                  {String(settings.webhooks ?? 0)} ({settings.staticWebhookCount ?? 0} static + {settings.webhookCount ?? 0} dynamic)
                 </Button>
               </SettingsRow>
             </SettingsGroup>
 
-            {/* Rate Limiting */}
-            <SettingsGroup icon={Gauge} title="Rate Limiting">
-              <SliderRow
-                label="Messages per Minute"
-                min={10}
-                max={120}
-                value={messagesPerMinute}
-                onChange={setMessagesPerMinute}
-                leftLabel="Conservative"
-                rightLabel="Aggressive"
-              />
-              <SliderRow
-                label="Message Delay (ms)"
-                min={0}
-                max={2000}
-                step={100}
-                value={messageDelay}
-                onChange={setMessageDelay}
-                leftLabel="Fast"
-                rightLabel="Natural"
-              />
-            </SettingsGroup>
-
-            {/* Session Controls */}
+            {/* Session Controls — the only side-effecting action on this page */}
             <SettingsGroup icon={Power} title="Session">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-0.5">
@@ -345,68 +265,6 @@ function SettingsRow({ label, children }: { label: string; children: React.React
     <div className="flex items-center justify-between gap-4">
       <span className="text-xs text-txt-secondary">{label}</span>
       <div className="flex items-center gap-2">{children}</div>
-    </div>
-  );
-}
-
-function ToggleRow({
-  label,
-  description,
-  checked,
-  onChange,
-}: {
-  label: string;
-  description: string;
-  checked: boolean;
-  onChange: (v: boolean) => void;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-4">
-      <div className="flex flex-col gap-0.5">
-        <span className="text-sm font-medium text-txt-primary">{label}</span>
-        <span className="text-xs text-txt-muted">{description}</span>
-      </div>
-      <Switch checked={checked} onCheckedChange={onChange} />
-    </div>
-  );
-}
-
-function SliderRow({
-  label,
-  min,
-  max,
-  step = 1,
-  value,
-  onChange,
-  leftLabel,
-  rightLabel,
-}: {
-  label: string;
-  min: number;
-  max: number;
-  step?: number;
-  value: number;
-  onChange: (v: number) => void;
-  leftLabel: string;
-  rightLabel: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-center justify-between gap-4">
-        <span className="text-sm font-medium text-txt-primary">{label}</span>
-        <span className="text-xs font-semibold text-brand">{value}</span>
-      </div>
-      <Slider
-        value={[value]}
-        onValueChange={([v]) => onChange(v)}
-        min={min}
-        max={max}
-        step={step}
-      />
-      <div className="flex justify-between text-[10px] text-txt-muted">
-        <span>{leftLabel}</span>
-        <span>{rightLabel}</span>
-      </div>
     </div>
   );
 }

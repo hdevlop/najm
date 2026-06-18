@@ -18,6 +18,8 @@ export interface SeedUserConfig {
 export interface AuthSeedConfig {
   adminEmail: string;
   adminPass: string;
+  /** Bcrypt work factor (default: 10) */
+  bcryptRounds?: number;
   roles?: Array<{ name: string; description?: string }>;
   permissions?: Array<{
     action: string;
@@ -40,6 +42,9 @@ export interface SeedAuthDataConfig {
 
   /** Admin password (required) */
   adminPassword: string;
+
+  /** Bcrypt work factor (default: 10) */
+  bcryptRounds?: number;
 
   /** Additional users to seed (optional) */
   users?: SeedUserConfig[];

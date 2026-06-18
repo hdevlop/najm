@@ -1,12 +1,13 @@
 import React from "react";
 import { Card as CardPrimitive, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../ui/card";
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
-import type { NajmBorderDegree } from "../../theme/types";
+import { surfaceBorderClasses } from "../../theme/borders";
 import { NLoadingState } from "../feedback/NLoadingState";
 import { NErrorState } from "../feedback/NErrorState";
 import { NEmptyState } from "../feedback/NEmptyState";
 import { NIcon, type NIconSource } from "../Icon";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
 
 // ─── Slots ───────────────────────────────────────────────────────────────────
 
@@ -62,7 +63,6 @@ export interface CardProps {
   noPadding?: boolean;
   separator?: boolean;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
 
   // Styling
   className?: string;
@@ -90,7 +90,6 @@ export function NCard({
   noPadding = false,
   separator = false,
   bordered,
-  borderDegree,
   className,
   classNames,
   onClick,
@@ -98,11 +97,15 @@ export function NCard({
   const isEmpty = empty ?? noData ?? false;
   const resolvedEmptyText = emptyText ?? noDataText ?? "No data available";
 
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
+  const recipe = useNajmComponentStyle("card");
+  const recipeRadius = resolveRadiusValue(recipe?.radius);
+  const recipeStyle: React.CSSProperties | undefined =
+    recipeRadius || recipe?.borderWidth
+      ? {
+          ...(recipeRadius ? { borderRadius: recipeRadius } : {}),
+          ...(recipe?.borderWidth ? { borderWidth: recipe.borderWidth } : {}),
+        }
+      : undefined;
 
   let actionSlot: React.ReactNode = null;
   let footerSlot: React.ReactNode = null;
@@ -125,20 +128,15 @@ export function NCard({
   const hasHeader = !!(title || description || actionSlot);
   const iconSize = description ? "h-8 w-8" : "h-5 w-5";
 
-  const isStrong = resolvedBorderDegree === "strong";
-  const isNone = resolvedBorderDegree === "none";
-
   return (
     <CardPrimitive
-      data-bordered={bordered ? "true" : undefined}
-      data-border-degree={resolvedBorderDegree}
+      data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
       onClick={onClick}
+      style={recipeStyle}
       className={cn(
         "flex flex-col",
         !noPadding && "p-4 gap-3",
-        isNone
-          ? "border-transparent"
-          : `${borderColorClassForDegree(resolvedBorderDegree)} ${isStrong ? "shadow-none" : ""}`,
+        surfaceBorderClasses(bordered),
         classNames?.root,
         className
       )}

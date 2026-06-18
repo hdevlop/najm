@@ -11,6 +11,7 @@ import {
   rateLimitConfig,
   storageConfig,
   ragConfig,
+  ragStudioConfig,
   chatbotConfig,
   studioAssistantConfig,
   whatsappConfig,
@@ -31,6 +32,7 @@ export const server = new Server()
   .use(authConfig())
   .use(storageConfig())
   .use(ragConfig())
+  .use(ragStudioConfig())
   .use(chatbotConfig())
   .use(studioAssistantConfig())
   .use(whatsappConfig())

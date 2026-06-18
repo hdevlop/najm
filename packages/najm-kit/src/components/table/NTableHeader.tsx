@@ -13,7 +13,6 @@ import {
 } from "../ui/dropdown-menu";
 import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { useResolvedBorderDegree } from "../../theme/borders";
 import { useTableStore } from "./TableContext";
 import type { ViewMode } from "./store";
 import { HEADER_HEX, type TableHeaderColor } from "./tableColors";
@@ -21,30 +20,27 @@ import { HEADER_HEX, type TableHeaderColor } from "./tableColors";
 function SearchFilter({ placeholder }: { placeholder?: string }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
   if (!table) return null;
   const value = (table.getState().globalFilter as string) ?? "";
-  return <TextInput icon={Search} value={value} onChange={(v) => table.setGlobalFilter(v)} placeholder={placeholder ?? "Search…"} bordered={bordered} borderDegree={borderDegree} />;
+  return <TextInput icon={Search} value={value} onChange={(v) => table.setGlobalFilter(v)} placeholder={placeholder ?? "Search…"} bordered={bordered} />;
 }
 
 function TextFilter({ name, placeholder }: { name: string; placeholder?: string }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
   const column = table?.getColumn?.(name);
   if (!column) return null;
-  return <TextInput value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value)} placeholder={placeholder} bordered={bordered} borderDegree={borderDegree} />;
+  return <TextInput value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value)} placeholder={placeholder} bordered={bordered} />;
 }
 
 function SelectFilter({ name, options, placeholder, inputType }: { name: string; options: any[]; placeholder?: string; inputType?: string }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
   const column = table?.getColumn?.(name);
   if (!column) return null;
   const allOptions = [{ value: "__clear__", label: "All" }, ...options.map((o: any) => typeof o === "string" ? { value: o, label: o } : o)];
   const InputComponent = inputType === "combobox" ? ComboboxInput : SelectInput;
-  return <InputComponent value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value === "" || value === "__clear__" ? undefined : value)} items={allOptions} placeholder={placeholder || "Filter..."} bordered={bordered} borderDegree={borderDegree} />;
+  return <InputComponent value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value === "" || value === "__clear__" ? undefined : value)} items={allOptions} placeholder={placeholder || "Filter..."} bordered={bordered} />;
 }
 
 function defaultWrapperClass(filter: any) {
@@ -54,7 +50,6 @@ function defaultWrapperClass(filter: any) {
 function RenderFilter({ filter }: { filter: any }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
 
   if (filter.type === "search") {
     return <SearchFilter placeholder={filter.placeholder} />;
@@ -67,7 +62,6 @@ function RenderFilter({ filter }: { filter: any }) {
         onChange={filter.onChange}
         placeholder={filter.placeholder}
         bordered={bordered}
-        borderDegree={borderDegree}
         className="w-full"
       />
     );
@@ -81,7 +75,6 @@ function RenderFilter({ filter }: { filter: any }) {
           onChange={filter.onChange}
           placeholder={filter.placeholder}
           bordered={bordered}
-          borderDegree={borderDegree}
           className="w-full"
         />
       );
@@ -99,7 +92,6 @@ function RenderFilter({ filter }: { filter: any }) {
           showIcon
           disabled={filter.disabled}
           bordered={bordered}
-          borderDegree={borderDegree}
           className="w-full"
         />
       );
@@ -114,7 +106,6 @@ function RenderFilter({ filter }: { filter: any }) {
         showIcon
         disabled={filter.disabled}
         bordered={bordered}
-        borderDegree={borderDegree}
         className="w-full"
       />
     );
@@ -151,12 +142,6 @@ function TableAddButton() {
   const addButtonText = useTableStore.use.addButtonText();
   const headerColor = useTableStore.use.headerColor() as TableHeaderColor | undefined;
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
   if (!showAddButton) return null;
 
   const accentHex = headerColor ? HEADER_HEX[headerColor] : undefined;
@@ -172,7 +157,7 @@ function TableAddButton() {
       style={btnStyle}
       aria-label={addButtonText || "Create"}
       title={addButtonText || "Create"}
-      data-border-degree={bordered ? resolvedBorderDegree : undefined}
+      data-bordered={bordered ? "true" : undefined}
       className={`h-10 w-10 shrink-0 cursor-pointer flex items-center justify-center rounded-lg text-white transition-opacity ${baseCls} ${borderedCls}`}
     >
       <Plus className="h-5 w-5" />
@@ -191,23 +176,22 @@ function TableSettingsMenu() {
   const cardComponent = useTableStore.use.CardComponent();
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
 
   if (!showViewToggle && !showColumnVisibility) return null;
 
   const allModes: ViewMode[] = ["table", "cards", "json", "files"];
   const filteredModes = availableModes ?? allModes;
 
-  const modeItems: { value: ViewMode; label: string; icon: React.ReactNode }[] = [];
+  const modeItems: { value: ViewMode; label: string; ariaLabel: string; icon: React.ReactNode }[] = [];
   if (showViewToggle) {
     if (filteredModes.includes("table"))
-      modeItems.push({ value: "table", label: "Table", icon: <List className="h-4 w-4" /> });
+      modeItems.push({ value: "table", label: "Table", ariaLabel: "Table view", icon: <List className="h-4 w-4" /> });
     if (filteredModes.includes("cards") && cardComponent)
-      modeItems.push({ value: "cards", label: "Cards", icon: <LayoutGrid className="h-4 w-4" /> });
+      modeItems.push({ value: "cards", label: "Cards", ariaLabel: "Cards view", icon: <LayoutGrid className="h-4 w-4" /> });
     if (filteredModes.includes("json") && (jsonValue !== undefined || renderJson))
-      modeItems.push({ value: "json", label: "JSON", icon: <Code className="h-4 w-4" /> });
+      modeItems.push({ value: "json", label: "JSON", ariaLabel: "JSON view", icon: <Code className="h-4 w-4" /> });
     if (filteredModes.includes("files"))
-      modeItems.push({ value: "files", label: "Files", icon: <FolderOpen className="h-4 w-4" /> });
+      modeItems.push({ value: "files", label: "Files", ariaLabel: "Files view", icon: <FolderOpen className="h-4 w-4" /> });
   }
 
   const columns = table?.getAllColumns?.().filter((c: any) => c.getCanHide()) ?? [];
@@ -217,7 +201,7 @@ function TableSettingsMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <BaseInput className="w-auto cursor-pointer px-3" onClick={(e) => e.preventDefault()} bordered={bordered} borderDegree={borderDegree}>
+        <BaseInput aria-label="Table settings" className="w-auto cursor-pointer px-3" bordered={bordered}>
           <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
         </BaseInput>
       </DropdownMenuTrigger>
@@ -230,7 +214,7 @@ function TableSettingsMenu() {
             </DropdownMenuLabel>
             <DropdownMenuRadioGroup value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
               {modeItems.map((item) => (
-                <DropdownMenuRadioItem key={item.value} value={item.value}>
+                <DropdownMenuRadioItem key={item.value} value={item.value} aria-label={item.ariaLabel}>
                   {item.icon}
                   <span>{item.label}</span>
                 </DropdownMenuRadioItem>
@@ -291,11 +275,11 @@ export function NTableHeader() {
 
   if (isCustomMode) {
     if (!showViewToggle && !showColumnVisibility && !headerSlot && !hasControls) return null;
-    if (hideDataChrome && !hasControls) return null;
-    const justify = (headerSlot && !hideDataChrome) ? "justify-between" : "justify-end";
+    if (hideDataChrome) return null;
+    const justify = headerSlot ? "justify-between" : "justify-end";
     return (
       <div data-ntable-header className={cn("flex shrink-0 items-center gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
-        {headerSlot && !hideDataChrome && <div className="flex min-w-0 flex-1 items-center gap-2">{headerSlot}</div>}
+        {headerSlot && <div className="flex min-w-0 flex-1 items-center gap-2">{headerSlot}</div>}
         {hasControls && <div className="flex gap-2 shrink-0"><TableSettingsMenu /><TableAddButton /></div>}
       </div>
     );
@@ -304,18 +288,15 @@ export function NTableHeader() {
   const hasFilters = Array.isArray(filters) && filters.length > 0;
   const hasToolbar = Boolean(renderToolbar);
   if (!hasFilters && !hasControls && !headerSlot && !hasToolbar) return null;
-  if (hideDataChrome && !hasControls) return null;
+  if (hideDataChrome) return null;
 
-  const onlyControls = hideDataChrome && hasControls && !headerSlot && !hasToolbar;
-  const justify = onlyControls
-    ? "justify-end"
-    : (hasControls || headerSlot || hasToolbar) ? "justify-between" : "justify-start";
+  const justify = (hasControls || headerSlot || hasToolbar) ? "justify-between" : "justify-start";
 
   return (
     <div data-ntable-header className={cn("flex shrink-0 items-center gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
-      {!hideDataChrome && <TableFilters />}
-      {headerSlot && !hideDataChrome && <div className="ml-auto flex shrink-0 items-center gap-2">{headerSlot}</div>}
-      {!hideDataChrome && <TableToolbarSlot />}
+      <TableFilters />
+      {headerSlot && <div className="ml-auto flex shrink-0 items-center gap-2">{headerSlot}</div>}
+      <TableToolbarSlot />
       {hasControls && <div className="flex gap-2 shrink-0"><TableSettingsMenu /><TableAddButton /></div>}
     </div>
   );

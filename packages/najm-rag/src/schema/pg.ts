@@ -88,7 +88,10 @@ export const chatbotDocumentEmbeddingsTable = pgTable('chatbot_document_embeddin
   model: text('model').notNull().default(''),
   dimensions: integer('dimensions').notNull().default(768),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow(),
-});
+}, (table) => [
+  index('chatbot_document_embeddings_hnsw_idx')
+    .using('hnsw', sql`${table.embedding} vector_cosine_ops`),
+]);
 
 export const chatbotStudioAuditLogsTable = pgTable('chatbot_studio_audit_logs', {
   id: text('id').primaryKey().$defaultFn(() => nanoid(12)),

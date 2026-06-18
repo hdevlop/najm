@@ -1,8 +1,9 @@
 import React from 'react';
+import { useForm } from 'react-hook-form';
 import { useApiClient } from '@/lib/api';
 import { useToast } from '@/lib/toast';
 import type { Webhook } from '@/features/webhooks/types';
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, NForm, FormInput, useNForm } from 'najm-ui';
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, NForm, FormInput } from 'najm-kit';
 
 interface WebhookFormModalProps {
   initial?: Webhook | null;
@@ -10,23 +11,30 @@ interface WebhookFormModalProps {
   onSaved: () => void;
 }
 
+interface WebhookFormValues {
+  url: string;
+  events: string;
+  headersJson: string;
+  enabled: boolean;
+}
+
 export function WebhookFormModal({ initial, onClose, onSaved }: WebhookFormModalProps) {
   const api = useApiClient();
   const toast = useToast();
 
-  const formValues = {
+  const formValues: WebhookFormValues = {
     url: initial?.url ?? '',
     events: (initial?.events ?? []).join(', '),
     headersJson: initial?.headers ? JSON.stringify(initial.headers, null, 2) : '',
     enabled: initial?.enabled ?? true,
   };
-  const form = useNForm({ defaultValues: formValues, values: formValues });
+  const form = useForm<WebhookFormValues>({ defaultValues: formValues, values: formValues });
   const url = form.watch('url');
   const [saving, setSaving] = React.useState(false);
 
   const isEdit = !!initial?.id;
 
-  async function handleSubmit(values: typeof formValues) {
+  async function handleSubmit(values: WebhookFormValues) {
     if (!values.url.trim()) return;
 
     let headers: Record<string, string> | undefined;
@@ -80,7 +88,7 @@ export function WebhookFormModal({ initial, onClose, onSaved }: WebhookFormModal
         <DialogHeader>
           <DialogTitle>{isEdit ? 'Edit Webhook' : 'Create Webhook'}</DialogTitle>
         </DialogHeader>
-        <NForm form={form} variant="studio" onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <NForm form={form as any} variant="studio" onSubmit={handleSubmit as any} className="flex flex-col gap-3">
           <FormInput name="url" type="text" formLabel="URL" required placeholder="https://example.com/hook" />
           <FormInput name="events" type="text" formLabel="Events (comma-separated; empty = all)" placeholder="message, connection_update" />
           <FormInput

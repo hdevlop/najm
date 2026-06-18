@@ -35,7 +35,6 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const showContent = useTableStore.use.showContent();
   const classNames = useTableStore.use.classNames();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
   const renderSubRow = useTableStore.use.renderSubRow();
   const userGetRowCanExpand = useTableStore.use.getRowCanExpand();
 
@@ -147,7 +146,6 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
             openRowMenu={openRowMenu}
             menuButton={menuButton}
             bordered={bordered}
-            borderDegree={borderDegree}
           >
             <CardComponent
               data={row.original}

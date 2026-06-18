@@ -51,10 +51,14 @@ export class PgVectorStrategy implements VectorStrategy {
   async search(db: any, table: any, embedding: number[], limit: number, threshold: number) {
     const vectorStr = `[${embedding.join(',')}]`;
     const rows = await db.execute(sql`
-      SELECT "tool_name", 1 - (embedding <=> ${vectorStr}::vector) AS similarity
-      FROM ${table}
-      WHERE 1 - (embedding <=> ${vectorStr}::vector) >= ${threshold}
-      ORDER BY embedding <=> ${vectorStr}::vector
+      SELECT tool_name, similarity
+      FROM (
+        SELECT "tool_name", 1 - (embedding <=> ${vectorStr}::vector) AS similarity
+        FROM ${table}
+        WHERE embedding IS NOT NULL
+      ) t
+      WHERE similarity >= ${threshold}
+      ORDER BY similarity DESC
       LIMIT ${limit}
     `);
     return normalizeSemanticRows(rows);
@@ -64,10 +68,14 @@ export class PgVectorStrategy implements VectorStrategy {
     const vectorStr = `[${embedding.join(',')}]`;
     const col = keyColumn.replace(/([A-Z])/g, '_$1').toLowerCase();
     const rows = await db.execute(sql`
-      SELECT "${sql.raw(col)}", 1 - (embedding <=> ${vectorStr}::vector) AS similarity
-      FROM ${table}
-      WHERE 1 - (embedding <=> ${vectorStr}::vector) >= ${threshold}
-      ORDER BY embedding <=> ${vectorStr}::vector
+      SELECT ${sql.raw(col)}, similarity
+      FROM (
+        SELECT "${sql.raw(col)}", 1 - (embedding <=> ${vectorStr}::vector) AS similarity
+        FROM ${table}
+        WHERE embedding IS NOT NULL
+      ) t
+      WHERE similarity >= ${threshold}
+      ORDER BY similarity DESC
       LIMIT ${limit}
     `);
     return normalizeVectorRows(rows, keyColumn);
@@ -82,11 +90,14 @@ export class SqliteVecStrategy implements VectorStrategy {
   async search(db: any, table: any, embedding: number[], limit: number, threshold: number) {
     const vec = encodeF32(embedding);
     const rows = await db.all(sql`
-      SELECT tool_name, 1 - vec_distance_cosine(embedding, ${vec}) AS similarity
-      FROM ${table}
-      WHERE embedding IS NOT NULL
-        AND 1 - vec_distance_cosine(embedding, ${vec}) >= ${threshold}
-      ORDER BY vec_distance_cosine(embedding, ${vec}) ASC
+      SELECT tool_name, similarity
+      FROM (
+        SELECT tool_name, 1 - vec_distance_cosine(embedding, ${vec}) AS similarity
+        FROM ${table}
+        WHERE embedding IS NOT NULL
+      )
+      WHERE similarity >= ${threshold}
+      ORDER BY similarity DESC
       LIMIT ${limit}
     `);
     return normalizeSemanticRows(rows);
@@ -96,11 +107,14 @@ export class SqliteVecStrategy implements VectorStrategy {
     const vec = encodeF32(embedding);
     const col = keyColumn.replace(/([A-Z])/g, '_$1').toLowerCase();
     const rows = await db.all(sql`
-      SELECT ${sql.raw(col)}, 1 - vec_distance_cosine(embedding, ${vec}) AS similarity
-      FROM ${table}
-      WHERE embedding IS NOT NULL
-        AND 1 - vec_distance_cosine(embedding, ${vec}) >= ${threshold}
-      ORDER BY vec_distance_cosine(embedding, ${vec}) ASC
+      SELECT ${sql.raw(col)}, similarity
+      FROM (
+        SELECT ${sql.raw(col)}, 1 - vec_distance_cosine(embedding, ${vec}) AS similarity
+        FROM ${table}
+        WHERE embedding IS NOT NULL
+      )
+      WHERE similarity >= ${threshold}
+      ORDER BY similarity DESC
       LIMIT ${limit}
     `);
     return normalizeVectorRows(rows, keyColumn);

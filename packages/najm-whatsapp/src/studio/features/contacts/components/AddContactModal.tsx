@@ -2,7 +2,7 @@ import React from 'react';
 import { useApiClient } from '@/lib/api';
 import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { useToast } from '@/lib/toast';
-import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, NForm, FormInput, useNForm } from 'najm-ui';
+import { Button, Dialog, DialogContent, DialogHeader, DialogTitle, NForm, FormInput, useNForm } from 'najm-kit';
 
 interface AddContactModalProps {
   onClose: () => void;

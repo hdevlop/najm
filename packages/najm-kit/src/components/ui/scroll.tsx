@@ -44,10 +44,6 @@ export function NajmScroll({ className, axis = "y", autoHide = "never", viewport
       className={cn(className)}
       style={{
         ...(style as React.CSSProperties | undefined),
-        display: "flex",
-        alignItems: "stretch",
-        flexDirection: "row",
-        flexWrap: "nowrap",
         overflow: "hidden",
         minHeight: 0,
         minWidth: 0,

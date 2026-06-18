@@ -1,7 +1,8 @@
 import { Inject, Injectable } from 'najm-core';
-import bcrypt from 'bcryptjs'
 import { createCipheriv, createDecipheriv, randomBytes } from 'crypto';
-import { AUTH_ENCRYPTION_KEY } from '../auth.tokens';
+import { AUTH_CONFIG, AUTH_ENCRYPTION_KEY } from '../auth.tokens';
+import type { AuthConfig } from '../types';
+import { hashPassword, verifyPassword } from './password';
 
 const REQUIRED_KEY_BYTES = 32;
 
@@ -23,6 +24,7 @@ function decodeKey(raw: string): Buffer {
 
 @Injectable()
 export class EncryptionService {
+  @Inject(AUTH_CONFIG) private config?: AuthConfig;
   private encryptionKey: Buffer;
 
   constructor(
@@ -38,11 +40,11 @@ export class EncryptionService {
   }
 
   async hashPassword(password: string): Promise<string> {
-    return bcrypt.hash(password, 10);
+    return hashPassword(password, this.config?.bcryptRounds ?? 10);
   }
 
   async comparePassword(password: string, hashedPassword: string): Promise<boolean> {
-    return bcrypt.compare(password, hashedPassword);
+    return verifyPassword(password, hashedPassword);
   }
 
   encrypt(plaintext: string): string {

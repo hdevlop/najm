@@ -3,7 +3,7 @@ import * as SheetPrimitive from "@radix-ui/react-dialog"
 import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 import { cn } from "../../lib/cn"
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders"
+import { NajmThemeContainerCtx } from "../../theme/provider"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -18,7 +18,8 @@ function SheetClose({ ...props }: React.ComponentProps<typeof SheetPrimitive.Clo
 }
 
 function SheetPortal({ ...props }: React.ComponentProps<typeof SheetPrimitive.Portal>) {
-  return <SheetPrimitive.Portal data-slot="sheet-portal" {...props} />
+  const container = React.useContext(NajmThemeContainerCtx);
+  return <SheetPrimitive.Portal data-slot="sheet-portal" container={container ?? undefined} {...props} />
 }
 
 function SheetOverlay({ className, ...props }: React.ComponentProps<typeof SheetPrimitive.Overlay>) {
@@ -55,14 +56,13 @@ type SheetContentProps = React.ComponentProps<typeof SheetPrimitive.Content> &
   }
 
 function SheetContent({ className, portalClassName, side, children, ...props }: SheetContentProps) {
-  const resolvedBorderDegree = useResolvedBorderDegree();
   return (
     <SheetPortal>
       <div className={portalClassName}>
         <SheetOverlay />
         <SheetPrimitive.Content
           data-slot="sheet-content"
-          className={cn(sheetVariants({ side }), borderColorClassForDegree(resolvedBorderDegree), className)}
+          className={cn(sheetVariants({ side }), className)}
           {...props}
         >
           {children}

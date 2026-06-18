@@ -35,30 +35,32 @@ import { AppShellPage } from './docs/pages/AppShellPage';
 import { SidebarPage } from './docs/pages/SidebarPage';
 import { PageHeaderPage } from './docs/pages/PageHeaderPage';
 import { WizardFormPage } from './docs/pages/MultiStepFormPage';
+import { ThemeJsonPage } from './docs/pages/ThemeJsonPage';
 
 const DEEP_DARK_TOKENS: NajmThemeTokens = {
-  background: '240 10% 3.9%',
-  foreground: '210 40% 98%',
-  card: '222 47% 11%',
-  'card-foreground': '210 40% 98%',
-  popover: '222 47% 11%',
-  'popover-foreground': '210 40% 98%',
-  primary: '263 70% 50%',
-  'primary-foreground': '0 0% 100%',
-  secondary: '217 33% 17%',
-  'secondary-foreground': '210 40% 92%',
-  muted: '217 33% 17%',
-  'muted-foreground': '215 20% 55%',
-  destructive: '0 84% 60%',
-  'destructive-foreground': '0 0% 100%',
-  border: '217 33% 17%',
-  input: '217 33% 22%',
-  ring: '258 90% 66%',
+  background: 'oklch(0.145 0.024 285.7)',
+  foreground: 'oklch(0.968 0.001 286.375)',
+  card: 'oklch(0.21 0.034 285.3)',
+  'card-foreground': 'oklch(0.968 0.001 286.375)',
+  popover: 'oklch(0.21 0.034 285.3)',
+  'popover-foreground': 'oklch(0.968 0.001 286.375)',
+  primary: 'oklch(0.4865 0.2423 291.866)',
+  'primary-foreground': 'oklch(1 0 0)',
+  secondary: 'oklch(0.274 0.024 285.5)',
+  'secondary-foreground': 'oklch(0.92 0.003 286.332)',
+  muted: 'oklch(0.274 0.024 285.5)',
+  'muted-foreground': 'oklch(0.7 0.017 285.896)',
+  destructive: 'oklch(0.6368 0.2078 25.326)',
+  'destructive-foreground': 'oklch(1 0 0)',
+  border: 'oklch(0.32 0.029 285.8)',
+  input: 'oklch(0.32 0.029 285.8)',
+  ring: 'oklch(0.6016 0.2214 292.234)',
   radius: '0.5rem',
 };
 
 const pageRegistry: Record<string, () => React.ReactElement> = {
   introduction: () => <IntroductionPage />,
+  'theme-json-dashboard': () => <ThemeJsonPage />,
   button: () => <ButtonPage />,
   toggle: () => <TogglePage />,
   swap: () => <SwapPage />,

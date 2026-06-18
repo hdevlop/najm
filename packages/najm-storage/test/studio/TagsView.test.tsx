@@ -32,6 +32,10 @@ mock.module('../../src/studio/features/tags/hooks/useTags', () => ({
   },
 }));
 
+mock.module('../../src/studio/features/tags/hooks/useTagCapabilities', () => ({
+  useTagCapabilities: () => ({ data: { tags: true, presign: false, trash: false, buckets: false } }),
+}));
+
 mock.module('../../src/studio/features/dashboard/hooks/useBuckets', () => ({
   useBuckets: () => ({
     data: [{ name: 'test-bucket' }, { name: 'other-bucket' }],
@@ -42,7 +46,7 @@ mock.module('sonner', () => ({
   toast: { error: mock(() => {}), success: mock(() => {}), info: mock(() => {}) },
 }));
 
-mock.module('najm-ui', () => ({
+mock.module('najm-kit', () => ({
   NEmptyState: ({ title }: any) => <div data-testid="empty-state">{title}</div>,
   NTable: ({ data, columns, renderEmpty }: any) => {
     if (!data || data.length === 0) return renderEmpty?.() ?? <div>No data</div>;
@@ -64,6 +68,17 @@ mock.module('najm-ui', () => ({
   },
   Button: ({ children, onClick, disabled, ...props }: any) => (
     <button onClick={onClick} disabled={disabled} {...props}>{children}</button>
+  ),
+  NPageHeader: ({ title, subtitle, actions, filters, children }: any) => (
+    <div>
+      <div>
+        <h2>{title}</h2>
+        {subtitle && <p>{subtitle}</p>}
+        {actions}
+        {filters}
+      </div>
+      {children}
+    </div>
   ),
   NConfirmDialog: ({ open, onConfirm, title, confirmLabel }: any) => {
     if (!open) return null;

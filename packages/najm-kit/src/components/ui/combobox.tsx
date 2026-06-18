@@ -122,7 +122,7 @@ export function Combobox({
               <X className="h-3.5 w-3.5" />
             </span>
           )}
-          <ChevronDown className="h-3.5 w-3.5 text-txt-muted" />
+          <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
         </div>
       </button>
       {open && (

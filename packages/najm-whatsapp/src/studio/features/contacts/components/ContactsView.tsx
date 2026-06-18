@@ -5,7 +5,7 @@ import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { ContactList } from './ContactList';
 import { AddContactModal } from './AddContactModal';
 import type { Contact } from '@/features/contacts/types';
-import { NPageHeader, NEmptyState, Button, Input } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button, Input } from 'najm-kit';
 
 export function ContactsView() {
   const api = useApiClient();

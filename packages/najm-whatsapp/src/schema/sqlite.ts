@@ -27,6 +27,8 @@ export const whatsappInstances = sqliteTable('whatsapp_instances', {
   profileName: text('profile_name'),
   connectedAt: text('connected_at'),
   lastSeenAt: text('last_seen_at'),
+  autoConnect: integer('auto_connect', { mode: 'boolean' }).notNull().default(false),
+  lastError: text('last_error'),
 });
 
 /**
@@ -125,6 +127,7 @@ export const whatsappWebhooks = sqliteTable('whatsapp_webhooks', {
   events: text('events'),
   headers: text('headers'),
   enabled: integer('enabled', { mode: 'boolean' }).default(true).notNull(),
+  signingSecret: text('signing_secret'),
 });
 
 /**
@@ -197,6 +200,7 @@ export const whatsappAiConfigs = sqliteTable('whatsapp_ai_configs', {
   model: text('model'),
   systemPrompt: text('system_prompt'),
   temperature: text('temperature'),
+  limits: text('limits'),
   updatedAt: text('updated_at').$defaultFn(() => new Date().toISOString()),
 });
 

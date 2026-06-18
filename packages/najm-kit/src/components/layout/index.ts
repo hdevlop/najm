@@ -1,6 +1,8 @@
 export { NAppShell } from "./NAppShell";
 export { NNavbar } from "./NNavbar";
 export { NCommandPalette } from "./NCommandPalette";
+export { NPageLayout } from "./NPageLayout";
+export type { NPageLayoutProps } from "./NPageLayout";
 export { NPageHeader, NPageHeaderActions, NPageHeaderFilters, NPageHeaderTop } from "./NPageHeader";
 export type { NPageHeaderProps } from "./NPageHeader";
 export { NInspectorSheet } from "./NInspectorSheet";

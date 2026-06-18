@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { NTable, type NTableProps } from "../../src/components/table/NTable";
@@ -38,8 +39,17 @@ function TableWrapper(props: Partial<NTableProps<Row>>) {
   );
 }
 
+function openSettingsDropdown(container: HTMLElement) {
+  const trigger = container.querySelector("[aria-label='Table settings']") as HTMLElement | null;
+  if (trigger && trigger.getAttribute("data-state") !== "open") {
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.click(trigger);
+  }
+}
+
 function getButtonByLabel(container: HTMLElement, label: string): HTMLElement | null {
-  const all = container.querySelectorAll("[aria-label]");
+  openSettingsDropdown(container);
+  const all = document.querySelectorAll("[aria-label]");
   for (const el of all) {
     if (el.getAttribute("aria-label")?.toLowerCase().includes(label.toLowerCase())) {
       return el as HTMLElement;
@@ -58,9 +68,11 @@ describe("NTable JSON mode", () => {
         showViewToggle={true}
       />
     );
-    // JsonViewer renders a CodeMirror editor
-    const editor = container.querySelector(".cm-editor");
-    expect(editor).toBeTruthy();
+    // JSON view renders the formatted JSON content
+    const pre = container.querySelector("pre");
+    expect(pre).toBeTruthy();
+    expect(pre?.textContent).toContain('"name"');
+    expect(pre?.textContent).toContain('"Alice"');
   });
 
   test("renders custom renderJson when provided in JSON mode", () => {
@@ -175,9 +187,10 @@ describe("NTable controlled mode", () => {
         showViewToggle={true}
       />
     );
-    // Should show the JsonViewer (cm-editor)
-    const editor = container.querySelector(".cm-editor");
-    expect(editor).toBeTruthy();
+    // JSON view should render the formatted JSON content
+    const pre = container.querySelector("pre");
+    expect(pre).toBeTruthy();
+    expect(pre?.textContent).toContain('"Alice"');
     // Table should not be visible
     const tableEl = container.querySelector("table");
     expect(tableEl).toBeNull();
@@ -246,11 +259,12 @@ describe("NTable availableModes", () => {
     const cardsBtn = getButtonByLabel(container, "cards");
     expect(cardsBtn).toBeNull();
 
-    // Click table button - should work
-    const tableBtn = getButtonByLabel(container, "table");
-    expect(tableBtn).toBeTruthy();
-    fireEvent.click(tableBtn);
-    expect(emittedModes).toContain("table");
+    // Click json button - should work
+    const jsonBtn = getButtonByLabel(container, "json");
+    expect(jsonBtn).toBeTruthy();
+    fireEvent.pointerDown(jsonBtn, { button: 0, pointerType: "mouse" });
+    fireEvent.click(jsonBtn);
+    expect(emittedModes).toContain("json");
     expect(emittedModes).not.toContain("cards");
   });
 

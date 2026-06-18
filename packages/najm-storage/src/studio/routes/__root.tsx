@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react';
 import { createRootRoute, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
-import { NSidebar } from 'najm-ui';
+import { NSidebar } from 'najm-kit';
 import { BarChart3, Archive, HardDrive, Trash2, Link, Tag } from 'lucide-react';
 import { useBuckets } from '@/features/dashboard/hooks/useBuckets';
 import { useUsage } from '@/features/dashboard/hooks/useUsage';
@@ -99,6 +99,7 @@ function RootLayout() {
           activePath={activePath}
           onNavigate={handleNavigate}
           showSectionSeparators
+          collapseButtonPosition="nav"
           footer={
             <div className="px-3 py-2">
               <div className="mb-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-txt-muted">Storage Quota</div>

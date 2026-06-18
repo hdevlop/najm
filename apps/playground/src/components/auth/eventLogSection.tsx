@@ -2,7 +2,7 @@
 
 import { useAuthEvents, useAuthEvent } from 'najm-auth/client/react';
 import { toast } from 'sonner';
-import { Badge } from '@/components/ui/badge';
+import { NBadge } from 'najm-kit';
 
 export function EventLogSection() {
   const events = useAuthEvents({ maxEntries: 20 });
@@ -31,9 +31,9 @@ export function EventLogSection() {
             .reverse()
             .map((entry, i) => (
               <div key={i} className="flex items-start gap-3 rounded border px-3 py-2 text-sm">
-                <Badge variant="outline" className="shrink-0">
+                <NBadge color="neutral" look="outline" className="shrink-0">
                   {entry.event}
-                </Badge>
+                </NBadge>
                 <span className="font-mono text-xs text-muted-foreground">
                   {new Date(entry.timestamp).toLocaleTimeString()}
                 </span>

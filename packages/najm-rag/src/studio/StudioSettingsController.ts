@@ -15,11 +15,11 @@ import { Validate } from 'najm-validation';
 import { isAdmin } from 'najm-auth';
 import { McpTool, ToolGroup } from 'najm-mcp';
 import { SemanticPhraseService } from '../chatbotRag/SemanticPhraseService';
-import { EmbeddingService } from '../embeddings';
+import { EmbeddingService } from '../embeddings/EmbeddingService';
 import { RoutingSettingsService } from '../routingSettings/RoutingSettingsService';
 import { updateRoutingSettingsSchema } from '../routingSettings/RoutingSettingsDto';
 import { StudioAuditService } from './StudioAuditService';
-import { UnmatchedQueryService } from '../unmatched';
+import { UnmatchedQueryService } from '../unmatched/UnmatchedQueryService';
 
 @Controller('/rag-studio')
 @ToolGroup('rag_studio')

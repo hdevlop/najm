@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { NEmptyState as EmptyState, NErrorState as ErrorState, NLoadingState as LoadingState } from 'najm-ui';
+import { NEmptyState as EmptyState, NErrorState as ErrorState, NLoadingState as LoadingState } from 'najm-kit';
 import { DashboardView } from '../../src/studio/features/dashboard';
 import { NamespaceBreakdown } from '../../src/studio/features/dashboard/components/NamespaceBreakdown';
 import { RecentActivityTable } from '../../src/studio/features/dashboard/components/RecentActivityTable';

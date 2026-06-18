@@ -1,0 +1,250 @@
+/*
+ * najm-kit v4 theme entry. Consumers use:
+ *
+ *   @import "tailwindcss";
+ *   @import "najm-kit/theme.css";
+ *
+ * This file is the source of truth; the build copies it to dist/theme.css and
+ * appends the third-party (overlayscrollbars, phone) CSS so consumers get a
+ * single self-contained import. The `@source` below resolves relative to this
+ * file's location, so the consumer's Tailwind v4 build scans najm-kit's
+ * compiled components in dist (or the source dir when aliased in dev) for the
+ * utility classes they use.
+ *
+ * Token names follow the standard shadcn convention (no package prefix) so
+ * apps can theme najm-kit by pasting a shadcn / tweakcn theme block on top.
+ */
+@import "tw-animate-css";
+
+@source "./";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Classes built dynamically at runtime (borders.ts, BaseInput.tsx, responsive
+   helpers) never appear as literals the scanner can find, so safelist them. */
+@source inline("{sm,md,lg}:{hidden,flex}");
+@source inline("border-{black,white}");
+@source inline("border-{gray,slate,zinc,neutral,stone,red,orange,amber,yellow,green,teal,blue,indigo,purple}{,-600}");
+@source inline("najm-border najm-border-t najm-border-r najm-border-b najm-border-l");
+
+/* Map Tailwind's color/radius theme to the runtime --* tokens. `inline` so
+   utilities resolve --* at the element (NajmThemeProvider scopes them per
+   subtree) instead of locking to :root. */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-tertiary: var(--tertiary);
+  --color-tertiary-foreground: var(--tertiary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-xs: calc(var(--radius) - 4px);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 8px);
+  --radius-3xl: calc(var(--radius) + 12px);
+  --radius-4xl: calc(var(--radius) + 16px);
+
+  --animate-indeterminate-progress: indeterminate-progress 2s ease-in-out infinite;
+}
+
+@keyframes indeterminate-progress {
+  0% { transform: translateX(-100%); width: 40%; }
+  50% { transform: translateX(100%); width: 60%; }
+  100% { transform: translateX(200%); width: 40%; }
+}
+
+/* Default token values (oklch). Override globally via :root / .dark, or per
+   subtree via <NajmThemeProvider>. */
+:root {
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.1445 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.1445 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.1445 0 0);
+  --primary: oklch(0.2228 0.0043 286.044);
+  --primary-foreground: oklch(0.9848 0 0);
+  --secondary: oklch(0.9703 0 0);
+  --secondary-foreground: oklch(0.2044 0 0);
+  --tertiary: oklch(0.9676 0.007 247.897);
+  --tertiary-foreground: oklch(0.3138 0.0453 249.447);
+  --muted: oklch(0.9703 0 0);
+  --muted-foreground: oklch(0.5555 0 0);
+  --accent: oklch(0.2747 0.006 286.001);
+  --accent-foreground: oklch(0.9848 0 0);
+  --destructive: oklch(0.6368 0.2078 25.326);
+  --destructive-foreground: oklch(0.9848 0 0);
+  --border: oklch(0.9219 0 0);
+  --input: oklch(0.9219 0 0);
+  --ring: oklch(0.2228 0.0043 286.044);
+
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.1445 0 0);
+  --sidebar-primary: oklch(0.2228 0.0043 286.044);
+  --sidebar-primary-foreground: oklch(0.9848 0 0);
+  --sidebar-accent: oklch(0.9703 0 0);
+  --sidebar-accent-foreground: oklch(0.2044 0 0);
+  --sidebar-border: oklch(0.9219 0 0);
+  --sidebar-ring: oklch(0.2228 0.0043 286.044);
+
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+
+  --radius: 0.5rem;
+  --border-width: 1px;
+}
+
+.dark {
+  --background: oklch(0.1417 0.0044 285.819);
+  --foreground: oklch(0.9683 0.0014 286.375);
+  --card: oklch(0.1872 0.0066 285.748);
+  --card-foreground: oklch(0.9683 0.0014 286.375);
+  --popover: oklch(0.1872 0.0066 285.748);
+  --popover-foreground: oklch(0.9683 0.0014 286.375);
+  --primary: oklch(0.2228 0.0043 286.044);
+  --primary-foreground: oklch(0.9848 0 0);
+  --secondary: oklch(0.2313 0.007 285.839);
+  --secondary-foreground: oklch(0.9203 0.0034 286.332);
+  --tertiary: oklch(0.3138 0.0453 249.447);
+  --tertiary-foreground: oklch(0.8529 0.0324 248.208);
+  --muted: oklch(0.2313 0.007 285.839);
+  --muted-foreground: oklch(0.6255 0.0171 285.896);
+  --accent: oklch(0.2313 0.007 285.839);
+  --accent-foreground: oklch(0.9683 0.0014 286.375);
+  --destructive: oklch(0.6356 0.2082 25.378);
+  --destructive-foreground: oklch(1 0 0);
+  --border: oklch(0.262 0.0085 285.799);
+  --input: oklch(0.262 0.0085 285.799);
+  --ring: oklch(0.2228 0.0043 286.044);
+
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.9683 0.0014 286.375);
+  --sidebar-primary: oklch(0.4865 0.2423 291.866);
+  --sidebar-primary-foreground: oklch(0.9848 0 0);
+  --sidebar-accent: oklch(0.2313 0.007 285.839);
+  --sidebar-accent-foreground: oklch(0.9683 0.0014 286.375);
+  --sidebar-border: oklch(0.262 0.0085 285.799);
+  --sidebar-ring: oklch(0.4865 0.2423 291.866);
+
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+
+  --radius: 0.5rem;
+}
+
+.najm-border {
+  border-style: solid;
+  border-width: var(--border-width);
+}
+
+.najm-border-t {
+  border-top-style: solid;
+  border-top-width: var(--border-width);
+}
+
+.najm-border-r {
+  border-right-style: solid;
+  border-right-width: var(--border-width);
+}
+
+.najm-border-b {
+  border-bottom-style: solid;
+  border-bottom-width: var(--border-width);
+}
+
+.najm-border-l {
+  border-left-style: solid;
+  border-left-width: var(--border-width);
+}
+
+[data-radix-popper-content-wrapper] {
+  z-index: 10000 !important;
+}
+
+/* Scrollable, but the scrollbar reserves no layout space (hidden in all
+   browsers). `overflow: overlay` was removed from Chrome (~v121) and now
+   behaves like `auto`, so hiding the bar is the only pure-CSS way to avoid
+   the reserved gutter. Scroll via wheel / trackpad / keyboard. */
+.najm-overlay-scroll {
+  overflow: auto;
+  scrollbar-width: none; /* Firefox */
+}
+.najm-overlay-scroll::-webkit-scrollbar {
+  display: none; /* Chromium / Safari */
+}
+.najm-overlay-scroll-y {
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.najm-overlay-scroll-y::-webkit-scrollbar {
+  display: none;
+}
+.najm-overlay-scroll-x {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.najm-overlay-scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* OverlayScrollbars theme used by the <NajmScroll> component — a thin,
+   translucent slate bar that floats over content with no reserved space. */
+.os-theme-najm {
+  --os-size: 10px;
+  --os-padding-perpendicular: 2px;
+  --os-padding-axis: 2px;
+  --os-track-border-radius: 9999px;
+  --os-handle-border-radius: 9999px;
+  --os-handle-bg: rgba(148, 163, 184, 0.3);
+  --os-handle-bg-hover: rgba(148, 163, 184, 0.45);
+  --os-handle-bg-active: rgba(148, 163, 184, 0.6);
+  --os-handle-min-size: 33px;
+  --os-handle-perpendicular-size: 60%;
+  --os-handle-perpendicular-size-hover: 90%;
+}
+
+/* Darker, more subtle handle in dark mode */
+.dark .os-theme-najm {
+  --os-handle-bg: rgba(82, 82, 91, 0.45);
+  --os-handle-bg-hover: rgba(113, 113, 122, 0.6);
+  --os-handle-bg-active: rgba(113, 113, 122, 0.75);
+}

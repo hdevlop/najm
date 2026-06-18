@@ -105,6 +105,7 @@ export class WhatsAppService {
           message_id: inboundMessageId,
           typing_indicator: { type: 'text' },
         }),
+        signal: AbortSignal.timeout(5_000),
       });
     } catch {
       this.log.debug?.('Typing indicator failed (non-critical)');
@@ -119,6 +120,7 @@ export class WhatsAppService {
       method: 'POST',
       headers: this.headers,
       body: JSON.stringify(body),
+      signal: AbortSignal.timeout(15_000),
     });
 
     if (!res.ok) {

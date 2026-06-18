@@ -20,14 +20,14 @@ export function NSidebarSection({
       data-sidebar-section
       className={cn(
         "flex flex-col gap-1",
-        showSectionSeparators && !isFirst && "border-t border-border/70 pt-3"
+        showSectionSeparators && !isFirst && "border-t border-sidebar-border/70 pt-3"
       )}
     >
       {showSectionLabels && group.sectionLabel && (
         collapsed ? (
           <div className="h-5" />
         ) : (
-          <div className="flex items-center gap-2 h-5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
+          <div className="flex items-center gap-2 h-5 text-[11px] font-semibold uppercase tracking-wider text-sidebar-foreground/60">
             {showSectionIcons && group.sectionIcon && <group.sectionIcon className="h-3.5 w-3.5 shrink-0" />}
             <span>{group.sectionLabel}</span>
           </div>

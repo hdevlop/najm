@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Archive, FolderPlus, Trash2, Copy, Share2, Move, Tag, UploadCloud, X } from 'lucide-react';
-import { NPageHeader, NBulkActionsBar, type NBulkAction } from 'najm-ui';
+import { NPageHeader, NBulkActionsBar, type NBulkAction } from 'najm-kit';
 
 import { useObjects } from '../hooks/useObjects';
 import { useSelection } from '../hooks/useSelection';
@@ -18,7 +18,7 @@ import { useExplorerDialogs } from '../hooks/useExplorerDialogs';
 import { useExplorerContextMenu } from '../hooks/useExplorerContextMenu';
 import { useBackgroundContextMenu } from '../hooks/useBackgroundContextMenu';
 import { useUploadManager } from '../hooks/useUploadManager';
-import { NConfirmDialog } from 'najm-ui';
+import { NConfirmDialog } from 'najm-kit';
 import { NewFolderSheet } from './NewFolderSheet';
 import { RenameSheet } from './RenameSheet';
 import { MoveSheet } from './MoveSheet';
@@ -208,42 +208,21 @@ export function ExplorerView({ bucket, view, onViewChange, prefix, onPrefixChang
             </button>
           </>
         }
-        top={
-          <div className="border-b border-border px-4 py-2.5 sm:px-5">
-            <div className="flex items-center gap-2">
-              <Breadcrumb prefix={prefix} onNavigate={onPrefixChange} />
-              {tagFilter && (
-                <span className="inline-flex items-center gap-1 rounded-md bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">
-                  Tag: {tagFilter}
-                  <button onClick={() => setTagFilter(null)} className="ml-0.5 hover:text-white" aria-label="Clear tag filter">
-                    <X size={12} />
-                  </button>
-                </span>
-              )}
-            </div>
-          </div>
-        }
-        footer={
-          selected.size > 0 ? (
-            <div className="relative h-0 w-full">
-              <NBulkActionsBar
-                count={selected.size}
-                variant="floating"
-                onClear={clear}
-                onAction={handleBatchAction}
-                actions={[
-                  { id: 'move',   label: 'Move',   icon: Move } as NBulkAction,
-                  { id: 'copy',   label: 'Copy',   icon: Copy } as NBulkAction,
-                  ...(capabilities?.tags ? [{ id: 'tag', label: 'Tag', icon: Tag } as NBulkAction] : []),
-                  { id: 'share',  label: 'Share',  icon: Share2 } as NBulkAction,
-                  { id: 'delete', label: 'Delete', icon: Trash2, danger: true } as NBulkAction,
-                ]}
-              />
-            </div>
-          ) : undefined
-        }
-        contentClassName="flex flex-1 overflow-hidden"
-      >
+      />
+      <div className="border-b border-border px-4 py-2.5 sm:px-5">
+        <div className="flex items-center gap-2">
+          <Breadcrumb prefix={prefix} onNavigate={onPrefixChange} />
+          {tagFilter && (
+            <span className="inline-flex items-center gap-1 rounded-md bg-brand/15 px-2 py-0.5 text-xs font-medium text-brand">
+              Tag: {tagFilter}
+              <button onClick={() => setTagFilter(null)} className="ml-0.5 hover:text-white" aria-label="Clear tag filter">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="flex flex-1 overflow-hidden">
         <div className="flex flex-1 overflow-hidden">
           <FileBrowser
             files={files}
@@ -269,7 +248,24 @@ export function ExplorerView({ bucket, view, onViewChange, prefix, onPrefixChang
             onSortingChange={handleSortingChange}
           />
         </div>
-      </NPageHeader>
+      </div>
+      {selected.size > 0 && (
+        <div className="relative h-0 w-full">
+          <NBulkActionsBar
+            count={selected.size}
+            variant="floating"
+            onClear={clear}
+            onAction={handleBatchAction}
+            actions={[
+              { id: 'move',   label: 'Move',   icon: Move } as NBulkAction,
+              { id: 'copy',   label: 'Copy',   icon: Copy } as NBulkAction,
+              ...(capabilities?.tags ? [{ id: 'tag', label: 'Tag', icon: Tag } as NBulkAction] : []),
+              { id: 'share',  label: 'Share',  icon: Share2 } as NBulkAction,
+              { id: 'delete', label: 'Delete', icon: Trash2, danger: true } as NBulkAction,
+            ]}
+          />
+        </div>
+      )}
 
       {ctx.menu}
       <PreviewSheet file={previewFile} files={files} onClose={() => setPreviewFile(null)} onNavigate={(f) => setPreviewFile(f)} />

@@ -2,8 +2,8 @@ import type { SeedEntry } from 'najm-database';
 import { createRoleDto } from './roles/RoleDto';
 import { createUserDto } from './users/UserDto';
 import { createPermissionDto } from './permissions/PermissionDto';
-import { hash } from 'bcryptjs';
 import type { AuthSeedConfig } from './seed.types';
+import { hashPassword } from './auth/password';
 
 const toSeedId = (prefix: string, value: string): string => {
   const normalized = value
@@ -81,7 +81,7 @@ export const authSeed = (config: AuthSeedConfig): Record<string, SeedEntry> => (
       const users = [
         {
           email: config.adminEmail,
-          password: await hash(config.adminPass, 10),
+          password: await hashPassword(config.adminPass, config.bcryptRounds ?? 10),
           roleId: adminRole.id,
           emailVerified: true,
           status: 'active' as 'active' | 'inactive' | 'pending',
@@ -107,7 +107,7 @@ export const authSeed = (config: AuthSeedConfig): Record<string, SeedEntry> => (
 
           users.push({
             email: user.email,
-            password: await hash(user.password, 10),
+            password: await hashPassword(user.password, config.bcryptRounds ?? 10),
             roleId: role.id,
             emailVerified: user.emailVerified ?? true,
             status: (user.status ?? 'active') as 'active' | 'inactive' | 'pending',

@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { cn } from "../../lib/cn";
 import { cva } from "class-variance-authority";
 import { Checkbox } from "../ui/checkbox";
@@ -25,7 +25,6 @@ export function CheckboxGroupInput({
   variant = "default",
   status = "default",
   bordered,
-  borderDegree,
   borderColor,
   disabled = false,
 }: CheckboxGroupInputProps & { disabled?: boolean }) {
@@ -35,7 +34,7 @@ export function CheckboxGroupInput({
   };
 
   return (
-    <BaseInput variant={variant} status={status} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={cn("flex-wrap", className)} disabled={disabled}>
+    <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("flex-wrap", className)} disabled={disabled}>
       <div className={cn(layoutVariants({ layout }))}>
         {items.map((item) => {
           const itemValue = typeof item === "string" ? item : item.value;

@@ -30,35 +30,35 @@ export class ToolIndexRepository {
 
   async upsertEmbedding(data: UpsertEmbeddingData): Promise<void> {
     const table = this.validator.embeddingsTable();
-    const existing = await this.findEmbeddingByToolName(data.toolName);
     const encodedEmbedding = this.vectors.encodeEmbedding(data.embedding);
+    const values = {
+      toolName: data.toolName,
+      description: data.description,
+      group: data.group ?? null,
+      localName: data.localName ?? null,
+      argNames: data.argNames ?? null,
+      annotations: data.annotations ?? null,
+      fingerprint: data.fingerprint,
+      embedding: encodedEmbedding,
+    };
+    const set = {
+      description: data.description,
+      group: data.group ?? null,
+      localName: data.localName ?? null,
+      argNames: data.argNames ?? null,
+      annotations: data.annotations ?? null,
+      fingerprint: data.fingerprint,
+      embedding: encodedEmbedding,
+      updatedAt: sql`CURRENT_TIMESTAMP`,
+    };
 
-    if (existing) {
-      await this.db
-        .update(table)
-        .set({
-          description: data.description,
-          group: data.group ?? null,
-          localName: data.localName ?? null,
-          argNames: data.argNames ?? null,
-          annotations: data.annotations ?? null,
-          fingerprint: data.fingerprint,
-          embedding: encodedEmbedding,
-          updatedAt: sql`CURRENT_TIMESTAMP`,
-        })
-        .where(eq(table.id, existing.id));
-    } else {
-      await this.db.insert(table).values({
-        toolName: data.toolName,
-        description: data.description,
-        group: data.group ?? null,
-        localName: data.localName ?? null,
-        argNames: data.argNames ?? null,
-        annotations: data.annotations ?? null,
-        fingerprint: data.fingerprint,
-        embedding: encodedEmbedding,
+    await this.db
+      .insert(table)
+      .values(values as any)
+      .onConflictDoUpdate({
+        target: table.toolName,
+        set,
       });
-    }
   }
 
   async searchSemantics(embedding: number[], limit: number, threshold: number): Promise<SemanticMatch[]> {

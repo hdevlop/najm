@@ -1,8 +1,8 @@
 import React, { useMemo, useCallback } from 'react';
 import { Archive } from 'lucide-react';
-import { NFileBrowser, NTableCardRoot, Badge, NEmptyState, buildDefaultFileColumns, formatFileBytes, cn } from 'najm-ui';
+import { NFileBrowser, NTableCardRoot, Badge, NEmptyState, buildDefaultFileColumns, formatFileBytes, cn } from 'najm-kit';
 import type { ColumnDef, Row, SortingState } from '@tanstack/react-table';
-import type { FileNode } from 'najm-ui';
+import type { FileNode } from 'najm-kit';
 import { FileThumbnail, FolderThumbnail } from './FileThumbnail';
 import type { FileItem } from '../types';
 import { useDragMove } from '../hooks/useDragMove';

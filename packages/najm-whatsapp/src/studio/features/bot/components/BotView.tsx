@@ -5,7 +5,7 @@ import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { useToast } from '@/lib/toast';
 import { AddRuleModal } from './AddRuleModal';
 import type { AutoReplyRule, AiConfig, MatchType } from '../types';
-import { NPageHeader, NEmptyState, Button, Input, Textarea, Switch, NativeSelect, Slider, NForm } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button, Input, Textarea, Switch, NativeSelect, Slider, NForm } from 'najm-kit';
 
 const MATCH_TYPE_LABELS: Record<MatchType, string> = {
   exact: 'EXACT',

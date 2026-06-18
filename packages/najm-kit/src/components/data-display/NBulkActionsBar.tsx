@@ -189,7 +189,7 @@ function FloatingButtonSegment({
       className={cn(
         'flex items-center gap-2 px-4 h-11 text-sm transition-colors',
         'hover:bg-accent disabled:opacity-50 disabled:cursor-not-allowed',
-        action.danger && 'text-status-red hover:bg-status-red/10',
+        action.danger && 'text-destructive hover:bg-destructive/10',
       )}
     >
       {Icon ? <Icon className="h-4 w-4" /> : null}

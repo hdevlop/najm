@@ -40,8 +40,8 @@ export function NSidebarItem({
     item.disabled
       ? "opacity-50 cursor-not-allowed"
       : active
-        ? "cursor-pointer bg-primary text-primary-foreground"
-        : "cursor-pointer text-muted-foreground hover:bg-accent hover:text-accent-foreground",
+        ? "cursor-pointer bg-sidebar-primary text-sidebar-primary-foreground"
+        : "cursor-pointer text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
     classNames?.sidebarItem
   );
 

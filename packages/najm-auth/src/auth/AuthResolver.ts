@@ -3,7 +3,8 @@ import type { Hono } from 'hono';
 import type { LoggerService } from 'najm-core';
 import { USER, ROLE, PERMISSIONS } from 'najm-guard';
 import { TokenService } from '../tokens/TokenService';
-import { UserService } from '../users/UserService';
+import { CookieManager } from './CookieManager';
+import { AuthService } from './AuthService';
 
 @Service()
 @Meta({ layer: 'plugin', order: 30 })
@@ -32,6 +33,25 @@ export class AuthResolver {
     }
   }
 
+  async resolveFromSessionCookie(): Promise<{ user: any; role?: string; permissions?: string[] } | false> {
+    try {
+      const cookieManager = await this.container.resolve(CookieManager);
+      const session = cookieManager.getSessionCookie();
+      if (!session) return false;
+
+      // Mirror the DB-backed paths: USER carries role/permissions so the
+      // AuthUser contract holds regardless of which path resolved.
+      return {
+        user: { ...session.user, permissions: session.permissions },
+        role: session.user.role ?? session.roles[0],
+        permissions: session.permissions,
+      };
+    } catch (error) {
+      this.log.warn('Session cookie verification failed', error);
+      return false;
+    }
+  }
+
   /**
    * Resolve the current user from the refresh cookie (cookie-only flow,
    * e.g. Next.js Server Components calling /auth/me with just the cookie).
@@ -43,11 +63,7 @@ export class AuthResolver {
   async resolveFromCookie(): Promise<{ user: any; role?: string; permissions?: string[] } | false> {
     try {
       const tokenService = await this.container.resolve(TokenService);
-      const userId = await tokenService.resolveUserFromCookie();
-      if (!userId) return false;
-
-      const userService = await this.container.resolve(UserService);
-      const user = await userService.getById(userId);
+      const user = await tokenService.getUserFromCookie();
       if (!user) return false;
 
       return {
@@ -66,40 +82,37 @@ export class AuthResolver {
       const raw = c.req.header('authorization') ?? '';
       const token = raw.replace(/^Bearer\s+/i, '').trim();
 
-      // Try Bearer token first, then fall back to refresh cookie
+      // A presented Bearer token is authoritative: it goes through full
+      // verification (blacklist, session version) and must not be shadowed
+      // by a stale session cookie. The signed short-lived session cookie is
+      // the zero-I/O hot path for cookie-only requests (e.g. SSR reads);
+      // its staleness is bounded by session.maxAge.
       const result = token
         ? (await this.resolve(token)) || (await this.resolveFromCookie())
-        : await this.resolveFromCookie();
+        : (await this.resolveFromSessionCookie()) || (await this.resolveFromCookie());
 
       if (result) {
-          if (this.container.isActive()) {
-            this.container.set(USER, result.user);
-            if (result.role !== undefined) this.container.set(ROLE, result.role);
-            if (result.permissions !== undefined) this.container.set(PERMISSIONS, result.permissions);
-          } else {
-            const als = (this.container as any).store?.als;
+        if (this.container.isActive()) {
+          this.container.set(USER, result.user);
+          if (result.role !== undefined) this.container.set(ROLE, result.role);
+          if (result.permissions !== undefined) this.container.set(PERMISSIONS, result.permissions);
+        } else {
+          const store: Record<string, unknown> = {
+            [USER.key]: result.user,
+          };
+          if (result.role !== undefined) store[ROLE.key] = result.role;
+          if (result.permissions !== undefined) store[PERMISSIONS.key] = result.permissions;
 
-            if (als && typeof als.getStore === 'function') {
-              const previousStore = als.getStore();
-              const nextStore = new Map<string, any>(previousStore);
-
-              nextStore.set(USER.key, result.user);
-              if (result.role !== undefined) nextStore.set(ROLE.key, result.role);
-              if (result.permissions !== undefined) nextStore.set(PERMISSIONS.key, result.permissions);
-
-              als.store = nextStore;
-
-              try {
-                await next();
-                return;
-              } finally {
-                als.store = previousStore;
-              }
-            }
-          }
+          return await this.container.run(store, next);
         }
+      }
 
       await next();
     });
+  }
+
+  async onReady(): Promise<void> {
+    const authService = await this.container.resolve(AuthService);
+    await authService.warmupPasswordHash();
   }
 }

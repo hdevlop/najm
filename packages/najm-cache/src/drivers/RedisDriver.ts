@@ -10,6 +10,7 @@ import type { Driver, DriverStats } from './Driver';
  */
 export interface RedisClient {
   get(key: string): Promise<string | null>;
+  mget(...keys: string[]): Promise<Array<string | null>>;
   set(key: string, value: string): Promise<'OK' | string>;
   setex(key: string, seconds: number, value: string): Promise<'OK' | string>;
   psetex(key: string, milliseconds: number, value: string): Promise<'OK' | string>;
@@ -101,6 +102,11 @@ export class RedisDriver implements Driver {
 
   async get(key: string): Promise<string | null> {
     return this.getClient().get(this.prefixKey(key));
+  }
+
+  async getMany(keys: string[]): Promise<Array<string | null>> {
+    if (keys.length === 0) return [];
+    return this.getClient().mget(...keys.map((key) => this.prefixKey(key)));
   }
 
   async set(key: string, value: string, ttlMs?: number): Promise<void> {

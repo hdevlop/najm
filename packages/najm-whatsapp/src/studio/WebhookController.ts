@@ -45,8 +45,8 @@ export class WebhookController {
   @Post('/test')
   @Validate(TestWebhookDto)
   async test(@Body() dto: TestWebhookDto) {
-    await this.forwarder.forward(dto.eventType, { test: true });
-    this.audit.log('webhook.test', { url: dto.url, eventType: dto.eventType });
-    return { success: true };
+    const result = await this.forwarder.deliverTest(dto.url, dto.eventType, { test: true });
+    this.audit.log('webhook.test', { url: dto.url, eventType: dto.eventType, result: result.status });
+    return { success: result.status === 'sent', ...result };
   }
 }

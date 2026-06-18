@@ -106,6 +106,32 @@ function getLatestUserText(messages: UIMessage[]): string {
   return getMessageText(latest);
 }
 
+const toolPromptTokenCache = new WeakMap<object, number>();
+
+function estimateToolPromptTokens(tool: any): number {
+  if (tool && typeof tool === 'object') {
+    const cached = toolPromptTokenCache.get(tool);
+    if (typeof cached === 'number') return cached;
+  }
+  const parameters = tool?.validationArgs ?? [];
+  const text = JSON.stringify({
+    name: tool?.name,
+    description: tool?.description,
+    parameters,
+  });
+  const estimate = Math.ceil(text.length / 4);
+  if (tool && typeof tool === 'object') {
+    toolPromptTokenCache.set(tool, estimate);
+  }
+  return estimate;
+}
+
+async function settleWrites(writes: Promise<void>[]): Promise<void> {
+  const results = await Promise.allSettled(writes);
+  const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
+  if (failure) throw failure.reason;
+}
+
 export function getMessageText(message: UIMessage): string {
   if (typeof message.content === 'string') return message.content;
   if (Array.isArray(message.content as any)) {
@@ -165,7 +191,7 @@ export class ChatAgent {
       ? input.messages
       : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
 
-    const { model, system, tools, routingStatus, routedToolNames, trace } = await this.prepare(
+    const { model, system, tools, routingStatus, routedToolNames } = await this.prepare(
       channel,
       routingText,
       settings,
@@ -179,20 +205,27 @@ export class ChatAgent {
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       maxSteps: this.config.maxSteps ?? 10,
       onFinish: async ({ response, steps, usage }) => {
-        if (!useStatelessHistory) {
-          await this.saveSession(sessionKey, sessionMessages, response.messages, channel, {
-            skip: false,
-            maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages,
-          });
-        }
         const userText = getLatestUserText(input.messages);
-        await this.logChat(sessionKey, userText, routingStatus, routedToolNames, steps);
-
-        const cost = this.computeUsageCost(trace, usage);
+        const cost = this.computeUsageCost(settings, usage);
         if (cost) {
           data.appendMessageAnnotation({ type: 'token-usage', ...cost });
         }
-        await data.close();
+
+        const writes: Promise<void>[] = [
+          this.logChat(sessionKey, userText, routingStatus, routedToolNames, steps),
+        ];
+        if (!useStatelessHistory) {
+          writes.push(this.saveSession(sessionKey, sessionMessages, response.messages, channel, {
+            skip: false,
+            maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages,
+          }));
+        }
+
+        try {
+          await settleWrites(writes);
+        } finally {
+          await data.close();
+        }
       },
     });
 
@@ -216,7 +249,7 @@ export class ChatAgent {
       ? input.messages
       : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
 
-    const { model, system, tools, routingStatus, routedToolNames, trace } = await this.prepare(
+    const { model, system, tools, routingStatus, routedToolNames } = await this.prepare(
       channel,
       routingText,
       settings,
@@ -230,14 +263,17 @@ export class ChatAgent {
       maxSteps: this.config.maxSteps ?? 10,
     });
 
+    const userText = getLatestUserText(input.messages);
+    const writes: Promise<void>[] = [
+      this.logChat(sessionKey, userText, routingStatus, routedToolNames, result.steps),
+    ];
     if (!useStatelessHistory) {
-      await this.saveSession(sessionKey, sessionMessages, result.response.messages, channel, {
+      writes.push(this.saveSession(sessionKey, sessionMessages, result.response.messages, channel, {
         skip: false,
         maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages,
-      });
+      }));
     }
-    const userText = getLatestUserText(input.messages);
-    await this.logChat(sessionKey, userText, routingStatus, routedToolNames, result.steps);
+    await settleWrites(writes);
 
     return result.text;
   }
@@ -272,7 +308,6 @@ export class ChatAgent {
     let tools: Record<string, any>;
     let routingStatus: RoutingStatus;
     let routedToolNames: string[];
-    let trace: ChatAgentTrace | null;
 
     try {
       const prepared = await this.prepare(channel, routingText, settings);
@@ -281,13 +316,14 @@ export class ChatAgent {
       tools = prepared.tools;
       routingStatus = prepared.routingStatus;
       routedToolNames = prepared.routedToolNames;
-      trace = prepared.trace;
     } catch (err) {
       return {
         error: err instanceof Error ? err.message : 'Provider error',
         code: 'PROVIDER_ERROR',
       };
     }
+
+    const trace = await this.buildTrace(routingText, settings, this.getMcpTools(), routedToolNames, routingStatus);
 
     if (!model) {
       return {
@@ -313,14 +349,17 @@ export class ChatAgent {
       };
     }
 
+    const userText = getLatestUserText(input.messages);
+    const writes: Promise<void>[] = [
+      this.logChat(sessionKey, userText, routingStatus, routedToolNames, result.steps),
+    ];
     if (!useStatelessHistory) {
-      await this.saveSession(sessionKey, sessionMessages, result.response.messages, channel, {
+      writes.push(this.saveSession(sessionKey, sessionMessages, result.response.messages, channel, {
         skip: false,
         maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages,
-      });
+      }));
     }
-    const userText = getLatestUserText(input.messages);
-    await this.logChat(sessionKey, userText, routingStatus, routedToolNames, result.steps);
+    await settleWrites(writes);
 
     const toolCalls: ChatDebugToolCall[] = [];
     const allToolCalls = result.steps.flatMap((step: any) => step.toolCalls ?? []);
@@ -510,15 +549,12 @@ export class ChatAgent {
       }
     }
 
-    const trace = await this.buildTrace(userText, settings, mcp, routedToolNames, routingStatus);
-
     return {
       model,
       system: system + toolWarning,
       tools,
       routingStatus,
       routedToolNames,
-      trace,
     };
   }
 
@@ -527,7 +563,7 @@ export class ChatAgent {
   }
 
   private computeUsageCost(
-    trace: ChatAgentTrace | null,
+    settings: { provider: string; model?: string },
     usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined,
   ): (UsageCost & { provider: string; model: string }) | null {
     if (!usage) return null;
@@ -536,8 +572,8 @@ export class ChatAgent {
     if (!Number.isFinite(promptTokens) || !Number.isFinite(completionTokens)) return null;
     if (promptTokens === 0 && completionTokens === 0) return null;
 
-    const provider = trace?.provider ?? 'unknown';
-    const model = trace?.model ?? 'unknown';
+    const provider = settings.provider;
+    const model = settings.model ?? 'llama3.1';
     const cost = calculateCost(provider, model, promptTokens, completionTokens);
     return { ...cost, provider, model };
   }
@@ -670,11 +706,13 @@ export class ChatAgent {
       .filter(Boolean);
 
     const registry = this.getMcpTools()?.registry;
+    const registryByName = new Map<string, any>(
+      registry?.tools.map((tool: any) => [tool.name, tool]) ?? [],
+    );
     const tokenEstimate = routedToolNames.reduce((sum, name) => {
-      const tool = registry?.tools.find((t) => t.name === name);
+      const tool = registryByName.get(name);
       if (!tool) return sum;
-      const parameters = tool.validationArgs ?? [];
-      return sum + Math.ceil(JSON.stringify({ name: tool.name, description: tool.description, parameters }).length / 4);
+      return sum + estimateToolPromptTokens(tool);
     }, 0);
 
     try {

@@ -61,15 +61,15 @@ export function NSheet({
         side={side}
         portalClassName={portal}
         className={cn(
-          "flex h-dvh max-h-dvh flex-col overflow-hidden bg-sidebar p-0 text-txt-primary",
+          "flex h-dvh max-h-dvh flex-col overflow-hidden bg-sidebar p-0 text-foreground",
           contentClassName,
         )}
         style={style}
       >
         <SheetHeader className="shrink-0 border-b border-border px-6 py-4 gap-1">
-          <SheetTitle className="text-sm font-semibold text-txt-primary">{title}</SheetTitle>
+          <SheetTitle className="text-sm font-semibold text-foreground">{title}</SheetTitle>
           {description && (
-            <SheetDescription className="text-xs text-txt-muted">{description}</SheetDescription>
+            <SheetDescription className="text-xs text-muted-foreground">{description}</SheetDescription>
           )}
         </SheetHeader>
         <NajmScroll axis="y" className="min-h-0 flex-1">

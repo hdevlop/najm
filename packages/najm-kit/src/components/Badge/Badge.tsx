@@ -3,6 +3,9 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
 import { NIcon, type NIconSource } from "../Icon";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
+import { resolveVariantAlias } from "../../theme/design-config";
 
 const badgeVariants = cva(
   "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
@@ -145,9 +148,19 @@ function Badge({
   iconPosition = "left",
   asChild = false,
   children,
+  style,
   ...props
 }: BadgeProps) {
   const Comp = asChild ? Slot : "span";
+  const recipe = useNajmComponentStyle("badge");
+  // Variant aliasing: e.g. primary badge can reuse the secondary recipe.
+  const aliased = resolveVariantAlias(
+    recipe?.variants,
+    (variant ?? recipe?.defaultVariant ?? "default") as string,
+  );
+  const effVariant = (variant ?? (aliased.variant as BadgeVariant) ?? recipe?.defaultVariant) as BadgeProps["variant"];
+  const recipeRadius = shape === undefined ? resolveRadiusValue(recipe?.radius) : undefined;
+  const recipeStyle = recipeRadius ? { borderRadius: recipeRadius, ...style } : style;
   const resolvedColor = statusMap?.[status ?? ""] ?? color;
   const resolvedLabel =
     label ??
@@ -172,6 +185,7 @@ function Badge({
           sizeClass,
           className
         )}
+        style={recipeStyle}
         {...props}
       >
         {iconPosition === "left" && iconNode}
@@ -183,10 +197,10 @@ function Badge({
 
   const classes = resolvedColor
     ? badgeColorVariants({ color: resolvedColor, look: look as BadgeLook | undefined, size, shape })
-    : badgeVariants({ variant });
+    : badgeVariants({ variant: effVariant });
 
   return (
-    <Comp data-slot="badge" className={cn(classes, className)} {...props}>
+    <Comp data-slot="badge" className={cn(classes, aliased.style?.className, className)} style={recipeStyle} {...props}>
       {iconPosition === "left" && iconNode}
       {content}
       {iconPosition === "right" && iconNode}

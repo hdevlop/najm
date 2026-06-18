@@ -1,11 +1,11 @@
-import React from "react";
+﻿import React from "react";
 import { Textarea } from "../ui/textarea";
 import { BaseInput } from "./BaseInput";
 import { cn } from "../../lib/cn";
 import type { TextAreaInputProps } from "./types";
 
-export const TextAreaInput: React.FC<TextAreaInputProps> = ({ value, onChange, placeholder = "", className = "", variant = "default", status = "default", bordered, borderDegree, borderColor, rows }) => (
-  <BaseInput variant={variant} status={status} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={cn("items-start", className)}>
+export const TextAreaInput: React.FC<TextAreaInputProps> = ({ value, onChange, placeholder = "", className = "", variant = "default", status = "default", bordered, borderColor, rows }) => (
+  <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("items-start", className)}>
     <Textarea
       rows={rows}
       placeholder={placeholder}

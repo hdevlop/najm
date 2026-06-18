@@ -2,7 +2,8 @@ import { Inject, Meta, Repository } from 'najm-core';
 import { DB } from 'najm-database';
 import { and, desc, eq, isNotNull, lt, sql } from 'drizzle-orm';
 import type { UIMessage } from 'ai';
-import { CHATBOT_SCHEMA } from '../tokens';
+import { CHATBOT_CONFIG, CHATBOT_SCHEMA } from '../tokens';
+import type { ChatbotConfig } from '../ChatbotPlugin';
 import type { ChatbotSchema } from '../ai-settings/AiSettingsRepository';
 import {
   isExpired,
@@ -18,11 +19,14 @@ interface UpsertChatSessionInput extends ChatSessionMeta {
   title?: string | null;
 }
 
+type SaveChatSessionInput = UpsertChatSessionInput;
+
 @Repository()
 @Meta({ layer: 'plugin', order: 45 })
 export class ChatSessionRepository {
   @DB() declare db: any;
   @Inject(CHATBOT_SCHEMA) private schema!: ChatbotSchema;
+  @Inject(CHATBOT_CONFIG) private config!: ChatbotConfig;
   private schemaChecked = false;
 
   private get table() {
@@ -31,6 +35,10 @@ export class ChatSessionRepository {
       throw new Error('chat_sessions schema missing. Add chatbotSchema.chatSessions to chatbot({ schema }).');
     }
     return table;
+  }
+
+  private get dialect(): 'sqlite' | 'pg' | 'mysql' {
+    return (this.config?.dialect ?? 'pg') as 'sqlite' | 'pg' | 'mysql';
   }
 
   async findByKey(sessionKey: string): Promise<StoredChatSession | null> {
@@ -46,41 +54,57 @@ export class ChatSessionRepository {
     return this.toStored(row);
   }
 
-  async upsert(input: UpsertChatSessionInput): Promise<StoredChatSession> {
+  async save(input: SaveChatSessionInput): Promise<void> {
     await this.ensureColumns();
     const t = this.table;
-    const existing = await this.findRawByKey(input.sessionKey);
     const now = new Date().toISOString();
-    const data = {
+    const lastMessageAt = input.messages.length > 0 ? now : null;
+    const expiresAt = normalizeExpiresAt(input.expiresAt);
+    const channel = normalizeChatChannel(input.channel);
+
+    const insertValues: Record<string, any> = {
       sessionKey: input.sessionKey,
       userId: input.userId ?? null,
-      channel: normalizeChatChannel(input.channel),
+      channel,
       messages: input.messages,
-      title: input.title ?? undefined,
+      title: input.title ?? null,
       messageCount: input.messages.length,
-      lastMessageAt: input.messages.length > 0 ? now : undefined,
-      expiresAt: normalizeExpiresAt(input.expiresAt),
+      lastMessageAt,
+      expiresAt,
+      createdAt: now,
       updatedAt: now,
     };
 
-    if (existing) {
-      const updateData: any = { ...data };
-      if (existing.title && !input.title) {
-        delete updateData.title;
-      }
-      const [updated] = await this.db
-        .update(t)
-        .set(updateData)
-        .where(eq(t.sessionKey, input.sessionKey))
-        .returning();
-      return this.toStored(updated);
+    const updateSet: Record<string, any> = {
+      userId: input.userId ?? null,
+      channel,
+      messages: input.messages,
+      messageCount: input.messages.length,
+      lastMessageAt,
+      expiresAt,
+      updatedAt: now,
+    };
+    if (input.title != null) {
+      updateSet.title = input.title;
     }
 
-    const [created] = await this.db
-      .insert(t)
-      .values({ ...data, createdAt: now })
-      .returning();
-    return this.toStored(created);
+    const baseQuery = this.db.insert(t).values(insertValues);
+    if (this.dialect === 'mysql') {
+      await (baseQuery as any).onDuplicateKeyUpdate({ set: updateSet });
+    } else {
+      await (baseQuery as any).onConflictDoUpdate({ target: t.sessionKey, set: updateSet });
+    }
+  }
+
+  async upsert(input: UpsertChatSessionInput): Promise<StoredChatSession> {
+    await this.save(input);
+    const row = await this.findRawByKey(input.sessionKey);
+    if (!row) {
+      throw new Error(
+        `ChatSessionRepository.upsert: row for sessionKey "${input.sessionKey}" not found immediately after a successful native write.`,
+      );
+    }
+    return this.toStored(row);
   }
 
   async deleteByKey(sessionKey: string): Promise<void> {

@@ -2,9 +2,9 @@ import { Service, Inject, HttpError } from 'najm-core';
 import { DocumentSourceRepository } from './DocumentSourceRepository';
 import { DocumentIngestionService } from './DocumentIngestionService';
 import { KnowledgeService } from './KnowledgeService';
-import type { DocumentListItem, DocumentChunkResponse, ReindexResult, KnowledgeStatusResult, KnowledgeSearchResult } from './KnowledgeDto';
+import type { DocumentListItem, DocumentChunkResponse, KnowledgeStatusResult, KnowledgeSearchResult } from './KnowledgeDto';
 import type { IngestTextDto } from './KnowledgeDto';
-import type { IngestTextResult, IngestUploadResult } from './DocumentIngestionService';
+import type { IngestTextResult, IngestUploadResult, ReindexResult } from './DocumentIngestionService';
 
 function isUploadFile(value: FormDataEntryValue | null): value is File {
   return typeof value === 'object' && value !== null && 'arrayBuffer' in value && 'size' in value;

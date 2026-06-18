@@ -5,7 +5,7 @@ import { cn } from '@/lib/utils';
 import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { useToast } from '@/lib/toast';
 import type { Instance } from '@/features/instances/types';
-import { NPageHeader, NEmptyState, Button, NForm, FormInput, useNForm } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button, NForm, FormInput, useNForm } from 'najm-kit';
 
 export function ProfileView() {
   const api = useApiClient();

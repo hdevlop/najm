@@ -1,8 +1,7 @@
 import React from "react";
 import { cn } from "../../lib/cn";
 import { cva } from "class-variance-authority";
-import { inputBorderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
-import type { NajmBorderDegree } from "../../theme/types";
+import { inputBorderClasses } from "../../theme/borders";
 import type { TailwindColor } from "./types";
 
 interface BaseInputProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -10,7 +9,6 @@ interface BaseInputProps extends React.HTMLAttributes<HTMLDivElement> {
   variant?: "default" | "rounded" | "ghost";
   status?: "default" | "error";
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   borderColor?: TailwindColor;
   hasIcon?: boolean;
   disabled?: boolean;
@@ -54,15 +52,11 @@ const HOVER_INTERACTIVE_BASE = "hover:border-primary";
 const STATIC_BASE = "border";
 
 export const BaseInput = React.forwardRef<HTMLDivElement, BaseInputProps>(
-  ({ children, variant = "default", status = "default", bordered, borderDegree, borderColor, className, disabled = false, onHover, onClick, hasIcon, ...rest }, ref) => {
+  ({ children, variant = "default", status = "default", bordered, borderColor, className, disabled = false, onHover, onClick, hasIcon, ...rest }, ref) => {
     const isGhost = variant === "ghost";
     const isError = status === "error";
-    const resolvedBorderDegree = useResolvedBorderDegree({
-      borderDegree,
-      bordered,
-      fallback: "default",
-    });
     const hasExplicitColor = !!borderColor;
+    const isBordered = bordered !== false;
 
     let colorClass = "";
     let borderClass = "";
@@ -74,17 +68,17 @@ export const BaseInput = React.forwardRef<HTMLDivElement, BaseInputProps>(
         borderClass = `${STATIC_BASE} ${FOCUS_INTERACTIVE_BASE} ${HOVER_INTERACTIVE_BASE}`;
         colorClass = PRESETS[borderColor!] ?? (NO_SHADE.has(borderColor!) ? `border-${borderColor!}` : `border-${borderColor!}-600`);
       } else {
-        const restingBorderClass = inputBorderColorClassForDegree(resolvedBorderDegree);
-        borderClass = resolvedBorderDegree === "default"
+        const restingBorderClass = inputBorderClasses(isBordered);
+        borderClass = isBordered
           ? `${STATIC_BASE} ${restingBorderClass} hover:border-input focus-within:border-primary/70`
-          : `${STATIC_BASE} ${restingBorderClass} focus-within:border-primary/70`;
+          : restingBorderClass;
       }
     }
 
     return (
       <div
         ref={ref}
-        data-border-degree={isGhost ? undefined : resolvedBorderDegree}
+        data-bordered={!isGhost && !isBordered ? "false" : !isGhost ? "true" : undefined}
         className={cn(
           inputVariants({ variant, status, hasIcon, disabled }),
           !isGhost && borderClass,

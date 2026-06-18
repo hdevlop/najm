@@ -6,5 +6,5 @@ export * from './vectorStore';
 export * from './routingSettings';
 export * from './routingTests';
 export * from './knowledge';
-export * from './studio/chatDebug';
+export * from './chatDebug';
 export * from './unmatched';

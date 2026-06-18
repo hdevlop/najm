@@ -1,5 +1,5 @@
 import { AlertTriangle, Copy, FileX2 } from 'lucide-react';
-import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from 'najm-ui';
+import { Button, Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from 'najm-kit';
 import type { PasteConflictState } from '../hooks/useExplorerClipboard';
 
 interface Props {

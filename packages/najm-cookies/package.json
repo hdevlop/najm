@@ -1,6 +1,6 @@
 {
   "name": "najm-cookies",
-  "version": "1.1.10",
+  "version": "1.1.13",
   "description": "Cookie handling plugin for Najm API framework",
   "type": "module",
   "files": [

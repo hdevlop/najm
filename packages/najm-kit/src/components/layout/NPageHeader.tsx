@@ -1,8 +1,9 @@
 import React, { type ReactNode, type InputHTMLAttributes, type Ref, type ComponentType, useCallback, useState } from 'react';
 import { Search } from 'lucide-react';
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
-import type { NajmBorderDegree } from "../../theme/types";
+import { surfaceBorderClasses } from "../../theme/borders";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
 
 interface PageHeaderSlotProps {
   children: ReactNode;
@@ -23,8 +24,9 @@ export interface NPageHeaderProps {
   children?: ReactNode;
   className?: string;
   headerClassName?: string;
+  /** Renders the header as a card-like surface. `bordered` is kept as an alias. */
+  card?: boolean;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
 }
 
 export function NPageHeaderActions({ children, className }: PageHeaderSlotProps) {
@@ -51,11 +53,12 @@ function getSlotElements(children: ReactNode, slot: React.ComponentType<PageHead
   return matches.length > 0 ? matches : undefined;
 }
 
-export function NPageHeader({ icon: Icon, title, subtitle, actions, filters, top, search, children, className, headerClassName, bordered, borderDegree }: NPageHeaderProps) {
+export function NPageHeader({ icon: Icon, title, subtitle, actions, filters, top, search, children, className, headerClassName, card, bordered }: NPageHeaderProps) {
   const [internalSearch, setInternalSearch] = useState('');
+  const recipe = useNajmComponentStyle("pageHeader");
   const searchValue = search?.value ?? internalSearch;
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setInternalSearch(e.target.value);
+    setInternalSearch(e.currentTarget.value);
     search?.onChange?.(e);
   }, [search?.onChange]);
   const slottedActions = getSlotElements(children, NPageHeaderActions);
@@ -65,23 +68,26 @@ export function NPageHeader({ icon: Icon, title, subtitle, actions, filters, top
   const resolvedFilters = slottedFilters ?? filters;
   const resolvedTop = slottedTop ?? top;
 
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
-  const hasBorderShell = bordered || Boolean(borderDegree) || resolvedBorderDegree !== "default";
-  const isStrong = resolvedBorderDegree === "strong";
+  const isCard = card ?? recipe?.card ?? (bordered === true);
+  const recipeRadius = resolveRadiusValue(recipe?.radius);
+  const recipeStyle: React.CSSProperties | undefined =
+    recipeRadius || recipe?.borderWidth
+      ? {
+          ...(recipeRadius ? { borderRadius: recipeRadius } : {}),
+          ...(recipe?.borderWidth ? { borderWidth: recipe.borderWidth } : {}),
+        }
+      : undefined;
 
   return (
     <div
       data-slot="page-header"
-      data-border-degree={hasBorderShell ? resolvedBorderDegree : undefined}
+      data-card={isCard ? "true" : undefined}
+      data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
+      style={recipeStyle}
       className={cn(
-        hasBorderShell
-          ? cn("border rounded-xl bg-card shadow-none", borderColorClassForDegree(resolvedBorderDegree))
-          : "border-b border-border",
-        isStrong && "shadow-none",
+        isCard
+          ? cn("rounded-xl bg-card shadow-none", surfaceBorderClasses(true))
+          : cn("border-b", surfaceBorderClasses(true, 'bottom').replace('najm-border-b', 'najm-border-b')),
         className
       )}
     >

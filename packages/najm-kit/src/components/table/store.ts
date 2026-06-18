@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { StoreApi, UseBoundStore } from "zustand";
 import { type ComponentType, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import type { ExpandedState, SortingState } from "@tanstack/react-table";
-import type { NajmBorderDegree } from "../../theme/types";
 import type { TableHeaderColor } from "./tableColors";
 
 export interface NTableClassNames {
@@ -49,7 +48,6 @@ export interface TableState {
   className: string;
   classNames: NTableClassNames;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   headerClassName: string;
   headerColor: string | undefined;
   showCheckbox: boolean;
@@ -176,7 +174,7 @@ export const createTableStore = () => {
     showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: true, dynamicHeight: true,
     showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true,
     onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
-    CardComponent: null, className: "", classNames: {}, bordered: undefined, borderDegree: undefined, headerClassName: "bg-card", headerColor: "primary" as TableHeaderColor, showCheckbox: true, selectedRowId: null, headerSlot: null,
+    CardComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: "primary" as TableHeaderColor, showCheckbox: true, selectedRowId: null, headerSlot: null,
     noResultsText: "No results.", filterPlaceholder: "", loadingText: "Loading...", noDataText: "No data available", addButtonText: "",
     pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, maxHeight: null,
     // JSON mode

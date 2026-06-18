@@ -33,11 +33,11 @@ export class UserValidator {
     * Check if user exists by ID
     */
    async checkUserExists(id: string) {
-      const user = await this.userRepository.getById(id);
-      if (!user) {
+      const exists = await this.userRepository.existsById(id);
+      if (!exists) {
          Err(this.t('errors.notFound'), 404);
       }
-      return user;
+      return true;
    }
 
    /**
@@ -85,8 +85,7 @@ export class UserValidator {
     */
    async checkUserIdIsUnique(id: string) {
       if (!id) return;
-      const existingUser = await this.userRepository.getById(id);
-      if (existingUser) {
+      if (await this.userRepository.existsById(id)) {
          Err(this.t('errors.idExists'), 409);
       }
    }

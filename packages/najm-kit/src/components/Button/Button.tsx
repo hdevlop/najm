@@ -3,9 +3,11 @@ import { Slot } from "@radix-ui/react-slot";
 import { LoaderCircleIcon } from "lucide-react";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
-import type { NajmBorderDegree } from "../../theme/types";
+import { inputBorderClasses } from "../../theme/borders";
 import { NIcon, type NIconSource } from "../Icon";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
+import { resolveVariantAlias } from "../../theme/design-config";
 
 const buttonVariants = cva(
   [
@@ -95,7 +97,6 @@ export interface ButtonProps
   leftIcon?: ButtonIcon;
   rightIcon?: ButtonIcon;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   onClick?: AsyncClickHandler;
 }
 
@@ -130,23 +131,29 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       leftIcon,
       rightIcon,
       bordered,
-      borderDegree,
       disabled,
       children,
       onClick,
+      style,
       ...props
     },
     ref
   ) => {
+    const recipe = useNajmComponentStyle("button");
+    // Explicit props win over design-config defaults.
+    const aliased = resolveVariantAlias(
+      recipe?.variants,
+      (variant ?? recipe?.defaultVariant ?? "default") as string,
+    );
+    const effVariant = (variant ?? (aliased.variant as ButtonVariant) ?? recipe?.defaultVariant) as ButtonProps["variant"];
+    const effSize = (size ?? recipe?.defaultSize) as ButtonProps["size"];
+    const recipeRadius = rounded === undefined ? resolveRadiusValue(recipe?.radius) : undefined;
+    const recipeStyle = recipeRadius ? { borderRadius: recipeRadius } : undefined;
+
     const [pending, setPending] = React.useState(false);
     const isLoading = loading || pending;
     const isDisabled = disabled || (disabledWhileLoading && isLoading);
     const Comp = asChild ? Slot : "button";
-    const resolvedBorderDegree = useResolvedBorderDegree({
-      borderDegree,
-      bordered,
-      fallback: "default",
-    });
 
     const handleClick = React.useCallback(
       (event: React.MouseEvent<HTMLButtonElement>) => {
@@ -179,21 +186,22 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         data-slot="button"
         data-loading={isLoading || undefined}
         data-disabled={isDisabled || undefined}
-        data-border-degree={variant === "outline" || bordered || borderDegree ? resolvedBorderDegree : undefined}
+        data-bordered={effVariant === "outline" ? "true" : bordered === false ? "false" : bordered ? "true" : undefined}
         aria-busy={isLoading || undefined}
         aria-disabled={asChild && isDisabled ? true : undefined}
         disabled={!asChild ? isDisabled : undefined}
+        style={recipeStyle ? { ...recipeStyle, ...style } : style}
         className={cn(
-          buttonVariants({ variant, size, rounded, fullWidth }),
-          // Outline buttons always have a border; let the resolved degree drive its color.
-          variant === "outline" && borderColorClassForDegree(resolvedBorderDegree),
+          buttonVariants({ variant: effVariant, size: effSize, rounded, fullWidth }),
+          aliased.style?.className,
+          // Outline buttons always carry an input-style border.
+          effVariant === "outline" && inputBorderClasses(true),
           // Filled/ghost/plain/link/success/warning/info/soft/subtle buttons only get a
-          // border when the consumer explicitly opts in via `bordered` or `borderDegree`.
-          // We do NOT honor the global strong mode for these, because it would make every
-          // filled button look outlined.
-          variant !== "outline" && (bordered || borderDegree) && cn(
+          // border when the consumer explicitly opts in via `bordered`. Global theming
+          // should not outline every filled button.
+          effVariant !== "outline" && bordered === true && cn(
             "border",
-            borderDegree ? borderColorClassForDegree(resolvedBorderDegree) : "border-muted-foreground"
+            "border-muted-foreground"
           ),
           className
         )}

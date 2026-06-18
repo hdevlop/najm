@@ -4,7 +4,6 @@ import { Button } from "../Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useTableStore } from "./TableContext";
 import { cn } from "../../lib/cn";
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders";
 import type { NTableClassNames } from "./store";
 
 export function NTablePagination() {
@@ -21,13 +20,6 @@ export function NTablePagination() {
   const setPagination = useTableStore.use.setPagination();
   const isPaginationControlled = useTableStore.use.isPaginationControlled();
   const bordered = useTableStore.use.bordered();
-  const borderDegree = useTableStore.use.borderDegree();
-  const resolvedBorderDegree = useResolvedBorderDegree({
-    borderDegree,
-    bordered,
-    fallback: "default",
-  });
-  const triggerBorderClass = borderColorClassForDegree(resolvedBorderDegree);
 
   if (!table || !showContent || !showPagination || viewMode === "json" || viewMode === "files") return null;
 
@@ -73,7 +65,10 @@ export function NTablePagination() {
           <div className="flex items-center gap-2">
             <p className="text-sm font-medium">Rows/page</p>
             <Select value={`${pageSize}`} onValueChange={handlePageSizeChange}>
-              <SelectTrigger className={cn("h-8 w-[80px]", bordered && triggerBorderClass)}><SelectValue placeholder={pageSize} /></SelectTrigger>
+              <SelectTrigger
+                data-bordered={bordered ? "true" : undefined}
+                className={cn("h-8 w-[80px]", bordered && "najm-border border-border")}
+              ><SelectValue placeholder={pageSize} /></SelectTrigger>
               <SelectContent side="top">{currentPageSizeOptions.map((size) => <SelectItem key={size} value={`${size}`}>{size}</SelectItem>)}</SelectContent>
             </Select>
           </div>

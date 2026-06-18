@@ -1,6 +1,7 @@
 import { Injectable, Inject } from 'najm-core';
 import { Transaction } from 'najm-database';
 import { I18nService } from 'najm-i18n';
+import { I18n, type TFn } from 'najm-i18n';
 import { UserRepository } from './UserRepository';
 import { UserValidator } from './UserValidator';
 import { RoleService } from '../roles/RoleService';
@@ -20,6 +21,8 @@ export type SanitizedUser = Omit<User, 'password' | 'failedLoginAttempts' | 'loc
 
 @Injectable()
 export class UserService {
+  @I18n('users') private t!: TFn;
+
   constructor(
     private roleValidator: RoleValidator,
     private roleService: RoleService,
@@ -38,6 +41,13 @@ export class UserService {
 
   private sanitizeUsers(users: any[]): SanitizedUser[] {
     return users.map(user => this.sanitizeUser(user)).filter(Boolean) as SanitizedUser[];
+  }
+
+  private requireUser<T>(user: T | undefined): T {
+    if (!user) {
+      Err(this.t('errors.notFound'), 404);
+    }
+    return user;
   }
 
   private async resolveUserRole(roleId?: string, roleName?: string): Promise<string | null> {
@@ -68,15 +78,16 @@ export class UserService {
     return null;
   }
 
-  async getAll(): Promise<SanitizedUser[]> {
-    const users = await this.userRepository.getAll();
+  async getAll(options: { limit?: number; offset?: number } = {}): Promise<SanitizedUser[]> {
+    const limit = Math.min(Math.max(options.limit ?? 50, 1), 100);
+    const offset = Math.max(options.offset ?? 0, 0);
+    const users = await this.userRepository.getAll(limit, offset);
     return this.sanitizeUsers(users);
   }
 
   async getById(id: string): Promise<SanitizedUser> {
-    await this.userValidator.checkUserExists(id);
     const user = await this.userRepository.getById(id);
-    return this.sanitizeUser(user) as SanitizedUser;
+    return this.sanitizeUser(this.requireUser(user)) as SanitizedUser;
   }
 
   async getByEmail(email: string): Promise<SanitizedUser> {
@@ -108,10 +119,10 @@ export class UserService {
     // Validate password strength
     this.userValidator.validatePasswordStrength(password);
 
-    let userId = id || nanoid(5);
+    let userId = id || nanoid(10);
 
     await this.userValidator.checkEmailUnique(data.email);
-    await this.userValidator.checkUserIdIsUnique(id);
+    await this.userValidator.checkUserIdIsUnique(userId);
 
     const hashedPassword = await this.encryptionService.hashPassword(password);
     const resolvedRoleId = await this.resolveUserRole(roleId, role);
@@ -137,7 +148,6 @@ export class UserService {
   async update(id: string, data: Record<string, any>): Promise<SanitizedUser> {
     const { password, image } = data;
 
-    await this.userValidator.checkUserExists(id);
     await this.userValidator.checkEmailUnique(data.email, id);
 
     // Validate password strength if being updated
@@ -155,13 +165,12 @@ export class UserService {
 
     const cleanedUpdateData = clean(updateData);
     const updatedUser = await this.userRepository.update(id, cleanedUpdateData);
-    return this.sanitizeUser(updatedUser) as SanitizedUser;
+    return this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
   }
 
   async delete(id: string): Promise<SanitizedUser> {
-    await this.userValidator.checkUserExists(id);
     const user = await this.userRepository.delete(id);
-    return this.sanitizeUser(user) as SanitizedUser;
+    return this.sanitizeUser(this.requireUser(user)) as SanitizedUser;
   }
 
   async deleteAll(): Promise<SanitizedUser[]> {
@@ -174,13 +183,7 @@ export class UserService {
     return await this.userRepository.getRoleNameById(id);
   }
 
-  async getPassword(email: string): Promise<string | undefined> {
-    await this.userValidator.checkUserExistsByEmail(email);
-    return await this.userRepository.getUserPassword(email);
-  }
-
   async updateLastLogin(id: string): Promise<void> {
-    await this.userValidator.checkUserExists(id);
     await this.userRepository.updateLastLogin(id);
   }
 
@@ -198,16 +201,14 @@ export class UserService {
   }
 
   async assignRole(id: string, roleId?: string, roleName?: string): Promise<SanitizedUser> {
-    await this.userValidator.checkUserExists(id);
     const resolvedRoleId = await this.resolveUserRole(roleId, roleName);
     const updatedUser = await this.userRepository.update(id, { roleId: resolvedRoleId });
-    return this.sanitizeUser(updatedUser) as SanitizedUser;
+    return this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
   }
 
   async removeRole(id: string): Promise<SanitizedUser> {
-    await this.userValidator.checkUserExists(id);
     const updatedUser = await this.userRepository.update(id, { roleId: null });
-    return this.sanitizeUser(updatedUser) as SanitizedUser;
+    return this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
   }
 
   async seedAdminUser(config?: { email?: string; password?: string; name?: string }): Promise<SanitizedUser> {

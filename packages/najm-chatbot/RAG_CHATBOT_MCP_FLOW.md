@@ -512,7 +512,7 @@ Without the studio, you'd be editing JSON config and running `INSERT` statements
 | RAG over docs | [packages/najm-rag/src/knowledge/](packages/najm-rag/src/knowledge/) |
 | Agent loop (LLM + tools + ctx) | [packages/najm-chatbot/src/agent/ChatAgent.ts](packages/najm-chatbot/src/agent/ChatAgent.ts) |
 | MCP tool execution adapter | [packages/najm-chatbot/src/agent/McpToolAdapter.ts](packages/najm-chatbot/src/agent/McpToolAdapter.ts) |
-| Studio (after rewrite) | `<RagStudio />` from `najm-rag-studio` + `RagStudioController` |
+| Studio (after rewrite) | standalone `apps/rag-studio` UI + `ragStudio()` API plugin from `najm-rag` |
 
 ---
 

@@ -14,17 +14,17 @@ describe("Avatar", () => {
     expect(container.textContent).toContain("CN");
   });
 
-  test("renders image and fallback via shortcut API", () => {
+  test("hides fallback after the shortcut image loads", () => {
     const { container } = render(
       <Avatar src="https://example.com/img.png" alt="User" fallback="CN" />
     );
     const img = container.querySelector("img");
     expect(img).not.toBeNull();
     expect(img!.getAttribute("src")).toBe("https://example.com/img.png");
-    expect(container.textContent).toContain("CN");
+    expect(container.querySelector("[data-slot=avatar-fallback]")).toBeNull();
   });
 
-  test("compound API still works with AvatarImage and AvatarFallback", () => {
+  test("compound API hides fallback after the image loads", () => {
     const { container } = render(
       <Avatar>
         <AvatarImage src="https://example.com/img.png" alt="User" />
@@ -33,7 +33,7 @@ describe("Avatar", () => {
     );
     const img = container.querySelector("img");
     expect(img).not.toBeNull();
-    expect(container.textContent).toContain("CN");
+    expect(container.querySelector("[data-slot=avatar-fallback]")).toBeNull();
   });
 
   test("size changes class output", () => {

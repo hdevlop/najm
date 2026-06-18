@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { ArrowLeft } from 'lucide-react';
-import { Button } from 'najm-ui';
+import { Button } from 'najm-kit';
 import { useApiClient } from '@/lib/api';
 import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { MessageThread } from './MessageThread';

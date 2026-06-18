@@ -6,7 +6,7 @@ import { GroupList } from './GroupList';
 import { CreateGroupModal } from './CreateGroupModal';
 import { GroupDetailModal } from './GroupDetailModal';
 import type { Group } from '@/features/groups/types';
-import { NPageHeader, NEmptyState, Button, Input } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button, Input } from 'najm-kit';
 
 export function GroupsView() {
   const api = useApiClient();

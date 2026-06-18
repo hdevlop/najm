@@ -1,5 +1,5 @@
 // MySQL schema for najm-whatsapp Baileys mode
-import { mysqlTable, varchar, int, boolean, timestamp, index, uniqueIndex } from 'drizzle-orm/mysql-core';
+import { mysqlTable, varchar, int, boolean, timestamp, text, index, uniqueIndex } from 'drizzle-orm/mysql-core';
 import { randomUUID } from 'crypto';
 
 // ============================================================================
@@ -27,6 +27,8 @@ export const whatsappInstances = mysqlTable('whatsapp_instances', {
   profileName: varchar('profile_name', { length: 255 }),
   connectedAt: timestamp('connected_at', { mode: 'string' }),
   lastSeenAt: timestamp('last_seen_at', { mode: 'string' }),
+  autoConnect: boolean('auto_connect').notNull().default(false),
+  lastError: text('last_error'),
 });
 
 /**
@@ -121,10 +123,11 @@ export const whatsappLabels = mysqlTable('whatsapp_labels', {
 export const whatsappWebhooks = mysqlTable('whatsapp_webhooks', {
   ...baseFields(),
   instanceId: varchar('instance_id', { length: 36 }),
-  url: varchar('url', { length: 1000 }).notNull(),
+  url: varchar('url', { length: 2048 }).notNull(),
   events: varchar('events', { length: 1000 }),
   headers: varchar('headers', { length: 65535 }),
-  enabled: boolean('enabled').notNull().default(true),
+  enabled: boolean('enabled').default(true).notNull(),
+  signingSecret: varchar('signing_secret', { length: 255 }),
 });
 
 /**
@@ -197,6 +200,7 @@ export const whatsappAiConfigs = mysqlTable('whatsapp_ai_configs', {
   model: varchar('model', { length: 100 }),
   systemPrompt: varchar('system_prompt', { length: 4000 }),
   temperature: varchar('temperature', { length: 10 }),
+  limits: text('limits'),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow(),
 });
 

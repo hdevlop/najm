@@ -101,10 +101,15 @@ function zodShapeToJsonSchema(shape?: Record<string, unknown>): Record<string, u
   };
 }
 
+const toolSchemaCache = new WeakMap<RegisteredTool, ReturnType<typeof jsonSchema>>();
+
 export function toolParametersSchema(mcpTool: RegisteredTool) {
+  const cached = toolSchemaCache.get(mcpTool);
+  if (cached) return cached;
   const shape = resolveRegisteredToolInputSchema(mcpTool);
-  const schema = shape ? zodShapeToJsonSchema(shape) : EMPTY_OBJECT_JSON_SCHEMA;
-  return jsonSchema(schema);
+  const schema = jsonSchema(shape ? zodShapeToJsonSchema(shape) : EMPTY_OBJECT_JSON_SCHEMA);
+  toolSchemaCache.set(mcpTool, schema);
+  return schema;
 }
 
 /**

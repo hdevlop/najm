@@ -1,4 +1,4 @@
-import React from "react";
+﻿import React from "react";
 import { cn } from "../../lib/cn";
 import { BaseInput } from "./BaseInput";
 import type { EmojiInputProps } from "./types";
@@ -49,7 +49,6 @@ export function EmojiInput({
   variant = "default",
   status = "default",
   bordered,
-  borderDegree,
   borderColor,
   disabled = false,
 }: EmojiInputProps & { disabled?: boolean }) {
@@ -58,7 +57,7 @@ export function EmojiInput({
       variant={variant}
       status={status}
       bordered={bordered}
-      borderDegree={borderDegree}
+     
       borderColor={borderColor}
       className={cn("gap-3 flex-wrap", className)}
       disabled={disabled}

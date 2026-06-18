@@ -16,6 +16,9 @@ export interface Driver {
    */
   get(key: string): Promise<string | null>;
 
+  /** Get multiple values in key order. */
+  getMany?(keys: string[]): Promise<Array<string | null>>;
+
   /**
    * Set a value with optional TTL
    * @param key - Cache key

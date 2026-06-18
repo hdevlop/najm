@@ -161,4 +161,95 @@ describe("NTable", () => {
     );
     expect(container.querySelector(".custom-pag-class")).toBeTruthy();
   });
+
+  test("hides header (toolbar) during loading even with onCreate", () => {
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable
+          data={[]}
+          columns={sampleColumns}
+          dynamicHeight={false}
+          showPagination={false}
+          showCheckbox={false}
+          loading={true}
+          onCreate={() => {}}
+        />
+      </div>
+    );
+    expect(container.querySelector("[data-ntable-header]")).toBeNull();
+  });
+
+  test("hides header (toolbar) during error even with onCreate", () => {
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable
+          data={[]}
+          columns={sampleColumns}
+          dynamicHeight={false}
+          showPagination={false}
+          showCheckbox={false}
+          error="boom"
+          onCreate={() => {}}
+        />
+      </div>
+    );
+    expect(container.querySelector("[data-ntable-header]")).toBeNull();
+  });
+
+  test("hides header (toolbar) during empty state but keeps the create CTA in body", () => {
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable
+          data={[]}
+          columns={sampleColumns}
+          dynamicHeight={false}
+          showPagination={false}
+          showCheckbox={false}
+          loading={false}
+          onCreate={() => {}}
+        />
+      </div>
+    );
+    expect(container.querySelector("[data-ntable-header]")).toBeNull();
+    expect(queryText(container, "No data available")).toBeTruthy();
+    expect(queryAllText(container, "Add item").length).toBeGreaterThan(0);
+  });
+
+  test("shows header when data is present and onCreate is set", () => {
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable
+          data={sampleData}
+          columns={sampleColumns}
+          dynamicHeight={false}
+          showPagination={false}
+          showCheckbox={false}
+          onCreate={() => {}}
+        />
+      </div>
+    );
+    expect(container.querySelector("[data-ntable-header]")).toBeTruthy();
+  });
+
+  test("keeps header during filtered-empty so users can adjust filters", () => {
+    const searchCol: ColumnDef<Row, any> = {
+      accessorKey: "name",
+      header: "Name",
+      filterFn: "includesString",
+    };
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable
+          data={sampleData}
+          columns={[searchCol]}
+          dynamicHeight={false}
+          showPagination={false}
+          showCheckbox={false}
+          isFilteredEmpty={true}
+          onCreate={() => {}}
+        />
+      </div>
+    );
+    expect(container.querySelector("[data-ntable-header]")).toBeTruthy();
+  });
 });

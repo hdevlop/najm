@@ -10,5 +10,5 @@ export function createStudioRouter(basePath: string) {
     ...(typeof document === 'undefined'
       ? { history: createMemoryHistory({ initialEntries: [normalizedBasePath] }) }
       : {}),
-  });
+  } as any);
 }

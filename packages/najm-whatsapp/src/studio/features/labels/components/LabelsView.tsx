@@ -5,7 +5,7 @@ import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { useToast } from '@/lib/toast';
 import type { Label } from '@/features/labels/types';
 import { NewLabelModal } from './NewLabelModal';
-import { NPageHeader, NEmptyState, Button, Input, NativeSelect } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button, Input, NativeSelect } from 'najm-kit';
 
 interface LabelsViewProps {
   jid?: string | null;

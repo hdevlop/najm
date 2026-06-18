@@ -1,11 +1,11 @@
 import { Inject, Service } from 'najm-core';
 import { KnowledgeService } from './KnowledgeService';
 import { RoutingSettingsService } from '../routingSettings/RoutingSettingsService';
+import { EmbeddingLru } from '../embeddings';
 
-interface CachedSearch {
-  userText: string;
-  result: Awaited<ReturnType<KnowledgeService['search']>>;
-}
+type SearchResult = Awaited<ReturnType<KnowledgeService['search']>>;
+
+const CONTEXT_CACHE_SIZE = 32;
 
 @Service()
 export class KnowledgeContextProvider {
@@ -14,19 +14,18 @@ export class KnowledgeContextProvider {
     @Inject() private settings: RoutingSettingsService,
   ) {}
 
-  private cache: CachedSearch | null = null;
+  private cache = new EmbeddingLru<SearchResult>(CONTEXT_CACHE_SIZE);
 
-  private async searchCached(userText: string) {
-    if (this.cache && this.cache.userText === userText) {
-      return this.cache.result;
-    }
+  private async searchCached(userText: string): Promise<SearchResult> {
+    const cached = this.cache.get(userText);
+    if (cached) return cached;
     const result = await this.knowledge.search(userText);
-    this.cache = { userText, result };
+    this.cache.set(userText, result);
     return result;
   }
 
   clearCache() {
-    this.cache = null;
+    this.cache.clear();
   }
 
   async getContext(userText: string): Promise<string | null> {

@@ -3,11 +3,11 @@ import { Code2, Cpu, Database, FileText, Film, FolderKanban, Headphones, Image, 
 import { useUsage } from '../hooks/useUsage';
 import { useActivity } from '../hooks/useActivity';
 import { useBuckets } from '../hooks/useBuckets';
-import { NStatCard } from 'najm-ui';
+import { NStatCard } from 'najm-kit';
 import { StorageOverviewCard } from '../components/StorageOverviewCard';
 import { RecentActivityTable } from '../components/RecentActivityTable';
 import { NamespaceBreakdown } from '../components/NamespaceBreakdown';
-import { NErrorState, NPageHeader } from 'najm-ui';
+import { NErrorState, NPageHeader } from 'najm-kit';
 import type { UsageCategory } from '../types';
 import { STORAGE_QUOTA_BYTES } from '../constants';
 
@@ -191,26 +191,27 @@ export function DashboardView() {
   const hasError = usageError || activityError || nsError;
 
   return (
-    <NPageHeader
-      icon={LayoutDashboard}
-      title="Dashboard"
-      subtitle="Usage overview, storage breakdown, and recent activity"
-      search={{ placeholder: "Search files, buckets..." }}
-      actions={
-        <div className="flex items-center gap-2 sm:ml-auto">
-          {(usageLoading || activityLoading || nsLoading) && (
-            <Loader2 className="h-4 w-4 animate-spin text-txt-muted" />
-          )}
-        </div>
-      }
-      contentClassName="ss-scrollbar overflow-auto p-4 sm:p-5"
-    >
+    <div className="flex h-full flex-col">
+      <NPageHeader
+        icon={LayoutDashboard}
+        title="Dashboard"
+        subtitle="Usage overview, storage breakdown, and recent activity"
+        search={{ placeholder: "Search files, buckets..." }}
+        actions={
+          <div className="flex items-center gap-2 sm:ml-auto">
+            {(usageLoading || activityLoading || nsLoading) && (
+              <Loader2 className="h-4 w-4 animate-spin text-txt-muted" />
+            )}
+          </div>
+        }
+      />
 
-      {hasError && (
-        <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
-          {usageError?.message || activityError?.message || nsError?.message || 'Failed to load dashboard data'}
-        </div>
-      )}
+      <div className="ss-scrollbar overflow-auto p-4 sm:p-5">
+        {hasError && (
+          <div className="mb-4 rounded-lg border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+            {usageError?.message || activityError?.message || nsError?.message || 'Failed to load dashboard data'}
+          </div>
+        )}
 
       <div className="grid min-h-[calc(100dvh-120px)] grid-cols-1 gap-4 xl:grid-cols-6">
         <div className="grid min-h-0 gap-4 xl:col-span-4 xl:grid-rows-[minmax(420px,1fr)_auto]">
@@ -271,7 +272,8 @@ export function DashboardView() {
           </div>
         </aside>
 
+        </div>
       </div>
-    </NPageHeader>
+    </div>
   );
 }

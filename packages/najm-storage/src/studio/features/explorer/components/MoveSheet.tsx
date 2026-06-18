@@ -1,5 +1,5 @@
 import React from 'react';
-import { Button, Input, NSheet } from 'najm-ui';
+import { Button, Input, NSheet } from 'najm-kit';
 import type { MoveState } from '../types';
 
 interface Props {

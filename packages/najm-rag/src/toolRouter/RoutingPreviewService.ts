@@ -12,14 +12,13 @@ import type {
   RoutingPreviewConfirmation,
   RoutingPreviewToolScore,
 } from './ToolRouterDto';
-import { normalizeQuery, EmbeddingLru } from './ToolRouterUtils';
+import { normalizeQuery } from './ToolRouterUtils';
 import { ToolRoutingLoader } from './ToolRoutingLoader';
 import { getRoutableTools } from '../toolVisibility';
 import { selectPrimaryTool, filterAlternativeMutations } from './RoutingLogic';
 
 @Service()
 export class RoutingPreviewService {
-  private queryCache: EmbeddingLru;
   @DI() private container!: Container;
 
   constructor(
@@ -29,13 +28,7 @@ export class RoutingPreviewService {
     @Inject() private repository: ToolIndexRepository,
     @Inject(LoggerService) private log: LoggerService,
     @Inject() private provider: ToolRoutingLoader,
-  ) {
-    const cacheSize =
-      this.config.rag?.queryEmbeddingCacheSize ??
-      (this.config as any).toolRouting?.queryEmbeddingCacheSize ??
-      256;
-    this.queryCache = new EmbeddingLru(Math.max(0, cacheSize));
-  }
+  ) {}
 
   async previewRouting(userText: string): Promise<RoutingPreviewResult> {
     const routing = await this.provider.getRoutingConfig();
@@ -70,11 +63,7 @@ export class RoutingPreviewService {
     }
 
     try {
-      let embedding = this.queryCache.get(normalized);
-      if (!embedding) {
-        embedding = await this.embedding.embed(normalized);
-        this.queryCache.set(normalized, embedding);
-      }
+      const embedding = await this.embedding.embed(normalized);
 
       const registeredToolNames = new Set(routableTools.map((tool) => tool.name));
       let rawMatches = this.filterRegisteredMatches(

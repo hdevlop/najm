@@ -3,6 +3,7 @@ import React from "react";
 import { render } from "@testing-library/react";
 
 import { NajmThemeProvider } from "../src/theme/provider";
+import { NajmDesignProvider } from "../src/theme/design-provider";
 import { NCard } from "../src/components/Card/Card";
 import { TextInput } from "../src/components/inputs/TextInput";
 import { NSidebar } from "../src/components/sidebar/NSidebar";
@@ -23,179 +24,92 @@ function TestIcon({ className }: { className?: string }) {
   return <svg className={className} />;
 }
 
-describe("appearance.borderDegree", () => {
-  test("NCard inside strong provider uses border-border-strong", () => {
+describe("appearance.borderWidth", () => {
+  test("NCard inside provider with borderWidth='2px' uses najm-border class", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
+      <NajmThemeProvider appearance={{ borderWidth: "2px" }}>
         <NCard title="x" />
       </NajmThemeProvider>
     );
     const card = container.querySelector("[data-slot=card]") as HTMLElement;
     expect(card).toBeTruthy();
-    expect(card.getAttribute("data-border-degree")).toBe("strong");
-    expect(card.className).toContain("border-border-strong");
+    expect(card.className).toContain("najm-border");
+    expect(card.className).toContain("border-border");
   });
 
-  test("NCard borderDegree subtle overrides global strong", () => {
+  test("NCard bordered={false} removes the border", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <NCard title="x" borderDegree="subtle" />
-      </NajmThemeProvider>
-    );
-    const card = container.querySelector("[data-slot=card]") as HTMLElement;
-    expect(card.getAttribute("data-border-degree")).toBe("subtle");
-    expect(card.className).toContain("border-border-subtle");
-    expect(card.className).not.toContain("border-border-strong");
-  });
-
-  test("NCard bordered still maps to strong", () => {
-    const { container } = render(
-      <NCard title="x" bordered />
-    );
-    const card = container.querySelector("[data-slot=card]") as HTMLElement;
-    expect(card.getAttribute("data-border-degree")).toBe("strong");
-  });
-
-  test("NCard bordered={false} bypasses global strong", () => {
-    const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
+      <NajmThemeProvider appearance={{ borderWidth: "2px" }}>
         <NCard title="x" bordered={false} />
       </NajmThemeProvider>
     );
     const card = container.querySelector("[data-slot=card]") as HTMLElement;
-    expect(card.getAttribute("data-border-degree")).toBe("default");
-    expect(card.className).toContain("border-border");
-    expect(card.className).not.toContain("border-border-strong");
-  });
-
-  test("BaseInput inherits global strong", () => {
-    const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <BaseInput>x</BaseInput>
-      </NajmThemeProvider>
-    );
-    const wrapper = container.querySelector("[data-border-degree]") as HTMLElement;
-    expect(wrapper.getAttribute("data-border-degree")).toBe("strong");
-    expect(wrapper.className).toContain("border-border-strong");
-  });
-
-  test("BaseInput borderColor wins over global strong", () => {
-    const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <BaseInput borderColor="primary">x</BaseInput>
-      </NajmThemeProvider>
-    );
-    const wrapper = container.querySelector("[data-border-degree]") as HTMLElement;
-    expect(wrapper.getAttribute("data-border-degree")).toBe("strong");
-    expect(wrapper.className).toContain("border-primary");
-    expect(wrapper.className).not.toContain("border-border-strong");
+    expect(card.getAttribute("data-bordered")).toBe("false");
+    expect(card.className).toContain("border-0");
   });
 
   test("BaseInput status=error wins over degree", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
+      <NajmThemeProvider appearance={{ borderWidth: "2px" }}>
         <BaseInput status="error">x</BaseInput>
       </NajmThemeProvider>
     );
-    const wrapper = container.querySelector("[data-border-degree]") as HTMLElement;
+    const wrapper = container.querySelector("[data-bordered]") as HTMLElement;
     expect(wrapper.className).toContain("border-red-600");
   });
 
-  test("TextInput inherits global strong", () => {
+  test("TextInput bordered={false} drops the input border utility", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <TextInput value="" onChange={() => {}} />
-      </NajmThemeProvider>
+      <TextInput value="" onChange={() => {}} bordered={false} />
     );
-    const wrapper = container.querySelector("[data-border-degree]") as HTMLElement;
-    expect(wrapper.getAttribute("data-border-degree")).toBe("strong");
-    expect(wrapper.className).toContain("border-border-strong");
+    const wrapper = container.querySelector("[data-bordered]") as HTMLElement;
+    expect(wrapper.getAttribute("data-bordered")).toBe("false");
+    expect(wrapper.className).toContain("border-0");
   });
 
-  test("TextInput borderDegree=default overrides global strong", () => {
+  test("NSidebar desktop uses najm-border-r with border-sidebar-border", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <TextInput value="" onChange={() => {}} borderDegree="default" />
-      </NajmThemeProvider>
-    );
-    const wrapper = container.querySelector("[data-border-degree]") as HTMLElement;
-    expect(wrapper.getAttribute("data-border-degree")).toBe("default");
-    expect(wrapper.className).toContain("border-input");
-    expect(wrapper.className).not.toContain("border-border-strong");
-  });
-
-  test("NSidebar desktop and mobile inherit global strong", () => {
-    const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <NSidebar navItems={navItems} mobileOpen />
-      </NajmThemeProvider>
+      <NSidebar navItems={navItems} mobileOpen />
     );
     const asides = Array.from(container.querySelectorAll("aside"));
     const desktop = asides.find((a) => a.className.includes("md:flex")) as HTMLElement;
     const mobile = asides.find((a) => a.className.includes("md:hidden")) as HTMLElement;
-    expect(desktop.getAttribute("data-border-degree")).toBe("strong");
-    expect(desktop.className).toContain("border-r");
-    expect(desktop.className).toContain("border-border-strong");
-    expect(mobile.getAttribute("data-border-degree")).toBe("strong");
-    expect(mobile.className).toContain("border-border-strong");
-  });
-
-  test("NSidebar borderDegree=none uses border-transparent", () => {
-    const { container } = render(
-      <NSidebar navItems={navItems} borderDegree="none" />
-    );
-    const asides = Array.from(container.querySelectorAll("aside"));
-    const desktop = asides.find((a) => a.className.includes("md:flex")) as HTMLElement;
-    expect(desktop.getAttribute("data-border-degree")).toBe("none");
-    expect(desktop.className).toContain("border-transparent");
+    expect(desktop.className).toContain("najm-border-r");
+    expect(desktop.className).toContain("border-sidebar-border");
+    expect(mobile.className).toContain("najm-border-r");
+    expect(mobile.className).toContain("border-sidebar-border");
   });
 
   test("Nested providers merge appearance", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <NajmThemeProvider appearance={{ borderDegree: "subtle" }}>
+      <NajmThemeProvider appearance={{ borderWidth: "3px" }}>
+        <NajmThemeProvider appearance={{ borderWidth: "0" }}>
           <NCard title="x" />
         </NajmThemeProvider>
       </NajmThemeProvider>
     );
-    const card = container.querySelector("[data-slot=card]") as HTMLElement;
-    expect(card.getAttribute("data-border-degree")).toBe("subtle");
-  });
-
-  test("Nested appearance-only provider does not reset theme tokens", () => {
-    const { container } = render(
-      <NajmThemeProvider mode="dark">
-        <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-          <NCard title="x" />
-        </NajmThemeProvider>
-      </NajmThemeProvider>
-    );
-
     const providers = container.querySelectorAll("[data-najm-theme]");
     const innerProvider = providers[1] as HTMLElement;
-    expect(innerProvider.getAttribute("style") ?? "").not.toContain("--najm-background");
-
-    const card = container.querySelector("[data-slot=card]") as HTMLElement;
-    expect(card.getAttribute("data-border-degree")).toBe("strong");
+    expect(innerProvider.getAttribute("style") ?? "").toContain("--border-width: 0");
   });
 
-  test("NForm fields inherit global strong", () => {
+  test("NForm fields inherit global border width", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
+      <NajmThemeProvider appearance={{ borderWidth: "2px" }}>
         <NForm onSubmit={() => {}} as="div">
           <FormInput name="name" type="text" />
         </NForm>
       </NajmThemeProvider>
     );
 
-    const input = container.querySelector("[data-border-degree]") as HTMLElement;
-    expect(input.getAttribute("data-border-degree")).toBe("strong");
-    expect(input.className).toContain("border-border-strong");
+    const input = container.querySelector("[data-bordered]") as HTMLElement;
+    expect(input.getAttribute("data-bordered")).toBe("true");
+    expect(input.className).toContain("najm-border");
   });
 
-  test("NTable shell inherits global strong", () => {
+  test("NTable shell draws a border when bordered", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
+      <NajmThemeProvider appearance={{ borderWidth: "2px" }}>
         <div style={{ height: 400 }}>
           <NTable
             data={[{ id: "1", name: "Alice" }]}
@@ -205,73 +119,85 @@ describe("appearance.borderDegree", () => {
             showAddButton={false}
             showCheckbox={false}
             dynamicHeight={false}
+            bordered
           />
         </div>
       </NajmThemeProvider>
     );
 
-    const shell = container.querySelector("[data-ntable-body] [data-border-degree]") as HTMLElement;
-    expect(shell.getAttribute("data-border-degree")).toBe("strong");
-    expect(shell.className).toContain("border-border-strong");
+    const shell = container.querySelector("[data-ntable-body] [data-bordered]") as HTMLElement;
+    expect(shell.getAttribute("data-bordered")).toBe("true");
+    expect(shell.className).toContain("najm-border");
   });
 
-  test("outline Button inherits global strong", () => {
+  test("outline Button keeps an input-style border", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <Button variant="outline">Save</Button>
-      </NajmThemeProvider>
+      <Button variant="outline">Save</Button>
     );
-
     const button = container.querySelector("button") as HTMLElement;
-    expect(button.getAttribute("data-border-degree")).toBe("strong");
-    expect(button.className).toContain("border-border-strong");
+    expect(button.className).toContain("najm-border");
+    expect(button.className).toContain("border-input");
   });
 
-  test("NPageHeader bordered uses a full strong border", () => {
+  test("NPageHeader card uses a full card border", () => {
     const { container } = render(
-      <NPageHeader bordered borderDegree="strong" icon={TestIcon} title="Dashboard" />
+      <NPageHeader card icon={TestIcon} title="Dashboard" />
     );
-
     const header = container.querySelector("[data-slot=page-header]") as HTMLElement;
-    expect(header.getAttribute("data-border-degree")).toBe("strong");
-    expect(header.classList.contains("border")).toBe(true);
-    expect(header.className).toContain("border-border-strong");
+    expect(header.getAttribute("data-card")).toBe("true");
+    expect(header.className).toContain("rounded-xl");
+    expect(header.className).toContain("bg-card");
+    expect(header.className).toContain("najm-border");
+    expect(header.className).toContain("border-border");
   });
 
-  test("NPageHeader inherits global strong as a full border", () => {
+  test("NPageHeader bordered remains an alias for card mode", () => {
     const { container } = render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
+      <NPageHeader bordered icon={TestIcon} title="Dashboard" />
+    );
+    const header = container.querySelector("[data-slot=page-header]") as HTMLElement;
+    expect(header.getAttribute("data-card")).toBe("true");
+    expect(header.getAttribute("data-bordered")).toBe("true");
+    expect(header.className).toContain("najm-border");
+    expect(header.className).toContain("border-border");
+  });
+
+  test("NPageHeader reads card mode from design recipe", () => {
+    const { container } = render(
+      <NajmDesignProvider
+        config={{
+          version: 1,
+          theme: {},
+          components: { pageHeader: { card: true } },
+        }}
+      >
         <NPageHeader icon={TestIcon} title="Dashboard" />
-      </NajmThemeProvider>
+      </NajmDesignProvider>
     );
-
     const header = container.querySelector("[data-slot=page-header]") as HTMLElement;
-    expect(header.getAttribute("data-border-degree")).toBe("strong");
-    expect(header.classList.contains("border")).toBe(true);
-    expect(header.className).toContain("border-border-strong");
+    expect(header.getAttribute("data-card")).toBe("true");
+    expect(header.className).toContain("rounded-xl");
+    expect(header.className).toContain("bg-card");
   });
 
-  test("filled Button with explicit borderDegree shows a degree border", () => {
-    const { container } = render(<Button borderDegree="strong">Save</Button>);
+  test("filled Button with bordered opt-in shows a muted border", () => {
+    const { container } = render(<Button bordered>Save</Button>);
     const button = container.querySelector("button") as HTMLElement;
-    expect(button.getAttribute("data-border-degree")).toBe("strong");
-    expect(button.className).toContain("border");
-    expect(button.className).toContain("border-border-strong");
+    expect(button.getAttribute("data-bordered")).toBe("true");
+    expect(button.className).toContain("border-muted-foreground");
   });
 
-  test("Dialog content inherits global strong", () => {
+  test("Dialog content has a default border", () => {
     render(
-      <NajmThemeProvider appearance={{ borderDegree: "strong" }}>
-        <Dialog open>
-          <DialogContent aria-describedby={undefined}>
-            <DialogTitle>Border dialog</DialogTitle>
-            Dialog body
-          </DialogContent>
-        </Dialog>
-      </NajmThemeProvider>
+      <Dialog open>
+        <DialogContent aria-describedby={undefined}>
+          <DialogTitle>Border dialog</DialogTitle>
+          Dialog body
+        </DialogContent>
+      </Dialog>
     );
-
     const content = document.body.querySelector("[data-slot=dialog-content]") as HTMLElement;
-    expect(content.className).toContain("border-border-strong");
+    expect(content.className).toContain("najm-border");
+    expect(content.className).toContain("border-border");
   });
 });

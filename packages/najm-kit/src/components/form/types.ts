@@ -2,7 +2,6 @@ import type { SubmitHandler, UseFormProps, UseFormReturn } from "react-hook-form
 import type { ZodTypeAny, TypeOf } from "zod";
 import type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, SliderInputProps } from "../inputs/types";
 import type { FormSlotClassNames, FormVariant } from "./VariantContext";
-import type { NajmBorderDegree } from "../../theme/types";
 import type { NIconSource } from "../Icon";
 
 interface BaseFormInputProps {
@@ -58,7 +57,6 @@ export type FormProps<T extends ZodTypeAny = ZodTypeAny> = {
   form?: UseFormReturn<TypeOf<T>>;
   variant?: FormVariant;
   bordered?: boolean;
-  borderDegree?: NajmBorderDegree;
   as?: "form" | "div";
   className?: string;
   id?: string;

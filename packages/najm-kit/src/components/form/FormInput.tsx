@@ -3,7 +3,7 @@ import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessa
 import { TextInput, NumberInput, PasswordInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, SwitchInput, CheckboxInput, CheckboxGroupInput, FileInput, ImageInput, DateInput, StarRatingInput, ColorArrayInput, EmojiInput, LangInput, PhoneInput, TimeInput, SliderInput } from "../inputs";
 import { useFormContext } from "react-hook-form";
 import { usePrefix } from "./PrefixContext";
-import { useVariantPreset, useBordered, useBorderDegree } from "./VariantContext";
+import { useVariantPreset, useBordered } from "./VariantContext";
 import { cn } from "../../lib/cn";
 import { NIcon } from "../Icon";
 import type { FormInputProps } from "./types";
@@ -39,7 +39,6 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
   const prefix = usePrefix();
   const preset = useVariantPreset();
   const contextBordered = useBordered();
-  const contextBorderDegree = useBorderDegree();
   const fieldName = prefix ? `${prefix}.${name}` : name;
 
   if (!InputComponent) return null;
@@ -81,7 +80,7 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
             </FormLabel>
           )}
           <FormControl>
-            <InputComponent value={field.value ?? getDefaultValue()} onChange={handleChange} status={hasError && !isHidden ? "error" : "default"} bordered={contextBordered} borderDegree={contextBorderDegree} icon={formLabel ? undefined : icon} iconColor={formLabel ? undefined : iconColor} disabled={disabled} readOnly={readOnly} {...inputRest} className={slot.input} />
+            <InputComponent value={field.value ?? getDefaultValue()} onChange={handleChange} status={hasError && !isHidden ? "error" : "default"} bordered={contextBordered} icon={formLabel ? undefined : icon} iconColor={formLabel ? undefined : iconColor} disabled={disabled} readOnly={readOnly} {...inputRest} className={slot.input} />
           </FormControl>
           {!hasError && !disabled && !readOnly && formDescription && <FormDescription className={slot.description}>{formDescription}</FormDescription>}
           {!isHidden && <FormMessage className={slot.error} />}

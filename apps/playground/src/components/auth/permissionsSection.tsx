@@ -1,7 +1,7 @@
 'use client';
 
 import { usePermissions, PermissionList, Can, Role } from 'najm-auth/client/react';
-import { Badge } from '@/components/ui/badge';
+import { NBadge } from 'najm-kit';
 import { Separator } from '@/components/ui/separator';
 
 export function PermissionsSection() {
@@ -15,9 +15,9 @@ export function PermissionsSection() {
         {roles.length > 0 ? (
           <div className="flex flex-wrap gap-2">
             {roles.map((role) => (
-              <Badge key={role} variant="secondary">
+              <NBadge key={role} color="neutral" look="soft">
                 {role}
-              </Badge>
+              </NBadge>
             ))}
           </div>
         ) : (
@@ -33,9 +33,9 @@ export function PermissionsSection() {
         <div className="flex flex-wrap gap-2">
           <PermissionList fallback={<p className="text-sm text-muted-foreground">No permissions.</p>}>
             {(perm) => (
-              <Badge key={perm} variant="outline">
+              <NBadge key={perm} color="neutral" look="outline">
                 {perm}
-              </Badge>
+              </NBadge>
             )}
           </PermissionList>
         </div>
@@ -80,7 +80,7 @@ function GateRow({ label, granted }: { label: string; granted: boolean }) {
   return (
     <div className="flex items-center justify-between rounded border px-3 py-2">
       <span className="font-mono text-xs">{label}</span>
-      <Badge variant={granted ? 'default' : 'secondary'}>{granted ? 'Granted' : 'Denied'}</Badge>
+      <NBadge color={granted ? 'success' : 'neutral'} look="solid">{granted ? 'Granted' : 'Denied'}</NBadge>
     </div>
   );
 }

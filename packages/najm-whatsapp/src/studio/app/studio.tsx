@@ -1,7 +1,6 @@
 'use client';
 import React from 'react';
-import { NajmThemeProvider, NPortalScopeProvider, Toaster } from 'najm-ui';
-import 'najm-ui/styles.css';
+import { NajmThemeProvider, NPortalScopeProvider, Toaster } from 'najm-kit';
 import { WhatsAppStudioApp } from './App';
 import type { WhatsAppStudioProps } from '../providers/types';
 

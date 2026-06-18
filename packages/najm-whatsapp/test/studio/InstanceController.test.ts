@@ -38,13 +38,13 @@ function createTables(sqlite: Database) {
   sqlite.exec(`CREATE TABLE IF NOT EXISTS permissions (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT, resource TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT, updated_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS role_permissions (id TEXT PRIMARY KEY, role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE, permission_id TEXT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE, created_at TEXT, updated_at TEXT)`);
 
-  sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_instances (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', phone TEXT, profile_name TEXT, connected_at TEXT, last_seen_at TEXT)`);
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_instances (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, name TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'disconnected', phone TEXT, profile_name TEXT, connected_at TEXT, last_seen_at TEXT, auto_connect INTEGER NOT NULL DEFAULT 0, last_error TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_messages (id TEXT PRIMARY KEY, instance_id TEXT NOT NULL, direction TEXT NOT NULL, jid TEXT NOT NULL, from_me INTEGER NOT NULL, type TEXT NOT NULL, content TEXT, wa_message_id TEXT, quoted_id TEXT, status TEXT, metadata TEXT, timestamp TEXT NOT NULL)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_contacts (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, instance_id TEXT NOT NULL, jid TEXT NOT NULL, phone TEXT, name TEXT, push_name TEXT, profile_picture_url TEXT, is_business INTEGER, labels TEXT, last_message_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_groups (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, instance_id TEXT NOT NULL, jid TEXT NOT NULL, name TEXT NOT NULL, description TEXT, participant_count INTEGER DEFAULT 0, is_admin INTEGER DEFAULT 0, picture_url TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_chats (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, instance_id TEXT NOT NULL, jid TEXT NOT NULL, name TEXT, is_group INTEGER NOT NULL, unread_count INTEGER DEFAULT 0, is_archived INTEGER DEFAULT 0, is_pinned INTEGER DEFAULT 0, is_muted INTEGER DEFAULT 0, labels TEXT, last_message_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_labels (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, instance_id TEXT NOT NULL, name TEXT NOT NULL, color TEXT NOT NULL, predefined INTEGER DEFAULT 0)`);
-  sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_webhooks (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, instance_id TEXT, url TEXT NOT NULL, events TEXT, headers TEXT, enabled INTEGER NOT NULL DEFAULT 1)`);
+  sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_webhooks (id TEXT PRIMARY KEY, created_at TEXT, updated_at TEXT, instance_id TEXT, url TEXT NOT NULL, events TEXT, headers TEXT, enabled INTEGER NOT NULL DEFAULT 1, signing_secret TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_webhook_events (id TEXT PRIMARY KEY, instance_id TEXT, event_type TEXT NOT NULL, payload TEXT, forward_status TEXT, created_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_studio_audit_logs (id TEXT PRIMARY KEY, action TEXT NOT NULL, instance_id TEXT, user_id TEXT, details TEXT, created_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_sessions (id TEXT PRIMARY KEY, instance_id TEXT NOT NULL UNIQUE, creds TEXT, created_at TEXT, updated_at TEXT)`);
@@ -202,5 +202,20 @@ describe('InstanceController', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.qr).toBeNull();
+  });
+
+  test('GET /wa-studio/instances/dashboard returns awaited messageTypes', async () => {
+    const { port: p, headers, rawSqlite } = await setup();
+    rawSqlite.exec(`INSERT INTO whatsapp_messages (id, instance_id, direction, jid, from_me, type, content, timestamp) VALUES ('m1', 'inst-1', 'inbound', 'jid-1', 0, 'text', '{"text":"hi"}', '2026-01-01T00:00:00Z')`);
+    rawSqlite.exec(`INSERT INTO whatsapp_messages (id, instance_id, direction, jid, from_me, type, content, timestamp) VALUES ('m2', 'inst-1', 'inbound', 'jid-2', 0, 'image', '{}', '2026-01-02T00:00:00Z')`);
+
+    const res = await fetch(`http://localhost:${p}/wa-studio/instances/dashboard`, { headers });
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(body.messageTypes).toBeDefined();
+    expect(body.messageTypes).not.toBeInstanceOf(Promise);
+    expect(body.messageTypes.text).toBe(1);
+    expect(body.messageTypes.image).toBe(1);
+    expect(body.messages.total).toBe(2);
   });
 });

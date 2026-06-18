@@ -7,8 +7,7 @@
   "workspaces": {
     "packages": [
       "packages/*",
-      "apps/*",
-      "../diject"
+      "apps/*"
     ],
     "nohoist": []
   },
@@ -41,7 +40,6 @@
     "@clack/prompts": "^1.0.1",
     "@hono/node-server": "^1.19.9",
     "bcrypt": "^6.0.0",
-    "diject": "workspace:*",
     "dotenv-pro": "^0.2.0",
     "forji": "^1.0.5",
     "hono": "^4.12.0",
@@ -61,7 +59,6 @@
     "zod": "^4.3.6"
   },
   "scripts": {
-    "build:diject": "bun run --cwd ../diject build",
     "build": "turbo run build",
     "build:auth": "turbo run build --filter=najm-auth",
     "build:cache": "turbo run build --filter=najm-cache",
@@ -78,12 +75,17 @@
     "build:rate": "turbo run build --filter=najm-rate",
     "build:mcp": "turbo run build --filter=najm-mcp",
     "build:rag": "bun scripts/build-rag.ts",
+    "build:rag-studio": "bun scripts/build-rag-studio-app.ts",
     "check:studio-budget": "bun scripts/check-studio-budget.ts",
     "build:storage": "turbo run build --filter=najm-storage",
     "build:validation": "turbo run build --filter=najm-validation",
     "build:chatbot": "turbo run build --filter=najm-chatbot",
     "build:whatsapp": "turbo run build --filter=najm-whatsapp",
-    "build:ui": "bun run --cwd packages/najm-ui build",
+    "build:ui": "bun run --cwd packages/najm-kit build",
+    "dev:theme-studio": "bun run --cwd apps/theme-studio dev",
+    "theme-studio": "bun run --cwd apps/theme-studio dev",
+    "theme-studio:preview": "bun run --cwd apps/theme-studio preview",
+    "build:theme-studio": "bun run --cwd apps/theme-studio build",
     "build:playground": "bun run --cwd apps/playground build:next",
     "test": "bun run test:seq",
     "test:parallel": "turbo run test",
@@ -105,7 +107,7 @@
     "test:chatbot": "bun --cwd packages/najm-chatbot test",
     "test:validation": "turbo run test --filter=najm-validation",
     "test:whatsapp": "turbo run test --filter=najm-whatsapp",
-    "test:ui": "bun run --cwd packages/najm-ui test",
+    "test:ui": "bun run --cwd packages/najm-kit test",
     "test:seq": "bun run scripts/test-sequential.ts",
     "publish:all": "bun scripts/publish-all.ts",
     "publish:all:dry": "bun scripts/publish-all.ts --dry-run",
@@ -119,6 +121,7 @@
     "pub:rate": "bun scripts/publish-package.ts najm-rate --patch",
     "pub:mcp": "bun scripts/publish-package.ts najm-mcp --patch",
     "pub:rag": "bun scripts/publish-package.ts najm-rag --patch",
+    "pack:rag-studio": "bun scripts/build-rag-studio-app.ts",
     "pub:cors": "bun scripts/publish-package.ts najm-cors --patch",
     "pub:cookies": "bun scripts/publish-package.ts najm-cookies --patch",
     "pub:i18n": "bun scripts/publish-package.ts najm-i18n --patch",
@@ -130,8 +133,8 @@
     "pub:whatsapp": "bun scripts/publish-package.ts najm-whatsapp --patch",
     "pub:cli": "bun scripts/publish-package.ts najm-cli --patch",
     "pub:storage": "bun scripts/publish-package.ts najm-storage --patch",
-    "pub:ui": "bun scripts/publish-package.ts najm-ui --patch",
-    "dev:ui": "bun run --cwd packages/najm-ui dev",
+    "pub:ui": "bun scripts/publish-package.ts najm-kit --patch",
+    "dev:ui": "bun run --cwd packages/najm-kit dev",
     "start": "bun --watch main.ts",
     "clean": "turbo run clean && rimraf dist",
     "web": "bun run --cwd apps/website dev",

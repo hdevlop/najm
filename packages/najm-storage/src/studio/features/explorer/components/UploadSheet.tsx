@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { NSheet, NUploader } from 'najm-ui';
+import { NSheet, NUploader } from 'najm-kit';
 import type { UploadManager } from '../hooks/useUploadManager';
 
 interface Props {

@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
-import type { NUploaderItem } from 'najm-ui';
+import type { NUploaderItem } from 'najm-kit';
 import { useStudio } from '../../../providers';
 
 let counter = 0;

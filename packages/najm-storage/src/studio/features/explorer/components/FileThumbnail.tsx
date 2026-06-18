@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { NFileTypeIcon } from 'najm-ui';
+import { NFileTypeIcon } from 'najm-kit';
 import { useStudio } from '../../../providers';
 
 export function FolderThumbnail({ size = 'md' }: { size?: 'sm' | 'md' | 'lg' | 'xl' }) {

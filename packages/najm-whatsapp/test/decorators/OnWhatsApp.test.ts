@@ -34,7 +34,7 @@ describe('OnWhatsApp decorator', () => {
     expect(received.text).toBe('Hello from decorator test');
   });
 
-  test('@OnWhatsApp("connection") fires on wa.connection_update event', async () => {
+  test('@OnWhatsApp("connection") fires on whatsapp.connection event', async () => {
     let received: any = null;
 
     @Service()
@@ -51,7 +51,7 @@ describe('OnWhatsApp decorator', () => {
       .listen(5702);
 
     const eventService = await (server as any).container.resolve(EventService);
-    eventService.emit('wa.connection_update', { status: 'connected', phone: '55119' });
+    eventService.emit('whatsapp.connection', { status: 'connected', phone: '55119' });
 
     expect(received).not.toBeNull();
     expect(received.status).toBe('connected');
@@ -81,7 +81,7 @@ describe('OnWhatsApp decorator', () => {
     expect(received.status).toBe('delivered');
   });
 
-  test('@OnWhatsApp("group") fires on wa.groups.update event', async () => {
+  test('@OnWhatsApp("group") fires on whatsapp.group event', async () => {
     let received: any = null;
 
     @Service()
@@ -98,13 +98,13 @@ describe('OnWhatsApp decorator', () => {
       .listen(5704);
 
     const eventService = await (server as any).container.resolve(EventService);
-    eventService.emit('wa.groups.update', { id: 'group@g.us', subject: 'Test Group' });
+    eventService.emit('whatsapp.group', { id: 'group@g.us', subject: 'Test Group' });
 
     expect(received).not.toBeNull();
     expect(received.id).toBe('group@g.us');
   });
 
-  test('@OnWhatsApp("presence") fires on wa.presence.update event', async () => {
+  test('@OnWhatsApp("presence") fires on whatsapp.presence event', async () => {
     let received: any = null;
 
     @Service()
@@ -121,7 +121,7 @@ describe('OnWhatsApp decorator', () => {
       .listen(5705);
 
     const eventService = await (server as any).container.resolve(EventService);
-    eventService.emit('wa.presence.update', { jid: '55119@s.whatsapp.net', lastKnownPresence: 'online' });
+    eventService.emit('whatsapp.presence', { jid: '55119@s.whatsapp.net', lastKnownPresence: 'online' });
 
     expect(received).not.toBeNull();
     expect(received.jid).toBe('55119@s.whatsapp.net');

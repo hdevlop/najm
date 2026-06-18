@@ -62,6 +62,10 @@ export class MemoryDriver implements Driver {
     return entry.value;
   }
 
+  async getMany(keys: string[]): Promise<Array<string | null>> {
+    return Promise.all(keys.map((key) => this.get(key)));
+  }
+
   async set(key: string, value: string, ttlMs?: number): Promise<void> {
     // Check max keys limit before adding new key
     if (!this.data.has(key) && this.data.size >= this.maxKeys) {

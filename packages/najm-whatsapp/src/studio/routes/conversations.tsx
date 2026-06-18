@@ -20,7 +20,7 @@ function ConversationsRoute() {
     <ConversationsView
       selectedJid={jid ?? null}
       onSelectConversation={(newJid) =>
-        navigate({ search: { jid: newJid ?? undefined } })
+        navigate({ search: { jid: newJid ?? undefined } as any })
       }
     />
   );

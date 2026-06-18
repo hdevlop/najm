@@ -21,7 +21,26 @@ export interface WhatsAppBaileysConfig {
     driver: 'db' | 'file';
     path?: string;
   };
-  webhooks?: Array<{ url: string; events?: string[]; headers?: Record<string, string> }>;
+  webhooks?: Array<{
+    url: string;
+    events?: string[];
+    headers?: Record<string, string>;
+    instanceId?: string;
+    signingSecret?: string;
+  }>;
+  /**
+   * Optional shared secret used to sign outbound webhook deliveries.
+   * Receivers should verify `x-najm-signature-256` with timing-safe comparison.
+   */
+  webhookSigningSecret?: string;
+  /**
+   * SSRF policy for outbound webhook deliveries. By default private network
+   * addresses (loopback, RFC1918, link-local, etc.) are rejected.
+   */
+  webhookSecurity?: {
+    allowPrivateNetworks?: boolean;
+    allowedHosts?: string[];
+  };
   defaultAgent?: string;
 }
 

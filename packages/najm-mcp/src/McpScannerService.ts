@@ -1,4 +1,14 @@
-import { Meta, Service, Inject, Scan, ScanType, ScannerService } from 'najm-core';
+import {
+  Meta,
+  Service,
+  Inject,
+  Scan,
+  ScanType,
+  ScannerService,
+  LoggerService,
+  getParameterMetadata,
+  type ParameterMetadata,
+} from 'najm-core';
 import {
   getMcpAnnotations,
   getMcpConfirmation,
@@ -15,6 +25,7 @@ import type { McpValidationConfig } from './types';
 export class McpScannerService {
   @Scan() private scanner!: ScannerService;
   @Inject() private registry!: McpRegistryService;
+  @Inject(LoggerService) private log!: LoggerService;
 
   private validationGetter?: (target: any, methodName?: string | symbol) => McpValidationConfig | undefined;
 
@@ -45,7 +56,10 @@ export class McpScannerService {
       const validation = this.getValidationConfig(target, tool.methodKey, method);
       const validationArgs = this.getValidationArgNames(validation);
       const validationParamKeys = this.getParamKeyNames(validation);
+      const validationQueryKeys = this.getQueryKeyNames(validation);
       const name = group ? `${group}_${tool.name}` : tool.name;
+
+      this.warnUnsupportedParameters(name, method);
 
       this.registry.registerTool({
         ...tool,
@@ -57,6 +71,7 @@ export class McpScannerService {
         validation,
         validationArgs,
         validationParamKeys,
+        validationQueryKeys,
         confirmation,
       });
     }
@@ -107,5 +122,34 @@ export class McpScannerService {
   private getParamKeyNames(config?: McpValidationConfig): string[] | undefined {
     const shape = getSchemaShape(config?.params);
     return shape ? Object.keys(shape) : undefined;
+  }
+
+  private getQueryKeyNames(config?: McpValidationConfig): string[] | undefined {
+    const shape = getSchemaShape(config?.query);
+    return shape ? Object.keys(shape) : undefined;
+  }
+
+  /**
+   * Parameter decorator types the MCP invoker can resolve from a tool call.
+   * Anything else has no MCP-side source and would resolve to `undefined` at
+   * runtime, so we surface it at scan time instead of failing silently.
+   */
+  private static readonly SUPPORTED_PARAM_TYPES = new Set([
+    'body', 'json', 'text', 'formData', 'arrayBuffer', 'blob',
+    'params', 'query', 'queries',
+    'user', 'owner', 'info', 'data', 'filter', 'guardParams', 'role', 'permissions',
+  ]);
+
+  private warnUnsupportedParameters(toolName: string, method: Function): void {
+    const metadata = (getParameterMetadata(method) ?? []) as ParameterMetadata[];
+
+    for (const meta of metadata) {
+      if (!McpScannerService.SUPPORTED_PARAM_TYPES.has(meta.type)) {
+        this.log.warn(
+          `[najm-mcp] Tool "${toolName}" parameter #${meta.index} uses @${meta.type} ` +
+          `which has no MCP source and will resolve to undefined when called as a tool.`,
+        );
+      }
+    }
   }
 }

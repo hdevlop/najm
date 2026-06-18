@@ -41,6 +41,7 @@ export class CacheService implements Driver {
   private driver: Driver;
   private _type: 'memory' | 'redis';
   private config: CacheConfig;
+  private pending = new Map<string, Promise<unknown>>();
 
   constructor(@Inject(CACHE_CONFIG) config?: CacheConfig | null) {
     this.config = config ?? {
@@ -116,6 +117,11 @@ export class CacheService implements Driver {
    */
   get(key: string): Promise<string | null> {
     return this.driver.get(key);
+  }
+
+  getMany(keys: string[]): Promise<Array<string | null>> {
+    if (this.driver.getMany) return this.driver.getMany(keys);
+    return Promise.all(keys.map((key) => this.driver.get(key)));
   }
 
   /**
@@ -203,9 +209,21 @@ export class CacheService implements Driver {
     const cached = await this.getJson<T>(key);
     if (cached !== null) return cached;
 
-    const value = await factory();
-    await this.setJson(key, value, ttlMs);
-    return value;
+    const existing = this.pending.get(key) as Promise<T> | undefined;
+    if (existing) return existing;
+
+    const pending = (async () => {
+      const value = await factory();
+      await this.setJson(key, value, ttlMs);
+      return value;
+    })();
+
+    this.pending.set(key, pending);
+    try {
+      return await pending;
+    } finally {
+      this.pending.delete(key);
+    }
   }
 
   /**
@@ -241,6 +259,7 @@ export class CacheService implements Driver {
    * Cleanup/destroy the driver
    */
   async destroy(): Promise<void> {
+    this.pending.clear();
     if (this.driver.destroy) {
       await this.driver.destroy();
     }

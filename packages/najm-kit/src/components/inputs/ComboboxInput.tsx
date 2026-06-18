@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
@@ -7,7 +7,7 @@ import { BaseInput } from "./BaseInput";
 import { getIconColorProps, resolveIcon } from "./utils";
 import type { ComboboxInputProps, SelectItemType } from "./types";
 
-export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Select...", searchPlaceholder = "Search...", emptyMessage = "No results found.", value, onChange, icon, showIcon = true, iconColor, items = [], className = "", variant = "default", status = "default", bordered, borderDegree, borderColor, disabled = false, allowFreeText = false }) => {
+export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Select...", searchPlaceholder = "Search...", emptyMessage = "No results found.", value, onChange, icon, showIcon = true, iconColor, items = [], className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, allowFreeText = false }) => {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
   const normalizedItems: SelectItemType[] = items.map((item) => typeof item === "string" ? { value: item, label: item } : item);
@@ -29,7 +29,7 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
   return (
     <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQuery(""); }}>
       <PopoverTrigger asChild disabled={disabled}>
-        <BaseInput variant={variant} status={status} bordered={bordered} borderDegree={borderDegree} borderColor={borderColor} className={cn("cursor-pointer", className)}>
+        <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("cursor-pointer", className)}>
           {shouldDisplayIcon && <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span>}
           <span className={cn("flex-1 truncate text-sm", !displayLabel && "text-muted-foreground")}>{displayLabel || placeholder}</span>
           <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />

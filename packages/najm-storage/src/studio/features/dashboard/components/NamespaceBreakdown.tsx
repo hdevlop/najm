@@ -1,7 +1,7 @@
 import React from 'react';
 import { Archive, HardDrive } from 'lucide-react';
 import { formatBytes } from '../../../lib/format';
-import { NEmptyState as EmptyState } from 'najm-ui';
+import { NEmptyState as EmptyState } from 'najm-kit';
 import type { NamespaceItem, NamespaceBreakdownProps } from '../types';
 
 export function NamespaceBreakdown({ namespaces, totalQuota }: NamespaceBreakdownProps) {

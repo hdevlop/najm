@@ -18,9 +18,6 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "diject": [
-        "../../../diject/src/index.ts"
-      ],
       "najm-api": [
         "../../packages/najm-api/src/index.ts"
       ],

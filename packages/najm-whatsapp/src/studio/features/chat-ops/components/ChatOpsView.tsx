@@ -3,7 +3,7 @@ import { Archive, Pin, BellOff, Trash2, MailOpen, Wrench } from 'lucide-react';
 import { useApiClient } from '@/lib/api';
 import { useSelectedInstance } from '@/shared/hooks/useSelectedInstance';
 import { useToast } from '@/lib/toast';
-import { NPageHeader, NEmptyState, Button, Input } from 'najm-ui';
+import { NPageHeader, NEmptyState, Button, Input } from 'najm-kit';
 
 interface ChatOpsViewProps {
   jid?: string | null;

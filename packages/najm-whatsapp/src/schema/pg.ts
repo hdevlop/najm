@@ -27,6 +27,8 @@ export const whatsappInstances = pgTable('whatsapp_instances', {
   profileName: text('profile_name'),
   connectedAt: timestamp('connected_at', { mode: 'string' }),
   lastSeenAt: timestamp('last_seen_at', { mode: 'string' }),
+  autoConnect: boolean('auto_connect').notNull().default(false),
+  lastError: text('last_error'),
 });
 
 /**
@@ -124,7 +126,8 @@ export const whatsappWebhooks = pgTable('whatsapp_webhooks', {
   url: text('url').notNull(),
   events: text('events'),
   headers: text('headers'),
-  enabled: boolean('enabled').notNull().default(true),
+  enabled: boolean('enabled').default(true).notNull(),
+  signingSecret: text('signing_secret'),
 });
 
 /**
@@ -197,6 +200,7 @@ export const whatsappAiConfigs = pgTable('whatsapp_ai_configs', {
   model: text('model'),
   systemPrompt: text('system_prompt'),
   temperature: text('temperature'),
+  limits: text('limits'),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow(),
 });
 

@@ -7,7 +7,7 @@ export default defineConfig({
   plugins: [react()],
   resolve: {
     alias: [
-      { find: /^najm-kit\/styles\.css$/, replacement: resolve(__dirname, 'src/styles.css') },
+      { find: /^najm-kit\/theme\.css$/, replacement: resolve(__dirname, 'src/theme.css') },
       { find: /^najm-kit$/, replacement: resolve(__dirname, 'src/index.ts') },
     ],
   },

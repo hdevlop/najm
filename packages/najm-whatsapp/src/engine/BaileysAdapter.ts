@@ -18,20 +18,14 @@ import type {
   WAMessageKey,
   GroupMetadata,
 } from '@whiskeysockets/baileys';
+import { loadBaileys, getBaileysExport } from './BaileysRuntime';
 
 // Keep ws from loading its optional native bufferutil path inside Next bundles.
 if (!process.env['WS_NO_BUFFER_UTIL']) {
   process.env['WS_NO_BUFFER_UTIL'] = 'true';
 }
 
-let baileysModule: Promise<any> | undefined;
-
-const getBaileysModule = async () => {
-  baileysModule ??= import('@whiskeysockets/baileys');
-  return baileysModule;
-};
-
-const getBaileys = (mod: any, key: string) => mod[key] ?? mod.default?.[key];
+const getBaileys = (mod: any, key: string) => getBaileysExport(mod, key);
 
 export class BaileysAdapter {
   constructor(private socket: WASocket) {}
@@ -242,7 +236,7 @@ export class BaileysAdapter {
    * Passes socket.logger and socket.updateMediaRequest for reupload support.
    */
   async downloadMedia(message: any, type: 'buffer' | 'stream' = 'buffer') {
-    const baileys = await getBaileysModule();
+    const baileys = await loadBaileys();
     const downloadMediaMessage = getBaileys(baileys, 'downloadMediaMessage');
     return downloadMediaMessage(message, type, {}, {
       logger: this.socket.logger,

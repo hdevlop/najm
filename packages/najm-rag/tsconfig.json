@@ -12,11 +12,8 @@
     "resolveJsonModule": true,
     "declaration": true,
     "declarationMap": true,
-    "outDir": "./dist",
-    "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": { "@/*": ["./src/studio/*"] }
+    "outDir": "./dist"
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*"],
+  "include": ["src/**/*.ts", "test/**/*"],
   "exclude": ["node_modules", "dist"]
 }

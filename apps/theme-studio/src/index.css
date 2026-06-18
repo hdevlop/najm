@@ -1,0 +1,88 @@
+/*
+ * Najm Theme Studio stylesheet.
+ * Loads Tailwind v4 + najm-kit's theme contract, and scans the kit source so
+ * utility classes used inside najm-kit components are emitted.
+ */
+@import "tailwindcss";
+@import "najm-kit/theme.css";
+
+@source "../../../packages/najm-kit/src/**/*.{ts,tsx}";
+@source "./**/*.{ts,tsx}";
+
+@theme {
+  --color-bg: var(--background);
+  --color-sidebar: var(--secondary);
+  --color-card: var(--card);
+  --color-card-hover: var(--accent);
+  --color-txt-primary: var(--foreground);
+  --color-txt-secondary: var(--muted-foreground);
+  --color-txt-muted: color-mix(in oklch, var(--muted-foreground), transparent 20%);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+}
+
+.theme-studio,
+.theme-studio [data-najm-theme] {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-bg: var(--background);
+  --color-sidebar: var(--secondary);
+  --color-card-hover: var(--accent);
+  --color-txt-primary: var(--foreground);
+  --color-txt-secondary: var(--muted-foreground);
+  --color-txt-muted: color-mix(in oklch, var(--muted-foreground), transparent 20%);
+}
+
+.theme-studio {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.theme-studio ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.theme-studio ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.theme-studio ::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.theme-studio ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.theme-studio ::selection {
+  background: color-mix(in oklch, var(--primary), transparent 70%);
+  color: var(--foreground);
+}

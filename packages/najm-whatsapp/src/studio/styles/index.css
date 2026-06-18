@@ -1,59 +1,47 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/*
+ * WA Studio — Tailwind v4 source.
+ * The consumer compiles this together with `@import "najm-kit/theme.css"`.
+ * The build script prefixes every selector with `.wa-studio` and rewrites
+ * `:root` → `.wa-studio`, `.dark` → `.wa-studio.dark, .wa-studio .dark` so
+ * mounting the studio never overrides the host page's tokens. Preflight is
+ * off (the studio is an embedded surface — it should not reset the host).
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "najm-kit/theme.css";
 
-/* ─────────────────────────────────────────────────────────────
-   WA Studio Theme — Dark-first operational interface.
-   ───────────────────────────────────────────────────────────── */
+@theme {
+  --color-bg: var(--background);
+  --color-sidebar: var(--secondary);
+  --color-card: var(--card);
+  --color-card-hover: var(--accent);
+  --color-surface: var(--popover);
+  --color-surface-hover: var(--accent);
+  --color-brand: var(--primary);
+  --color-brand-hover: var(--ring);
+  --color-brand-muted: color-mix(in oklch, var(--primary), transparent 50%);
+  --color-brand-glow: color-mix(in oklch, var(--primary), transparent 82%);
+  --color-accent: oklch(0.7114 0.1434 209.601);
+  --color-accent-hover: oklch(0.6728 0.1301 220.731);
+  --color-txt: var(--foreground);
+  --color-txt-primary: var(--foreground);
+  --color-txt-secondary: var(--muted-foreground);
+  --color-txt-muted: color-mix(in oklch, var(--muted-foreground), transparent 20%);
+  --color-status-green: oklch(0.7235 0.1846 149.234);
+  --color-status-yellow: oklch(0.7956 0.1842 84.616);
+  --color-status-red: oklch(0.6368 0.2078 25.326);
 
-.wa-studio {
-  --wa-bg: hsl(var(--background));
-  --wa-sidebar: hsl(var(--secondary));
-  --wa-card: hsl(var(--card));
-  --wa-card-hover: hsl(var(--accent));
-  --wa-surface: hsl(var(--popover));
-  --wa-surface-hover: hsl(var(--accent));
-  --wa-border: hsl(var(--border));
-  --wa-border-subtle: hsl(var(--border) / 0.5);
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", Menlo, monospace;
 
-  --wa-brand: 142 70% 49%;
-  --wa-brand-hover: 168 76% 33%;
-  --wa-brand-muted: 165 85% 22%;
-  --wa-brand-glow: hsl(142 70% 49% / 0.18);
-
-  --wa-accent: 187 94% 43%;
-  --wa-accent-hover: 190 91% 39%;
-
-  --primary: 142 71% 45%;
-  --primary-foreground: 0 0% 100%;
-  --ring: 142 71% 45%;
-  --accent: 142 71% 15%;
-  --accent-foreground: 142 71% 80%;
-
-  --najm-primary: 142 71% 45%;
-  --najm-primary-foreground: 0 0% 100%;
-  --najm-ring: 142 71% 45%;
-  --najm-accent: 142 71% 15%;
-  --najm-accent-foreground: 142 71% 80%;
-
-  color-scheme: dark;
+  --shadow-brand-glow: 0 0 20px var(--color-brand-glow);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
-.wa-studio .dark,
-.wa-studio.dark {
-  --primary: 142 71% 45%;
-  --primary-foreground: 0 0% 100%;
-  --ring: 142 71% 45%;
-  --accent: 142 71% 15%;
-  --accent-foreground: 142 71% 80%;
-
-  --najm-primary: 142 71% 45%;
-  --najm-primary-foreground: 0 0% 100%;
-  --najm-ring: 142 71% 45%;
-  --najm-accent: 142 71% 15%;
-  --najm-accent-foreground: 142 71% 80%;
+.wa-studio {
+  color-scheme: dark;
 }
 
 * {
@@ -78,17 +66,17 @@ body,
 }
 
 ::-webkit-scrollbar-thumb {
-  background: hsl(var(--border));
+  background: var(--color-border);
   border-radius: 3px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: hsl(var(--accent));
+  background: var(--color-accent);
 }
 
 ::selection {
-  background: hsl(var(--primary) / 0.2);
-  color: hsl(var(--foreground));
+  background: color-mix(in oklch, var(--color-primary), transparent 80%);
+  color: var(--color-foreground);
 }
 
 @layer base {
@@ -98,7 +86,7 @@ body,
 
   .wa-studio {
     scrollbar-width: thin;
-    scrollbar-color: hsl(var(--border)) transparent;
+    scrollbar-color: var(--color-border) transparent;
   }
 
   .wa-studio ::-webkit-scrollbar {
@@ -111,22 +99,16 @@ body,
   }
 
   .wa-studio ::-webkit-scrollbar-thumb {
-    background: hsl(var(--border));
+    background: var(--color-border);
     border-radius: 3px;
   }
 
   .wa-studio ::-webkit-scrollbar-thumb:hover {
-    background: hsl(var(--accent));
+    background: var(--color-accent);
   }
 
   .wa-studio ::selection {
-    background: hsl(var(--primary) / 0.2);
-    color: hsl(var(--foreground));
-  }
-}
-
-@layer utilities {
-  .focus-ring {
-    @apply focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-bg;
+    background: color-mix(in oklch, var(--color-primary), transparent 80%);
+    color: var(--color-foreground);
   }
 }

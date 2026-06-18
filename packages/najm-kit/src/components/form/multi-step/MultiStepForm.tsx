@@ -25,7 +25,6 @@ export function WizardForm({
   submitLabel = "Submit",
   variant = "default",
   bordered,
-  borderDegree,
   className,
   classNames,
   footerSlot,
@@ -92,7 +91,7 @@ export function WizardForm({
       )}
 
       <Form {...form}>
-        <VariantProvider variant={variant} bordered={bordered} borderDegree={borderDegree}>
+        <VariantProvider variant={variant} bordered={bordered}>
           <form
             id={`step-${currentStepConfig.id}`}
             onSubmit={form.handleSubmit(handleSubmit)}

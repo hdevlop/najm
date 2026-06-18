@@ -9,7 +9,6 @@ import type { AuthPluginConfig, AuthConfig, AuthSchema } from './types';
 import { authSchema as pgSchema } from './schema/pg';
 import { authSchema as sqliteSchema } from './schema/sqlite';
 import { authSchema as mysqlSchema } from './schema/mysql';
-import { setConfiguredCookieName } from './auth/AuthController';
 
 import * as AuthModule from './auth';
 import * as UserModule from './users';
@@ -33,6 +32,11 @@ const DEFAULT_JWT = {
 };
 
 const mergeConfig = (config?: AuthPluginConfig): AuthConfig => {
+  const bcryptRounds = config?.bcryptRounds ?? 10;
+  if (!Number.isInteger(bcryptRounds) || bcryptRounds < 4 || bcryptRounds > 31) {
+    throw new Error('auth.bcryptRounds must be an integer between 4 and 31');
+  }
+
   const finalConfig: AuthConfig = {
     jwt: {
       ...DEFAULT_JWT,
@@ -48,6 +52,7 @@ const mergeConfig = (config?: AuthPluginConfig): AuthConfig => {
       maxAttempts: config?.lockout?.maxAttempts ?? 5,
       duration: config?.lockout?.duration ?? '15m',
     },
+    bcryptRounds,
     session: {
       name: config?.session?.name ?? 'najm.session',
       maxAge: config?.session?.maxAge ?? 300,
@@ -61,8 +66,6 @@ const mergeConfig = (config?: AuthPluginConfig): AuthConfig => {
   if (!finalConfig.jwt.refreshSecret) {
     throw Err.configRequired('auth', 'JWT_REFRESH_SECRET');
   }
-
-  setConfiguredCookieName(finalConfig.refreshCookieName);
 
   return finalConfig;
 };

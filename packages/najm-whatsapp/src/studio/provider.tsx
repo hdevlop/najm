@@ -58,7 +58,7 @@ export function WhatsAppStudioProvider({
 
   return (
     <StudioContext.Provider
-      value={{ ...config, client, selectedInstanceId, setSelectedInstanceId }}
+      value={{ ...config, client, selectedInstanceId, setSelectedInstanceId, basePath: '' }}
     >
       {children}
     </StudioContext.Provider>

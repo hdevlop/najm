@@ -2,7 +2,6 @@ import * as React from "react"
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu"
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 import { cn } from "../../lib/cn"
-import { borderColorClassForDegree, useResolvedBorderDegree } from "../../theme/borders"
 import { NajmThemeContainerCtx } from "../../theme/provider"
 import { useNajmPortalLayerStyles } from "../../theme/portal-layer"
 
@@ -56,7 +55,6 @@ function DropdownMenuSubContent({ className, ...props }: React.ComponentProps<ty
 
 function DropdownMenuContent({ className, sideOffset = 4, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   const container = React.useContext(NajmThemeContainerCtx);
-  const resolvedBorderDegree = useResolvedBorderDegree();
   useNajmPortalLayerStyles();
 
   return (
@@ -66,7 +64,6 @@ function DropdownMenuContent({ className, sideOffset = 4, ...props }: React.Comp
         sideOffset={sideOffset}
         className={cn(
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-[10000] min-w-[8rem] overflow-hidden rounded-md border border-border p-1 shadow-md",
-          borderColorClassForDegree(resolvedBorderDegree),
           className
         )}
         {...props}

@@ -74,7 +74,6 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   classNames?: NTableClassNamesAlias;
   /** Use a border instead of a shadow for the table container and cards. */
   bordered?: boolean;
-  borderDegree?: import("../../theme/types").NajmBorderDegree;
   density?: "compact" | "comfortable" | "spacious";
   availableModes?: readonly M[];
   mode?: M;
@@ -383,7 +382,6 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(props: NTableProp
     className: props.className ?? "",
     classNames: props.classNames ?? {},
     bordered: props.bordered,
-    borderDegree: props.borderDegree,
     headerClassName: props.headerClassName ?? "bg-card",
     headerColor: props.headerColor ?? "primary",
     showCheckbox: props.showCheckbox ?? true,

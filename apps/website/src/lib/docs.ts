@@ -96,6 +96,7 @@ export function getDocsSidebar(): SidebarSection[] {
     "Testing": [],
     "Deployment": [],
     "API Reference": [],
+    "UI Components": [],
   };
 
   const sectionMapping: Record<string, string> = {
@@ -146,6 +147,9 @@ export function getDocsSidebar(): SidebarSection[] {
 
     // API Reference
     "api": "API Reference",
+
+    // UI Components
+    "ui": "UI Components",
   };
 
   for (const doc of docs) {
@@ -179,7 +183,8 @@ export function getDocsSidebar(): SidebarSection[] {
     "Guides",
     "Testing",
     "Deployment",
-    "API Reference"
+    "API Reference",
+    "UI Components",
   ];
 
   for (const sectionTitle of sectionOrder) {

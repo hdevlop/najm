@@ -25,6 +25,7 @@ export class McpTransportService {
     transport: SSEServerTransport;
     server: ReturnType<McpBuilderService['createServer']>;
     alsSnapshot?: Record<string, any>;
+    userId?: string;
     createdAt: number;
   }>();
 
@@ -79,6 +80,23 @@ export class McpTransportService {
     const oauth = this.resolveOAuth();
     if (!oauth) return;
 
+    // The OAuth stub is DEV-ONLY: it authenticates nobody and exchanges any
+    // code for a static token. Refuse to mount it in production unless the
+    // caller explicitly opts in via oauth.unsafeDevStub.
+    const unsafeOptIn = typeof this.config.oauth === 'object' && this.config.oauth.unsafeDevStub === true;
+    if (process.env.NODE_ENV === 'production' && !unsafeOptIn) {
+      this.log.error?.(
+        '[najm-mcp] OAuth dev stub NOT mounted in production — it authenticates nobody and issues a static token. ' +
+        'Use a real OAuth provider or najm-auth. To override (NOT recommended), set oauth.unsafeDevStub = true.',
+      );
+      return;
+    }
+
+    this.log.warn(
+      '[najm-mcp] Mounting DEV-ONLY OAuth stub: no real authentication, static access token, in-memory codes. ' +
+      'Do NOT use in production.',
+    );
+
     const handlers = createOAuthHandlers(oauth);
     const basePath = this.basePath ?? '';
 
@@ -115,6 +133,9 @@ export class McpTransportService {
         return this.withAlsSnapshot(result, next);
       }
 
+      // Boolean success: record it so resolveRequestAuthContext does not
+      // re-run validate() for the same request (authenticated, no context).
+      c.set('mcp:auth', true);
       return next();
     };
 
@@ -131,18 +152,33 @@ export class McpTransportService {
     const allowedOrigins = corsConfig.origin;
     const credentials = corsConfig.credentials ?? false;
 
-    const resolveOrigin = (requestOrigin?: string): string => {
+    // `credentials: true` with a wildcard/absent origin is invalid CORS
+    // (browsers reject `*` + credentials) and masks intent. Fail at boot.
+    if (credentials && (!allowedOrigins || allowedOrigins === '*')) {
+      throw new Error(
+        '[najm-mcp] CORS misconfiguration: cors.credentials=true requires an explicit cors.origin ' +
+        '(string or list); it cannot be combined with a wildcard or absent origin.',
+      );
+    }
+
+    // Returns the origin to grant, or undefined when the request origin is not
+    // allowed (in which case NO Access-Control-Allow-Origin header is sent).
+    const resolveOrigin = (requestOrigin?: string): string | undefined => {
       if (!allowedOrigins) return '*';
       if (typeof allowedOrigins === 'string') return allowedOrigins;
       if (requestOrigin && allowedOrigins.includes(requestOrigin)) return requestOrigin;
-      return allowedOrigins[0] ?? '*';
+      return undefined;
     };
 
     const setHeaders = (c: any) => {
       const origin = resolveOrigin(c.req.header('origin'));
-      c.header('Access-Control-Allow-Origin', origin);
+      if (origin !== undefined) {
+        c.header('Access-Control-Allow-Origin', origin);
+      }
       c.header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
       c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-api-key');
+      // The granted origin depends on the request origin only when a list is
+      // configured; static '*'/single-origin responses do not need Vary.
       if (Array.isArray(allowedOrigins)) {
         c.header('Vary', 'Origin');
       }
@@ -209,6 +245,9 @@ export class McpTransportService {
       const transport = new WebStandardStreamableHTTPServerTransport({
         sessionIdGenerator: undefined,
         enableJsonResponse: true,
+        enableDnsRebindingProtection: this.config.enableDnsRebindingProtection ?? false,
+        ...(this.config.allowedHosts ? { allowedHosts: this.config.allowedHosts } : {}),
+        ...(this.config.allowedOrigins ? { allowedOrigins: this.config.allowedOrigins } : {}),
       });
       const mcpServer = this.builder.createServer();
       const authContext = await this.resolveRequestAuthContext(c);
@@ -252,8 +291,14 @@ export class McpTransportService {
       const mcpServer = this.builder.createServer();
       const authContext = await this.resolveRequestAuthContext(c);
       const alsSnapshot = this.captureAlsSnapshot(authContext);
+      // Bind the session to the authenticated user so later POST /messages
+      // calls can be verified against the caller. Without config.auth, the
+      // najm-auth Bearer fallback still captures a snapshot here; the
+      // per-message check below keeps that snapshot from being drivable by
+      // anyone who merely knows the sessionId.
+      const userId = this.extractUserId(authContext);
 
-      this.sseSessions.set(sessionId, { transport, server: mcpServer, alsSnapshot, createdAt: Date.now() });
+      this.sseSessions.set(sessionId, { transport, server: mcpServer, alsSnapshot, userId, createdAt: Date.now() });
 
       (transport as any).onclose = () => {
         void mcpServer.close().catch(() => undefined);
@@ -279,11 +324,31 @@ export class McpTransportService {
     });
 
     this.app.post(`${path}/messages`, async (c: any) => {
-      const sessionId = c.req.query('sessionId');
+      // Expired sessions (and their captured auth snapshots) are otherwise only
+      // reaped when a new GET /sse arrives; sweep here too so an idle server
+      // does not retain them indefinitely.
+      this.sweepStaleSessions();
+
+      // Prefer the session id from a header so it stays out of proxy/access
+      // logs; fall back to the query param for SDK clients that only send it there.
+      const sessionId = c.req.header('mcp-session-id') ?? c.req.query('sessionId');
       const session = sessionId ? this.sseSessions.get(sessionId) : undefined;
 
       if (!session) {
         return c.json({ error: 'Session not found' }, 404);
+      }
+
+      // Per-message binding: an authenticated session must only be driven by
+      // the same authenticated user. Knowing the sessionId is not sufficient.
+      if (session.alsSnapshot) {
+        const callerContext = await this.resolveRequestAuthContext(c);
+        if (!callerContext) {
+          return c.json({ error: 'Unauthorized' }, 401);
+        }
+        const callerId = this.extractUserId(callerContext);
+        if (session.userId !== undefined && callerId !== session.userId) {
+          return c.json({ error: 'Forbidden' }, 403);
+        }
       }
 
       const handler = async () => {
@@ -341,7 +406,10 @@ export class McpTransportService {
   }
 
   private async resolveRequestAuthContext(c: any): Promise<McpAuthContext | undefined> {
-    const existing = c.get?.('mcp:auth') as McpAuthContext | undefined;
+    const existing = c.get?.('mcp:auth') as McpAuthContext | true | undefined;
+    // `true` means the request authenticated with no user context — already
+    // validated by the custom-auth middleware; do not re-validate.
+    if (existing === true) return undefined;
     if (existing) return existing;
 
     const auth = this.config.auth;
@@ -369,6 +437,23 @@ export class McpTransportService {
     } catch {
       return undefined;
     }
+  }
+
+  /**
+   * Best-effort extraction of a stable user identifier from an auth context,
+   * used to bind SSE sessions to a single user. Accepts the common shapes:
+   * `{ user: { id | userId | sub } }`, a primitive `user`, or top-level
+   * `userId`/`sub`.
+   */
+  private extractUserId(ctx?: Record<string, any>): string | undefined {
+    if (!ctx) return undefined;
+
+    const user = ctx.user;
+    const candidate = user && typeof user === 'object'
+      ? (user.id ?? user.userId ?? user.sub)
+      : (user ?? ctx.userId ?? ctx.sub);
+
+    return candidate != null ? String(candidate) : undefined;
   }
 
   private copyTokenValue(snapshot: Record<string, any>, key: string, token: any): void {

@@ -53,10 +53,11 @@ function restoreFetch() {
 
 function makeService(webhooks: any[] = []) {
   const svc = new WebhookForwarder();
-  (svc as any).config = { webhooks };
+  (svc as any).config = { webhooks, webhookSecurity: { allowPrivateNetworks: true } };
   (svc as any).db = createMockDb();
   (svc as any).schema = { whatsappWebhookEvents: mockWebhookEventsTable };
   (svc as any).webhooks = { listForEvent: jest.fn().mockResolvedValue([]) };
+  (svc as any).log = { info: () => {}, warn: () => {}, error: () => {}, debug: () => {} };
   return svc;
 }
 
@@ -143,7 +144,9 @@ describe('WebhookForwarder', () => {
     const row = insertedRows[0];
     expect(row.instanceId).toBe('inst-1');
     expect(row.eventType).toBe('message');
-    expect(row.payload).toBe(JSON.stringify({ text: 'Hello' }));
+    const parsed = JSON.parse(row.payload);
+    expect(parsed.text).toBe('Hello');
+    expect(parsed._delivery).toBeTruthy();
     expect(row.forwardStatus).toBe('sent');
     expect(row.createdAt).toBeTruthy();
   });

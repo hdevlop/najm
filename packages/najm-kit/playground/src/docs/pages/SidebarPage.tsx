@@ -9,7 +9,7 @@ import {
   NSheet,
   NSidebar,
 } from 'najm-kit';
-import type { NajmBorderDegree, NavItem } from 'najm-kit';
+import type { NavItem } from 'najm-kit';
 import {
   BarChart3,
   Bell,
@@ -45,15 +45,6 @@ const sidebarItems: NavItem[] = [
   { id: 'security', label: 'Security', icon: Shield, sectionLabel: 'Admin' },
 ];
 
-const borderDegrees: NajmBorderDegree[] = ['none', 'subtle', 'default', 'strong'];
-
-function demoBorderClassForDegree(degree: NajmBorderDegree) {
-  if (degree === 'none') return 'border border-transparent';
-  if (degree === 'subtle') return 'border border-border-subtle';
-  if (degree === 'strong') return 'border border-border-strong';
-  return 'border border-border';
-}
-
 function clampWidth(value: number, min: number, max: number) {
   if (!Number.isFinite(value)) return min;
   return Math.min(max, Math.max(min, value));
@@ -65,7 +56,6 @@ function WidthInput({
   value,
   min,
   max,
-  borderDegree,
   onChange,
 }: {
   label: string;
@@ -73,11 +63,10 @@ function WidthInput({
   value: number;
   min: number;
   max: number;
-  borderDegree: NajmBorderDegree;
   onChange: (value: number) => void;
 }) {
   return (
-    <NCard noPadding borderDegree={borderDegree} className="p-4">
+    <NCard noPadding className="p-4">
       <label className="flex min-w-0 flex-col gap-2 text-sm">
         <span className="space-y-0.5">
           <span className="block font-medium text-foreground">{label}</span>
@@ -107,22 +96,18 @@ function SidebarSettingsSheet({
   expandedWidth,
   collapsedWidth,
   mobileWidth,
-  borderDegree,
   onExpandedWidthChange,
   onCollapsedWidthChange,
   onMobileWidthChange,
-  onBorderDegreeChange,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   expandedWidth: number;
   collapsedWidth: number;
   mobileWidth: number;
-  borderDegree: NajmBorderDegree;
   onExpandedWidthChange: (value: number) => void;
   onCollapsedWidthChange: (value: number) => void;
   onMobileWidthChange: (value: number) => void;
-  onBorderDegreeChange: (value: NajmBorderDegree) => void;
 }) {
   return (
     <NSheet
@@ -131,40 +116,11 @@ function SidebarSettingsSheet({
       title="Settings"
       description="Opened from the sidebar footer action."
       width={420}
-      contentClassName={`bg-background ${demoBorderClassForDegree(borderDegree)}`}
       bodyClassName="space-y-4"
     >
-      <NCard noPadding borderDegree={borderDegree} className="bg-muted/30 p-3 shadow-none">
+      <NCard noPadding className="bg-muted/30 p-3 shadow-none">
         <p className="text-sm font-semibold text-foreground">Controls</p>
-        <p className="mt-1 text-xs text-muted-foreground">Use inputs for precise sizing and choose the sidebar border strength.</p>
-      </NCard>
-
-      <NCard noPadding borderDegree={borderDegree} className="p-4">
-        <div className="flex items-center justify-between gap-3">
-          <span>
-            <span className="block text-sm font-medium text-foreground">Border degree</span>
-            <span className="mt-0.5 block text-xs text-muted-foreground">Controls the sidebar shell border.</span>
-          </span>
-          <span className="rounded-full border border-border bg-muted px-3 py-1 text-xs font-semibold capitalize text-foreground">
-            {borderDegree}
-          </span>
-        </div>
-        <div className="mt-3 grid grid-cols-2 gap-2">
-          {borderDegrees.map((degree) => (
-            <button
-              key={degree}
-              type="button"
-              onClick={() => onBorderDegreeChange(degree)}
-              className={`rounded-lg border px-3 py-2 text-xs font-semibold capitalize transition-colors ${
-                borderDegree === degree
-                  ? 'border-primary bg-primary text-primary-foreground'
-                  : 'border-border bg-background text-muted-foreground hover:bg-accent/40 hover:text-foreground'
-              }`}
-            >
-              {degree}
-            </button>
-          ))}
-        </div>
+        <p className="mt-1 text-xs text-muted-foreground">Use inputs for precise sizing.</p>
       </NCard>
 
       <WidthInput
@@ -173,7 +129,6 @@ function SidebarSettingsSheet({
         value={expandedWidth}
         min={200}
         max={340}
-        borderDegree={borderDegree}
         onChange={onExpandedWidthChange}
       />
       <WidthInput
@@ -182,7 +137,6 @@ function SidebarSettingsSheet({
         value={collapsedWidth}
         min={52}
         max={96}
-        borderDegree={borderDegree}
         onChange={onCollapsedWidthChange}
       />
       <WidthInput
@@ -191,28 +145,26 @@ function SidebarSettingsSheet({
         value={mobileWidth}
         min={220}
         max={360}
-        borderDegree={borderDegree}
         onChange={onMobileWidthChange}
       />
     </NSheet>
   );
 }
 
-function PagePanel({ active, borderDegree }: { active: string; borderDegree: NajmBorderDegree }) {
+function PagePanel({ active }: { active: string }) {
   const title = active.replace(/-/g, ' ');
 
   return (
     <main className="flex min-w-0 flex-1 flex-col gap-3 overflow-hidden bg-background p-3">
       <NPageHeader
         bordered
-        borderDegree={borderDegree}
         icon={LayoutDashboard}
         title={title}
         subtitle="Sidebar controls the active workspace view."
         headerClassName="pl-5"
       >
         <NPageHeaderActions>
-          <NButton size="sm" bordered borderDegree={borderDegree}>
+          <NButton size="sm" bordered>
             <Plus size={14} />
             New
           </NButton>
@@ -226,7 +178,7 @@ function PagePanel({ active, borderDegree }: { active: string; borderDegree: Naj
             ['Attendance', '94%', '+2%'],
             ['Invoices', '$18k', '-4%'],
           ].map(([label, value, delta]) => (
-            <NCard key={label} borderDegree={borderDegree}>
+            <NCard key={label}>
               <p className="text-xs text-muted-foreground">{label}</p>
               <div className="mt-2 flex items-end justify-between gap-3">
                 <p className="text-2xl font-semibold text-foreground">{value}</p>
@@ -241,7 +193,6 @@ function PagePanel({ active, borderDegree }: { active: string; borderDegree: Naj
             <NCard
               key={item}
               noPadding
-              borderDegree={borderDegree}
               className="flex-row items-center justify-between px-4 py-3"
             >
               <div>
@@ -262,13 +213,11 @@ function FullSidebarDemo() {
   const [expandedWidth, setExpandedWidth] = React.useState(240);
   const [collapsedWidth, setCollapsedWidth] = React.useState(64);
   const [mobileWidth, setMobileWidth] = React.useState(280);
-  const [borderDegree, setBorderDegree] = React.useState<NajmBorderDegree>('strong');
   const [settingsOpen, setSettingsOpen] = React.useState(false);
 
   return (
     <div className="flex h-full overflow-hidden bg-background">
       <NSidebar
-        borderDegree={borderDegree}
         logoIcon={GraduationCap}
         logoTitle="Najm School"
         logoSubtitle="Dashboard"
@@ -282,18 +231,16 @@ function FullSidebarDemo() {
         onSettings={() => setSettingsOpen(true)}
         onLogout={() => {}}
       />
-      <PagePanel active={active} borderDegree={borderDegree} />
+      <PagePanel active={active} />
       <SidebarSettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         expandedWidth={expandedWidth}
         collapsedWidth={collapsedWidth}
         mobileWidth={mobileWidth}
-        borderDegree={borderDegree}
         onExpandedWidthChange={setExpandedWidth}
         onCollapsedWidthChange={setCollapsedWidth}
         onMobileWidthChange={setMobileWidth}
-        onBorderDegreeChange={setBorderDegree}
       />
     </div>
   );
@@ -308,24 +255,20 @@ export function SidebarPage() {
     >
       <Example
         title="Full Sidebar Shell"
-        description="Uses only the preview frame around the shell; the sidebar border degree is adjustable and content cards stay bordered."
+        description="Uses only the preview frame around the shell; cards and fields keep a single shared border width."
         previewHeight="h-[720px]"
         noPad
         center={false}
-        code={`import { Input, NCard, NSheet, NSidebar, NPageHeader, type NajmBorderDegree } from 'najm-kit';
+        code={`import { Input, NCard, NSheet, NSidebar, NPageHeader } from 'najm-kit';
 import { GraduationCap, LayoutDashboard } from 'lucide-react';
-
-const borderDegrees: NajmBorderDegree[] = ['none', 'subtle', 'default', 'strong'];
 
 const [expandedWidth, setExpandedWidth] = React.useState(240);
 const [collapsedWidth, setCollapsedWidth] = React.useState(64);
 const [mobileWidth, setMobileWidth] = React.useState(280);
-const [borderDegree, setBorderDegree] = React.useState<NajmBorderDegree>('strong');
 const [settingsOpen, setSettingsOpen] = React.useState(false);
 
 <div className="flex h-screen overflow-hidden bg-background">
   <NSidebar
-    borderDegree={borderDegree}
     logoIcon={GraduationCap}
     logoTitle="Najm School"
     logoSubtitle="Dashboard"
@@ -341,19 +284,14 @@ const [settingsOpen, setSettingsOpen] = React.useState(false);
   />
 
   <main className="min-w-0 flex-1 bg-background p-3">
-    <NPageHeader bordered borderDegree={borderDegree} icon={LayoutDashboard} title="Dashboard" />
+    <NPageHeader bordered icon={LayoutDashboard} title="Dashboard" />
     <section className="mt-3 grid gap-3">
-      <NCard borderDegree={borderDegree}>Stats use borderDegree</NCard>
-      <NCard borderDegree={borderDegree}>Rows use borderDegree</NCard>
+      <NCard>Stats</NCard>
+      <NCard>Rows</NCard>
     </section>
   </main>
 
   <NSheet open={settingsOpen} onOpenChange={setSettingsOpen} title="Settings">
-    {borderDegrees.map((degree) => (
-      <button key={degree} type="button" onClick={() => setBorderDegree(degree)}>
-        {degree}
-      </button>
-    ))}
     <Input type="number" value={expandedWidth} onChange={(event) => setExpandedWidth(Number(event.currentTarget.value))} />
     <Input type="number" value={collapsedWidth} onChange={(event) => setCollapsedWidth(Number(event.currentTarget.value))} />
     <Input type="number" value={mobileWidth} onChange={(event) => setMobileWidth(Number(event.currentTarget.value))} />
