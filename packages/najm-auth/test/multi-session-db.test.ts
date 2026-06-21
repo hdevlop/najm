@@ -151,6 +151,20 @@ describe('multi-session refresh tokens (real bun:sqlite)', () => {
     expect(h.cacheStore.has('auth:session-version:user-1')).toBe(false);
   });
 
+  test('logout prefers the verified Bearer family over a different refresh cookie', async () => {
+    const a = await h.service.generateTokens('user-1');
+    const b = await h.service.generateTokens('user-1');
+
+    h.cookie.value = a.refreshToken; // stray/different browser cookie
+    await h.service.logout('user-1', `Bearer ${b.accessToken}`);
+
+    expect(await h.repo.getByFamily(a.tokenFamily)).not.toBeNull();
+    expect(await h.repo.getByFamily(b.tokenFamily)).toBeNull();
+    expect(h.cacheStore.has(`auth:revoked-family:${a.tokenFamily}`)).toBe(false);
+    expect(h.cacheStore.has(`auth:revoked-family:${b.tokenFamily}`)).toBe(true);
+    expect(h.cacheStore.has('auth:session-version:user-1')).toBe(false);
+  });
+
   test('stale-token reuse revokes only the suspect family, no global bump', async () => {
     const a = await h.service.generateTokens('user-1');
     const b = await h.service.generateTokens('user-1');
@@ -180,6 +194,16 @@ describe('multi-session refresh tokens (real bun:sqlite)', () => {
 
     expect(await rowsForUser(h.db, 'user-1')).toHaveLength(0);
     expect(await rowsForUser(h.db, 'user-2')).toHaveLength(1);
+  });
+
+  test('public revokeFamily deletes the row and revokes its access tokens', async () => {
+    const live = await h.service.generateTokens('user-1');
+
+    await h.service.revokeFamily(live.tokenFamily);
+
+    expect(await h.repo.getByFamily(live.tokenFamily)).toBeNull();
+    expect(h.cacheStore.has(`auth:revoked-family:${live.tokenFamily}`)).toBe(true);
+    await expect(h.service.verifyAccessToken(live.accessToken)).rejects.toThrow();
   });
 
   test('deleteExpiredSessions prunes only expired rows', async () => {

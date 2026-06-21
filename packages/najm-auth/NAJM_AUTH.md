@@ -207,7 +207,7 @@ Rate limit: 30 / 1m by cookie fingerprint.
 
 [TokenService.logout()](packages/najm-auth/src/tokens/TokenService.ts) — **immediate**, **current-session-only** revocation:
 
-1. Resolve the session family — from the verified refresh cookie's `tokenFamily` claim, falling back to the presented access token's `tokenFamily` claim (pure Bearer clients).
+1. Resolve the session family — from the verified Bearer access token's `tokenFamily` claim first, falling back to a verified refresh cookie that still matches its family row.
 2. Blacklist the current access token by `jti` for its remaining TTL (`auth:blacklist:<jti>`).
 3. **Mark the family revoked** → `cache.set('auth:revoked-family:<tokenFamily>', '1', accessTokenTtl)`. Every access token minted for *this* family (not just the presented one) now fails `verifyAccessToken`; other sessions are untouched.
 4. Delete that family's refresh row in DB.
@@ -292,7 +292,7 @@ From [AuthController.ts](packages/najm-auth/src/auth/AuthController.ts):
 | POST | `/auth/register` | — | 5 / 15m (ip+email) | Creates user, assigns `defaultRole` if configured. |
 | POST | `/auth/login` | — | 5 / 15m (ip+email) | Sets refresh + session cookies. |
 | POST | `/auth/refresh` | — | 15 / 15m (cookie fingerprint) | Rotation with 120s grace. |
-| POST | `/auth/logout` | `@isAuth()` | 10 / 15m (user) | Blacklist jti + bump session version. |
+| POST | `/auth/logout` | `@isAuth()` | 10 / 15m (user) | Blacklist jti + revoke current family. |
 | POST | `/auth/change-password` | `@isAuth()` | — | Revokes **all** sessions. |
 | GET | `/auth/me` | — | 30 / 1m (cookie fingerprint) | Bearer → cookie fallback. |
 | POST | `/auth/forgot-password` | — | 3 / 15m (ip+email) | Same response whether email exists. |

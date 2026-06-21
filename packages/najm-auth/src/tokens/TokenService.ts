@@ -418,6 +418,7 @@ export class TokenService {
 
   /** Revoke a single refresh session (one family). */
   async revokeFamily(tokenFamily: string) {
+    await this.markFamilyRevoked(tokenFamily);
     return this.tokenRepository.revokeFamily(tokenFamily);
   }
 
@@ -475,8 +476,7 @@ export class TokenService {
    */
   private async revokeSuspectRefreshFamily(userId: string, tokenFamily: string | null): Promise<void> {
     if (tokenFamily) {
-      await this.markFamilyRevoked(tokenFamily);
-      await this.tokenRepository.revokeFamily(tokenFamily);
+      await this.revokeFamily(tokenFamily);
       return;
     }
     // No family context — fall back to revoke-all for safety.
@@ -490,51 +490,84 @@ export class TokenService {
    * devices/sessions for the same user keep working. Use a password change or
    * reset (revoke-all) to terminate every session.
    *
-   * The family is resolved from, in order: the verified refresh cookie's
-   * `tokenFamily` claim, then the presented access token's `tokenFamily` claim
-   * (pure Bearer clients). If neither is available, fall back to revoke-all.
+   * The family is resolved from, in order: a verified Bearer access token's
+   * `tokenFamily` claim, then a verified refresh cookie whose hash still
+   * matches the current family row. If neither is available, fall back to
+   * revoke-all.
    */
   async logout(userId: string, authorization?: string): Promise<void> {
     let tokenFamily: string | null = null;
 
-    // Prefer the refresh cookie's family (verified).
-    const refreshToken = this.cookieManager.getRefreshToken();
-    if (refreshToken) {
+    // A presented Bearer token is authoritative for this request. Use its
+    // verified family first so a stray cookie cannot revoke a different session.
+    if (authorization) {
+      let accessToken: string | null = null;
       try {
-        const decoded = jwt.verify(refreshToken, this.config.jwt.refreshSecret) as JwtPayload & { type?: string };
-        if (decoded.userId === userId && decoded.tokenFamily) {
-          tokenFamily = decoded.tokenFamily;
-        }
+        accessToken = this.extractAccessToken(authorization);
       } catch {
-        // Invalid/expired refresh cookie — fall through to the access token.
+        // Token extraction failed, skip blacklisting/family resolution.
+      }
+
+      if (accessToken) {
+        try {
+          const decoded = await this.verifyAccessToken(accessToken);
+          if (decoded.userId === userId && decoded.tokenFamily) {
+            tokenFamily = decoded.tokenFamily;
+          }
+        } catch {
+          // Invalid/expired/revoked access token — fall through to refresh cookie.
+        }
+
+        await this.blacklistCurrentToken(accessToken);
       }
     }
 
-    // Blacklist the presented access token, and fall back to its family claim.
-    if (authorization) {
-      try {
-        const accessToken = this.extractAccessToken(authorization);
-        await this.blacklistCurrentToken(accessToken);
-        if (!tokenFamily) {
-          const decoded = this.decodeAccessToken(accessToken);
-          if (decoded?.userId === userId && decoded.tokenFamily) {
-            tokenFamily = decoded.tokenFamily;
-          }
-        }
-      } catch {
-        // Token extraction failed, skip blacklisting
-      }
+    if (!tokenFamily) {
+      tokenFamily = await this.resolveRefreshCookieFamily(userId);
     }
 
     if (tokenFamily) {
-      await this.markFamilyRevoked(tokenFamily);
-      await this.tokenRepository.revokeFamily(tokenFamily);
+      await this.revokeFamily(tokenFamily);
       return;
     }
 
     // No family resolvable — revoke every session for safety.
     await this.invalidateUserAccessTokens(userId);
     await this.revokeAllForUser(userId);
+  }
+
+  /**
+   * Resolve a logout target from the refresh cookie only if the cookie maps to
+   * the user's current/valid family row. This mirrors resolveUserFromCookie()
+   * without throwing, because logout can still fall back to revoke-all.
+   */
+  private async resolveRefreshCookieFamily(userId: string): Promise<string | null> {
+    const refreshToken = this.cookieManager.getRefreshToken();
+    if (!refreshToken) return null;
+
+    try {
+      const decoded = this.verifyRefreshToken(refreshToken);
+      if (decoded.userId !== userId) return null;
+
+      const stored = await this.tokenRepository.getByFamily(decoded.tokenFamily);
+      if (!stored || stored.userId !== userId) return null;
+
+      const presentedHash = this.hashToken(refreshToken);
+      if (presentedHash === stored.token) {
+        return decoded.tokenFamily;
+      }
+
+      const canRecover =
+        stored.previousHash &&
+        presentedHash === stored.previousHash &&
+        stored.previousValidUntil &&
+        new Date(stored.previousValidUntil).getTime() > Date.now() &&
+        !stored.previousUsedAt;
+
+      return canRecover ? decoded.tokenFamily : null;
+    } catch {
+      return null;
+    }
   }
 
   // ============ PASSWORD RESET TOKENS ============

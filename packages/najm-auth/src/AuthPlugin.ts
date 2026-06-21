@@ -102,7 +102,7 @@ export const auth = (config?: AuthPluginConfig) =>
     .requires('database')
     .contributes(I18N_CONTRIBUTIONS, AUTH_LOCALES)
     .services(
-      AuthModule,
+      AuthModule.AUTH_MODULE,
       UserModule,
       RoleModule,
       PermissionModule,

@@ -37,6 +37,7 @@ function buildStyles() {
 }
 
 const backend = defineConfig({
+  tsconfig: 'tsconfig.build.json',
   entry: ['src/index.ts', 'src/schema/sqlite.ts', 'src/schema/pg.ts', 'src/schema/mysql.ts'],
   format: ['esm'],
   dts: { compilerOptions: { composite: false, declaration: true, declarationMap: false, skipLibCheck: true } },

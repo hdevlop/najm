@@ -14,8 +14,26 @@
     "declarationMap": true,
     "outDir": "./dist",
     "jsx": "react-jsx",
-    "baseUrl": ".",
-    "paths": { "@/*": ["./src/studio/*"] }
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": ["packages/najm-whatsapp/src/studio/*"],
+      "najm-auth": ["packages/najm-auth/src/index.ts"],
+      "najm-auth/*": ["packages/najm-auth/src/*"],
+      "najm-cache": ["packages/najm-cache/src/index.ts"],
+      "najm-cache/*": ["packages/najm-cache/src/*"],
+      "najm-core": ["packages/najm-core/src/index.ts"],
+      "najm-core/*": ["packages/najm-core/src/*"],
+      "najm-database": ["packages/najm-database/src/index.ts"],
+      "najm-database/*": ["packages/najm-database/src/*"],
+      "najm-event": ["packages/najm-event/src/index.ts"],
+      "najm-event/*": ["packages/najm-event/src/*"],
+      "najm-guard": ["packages/najm-guard/src/index.ts"],
+      "najm-guard/*": ["packages/najm-guard/src/*"],
+      "najm-rate": ["packages/najm-rate/src/index.ts"],
+      "najm-rate/*": ["packages/najm-rate/src/*"],
+      "najm-validation": ["packages/najm-validation/src/index.ts"],
+      "najm-validation/*": ["packages/najm-validation/src/*"]
+    }
   },
   "include": ["src/**/*.ts", "src/**/*.tsx", "test/**/*"],
   "exclude": ["node_modules", "dist"]

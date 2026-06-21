@@ -13,7 +13,18 @@
     "declaration": true,
     "declarationMap": true,
     "outDir": "./dist",
-    "composite": true
+    "composite": true,
+    "baseUrl": "../..",
+    "paths": {
+      "najm-auth": ["packages/najm-auth/src/index.ts"],
+      "najm-auth/*": ["packages/najm-auth/src/*"],
+      "najm-core": ["packages/najm-core/src/index.ts"],
+      "najm-core/*": ["packages/najm-core/src/*"],
+      "najm-guard": ["packages/najm-guard/src/index.ts"],
+      "najm-guard/*": ["packages/najm-guard/src/*"],
+      "najm-validation": ["packages/najm-validation/src/index.ts"],
+      "najm-validation/*": ["packages/najm-validation/src/*"]
+    }
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist"]

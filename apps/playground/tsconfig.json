@@ -24,6 +24,9 @@
       "najm-auth": [
         "../../packages/najm-auth/src/index.ts"
       ],
+      "najm-auth/sqlite": [
+        "../../packages/najm-auth/src/schema/sqlite.ts"
+      ],
       "najm-cache": [
         "../../packages/najm-cache/src/index.ts"
       ],
@@ -63,17 +66,26 @@
       "najm-rag": [
         "../../packages/najm-rag/src/index.ts"
       ],
+      "najm-rag/sqlite": [
+        "../../packages/najm-rag/src/schema/sqlite.ts"
+      ],
       "najm-rate": [
         "../../packages/najm-rate/src/index.ts"
       ],
       "najm-storage": [
         "../../packages/najm-storage/src/index.ts"
       ],
+      "najm-storage/sqlite": [
+        "../../packages/najm-storage/src/schema/sqlite.ts"
+      ],
       "najm-validation": [
         "../../packages/najm-validation/src/index.ts"
       ],
       "najm-whatsapp": [
         "../../packages/najm-whatsapp/src/index.ts"
+      ],
+      "najm-whatsapp/sqlite": [
+        "../../packages/najm-whatsapp/src/schema/sqlite.ts"
       ],
       "najm-chatbot/*": [
         "../../packages/najm-chatbot/src/*"
