@@ -1,12 +1,9 @@
 import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetDescription,
-  SheetFooter,
+  NSheet,
   NativeSelect,
-  Button,
+  NButton,
+  Switch,
+  Label,
 } from "najm-kit";
 import { useStudio } from "../app/studio-store";
 import {
@@ -15,12 +12,45 @@ import {
   DENSITY_OPTIONS,
 } from "../theme/component-meta";
 
+const DEFAULT_SIDEBAR_CONTENT_TOP_PADDING = 8;
+
+const NAV_TOP_PADDING_OPTIONS = [4, 8, 12, 16, 20, 24, 32, 40, 48, 56, 64] as const;
+
+function pxNumber(value: string | undefined, fallback = DEFAULT_SIDEBAR_CONTENT_TOP_PADDING): number {
+  const parsed = Number.parseFloat(value ?? "");
+  return Number.isFinite(parsed) ? Math.round(parsed) : fallback;
+}
+
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <label className="flex flex-col gap-1.5">
-      <span className="text-xs font-medium text-muted-foreground">{label}</span>
+    <div className="flex flex-col gap-1.5">
+      <Label className="flex-col items-start gap-1 text-xs font-medium text-muted-foreground">
+        {label}
+      </Label>
       {children}
-    </label>
+    </div>
+  );
+}
+
+function SwitchRow({
+  label,
+  description,
+  checked,
+  onCheckedChange,
+}: {
+  label: string;
+  description?: string;
+  checked: boolean;
+  onCheckedChange: (checked: boolean) => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-md border border-border bg-muted/25 px-3 py-2.5">
+      <div className="min-w-0">
+        <div className="text-xs font-medium text-foreground">{label}</div>
+        <div className="mt-0.5 text-xs leading-4 text-muted-foreground">{description}</div>
+      </div>
+      <Switch checked={checked} onCheckedChange={onCheckedChange} size="sm" />
+    </div>
   );
 }
 
@@ -39,16 +69,50 @@ export function ComponentStyleFlyout() {
   const meta = COMPONENT_META[selectedComponent];
   const cfg = config.components?.[selectedComponent] ?? {};
   const controls = meta.controls;
+  const sidebarContentTopPadding = pxNumber(cfg.slots?.content?.paddingTop);
+
+  const setSidebarContentTopPadding = (value: number | undefined) => {
+    const slots = { ...(cfg.slots ?? {}) };
+    const content = { ...(slots.content ?? {}) };
+    if (value === undefined) {
+      delete content.paddingTop;
+    } else {
+      content.paddingTop = `${Math.max(0, Math.min(64, Math.round(value)))}px`;
+    }
+
+    if (Object.keys(content).length > 0) {
+      slots.content = content;
+    } else {
+      delete slots.content;
+    }
+
+    setComponentConfig(selectedComponent, {
+      slots: Object.keys(slots).length > 0 ? slots : undefined,
+    });
+  };
 
   return (
-    <Sheet open={flyoutOpen} onOpenChange={(v) => !v && closeFlyout()}>
-      <SheetContent side="right" className="w-80">
-        <SheetHeader>
-          <SheetTitle>Style {meta.label}</SheetTitle>
-          <SheetDescription>Applies to all {meta.label} components.</SheetDescription>
-        </SheetHeader>
-
-        <div className="flex flex-col gap-3 px-4">
+    <NSheet
+      open={flyoutOpen}
+      onOpenChange={(v) => !v && closeFlyout()}
+      title={`Style ${meta.label}`}
+      description={`Applies to all ${meta.label} components.`}
+      width={320}
+      bodyClassName="px-4 py-4"
+      footer={
+        <div className="flex justify-end gap-2">
+          <NButton
+            variant="outline"
+            onClick={() => resetComponent(selectedComponent)}
+            className="text-foreground !border-white/25 hover:text-foreground hover:!border-white/40 dark:!border-white/20 dark:hover:!border-white/35"
+          >
+            Reset {meta.label}
+          </NButton>
+          <NButton onClick={closeFlyout}>Done</NButton>
+        </div>
+      }
+    >
+        <div className="flex flex-col gap-3">
           {controls.card && (
             <Row label="Display">
               <NativeSelect
@@ -97,6 +161,36 @@ export function ComponentStyleFlyout() {
               />
             </Row>
           )}
+          {controls.showSectionLabels && (
+            <SwitchRow
+              label="Section titles"
+              description="Show group titles above sidebar items."
+              checked={cfg.showSectionLabels ?? true}
+              onCheckedChange={(checked) =>
+                setComponentConfig(selectedComponent, { showSectionLabels: checked })
+              }
+            />
+          )}
+          {controls.showSectionSeparators && (
+            <SwitchRow
+              label="Separator lines"
+              description="Draw lines between sidebar item sections."
+              checked={cfg.showSectionSeparators ?? true}
+              onCheckedChange={(checked) =>
+                setComponentConfig(selectedComponent, { showSectionSeparators: checked })
+              }
+            />
+          )}
+          {controls.contentTopPadding && (
+            <Row label="Nav top padding">
+              <NativeSelect
+                value={String(sidebarContentTopPadding)}
+                placeholder="inherit"
+                options={NAV_TOP_PADDING_OPTIONS.map((p) => ({ value: String(p), label: `${p}px` }))}
+                onChange={(e) => setSidebarContentTopPadding(Number(e.target.value))}
+              />
+            </Row>
+          )}
           {controls.defaultVariant && (
             <Row label="Default variant">
               <NativeSelect
@@ -136,14 +230,6 @@ export function ComponentStyleFlyout() {
             </Row>
           )}
         </div>
-
-        <SheetFooter>
-          <Button variant="outline" onClick={() => resetComponent(selectedComponent)}>
-            Reset {meta.label}
-          </Button>
-          <Button onClick={closeFlyout}>Done</Button>
-        </SheetFooter>
-      </SheetContent>
-    </Sheet>
+    </NSheet>
   );
 }

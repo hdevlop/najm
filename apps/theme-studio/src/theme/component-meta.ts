@@ -2,6 +2,9 @@ import type { NajmComponentName } from "najm-kit";
 
 export interface ComponentControls {
   card?: boolean;
+  showSectionLabels?: boolean;
+  showSectionSeparators?: boolean;
+  contentTopPadding?: boolean;
   radius?: boolean;
   density?: boolean;
   borderWidth?: boolean;
@@ -73,7 +76,12 @@ export const COMPONENT_META: Record<NajmComponentName, ComponentMeta> = {
   sidebar: {
     name: "sidebar",
     label: "Sidebar",
-    controls: { borderWidth: true },
+    controls: {
+      borderWidth: true,
+      showSectionLabels: true,
+      showSectionSeparators: true,
+      contentTopPadding: true,
+    },
   },
   pageHeader: {
     name: "pageHeader",

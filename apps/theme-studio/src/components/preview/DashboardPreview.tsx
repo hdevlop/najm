@@ -5,8 +5,8 @@ import {
   NPageHeaderActions,
   NStatCard,
   NCard,
-  Badge,
-  Button,
+  NBadge,
+  NButton,
   NAlert,
   Table,
   TableHeader,
@@ -103,7 +103,7 @@ const courseLoad = [
   { course: "Robotics", seats: "16/18", fill: "89%" },
 ];
 
-const chartColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+const chartColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
 
 const tooltipStyle = {
   background: "var(--popover)",
@@ -127,6 +127,7 @@ export function DashboardPreview() {
   // gutter as the rest of the content; the bar (border-b) variant stays
   // full-bleed across the top.
   const pageHeaderIsCard = useNajmComponentStyle("pageHeader")?.card === true;
+  const sidebarStyle = useNajmComponentStyle("sidebar");
 
   const headerNode = (
     <SelectablePreviewElement component="pageHeader">
@@ -136,9 +137,9 @@ export function DashboardPreview() {
         subtitle="Overview of recent activity"
       >
         <NPageHeaderActions>
-          <Button size="sm" leftIcon={<Plus className="size-4" />}>
+          <NButton size="sm" leftIcon={<Plus className="size-4" />}>
             New record
-          </Button>
+          </NButton>
         </NPageHeaderActions>
       </NPageHeader>
     </SelectablePreviewElement>
@@ -163,7 +164,9 @@ export function DashboardPreview() {
           navItems={navItems}
           activePath={active}
           onNavigate={setActive}
-          showSectionSeparators
+          collapseButtonPosition="rail"
+          showSectionLabels={sidebarStyle?.showSectionLabels ?? true}
+          showSectionSeparators={sidebarStyle?.showSectionSeparators ?? true}
         />
       </SelectablePreviewElement>
 
@@ -286,7 +289,7 @@ export function DashboardPreview() {
                       <Tooltip contentStyle={tooltipStyle} />
                       <Legend />
                       <Bar dataKey="present" name="Present" stackId="a" fill="var(--chart-2)" radius={[5, 5, 0, 0]} />
-                      <Bar dataKey="absent" name="Absent" stackId="a" fill="var(--chart-5)" radius={[5, 5, 0, 0]} />
+                      <Bar dataKey="absent" name="Absent" stackId="a" fill="var(--chart-3)" radius={[5, 5, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
@@ -324,9 +327,9 @@ export function DashboardPreview() {
                         type="monotone"
                         dataKey="retention"
                         name="Retention"
-                        stroke="var(--chart-4)"
+                        stroke="var(--chart-3)"
                         strokeWidth={3}
-                        dot={{ r: 3, fill: "var(--chart-4)" }}
+                        dot={{ r: 3, fill: "var(--chart-3)" }}
                       />
                     </LineChart>
                   </ResponsiveContainer>
@@ -343,7 +346,7 @@ export function DashboardPreview() {
                         <div className="truncate text-sm font-medium">{item.title}</div>
                         <div className="truncate text-xs text-muted-foreground">{item.meta}</div>
                       </div>
-                      <Badge
+                      <NBadge
                         variant={
                           item.tone === "warning"
                             ? "warning"
@@ -355,7 +358,7 @@ export function DashboardPreview() {
                         }
                       >
                         Today
-                      </Badge>
+                      </NBadge>
                     </div>
                   ))}
                 </div>
@@ -399,7 +402,7 @@ export function DashboardPreview() {
                         <TableCell className="font-medium">{r.name}</TableCell>
                         <TableCell className="text-muted-foreground">{r.action}</TableCell>
                         <TableCell>
-                          <Badge variant={r.status === "Active" ? "success" : "warning"}>{r.status}</Badge>
+                          <NBadge variant={r.status === "Active" ? "success" : "warning"}>{r.status}</NBadge>
                         </TableCell>
                         <TableCell className="text-right text-muted-foreground">{r.time}</TableCell>
                       </TableRow>

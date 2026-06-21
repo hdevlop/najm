@@ -1,19 +1,20 @@
 # Najm Theme Studio
 
 A private workspace app for designing [`najm-kit`](../../packages/najm-kit) themes
-visually — a Najm-focused tweakcn. Edit global theme tokens, typography, layout,
-and per-component style recipes, preview real Najm UI, then export one
-consumer-ready JSON file.
+visually. It runs as a Next.js app with a local Najm API and stores projects and
+styles in a dedicated SQLite database.
 
 ## Run
 
 ```powershell
-bun run theme-studio          # dev server on http://127.0.0.1:4110
-bun run build:theme-studio    # production build
-bun run theme-studio:preview  # preview the production build
+bun run --cwd apps/theme-studio db:reset-seed  # create ./theme-studio.db with demo data
+bun run theme-studio                         # Next dev server on http://127.0.0.1:4110
+bun run build:theme-studio                   # production build
+bun run theme-studio:preview                 # preview the production build
 ```
 
-`najm-kit` is aliased to source in `vite.config.ts`, so kit edits hot-reload.
+The app uses `DATABASE_URL || './theme-studio.db'`. The DB file is intentionally
+ignored by git and can be recreated with `db:reset-seed`.
 
 ## What it does
 
@@ -31,8 +32,10 @@ bun run theme-studio:preview  # preview the production build
   (radius, density, border, default variant/size, variant aliases).
 - **Import / Export** — import `NajmDesignConfig` or bare `NajmThemeConfig` JSON;
   export as JSON, TypeScript, CSS variables, or a usage snippet.
-- **Local persistence** — auto-saves the current draft and named themes to
-  `localStorage`.
+- **Project/style library** — create local projects, save styles, Save As new
+  variants, duplicate/delete styles, and mark a default style.
+- **Local persistence** — stores projects and styles in `theme-studio.db` through
+  the Najm API under `/api/theme-projects` and `/api/theme-styles`.
 
 ## Using an exported theme in a consumer app
 

@@ -17,6 +17,7 @@ export interface NajmSlotStyle {
   radius?: NajmComponentRadius;
   borderWidth?: string;
   padding?: string;
+  paddingTop?: string;
 }
 
 export interface NajmVariantStyle {
@@ -29,6 +30,10 @@ export interface NajmVariantStyle {
 export interface NajmComponentStyleConfig {
   /** Render components that support it as a card-like surface. */
   card?: boolean;
+  /** Sidebar-only: render section titles above grouped nav items. */
+  showSectionLabels?: boolean;
+  /** Sidebar-only: render separator lines between nav item sections. */
+  showSectionSeparators?: boolean;
   defaultVariant?: string;
   defaultSize?: string;
   density?: NajmDensity;

@@ -1,24 +1,63 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "useDefineForClassFields": true,
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
     "module": "ESNext",
-    "skipLibCheck": true,
     "moduleResolution": "bundler",
-    "allowImportingTsExtensions": true,
+    "jsx": "preserve",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
     "noEmit": true,
-    "jsx": "react-jsx",
-    "strict": true,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
-    "noFallthroughCasesInSwitch": true,
+    "incremental": true,
     "baseUrl": ".",
     "paths": {
-      "najm-kit": ["../../packages/najm-kit/src/index.ts"]
-    }
+      "@/*": [
+        "./src/*"
+      ],
+      "najm-api": [
+        "../../packages/najm-api/src/index.ts"
+      ],
+      "najm-core": [
+        "../../packages/najm-core/src/index.ts"
+      ],
+      "najm-cors": [
+        "../../packages/najm-cors/src/index.ts"
+      ],
+      "najm-database": [
+        "../../packages/najm-database/src/index.ts"
+      ],
+      "najm-kit": [
+        "../../packages/najm-kit/src/index.ts"
+      ],
+      "najm-validation": [
+        "../../packages/najm-validation/src/index.ts"
+      ]
+    },
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "allowJs": true
   },
-  "include": ["src"]
+  "include": [
+    "next-env.d.ts",
+    "src/**/*",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist",
+    ".next"
+  ]
 }

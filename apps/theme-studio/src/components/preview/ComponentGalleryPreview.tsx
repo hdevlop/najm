@@ -1,14 +1,11 @@
 import {
-  Button,
-  Badge,
+  NButton,
+  NBadge,
   NAlert,
   NProgress,
   NAvatar,
   NCard,
-  Tabs,
-  TabsList,
-  TabsTrigger,
-  TabsContent,
+  NTabs,
   SegmentedControl,
   NSpinner,
   NEmptyState,
@@ -32,12 +29,12 @@ export function ComponentGalleryPreview() {
       <Group title="Buttons">
         <SelectablePreviewElement component="button">
           <div className="flex flex-wrap gap-2">
-            <Button>Default</Button>
-            <Button variant="secondary">Secondary</Button>
-            <Button variant="outline">Outline</Button>
-            <Button variant="ghost">Ghost</Button>
-            <Button variant="destructive">Destructive</Button>
-            <Button disabled>Disabled</Button>
+            <NButton>Default</NButton>
+            <NButton variant="secondary">Secondary</NButton>
+            <NButton variant="outline">Outline</NButton>
+            <NButton variant="ghost">Ghost</NButton>
+            <NButton variant="destructive">Destructive</NButton>
+            <NButton disabled>Disabled</NButton>
           </div>
         </SelectablePreviewElement>
       </Group>
@@ -45,12 +42,12 @@ export function ComponentGalleryPreview() {
       <Group title="Badges">
         <SelectablePreviewElement component="badge">
           <div className="flex flex-wrap gap-2">
-            <Badge>Default</Badge>
-            <Badge variant="secondary">Secondary</Badge>
-            <Badge variant="success">Success</Badge>
-            <Badge variant="warning">Warning</Badge>
-            <Badge variant="destructive">Error</Badge>
-            <Badge variant="outline">Outline</Badge>
+            <NBadge>Default</NBadge>
+            <NBadge variant="secondary">Secondary</NBadge>
+            <NBadge variant="success">Success</NBadge>
+            <NBadge variant="warning">Warning</NBadge>
+            <NBadge variant="destructive">Error</NBadge>
+            <NBadge variant="outline">Outline</NBadge>
           </div>
         </SelectablePreviewElement>
       </Group>
@@ -68,16 +65,26 @@ export function ComponentGalleryPreview() {
 
       <Group title="Tabs">
         <SelectablePreviewElement component="tabs" className="w-full">
-          <Tabs defaultValue="t1">
-            <TabsList>
-              <TabsTrigger value="t1">Overview</TabsTrigger>
-              <TabsTrigger value="t2">Activity</TabsTrigger>
-              <TabsTrigger value="t3">Settings</TabsTrigger>
-            </TabsList>
-            <TabsContent value="t1" className="pt-2 text-sm text-muted-foreground">Overview content</TabsContent>
-            <TabsContent value="t2" className="pt-2 text-sm text-muted-foreground">Activity content</TabsContent>
-            <TabsContent value="t3" className="pt-2 text-sm text-muted-foreground">Settings content</TabsContent>
-          </Tabs>
+          <NTabs
+            defaultValue="t1"
+            items={[
+              {
+                value: "t1",
+                label: "Overview",
+                content: <div className="pt-2 text-sm text-muted-foreground">Overview content</div>,
+              },
+              {
+                value: "t2",
+                label: "Activity",
+                content: <div className="pt-2 text-sm text-muted-foreground">Activity content</div>,
+              },
+              {
+                value: "t3",
+                label: "Settings",
+                content: <div className="pt-2 text-sm text-muted-foreground">Settings content</div>,
+              },
+            ]}
+          />
         </SelectablePreviewElement>
       </Group>
 

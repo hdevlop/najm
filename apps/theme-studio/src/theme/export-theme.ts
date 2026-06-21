@@ -37,6 +37,7 @@ export function toCssVars(config: NajmDesignConfig, layout: ExportLayout): strin
   if (config.theme.spacing) lines.push(`  --spacing: ${config.theme.spacing};`);
   const t = config.typography;
   if (t?.fontSans) lines.push(`  --font-sans: ${t.fontSans};`);
+  if (t?.fontHeading) lines.push(`  --font-heading: ${t.fontHeading};`);
   if (t?.fontMono) lines.push(`  --font-mono: ${t.fontMono};`);
   lines.push(`  --page-gutter: ${layout.gutter}px;`);
   lines.push(`  --section-gap: ${layout.gap}px;`);

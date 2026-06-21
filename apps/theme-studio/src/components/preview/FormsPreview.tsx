@@ -11,7 +11,7 @@ import {
   SliderInput,
   ColorPickerInput,
   NCard,
-  Button,
+  NButton,
   Label,
 } from "najm-kit";
 import { SelectablePreviewElement } from "../SelectablePreviewElement";
@@ -83,8 +83,8 @@ export function FormsPreview() {
               <TextInput value="Read only" onChange={() => {}} disabled />
             </Row>
             <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline">Cancel</Button>
-              <Button>Save</Button>
+              <NButton variant="outline">Cancel</NButton>
+              <NButton>Save</NButton>
             </div>
           </div>
         </NCard>

@@ -12,11 +12,12 @@ export function NSidebarContent({
   showSectionLabels,
   showSectionIcons,
   showSectionSeparators,
+  contentStyle,
   classNames,
 }: NSidebarContentProps) {
   return (
     <NajmScroll axis="y" className="flex-1">
-    <nav className="flex flex-col gap-3 px-4 py-2">
+    <nav className="flex flex-col gap-3 px-4 py-2" style={contentStyle}>
       {groups.map((group, gi) => (
         <NSidebarSection
           key={gi}

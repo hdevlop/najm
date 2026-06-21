@@ -85,7 +85,7 @@ export { SegmentedControl } from "./components/ui/segmented-control";
 export type { SegmentedControlProps, SegmentedControlOption } from "./components/ui/segmented-control";
 export { StatusPill } from "./components/ui/status-pill";
 export type { StatusPillProps, StatusPillTone } from "./components/ui/status-pill";
-export { Toaster } from "./components/ui/sonner";
+export { Toaster, toast } from "./components/ui/sonner";
 export { Form, FormItem, FormLabel, FormControl, FormDescription, FormMessage, FormField, useFormField } from "./components/ui/form";
 export { Table, TableHeader, TableBody, TableFooter, TableHead, TableRow, TableCell, TableCaption } from "./components/ui/table";
 

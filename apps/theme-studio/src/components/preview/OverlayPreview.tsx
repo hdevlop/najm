@@ -1,12 +1,6 @@
 import {
-  Button,
-  Dialog,
-  DialogTrigger,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
+  NButton,
+  NDialog,
   Popover,
   PopoverTrigger,
   PopoverContent,
@@ -30,27 +24,19 @@ export function OverlayPreview() {
     <NCard title="Overlays" description="Verify these inherit the scoped theme in both light and dark mode.">
       <div className="flex flex-wrap items-center gap-3">
         <SelectablePreviewElement component="dialog">
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button>Open dialog</Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Confirm action</DialogTitle>
-                <DialogDescription>This is a themed dialog rendered in the preview scope.</DialogDescription>
-              </DialogHeader>
-              <DialogFooter>
-                <Button variant="outline">Cancel</Button>
-                <Button>Confirm</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+          <NDialog
+            trigger={<NButton>Open dialog</NButton>}
+            title="Confirm action"
+            description="This is a themed dialog rendered in the preview scope."
+            primaryButton={{ text: "Confirm" }}
+            secondaryButton={{ text: "Cancel" }}
+          />
         </SelectablePreviewElement>
 
         <SelectablePreviewElement component="popover">
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline">Popover</Button>
+              <NButton variant="outline">Popover</NButton>
             </PopoverTrigger>
             <PopoverContent>
               <p className="text-sm">Popover content inherits popover tokens.</p>
@@ -60,7 +46,7 @@ export function OverlayPreview() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="secondary">Menu</Button>
+            <NButton variant="secondary">Menu</NButton>
           </DropdownMenuTrigger>
           <DropdownMenuContent>
             <DropdownMenuItem>Edit</DropdownMenuItem>
@@ -85,7 +71,7 @@ export function OverlayPreview() {
 
         <SelectablePreviewElement component="tooltip">
           <SimpleTooltip content="A themed tooltip">
-            <Button variant="ghost">Hover me</Button>
+            <NButton variant="ghost">Hover me</NButton>
           </SimpleTooltip>
         </SelectablePreviewElement>
       </div>

@@ -1,13 +1,11 @@
 import { useState } from "react";
 import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
+  NButton,
+  NDialog,
+  SegmentedControl,
+  toast,
 } from "najm-kit";
 import { Copy, Download } from "lucide-react";
-import { toast } from "sonner";
 import { useStudio } from "../app/studio-store";
 import { exportAs, downloadText, type ExportFormat } from "../theme/export-theme";
 
@@ -32,24 +30,17 @@ export function ExportPanel() {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-1">
-        {FORMATS.map((f) => (
-          <button
-            key={f.id}
-            onClick={() => setFormat(f.id)}
-            className={`cursor-pointer rounded-md px-2.5 py-1 text-xs font-medium transition-colors ${
-              format === f.id ? "bg-muted text-foreground" : "text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            {f.label}
-          </button>
-        ))}
-      </div>
-      <pre className="max-h-72 overflow-auto rounded-md border border-border bg-muted/40 p-3 text-xs">
+      <SegmentedControl
+        value={format}
+        onChange={(v) => setFormat(v as ExportFormat)}
+        options={FORMATS.map((f) => ({ value: f.id, label: f.label }))}
+        size="sm"
+      />
+      <pre className="max-h-[60vh] min-h-80 overflow-auto rounded-md border border-border bg-muted p-3 font-mono text-xs leading-relaxed text-foreground">
         <code>{text}</code>
       </pre>
       <div className="flex gap-2">
-        <Button
+        <NButton
           size="sm"
           variant="outline"
           leftIcon={<Copy className="size-4" />}
@@ -59,9 +50,9 @@ export function ExportPanel() {
           }}
         >
           Copy
-        </Button>
+        </NButton>
         {format !== "usage" && (
-          <Button
+          <NButton
             size="sm"
             leftIcon={<Download className="size-4" />}
             onClick={() => {
@@ -70,7 +61,7 @@ export function ExportPanel() {
             }}
           >
             Download
-          </Button>
+          </NButton>
         )}
       </div>
     </div>
@@ -85,13 +76,14 @@ export function ExportDialog({
   onOpenChange: (v: boolean) => void;
 }) {
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Export Theme</DialogTitle>
-        </DialogHeader>
-        <ExportPanel />
-      </DialogContent>
-    </Dialog>
+    <NDialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Export Theme"
+      width="lg"
+      showButtons={false}
+    >
+      <ExportPanel />
+    </NDialog>
   );
 }

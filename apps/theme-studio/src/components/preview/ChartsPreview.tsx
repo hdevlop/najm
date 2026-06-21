@@ -33,7 +33,7 @@ const pie = [
   { name: "Sports", value: 10 },
 ];
 
-const chartColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+const chartColors = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)"];
 
 const tooltipStyle = {
   background: "var(--popover)",
@@ -84,7 +84,7 @@ export function ChartsPreview() {
               <XAxis dataKey="m" stroke="var(--muted-foreground)" fontSize={12} />
               <Tooltip contentStyle={tooltipStyle} />
               <Area dataKey="a" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.2} />
-              <Area dataKey="b" stroke="var(--chart-4)" fill="var(--chart-4)" fillOpacity={0.2} />
+              <Area dataKey="b" stroke="var(--chart-3)" fill="var(--chart-3)" fillOpacity={0.2} />
             </AreaChart>
           </ResponsiveContainer>
         </div>

@@ -61,21 +61,36 @@ export const TOKEN_CATEGORIES: TokenCategory[] = [
   {
     id: "charts",
     label: "Charts",
-    tokens: ["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"],
+    tokens: ["chart-1", "chart-2", "chart-3"],
   },
 ];
 
 const TOKEN_LABELS: Partial<Record<TokenKey, string>> = {
   foreground: "Text",
+  sidebar: "Background",
+  "sidebar-foreground": "Text",
+  "sidebar-primary": "Active Item",
+  "sidebar-primary-foreground": "Active Text",
+  "sidebar-accent": "Hover Item",
+  "sidebar-accent-foreground": "Hover Text",
+  "sidebar-border": "Border",
+  "sidebar-ring": "Focus Ring",
+  "chart-1": "Primary series",
+  "chart-2": "Secondary series",
+  "chart-3": "Tertiary series",
 };
 
 export const CHART_TOKENS: TokenKey[] = [
   "chart-1",
   "chart-2",
   "chart-3",
-  "chart-4",
-  "chart-5",
 ];
+
+export const CHART_TOKEN_DEFAULTS: Partial<Record<TokenKey, TokenKey>> = {
+  "chart-1": "primary",
+  "chart-2": "secondary",
+  "chart-3": "tertiary",
+};
 
 export function tokenLabel(key: TokenKey): string {
   const alias = TOKEN_LABELS[key];

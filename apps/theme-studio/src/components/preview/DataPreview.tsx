@@ -7,8 +7,8 @@ import {
   TableRow,
   TableHead,
   TableCell,
-  Badge,
-  Button,
+  NBadge,
+  NButton,
   Checkbox,
   SegmentedControl,
   NEmptyState,
@@ -46,7 +46,7 @@ export function DataPreview() {
       {selected.length > 0 && (
         <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2 text-sm">
           <span>{selected.length} selected</span>
-          <Button size="xs" variant="destructive">Delete</Button>
+          <NButton size="xs" variant="destructive">Delete</NButton>
         </div>
       )}
 
@@ -71,7 +71,7 @@ export function DataPreview() {
                     <TableCell className="font-medium">{r.name}</TableCell>
                     <TableCell>{r.students}</TableCell>
                     <TableCell>
-                      <Badge variant={r.status === "Open" ? "success" : "secondary"}>{r.status}</Badge>
+                      <NBadge variant={r.status === "Open" ? "success" : "secondary"}>{r.status}</NBadge>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -86,7 +86,7 @@ export function DataPreview() {
               <NCard noPadding className="p-3">
                 <div className="flex items-center justify-between">
                   <span className="font-medium">{r.name}</span>
-                  <Badge variant={r.status === "Open" ? "success" : "secondary"}>{r.status}</Badge>
+                  <NBadge variant={r.status === "Open" ? "success" : "secondary"}>{r.status}</NBadge>
                 </div>
                 <p className="text-sm text-muted-foreground">{r.students} students</p>
               </NCard>

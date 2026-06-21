@@ -1,7 +1,9 @@
-import { useMemo, useCallback, useState } from "react";
+import { useMemo, useCallback, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { sidebarBorderClasses } from "../../theme/borders";
+import { useNajmComponentStyle } from "../../theme/design-provider";
 import { NSidebarHeader } from "./NSidebarHeader";
 import { NSidebarLogo } from "./NSidebarLogo";
 import { NSidebarContent } from "./NSidebarContent";
@@ -37,10 +39,10 @@ export function NSidebar({
   defaultCollapsed = false,
   onCollapsedChange,
   showCollapseButton = true,
-  collapseButtonPosition = 'footer',
-  showSectionLabels = true,
+  collapseButtonPosition = 'rail',
+  showSectionLabels,
   showSectionIcons = true,
-  showSectionSeparators = false,
+  showSectionSeparators,
   bordered,
   footer,
   className,
@@ -66,6 +68,7 @@ export function NSidebar({
   logoutLabel,
   widths,
 }: SidebarProps) {
+  const recipe = useNajmComponentStyle("sidebar");
   const [_mobileOpen, _setMobileOpen] = useState(defaultMobileOpen);
   const [_collapsed, _setCollapsed] = useState(defaultCollapsed);
   const isControlled = mobileOpenProp !== undefined;
@@ -75,11 +78,54 @@ export function NSidebar({
     if (!isControlled) _setMobileOpen(open);
     onMobileOpenChange?.(open);
   };
-  const handleToggleCollapsed = useCallback(() => {
-    const next = !collapsed;
+  const [railDragging, setRailDragging] = useState(false);
+  const suppressRailClickRef = useRef(false);
+  const setCollapsedState = useCallback((next: boolean) => {
+    if (next === collapsed) return;
     if (collapsedProp === undefined) _setCollapsed(next);
     onCollapsedChange?.(next);
   }, [collapsed, collapsedProp, onCollapsedChange]);
+  const handleToggleCollapsed = useCallback(() => {
+    setCollapsedState(!collapsed);
+  }, [collapsed, setCollapsedState]);
+
+  // Drag-the-edge-to-collapse: drag left to collapse, drag right to expand.
+  const handleRailPointerDown = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
+    if (e.button !== 0) return;
+    const startX = e.clientX;
+    const startCollapsed = collapsed;
+    const threshold = 24;
+    let resolved = false;
+    setRailDragging(true);
+
+    const onMove = (ev: PointerEvent) => {
+      const dx = ev.clientX - startX;
+      if (!resolved && !startCollapsed && dx < -threshold) {
+        resolved = true;
+        suppressRailClickRef.current = true;
+        setCollapsedState(true);
+      } else if (!resolved && startCollapsed && dx > threshold) {
+        resolved = true;
+        suppressRailClickRef.current = true;
+        setCollapsedState(false);
+      }
+    };
+    const onUp = (ev: PointerEvent) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      setRailDragging(false);
+      if (resolved || Math.abs(ev.clientX - startX) >= 4) suppressRailClickRef.current = true;
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  }, [collapsed, setCollapsedState]);
+  const handleRailClick = useCallback(() => {
+    if (suppressRailClickRef.current) {
+      suppressRailClickRef.current = false;
+      return;
+    }
+    handleToggleCollapsed();
+  }, [handleToggleCollapsed]);
 
   const handleNavigate = useCallback((href: string) => {
     onNavigate?.(href);
@@ -97,6 +143,13 @@ export function NSidebar({
   const mobileWidth = widths?.mobile ?? expandedWidth;
   const railVar = typeof collapsedWidth === 'number' ? `${collapsedWidth}px` : collapsedWidth;
   const showEdgeCollapse = showCollapseButton && collapseButtonPosition === 'edge';
+  const showRailCollapse = showCollapseButton && collapseButtonPosition === 'rail';
+  const effectiveShowSectionLabels = showSectionLabels ?? recipe?.showSectionLabels ?? true;
+  const effectiveShowSectionSeparators = showSectionSeparators ?? recipe?.showSectionSeparators ?? false;
+  const contentSlot = recipe?.slots?.content;
+  const contentStyle = contentSlot?.paddingTop
+    ? { paddingTop: contentSlot.paddingTop }
+    : undefined;
 
   const defaultLogoContent = logoIcon || logoTitle || logoSubtitle
     ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={collapsed} />
@@ -110,9 +163,10 @@ export function NSidebar({
     onNavigate: handleNavigate,
     linkComponent,
     collapsed,
-    showSectionLabels,
+    showSectionLabels: effectiveShowSectionLabels,
     showSectionIcons,
-    showSectionSeparators,
+    showSectionSeparators: effectiveShowSectionSeparators,
+    contentStyle,
     classNames,
   };
 
@@ -172,9 +226,29 @@ export function NSidebar({
           classNames?.sidebar,
           className
         )}
-        style={{ width: collapsed ? collapsedWidth : expandedWidth, ['--rail' as any]: railVar }}
+        style={{
+          width: collapsed ? collapsedWidth : expandedWidth,
+          ['--rail' as any]: railVar,
+          ...(bordered !== false && recipe?.borderWidth ? { borderRightWidth: recipe.borderWidth } : {}),
+        }}
       >
         {sidebarInner}
+        {showRailCollapse && (
+          <button
+            type="button"
+            aria-label={collapsed ? expandLabel : collapseLabel}
+            title={collapsed ? expandLabel : collapseLabel}
+            data-dragging={railDragging ? "true" : undefined}
+            onPointerDown={handleRailPointerDown}
+            onClick={handleRailClick}
+            className="group/rail absolute inset-y-0 right-0 z-20 flex w-3 translate-x-1/2 cursor-ew-resize touch-none select-none items-center justify-center border-0 bg-transparent p-0"
+          >
+            {/* full-height accent line, revealed on hover/drag */}
+            <span className="absolute inset-y-0 right-1/2 w-0.5 translate-x-1/2 bg-sidebar-ring opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100 group-data-[dragging=true]/rail:opacity-100" />
+            {/* centered grip handle */}
+            <span className="relative h-9 w-1 rounded-full bg-sidebar-border transition-all duration-150 group-hover/rail:h-12 group-hover/rail:bg-sidebar-ring group-data-[dragging=true]/rail:bg-sidebar-ring" />
+          </button>
+        )}
         {showEdgeCollapse && (
           <button
             type="button"

@@ -23,6 +23,8 @@ const TYPOGRAPHY_KEYS = new Set([
 const LAYOUT_KEYS = new Set(["pageGutter", "sectionGap"]);
 const COMPONENT_KEYS = new Set([
   "card",
+  "showSectionLabels",
+  "showSectionSeparators",
   "defaultVariant",
   "defaultSize",
   "density",
@@ -31,7 +33,7 @@ const COMPONENT_KEYS = new Set([
   "slots",
   "variants",
 ]);
-const SLOT_KEYS = new Set(["className", "radius", "borderWidth", "padding"]);
+const SLOT_KEYS = new Set(["className", "radius", "borderWidth", "padding", "paddingTop"]);
 const VARIANT_KEYS = new Set(["use", "className", "tokens"]);
 const COMPONENT_NAME_SET = new Set<string>(NAJM_COMPONENT_NAMES);
 const DENSITIES = new Set(["compact", "default", "comfortable"]);
@@ -135,12 +137,16 @@ function parseComponentStyle(
   assertKnownKeys(value, COMPONENT_KEYS, path);
   const cfg: NajmComponentStyleConfig = {};
   const card = optionalBoolean(value.card, `${path}.card`);
+  const showSectionLabels = optionalBoolean(value.showSectionLabels, `${path}.showSectionLabels`);
+  const showSectionSeparators = optionalBoolean(value.showSectionSeparators, `${path}.showSectionSeparators`);
   const defaultVariant = optionalString(value.defaultVariant, `${path}.defaultVariant`);
   const defaultSize = optionalString(value.defaultSize, `${path}.defaultSize`);
   const density = optionalEnum(value.density, DENSITIES, `${path}.density`);
   const radius = optionalString(value.radius, `${path}.radius`);
   const borderWidth = optionalString(value.borderWidth, `${path}.borderWidth`);
   if (card !== undefined) cfg.card = card;
+  if (showSectionLabels !== undefined) cfg.showSectionLabels = showSectionLabels;
+  if (showSectionSeparators !== undefined) cfg.showSectionSeparators = showSectionSeparators;
   if (defaultVariant !== undefined) cfg.defaultVariant = defaultVariant;
   if (defaultSize !== undefined) cfg.defaultSize = defaultSize;
   if (density !== undefined) cfg.density = density as NajmComponentStyleConfig["density"];

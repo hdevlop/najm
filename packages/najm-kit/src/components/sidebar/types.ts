@@ -1,4 +1,4 @@
-import type { ReactNode, ComponentType, MouseEventHandler } from "react";
+import type { ReactNode, ComponentType, MouseEventHandler, CSSProperties } from "react";
 
 export type LinkComponentType = ComponentType<{
   href: string;
@@ -53,8 +53,14 @@ export interface SidebarProps {
   defaultCollapsed?: boolean;
   onCollapsedChange?: (collapsed: boolean) => void;
   showCollapseButton?: boolean;
-  /** Where the collapse toggle lives: a full-width button in the footer, or a small floating circle on the sidebar's edge. */
-  collapseButtonPosition?: 'footer' | 'edge';
+  /**
+   * Where the collapse toggle lives:
+   * - `'footer'` — a full-width button in the footer.
+   * - `'edge'` — a small floating circle on the sidebar's edge.
+   * - `'rail'` — (default) an interactive strip along the right border. Hovering it
+   *   shows a resize cursor + accent line; clicking or dragging the edge collapses/expands.
+   */
+  collapseButtonPosition?: 'footer' | 'edge' | 'rail';
   widths?: SidebarWidths;
   showSectionLabels?: boolean;
   showSectionIcons?: boolean;
@@ -123,6 +129,7 @@ export interface NSidebarContentProps {
   showSectionLabels: boolean;
   showSectionIcons: boolean;
   showSectionSeparators: boolean;
+  contentStyle?: CSSProperties;
   classNames?: NAppShellClassNames;
 }
 
