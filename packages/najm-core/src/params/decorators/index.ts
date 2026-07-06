@@ -2,9 +2,8 @@
 // decorators/all.ts - All decorators defined in one place (alternative approach)
 // ============================================================================
 
-import { MetaHelper } from 'diject';
 import { createParamDecorator } from './factory';
-import { PARAMS } from '../tokens';
+export { getParameterMetadata } from '../metadata';
 
 // This approach defines all decorators from a configuration object
 // Advantages: Single source of truth, easy to add new decorators
@@ -62,5 +61,3 @@ export const Role = createParamDecorator('role');
 export const Permissions = createParamDecorator('permissions');
 
 export type { ParameterMetadata } from '../types';
-
-export const getParameterMetadata = (t: any) => MetaHelper.get<any[]>(PARAMS, t) ?? [];

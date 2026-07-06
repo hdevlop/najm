@@ -13,6 +13,19 @@ export const ROUTER_CODES = {
   REGISTRATION_FAILED: "ROUTER_006",
 } as const;
 
+const getCauseMessage = (cause: unknown): string | undefined => {
+  if (cause instanceof Error && cause.message) return cause.message;
+  if (typeof cause === "string" && cause.trim()) return cause;
+  return undefined;
+};
+
+const withCause = (error: BaseError, cause?: unknown): BaseError => {
+  if (cause !== undefined) {
+    (error as BaseError & { cause?: unknown }).cause = cause;
+  }
+  return error;
+};
+
 // ============================================================================
 // ROUTER ERROR FACTORY
 // ============================================================================
@@ -58,11 +71,16 @@ export const RouterError = {
     );
   },
 
-  registrationFailed: (method: string, path: string): never => {
-    throw new BaseError(
+  registrationFailed: (method: string, path: string, cause?: unknown): never => {
+    const causeMessage = getCauseMessage(cause);
+    const message = causeMessage
+      ? `Failed to register route: ${method} ${path}: ${causeMessage}`
+      : `Failed to register route: ${method} ${path}`;
+
+    throw withCause(new BaseError(
       ROUTER_CODES.REGISTRATION_FAILED,
-      `Failed to register route: ${method} ${path}`,
+      message,
       500,
-    );
+    ), cause);
   },
 };

@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { describe, expect, test } from 'bun:test';
-import { REQUEST_ID, Scope, Server, createAlsToken } from '../src';
+import { REQUEST_ID, Scope, Server, createAlsToken } from '../dist/index.mjs';
 
 class RequestScopedMarker {}
 

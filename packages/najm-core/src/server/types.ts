@@ -20,6 +20,8 @@ export abstract class ServerOpts {
    silent?: boolean = false;
    logger?: LoggerConfig;
    isolated?: boolean;
+   diagnostics?: boolean;
+   gracefulShutdown?: boolean;
 }
 
 export type Constructor<T = any> = new (...args: any[]) => T;

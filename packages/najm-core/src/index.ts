@@ -20,7 +20,7 @@ export * from './errors';
 // ============================================================================
 // Boot Module - ALS Tokens
 // ============================================================================
-export { BootService } from './boot';
+export { BootService, BootDiagnostics } from './boot';
 export { REQUEST_ID } from './boot/alsTokens';
 
 // ============================================================================

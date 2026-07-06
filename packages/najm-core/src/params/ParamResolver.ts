@@ -7,6 +7,7 @@ import { ParameterMetadata, HRequest } from './types';
 import { REQUEST, CONTEXT, PARSER } from './tokens';
 import { Context } from 'hono';
 import { Err } from '../errors';
+import { getParameterMetadata } from './metadata';
 
 const USER = createAlsToken<any>('user');
 const ROLE = createAlsToken<string>('role');
@@ -40,7 +41,6 @@ export class ParamResolver {
       if (paramMetadata.length === paramCount) {
          return Promise.all(
             paramMetadata
-               .sort((a, b) => a.index - b.index)
                .map(meta => this.extractParameterValue(meta))
          );
       }
@@ -303,8 +303,7 @@ export class ParamResolver {
       let metadata = this.parameterMetadataCache.get(handler);
 
       if (!metadata) {
-         const { getParameterMetadata } = require('./decorators');
-         metadata = getParameterMetadata(handler) ?? [];
+         metadata = [...getParameterMetadata(handler)].sort((a, b) => a.index - b.index);
          this.parameterMetadataCache.set(handler, metadata);
       }
 

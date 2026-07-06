@@ -4,7 +4,7 @@ import { LOGGER } from '../server/tokens';
 import type { LoggerService } from '../logging';
 import type { ParamInjection } from './types';
 import { ParamResolver } from './ParamResolver';
-import { getParameterMetadata } from './decorators';
+import { getParameterMetadata } from './metadata';
 
 
 @Service()

@@ -29,6 +29,8 @@ export class RequestParser {
    // Cached parsed values
    private _body: any;
    private _bodyParsed = false;
+   private _params: Record<string, string> | null = null;
+   private _query: Record<string, string> | null = null;
    private _headers: Record<string, string> | null = null;
    private _cookies: Record<string, string> | null = null;
    private _files: Record<string, File | File[]> | null = null;
@@ -45,8 +47,6 @@ export class RequestParser {
 
       return {
          // Immediate access (no parsing needed)
-         params: req.param(),
-         query: req.query(),
          queries: req.queries.bind(req),
          path: req.path,
          url: req.url,
@@ -58,6 +58,8 @@ export class RequestParser {
          header: req.header.bind(req),
 
          // Lazy parsed values via getters
+         get params() { return self.getParams(); },
+         get query() { return self.getQuery(); },
          get body() { return self.getBody(); },
          get headers() { return self.getHeaders(); },
          get cookies() { return self.getCookies(); },
@@ -93,6 +95,20 @@ export class RequestParser {
          console.warn('Body accessed before async parsing - use @Body() decorator or await parseAsync()');
       }
       return this._body;
+   }
+
+   private getParams(): Record<string, string> {
+      if (!this._params) {
+         this._params = this.context.req.param();
+      }
+      return this._params;
+   }
+
+   private getQuery(): Record<string, string> {
+      if (!this._query) {
+         this._query = this.context.req.query();
+      }
+      return this._query;
    }
 
    private getHeaders(): Record<string, string> {

@@ -5,6 +5,7 @@
 import { Hono, MiddlewareHandler } from 'hono';
 import { createLogger, LoggerService } from '../logging/LoggerService';
 import { BootService } from '../boot/BootService';
+import { BootDiagnostics } from '../boot/BootDiagnostics';
 import { Err } from '../errors';
 import type { NajmPlugin, Constructor, ServerOpts, Loadable, ScanTarget } from './types';
 import {
@@ -28,11 +29,19 @@ export { handle } from './handle';
 
 const CORE_SERVICES = [BootService, LoggerService, ScannerService];
 
+type ServerHandle = {
+   readonly port: number;
+   stop?: () => void | Promise<void>;
+};
+
+type ShutdownSignal = 'SIGINT' | 'SIGTERM';
+
 const enum ServerState {
    IDLE = 'idle',
    INITIALIZING = 'initializing',
    READY = 'ready',
    FAILED = 'failed',
+   STOPPED = 'stopped',
 }
 
 export class Server {
@@ -44,15 +53,17 @@ export class Server {
    private readonly plugins = new Map<string, NajmPlugin>();
    private readonly contributions = new Map<symbol, unknown[]>();
    private readonly registeredContributions = new Set<string>();
+   private readonly pendingRequirements = new Map<string, Set<string>>();
    private readonly middlewareHandlers: MiddlewareHandler[] = [];
    private readonly scanRoots = new Set<string>();
    private readonly startupLogs: unknown[][] = [];
 
-   private server?: ReturnType<typeof Bun.serve>;
+   private server?: ServerHandle;
    private initPromise?: Promise<void>;
    private initError?: unknown;
    private _fetchHandler?: (req: Request) => Promise<Response>;
-   private appServices: Constructor[] = [];
+   private readonly appServices = new Set<Constructor>();
+   private shutdownHandlers?: Array<{ signal: ShutdownSignal; handler: () => void }>;
    public basePath = '';
    private state: ServerState = ServerState.IDLE;
 
@@ -111,11 +122,11 @@ export class Server {
    public load(...items: Loadable[]): this {
       for (const item of items) {
          if (typeof item === 'function') {
-            this.appServices.push(item as Constructor);
+            this.appServices.add(item as Constructor);
             continue;
          } else if (Array.isArray(item)) {
             for (const ctor of item) {
-               this.appServices.push(ctor as Constructor);
+               this.appServices.add(ctor as Constructor);
             }
             continue;
          }
@@ -155,6 +166,10 @@ export class Server {
    // ============================================================================
 
    public async listen(portOrCb?: number | string | (() => void), cb?: () => void): Promise<this> {
+      if (this.server) {
+         Err.alreadyRunning(this.server.port);
+      }
+
       const rawPort = typeof portOrCb === 'function' || portOrCb === undefined
          ? this.opts.port
          : portOrCb;
@@ -165,19 +180,7 @@ export class Server {
       await this.ensureInitialized();
 
       try {
-         this.server = Bun.serve({
-            fetch: async (req) => {
-               try {
-                  return await this.app.fetch(req);
-               } catch (error) {
-                  if (!this.opts.silent) {
-                     this.logger.serverError(error);
-                  }
-                  return Err.handle(error);
-               }
-            },
-            port,
-         });
+         this.server = await this.createListener(port);
       } catch (error) {
          if (!this.opts.silent) {
             this.logger.serverError(error);
@@ -188,9 +191,88 @@ export class Server {
       this.logger.serverStarted(this.server.port);
       this.logDevModeStartup(this.server.port);
       this.flushStartupLogs();
+      this.registerGracefulShutdownHandlers();
 
       callback?.();
       return this;
+   }
+
+   private async createListener(port: number): Promise<ServerHandle> {
+      const fetch = this.createFetchHandler();
+
+      if (this.hasBunServe()) {
+         return Bun.serve({ fetch, port });
+      }
+
+      const { serve } = await this.importNodeServer();
+      let resolvedPort = port;
+      const nodeServer = await new Promise<any>((resolve, reject) => {
+         let server: any;
+         const onError = (error: unknown) => {
+            server?.off?.('error', onError);
+            reject(error);
+         };
+
+         server = serve({ fetch, port }, (info) => {
+            resolvedPort = info.port;
+            server?.off?.('error', onError);
+            resolve(server);
+         });
+         server?.once?.('error', onError);
+      });
+
+      return {
+         get port() {
+            const address = nodeServer.address();
+            return typeof address === 'object' && address !== null ? address.port : resolvedPort;
+         },
+         stop: () => new Promise<void>((resolve, reject) => {
+            if ('listening' in nodeServer && !nodeServer.listening) {
+               resolve();
+               return;
+            }
+
+            nodeServer.close((error?: Error) => {
+               if (error) {
+                  if ((error as NodeJS.ErrnoException).code === 'ERR_SERVER_NOT_RUNNING') {
+                     resolve();
+                     return;
+                  }
+                  reject(error);
+                  return;
+               }
+               resolve();
+            });
+         }),
+      };
+   }
+
+   private createFetchHandler(): (req: Request) => Promise<Response> {
+      return async (req) => {
+         try {
+            return await this.app.fetch(req);
+         } catch (error) {
+            if (!this.opts.silent) {
+               this.logger.serverError(error);
+            }
+            return Err.handle(error);
+         }
+      };
+   }
+
+   private hasBunServe(): boolean {
+      return typeof Bun !== 'undefined' && typeof Bun.serve === 'function';
+   }
+
+   private async importNodeServer(): Promise<typeof import('@hono/node-server')> {
+      try {
+         return await import('@hono/node-server');
+      } catch (cause) {
+         throw Err.invalidState(
+            'Running on Node requires the optional "@hono/node-server" package. Install it with: bun add @hono/node-server (or npm install @hono/node-server)',
+            cause,
+         );
+      }
    }
 
    public async init(): Promise<this> {
@@ -233,24 +315,28 @@ export class Server {
    }
 
    public async stop(): Promise<void> {
-      if (!this.server) return;
+      const shouldDestroy = this.state === ServerState.READY;
+      const server = this.server;
+
+      if (!shouldDestroy && !server) return;
 
       try {
-         // Run onDestroy lifecycle on all services (reverse boot order)
-         try {
+         this.removeGracefulShutdownHandlers();
+
+         if (shouldDestroy) {
+            // Run onDestroy lifecycle on all services (reverse boot order)
             const bootService = this.container.get(BootService);
             if (bootService) await bootService.destroy();
-         } catch {
-            // BootService may not be resolved yet if stop() called early
          }
 
-         this.server.stop?.();
+         await server?.stop?.();
          this.server = undefined;
-         this.state = ServerState.IDLE;
+         this.state = ServerState.STOPPED;
          this.initPromise = undefined;
+         this._fetchHandler = undefined;
          this.logger.serverStopped();
-      } catch {
-         throw Err.stopFailed();
+      } catch (error) {
+         throw Err.stopFailed(error);
       }
    }
 
@@ -268,6 +354,9 @@ export class Server {
 
    private async ensureInitialized(): Promise<void> {
       if (this.state === ServerState.READY) return;
+      if (this.state === ServerState.STOPPED) {
+         Err.invalidState('Server was stopped; create a new Server instance');
+      }
       if (this.state === ServerState.FAILED) {
          throw Err.startFailed(this.resolvePortForErrors(), this.initError);
       }
@@ -285,22 +374,27 @@ export class Server {
 
       try {
          this.registerDefaultPlugins();
+         this.validatePendingRequirements();
          this.mergeMiddlewareHandlers();
          await this.resolveScanRoots();
 
          const pluginServices = this.collectPluginServices();
+         const coreServices = this.isDiagnosticsEnabled()
+            ? [...CORE_SERVICES, BootDiagnostics]
+            : CORE_SERVICES;
 
          this.container
             .set(SERVER_OPTS, this.opts)
             .set(APP, this.app)
             .set(BASE_PATH, this.basePath)
-            .set(CORE_SERVICES)
+            .set(coreServices)
             .alias(LOGGER, LoggerService)
             .set(pluginServices)
-            .set(this.appServices, { metadata: { layer: 'app' } });
+            .set([...this.appServices], { metadata: { layer: 'app' } });
 
          const bootService = await this.container.resolve(BootService);
          await bootService.boot();
+         this.logger = await this.container.resolve(LoggerService);
 
          // Ensure every plugin alias target is materialised. With diject ^0.1.5,
          // alias() registers a transparent forwarder — get(token) follows to the
@@ -312,13 +406,12 @@ export class Server {
                   try {
                      await this.container.resolve(target);
                   } catch (err) {
-                     console.error('[Server] alias target resolve failed for', target?.name, ':', err);
+                     this.logger.error(`Alias target resolve failed for ${target?.name ?? 'anonymous'}`, err);
+                     throw err;
                   }
                }
             }
          }
-
-         this.logger = await this.container.resolve(LoggerService);
 
          this.state = ServerState.READY;
          this.initError = undefined;
@@ -377,9 +470,10 @@ export class Server {
 
       for (const dep of plugin.dependencies) {
          if (typeof dep === 'string') {
-            // String = required dependency
+            // String = required dependency. Validate after all .use() calls and
+            // default plugins are registered so plugin order does not matter.
             if (!this.plugins.has(dep)) {
-               throw Err.missingDependency(plugin.name, dep);
+               this.addPendingRequirement(plugin.name, dep);
             }
             continue;
          }
@@ -484,11 +578,72 @@ export class Server {
    // HELPERS
    // ============================================================================
 
+   private isDiagnosticsEnabled(): boolean {
+      return this.opts.diagnostics === true
+         || (process.env.NAJM_DEBUG === '1' && process.env.NODE_ENV !== 'production');
+   }
+
+   private registerGracefulShutdownHandlers(): void {
+      if (!this.opts.gracefulShutdown || this.shutdownHandlers?.length) {
+         return;
+      }
+
+      if (typeof process === 'undefined' || typeof process.once !== 'function') {
+         return;
+      }
+
+      this.shutdownHandlers = (['SIGINT', 'SIGTERM'] as ShutdownSignal[]).map((signal) => {
+         const handler = () => {
+            void this.stop().finally(() => process.exit(0));
+         };
+         process.once(signal, handler);
+         return { signal, handler };
+      });
+   }
+
+   private removeGracefulShutdownHandlers(): void {
+      if (!this.shutdownHandlers?.length) {
+         return;
+      }
+
+      if (typeof process !== 'undefined' && typeof process.off === 'function') {
+         for (const { signal, handler } of this.shutdownHandlers) {
+            process.off(signal, handler);
+         }
+      }
+
+      this.shutdownHandlers = undefined;
+   }
+
    private addInjectablesFromModule(moduleExports: Record<string, unknown>): void {
       for (const exported of Object.values(moduleExports)) {
          if (typeof exported === 'function' && isInjectable(exported)) {
-            this.appServices.push(exported as Constructor);
+            this.appServices.add(exported as Constructor);
          }
+      }
+   }
+
+   private addPendingRequirement(pluginName: string, dependency: string): void {
+      const requirements = this.pendingRequirements.get(pluginName) ?? new Set<string>();
+      requirements.add(dependency);
+      this.pendingRequirements.set(pluginName, requirements);
+   }
+
+   private validatePendingRequirements(): void {
+      if (!this.pendingRequirements.size) return;
+
+      const missing: Array<{ plugin: string; dependency: string }> = [];
+
+      for (const [plugin, dependencies] of this.pendingRequirements) {
+         for (const dependency of dependencies) {
+            if (!this.plugins.has(dependency)) {
+               missing.push({ plugin, dependency });
+            }
+         }
+      }
+
+      if (missing.length) {
+         Err.missingDependencies(missing);
       }
    }
 

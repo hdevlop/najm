@@ -1,7 +1,7 @@
 
 import { REQUEST_ID } from '../boot/alsTokens';
 import { ServerLog } from './ServerLog';
-import { SERVER_OPTS } from '../boot';
+import { SERVER_OPTS } from '../server/tokens';
 import type { LogEntry, LoggerConfig } from './types';
 import { LogLevel } from './types';
 import { type ServerOpts } from '../server/types';
@@ -34,11 +34,26 @@ export class LoggerService extends ServerLog {
    private readonly colorMap = {
       DEBUG: '\x1b[36m',
       INFO: '\x1b[32m',
-      WARN: '\x1b[33m', 
+      WARN: '\x1b[33m',
       ERROR: '\x1b[31m',
       RESET: '\x1b[0m',
-   }; 
+   };
+   private readonly DIM = '\x1b[2m';
+   private readonly iconMap = {
+      DEBUG: '◆',
+      INFO: 'ℹ',
+      WARN: '⚠',
+      ERROR: '✖',
+   };
    private injectorRegistered = false;
+
+   constructor() {
+      super();
+      // Standalone loggers (createLogger(), pre-boot Server logging) never go
+      // through onInit/configure, so derive env defaults now; DI boot re-parses
+      // later with SERVER_OPTS applied.
+      this.parseConfig();
+   }
 
    async onInit(): Promise<void> {
       this.parseConfig();
@@ -64,10 +79,10 @@ export class LoggerService extends ServerLog {
       const config = this.opts?.logger || this.getDefaultConfig();
 
       this.level = this.parseLogLevel(config.level);
-      this.format = config.format ?? (process.env.NODE_ENV === 'production' ? 'json' : 'pretty');
+      this.format = config.format ?? this.resolveDefaultFormat();
       this.includeTimestamp = config.includeTimestamp ?? true;
       this.includeRequestId = config.includeRequestId ?? true;
-      this.colors = config.colors ?? (process.env.NODE_ENV !== 'production');
+      this.colors = config.colors ?? this.resolveDefaultColors();
 
       if (this.opts?.silent) {
          this.level = LogLevel.SILENT;
@@ -77,11 +92,24 @@ export class LoggerService extends ServerLog {
    private getDefaultConfig(): LoggerConfig { 
       return {
          level: process.env.LOG_LEVEL as keyof typeof LogLevel || 'INFO',
-         format: process.env.NODE_ENV === 'production' ? 'json' : 'pretty',
+         format: this.resolveDefaultFormat(),
          includeTimestamp: true,
          includeRequestId: true,
-         colors: process.env.NODE_ENV !== 'production',
+         colors: this.resolveDefaultColors(),
       };
+   }
+
+   private resolveDefaultFormat(): 'pretty' | 'json' {
+      return (process.env.LOG_FORMAT as 'pretty' | 'json' | undefined)
+         ?? (process.env.NODE_ENV === 'production' ? 'json' : 'pretty');
+   }
+
+   private resolveDefaultColors(): boolean {
+      if (process.env.NO_COLOR) {
+         return false;
+      }
+
+      return process.env.NODE_ENV !== 'production';
    }
 
    private registerInjector(): void {
@@ -212,19 +240,26 @@ export class LoggerService extends ServerLog {
    }
 
    private formatPretty(entry: LogEntry, level: LogLevel): string {
+      const levelKey = entry.level as keyof typeof this.colorMap;
+      const color = this.colors ? this.colorMap[levelKey] ?? '' : '';
+      const reset = this.colors ? this.colorMap.RESET : '';
+      const dim = this.colors ? this.DIM : '';
+
+      const icon = this.iconMap[entry.level as keyof typeof this.iconMap] ?? '•';
       const parts: string[] = [];
 
-      if (entry.timestamp) {
-         parts.push(`[${entry.timestamp}]`);
+      // Per-line time is noise on a fast boot where everything shares the same
+      // second. Kept in the entry (and JSON output) but only rendered in pretty
+      // mode when explicitly opted in via LOG_TIME.
+      if (entry.timestamp && process.env.LOG_TIME) {
+         parts.push(`${dim}${entry.timestamp.slice(11, 19)}${reset}`);
       }
 
-      const levelStr = this.colors
-         ? `${this.colorMap[entry.level as keyof typeof this.colorMap]}${entry.level}${this.colorMap.RESET}`
-         : entry.level;
-      parts.push(`[${levelStr}]`);
+      // Colored icon + fixed-width level label so messages stay aligned.
+      parts.push(`${color}${icon} ${entry.level.padEnd(5)}${reset}`);
 
       if (entry.requestId) {
-         parts.push(`[${entry.requestId.substring(0, 8)}]`);
+         parts.push(`${dim}${entry.requestId.substring(0, 8)}${reset}`);
       }
 
       parts.push(entry.message);
@@ -232,14 +267,35 @@ export class LoggerService extends ServerLog {
       let result = parts.join(' ');
 
       if (entry.context && Object.keys(entry.context).length > 0) {
-         result += `\n  Context: ${JSON.stringify(entry.context, null, 2)}`;
+         result += `\n  ${dim}Context:${reset} ${JSON.stringify(entry.context, null, 2)}`;
       }
 
       if (entry.error) {
-         result += `\n  Error: ${JSON.stringify(entry.error, null, 2)}`;
+         result += `\n${this.formatError(entry.error, color, reset, dim)}`;
       }
 
       return result;
+   }
+
+   private formatError(error: any, color: string, reset: string, dim: string): string {
+      // Structured error (name/message/stack) → header line + dimmed stack frames
+      // with real newlines, instead of an escaped JSON blob.
+      if (error && typeof error === 'object' && (error.stack || error.message)) {
+         const name = error.name ?? 'Error';
+         const head = `  ${color}${name}${reset}: ${error.message ?? ''}`;
+
+         if (typeof error.stack === 'string') {
+            const frames = error.stack
+               .split('\n')
+               .slice(1) // first line repeats "Name: message"
+               .map((line: string) => `  ${dim}${line.trimEnd()}${reset}`);
+            return [head, ...frames].join('\n');
+         }
+         return head;
+      }
+
+      const text = typeof error === 'string' ? error : JSON.stringify(error);
+      return `  ${color}Error:${reset} ${text}`;
    }
 
    // ============================================================================

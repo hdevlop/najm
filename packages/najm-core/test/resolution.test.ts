@@ -1,6 +1,5 @@
 import { describe, expect, mock, test } from 'bun:test';
-import { normalizeResolutionQuery, escapeLike, pickSingle, resolveBy } from '../src/resolution';
-import type { Resolved } from '../src/resolution';
+import { normalizeResolutionQuery, escapeLike, pickSingle, resolveBy } from '../dist/index.mjs';
 
 describe('normalizeResolutionQuery', () => {
   test('trims whitespace from input', () => {
@@ -42,7 +41,7 @@ describe('pickSingle', () => {
   const labelFn = (row: { id: string; name: string }) => row.name;
 
   test('returns not_found for zero rows', () => {
-    const result: Resolved<{ id: string; name: string }> = pickSingle([], 'test', labelFn);
+    const result = pickSingle([], 'test', labelFn);
     expect(result).toEqual({ kind: 'not_found', query: 'test' });
   });
 

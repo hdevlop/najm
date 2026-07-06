@@ -9,6 +9,7 @@ export const CORE_CODES = {
   NOT_RUNNING: "CORE_005",
   ALREADY_INITIALIZED: "CORE_006",
   NOT_INITIALIZED: "CORE_007",
+  INVALID_STATE: "CORE_008",
   // Configuration
   INVALID_CONFIG: "CORE_010",
   MISSING_CONFIG: "CORE_011",
@@ -67,8 +68,13 @@ export const CoreError = {
     throw withCause(new BaseError(CORE_CODES.START_FAILED, message, 500), cause);
   },
 
-  stopFailed: (): never => {
-    throw new BaseError(CORE_CODES.STOP_FAILED, "Failed to stop server", 500);
+  stopFailed: (cause?: unknown): never => {
+    const causeMessage = getCauseMessage(cause);
+    const message = causeMessage
+      ? `Failed to stop server: ${causeMessage}`
+      : "Failed to stop server";
+
+    throw withCause(new BaseError(CORE_CODES.STOP_FAILED, message, 500), cause);
   },
 
   alreadyRunning: (port?: number): never => {
@@ -86,6 +92,10 @@ export const CoreError = {
 
   notInitialized: (operation: string): never => {
     throw new BaseError(CORE_CODES.NOT_INITIALIZED, `Cannot ${operation}: Not initialized`, 500);
+  },
+
+  invalidState: (message: string, cause?: unknown): never => {
+    throw withCause(new BaseError(CORE_CODES.INVALID_STATE, message, 500), cause);
   },
 
   // Configuration
@@ -140,8 +150,18 @@ export const CoreError = {
     throw new BaseError(CORE_CODES.CIRCULAR_DEPENDENCY, `Circular dependency detected: ${cycleStr}`, 500);
   },
 
-  missingDependency: (plugin: string, dependency: string): never => {
-    throw new BaseError(CORE_CODES.MISSING_DEPENDENCY, `Plugin "${plugin}" requires "${dependency}" to be registered first`, 500);
+  missingDependency: (plugin: string, dependency: string | string[]): never => {
+    const dependencies = Array.isArray(dependency) ? dependency : [dependency];
+    const suffix = dependencies.length === 1
+      ? `"${dependencies[0]}"`
+      : dependencies.map((dep) => `"${dep}"`).join(", ");
+
+    throw new BaseError(CORE_CODES.MISSING_DEPENDENCY, `Plugin "${plugin}" requires missing dependency: ${suffix}`, 500);
+  },
+
+  missingDependencies: (requirements: Array<{ plugin: string; dependency: string }>): never => {
+    const list = requirements.map(({ plugin, dependency }) => `${plugin} -> ${dependency}`).join(", ");
+    throw new BaseError(CORE_CODES.MISSING_DEPENDENCY, `Missing plugin dependencies: ${list}`, 500);
   },
 
   unknownPlugin: (name: string): never => {

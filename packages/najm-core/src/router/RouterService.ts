@@ -23,8 +23,9 @@ export class RouterService {
    @Inject(BASE_PATH) private basePath!: string;
    @Inject(LOGGER) private log!: LoggerService;
 
-   private middlewareCache = new Map<string, MiddlewareHandler[]>();
+   private middlewareCache = new WeakMap<Constructor, Map<string, MiddlewareHandler[]>>();
    private responseConfig: ResponseConfig = {};
+   private translator?: (key: string) => string;
 
    // ============================================================================
    // LIFECYCLE
@@ -41,8 +42,8 @@ export class RouterService {
    }
 
    async configure(): Promise<void> {
-      this.basePath = this.config?.basePath ?? '';
-      this.middlewareCache.clear();
+      this.basePath = this.basePath || this.config?.basePath || '';
+      this.middlewareCache = new WeakMap<Constructor, Map<string, MiddlewareHandler[]>>();
 
       // Parse response config with environment variable support
       const envAutoWrap = process.env.ROUTER_AUTO_WRAP;
@@ -64,6 +65,7 @@ export class RouterService {
    }
 
    async onReady(): Promise<void> {
+      this.translator = this.getTranslator();
       this.log.info(`Router plugin ready: ${this.routeCount} route(s) registered`);
    }
 
@@ -115,7 +117,7 @@ export class RouterService {
          const middlewares = this.buildMiddlewareChain(route);
          this.app[honoMethod](path, ...middlewares);
       } catch (cause) {
-         Err.registrationFailed(method, path);
+         Err.registrationFailed(method, path, cause);
       }
    }
 
@@ -135,8 +137,13 @@ export class RouterService {
    // ============================================================================
 
    private getMiddlewares(controller: Constructor, methodName: string): MiddlewareHandler[] {
-      const cacheKey = `${controller.name}:${methodName}`;
-      const cached = this.middlewareCache.get(cacheKey);
+      let controllerCache = this.middlewareCache.get(controller);
+      if (!controllerCache) {
+         controllerCache = new Map<string, MiddlewareHandler[]>();
+         this.middlewareCache.set(controller, controllerCache);
+      }
+
+      const cached = controllerCache.get(methodName);
       if (cached) return cached;
 
       const middlewares = this.container
@@ -146,7 +153,7 @@ export class RouterService {
          .sort((a, b) => (a.order ?? 999) - (b.order ?? 999))
          .map((inj) => inj.handler);
 
-      this.middlewareCache.set(cacheKey, middlewares);
+      controllerCache.set(methodName, middlewares);
       return middlewares;
    }
 
@@ -156,19 +163,12 @@ export class RouterService {
 
    private createHandler(route: RouteEntry): MiddlewareHandler {
       const { target, methodName, handler } = route;
+      const messageOptions = getResponseMessage(target, methodName as string);
+      const skipWrapping = shouldSkipWrapping(target, methodName as string);
 
       return async (ctx: Context) => {
-         // Get @ResMsg() decorator options
-         const messageOptions = getResponseMessage(target, methodName as string);
-         
-         // Check if @RawResponse() or @RawController()
-         const skipWrapping = shouldSkipWrapping(target, methodName as string);
-         
-         // Try to get translator from i18n service
-         const translator = this.getTranslator();
-
          const formatter = new ResponseFormatter(ctx, {
-            translator,
+            translator: this.translator,
             config: this.responseConfig,
             messageOptions,
             skipWrapping,
@@ -224,7 +224,7 @@ export class RouterService {
    }
 
    clearCache(): void {
-      this.middlewareCache.clear();
+      this.middlewareCache = new WeakMap<Constructor, Map<string, MiddlewareHandler[]>>();
    }
 }
 

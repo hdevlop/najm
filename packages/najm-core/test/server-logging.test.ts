@@ -1,9 +1,11 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { Server } from '../src';
+import { LoggerService, Server } from '../dist/index.mjs';
 
 describe('Server startup logging', () => {
   let originalServe: typeof Bun.serve;
   const originalNodeEnv = process.env.NODE_ENV;
+  const originalLogFormat = process.env.LOG_FORMAT;
+  const originalNoColor = process.env.NO_COLOR;
 
   beforeEach(() => {
     originalServe = Bun.serve;
@@ -11,7 +13,9 @@ describe('Server startup logging', () => {
 
   afterEach(() => {
     Bun.serve = originalServe;
-    process.env.NODE_ENV = originalNodeEnv;
+    restoreEnv('NODE_ENV', originalNodeEnv);
+    restoreEnv('LOG_FORMAT', originalLogFormat);
+    restoreEnv('NO_COLOR', originalNoColor);
   });
 
   test('logs startup + dev info with icons in development mode', async () => {
@@ -268,4 +272,49 @@ describe('Server startup logging', () => {
     expect(infoMessages).toContain('after listen {"mode":"playground"}');
     expect((server as any).startupLogs.length).toBe(0);
   });
+
+  test('logger keeps JSON as the production default format', () => {
+    process.env.NODE_ENV = 'production';
+    delete process.env.LOG_FORMAT;
+
+    const logger = new LoggerService();
+    (logger as any).opts = {};
+    (logger as any).parseConfig();
+
+    expect(logger.getFormat()).toBe('json');
+  });
+
+  test('logger does not emit ANSI colors in production when pretty output is forced', () => {
+    process.env.NODE_ENV = 'production';
+    process.env.LOG_FORMAT = 'pretty';
+    delete process.env.NO_COLOR;
+
+    const logger = new LoggerService();
+    (logger as any).opts = {};
+    (logger as any).parseConfig();
+
+    const originalLog = console.log;
+    const messages: string[] = [];
+    console.log = (message?: unknown) => {
+      messages.push(String(message));
+    };
+
+    try {
+      logger.info('production pretty');
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(messages[0]).toContain('production pretty');
+    expect(messages[0]).not.toContain('\x1b[');
+  });
 });
+
+function restoreEnv(key: string, value: string | undefined) {
+  if (value === undefined) {
+    delete process.env[key];
+    return;
+  }
+
+  process.env[key] = value;
+}

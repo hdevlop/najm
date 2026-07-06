@@ -1,12 +1,9 @@
 import 'reflect-metadata';
 import { describe, expect, test } from 'bun:test';
-import { Container, Meta, Service } from 'diject';
-import { BootService } from '../src/boot/BootService';
+import { BootService, Container, Meta, Service } from '../dist/index.mjs';
 
 const events: string[] = [];
 
-@Service()
-@Meta({ layer: 'core', order: 1 })
 class CoreInfrastructureService {
   async scan() {
     events.push('core:scan');
@@ -24,9 +21,9 @@ class CoreInfrastructureService {
     events.push('core:onReady');
   }
 }
+Meta({ layer: 'core', order: 1 })(CoreInfrastructureService);
+Service()(CoreInfrastructureService);
 
-@Service()
-@Meta({ layer: 'plugin', order: 90 })
 class LatePluginService {
   async scan() {
     events.push('late:scan');
@@ -44,9 +41,9 @@ class LatePluginService {
     events.push('late:onReady');
   }
 }
+Meta({ layer: 'plugin', order: 90 })(LatePluginService);
+Service()(LatePluginService);
 
-@Service()
-@Meta({ layer: 'plugin', order: 5 })
 class EarlyPluginService {
   async scan() {
     events.push('early:scan');
@@ -64,6 +61,8 @@ class EarlyPluginService {
     events.push('early:onReady');
   }
 }
+Meta({ layer: 'plugin', order: 5 })(EarlyPluginService);
+Service()(EarlyPluginService);
 
 describe('BootService', () => {
   test('boots infrastructure by layer and ascending metadata order instead of registration order', async () => {
