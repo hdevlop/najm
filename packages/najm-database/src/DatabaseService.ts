@@ -93,13 +93,18 @@ export class DatabaseService {
          return;
       }
 
-      if (!this.config || Object.keys(this.config).length === 0) {
+      if (!this.config) {
          this.databasesReady = true;
          return;
       }
 
       if (this.isSingleDatabase(this.config)) {
          await this.register('default', this.config);
+         this.databasesReady = true;
+         return;
+      }
+
+      if (Object.keys(this.config).length === 0) {
          this.databasesReady = true;
          return;
       }
@@ -309,7 +314,7 @@ export class DatabaseService {
    // ============================================================================
 
    private isSingleDatabase(value: any): boolean {
-      if (typeof value !== 'object' || value === null || Object.keys(value).length === 0) {
+      if (typeof value !== 'object' || value === null) {
          return false;
       }
 
@@ -333,6 +338,11 @@ export class DatabaseService {
 
       if (hasDbFeature) {
          return true;
+      }
+
+      const keys = Object.keys(value);
+      if (keys.length === 0) {
+         return false;
       }
 
       const values = Object.values(value);

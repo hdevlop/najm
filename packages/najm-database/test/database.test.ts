@@ -122,7 +122,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     test("registers single database as 'default' and connects", async () => {
       const db = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .listen(6000);
 
@@ -136,7 +136,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     test("registers database without lifecycle methods", async () => {
       const db = new MockDatabaseNoLifecycle();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .listen(6002);
 
@@ -149,7 +149,7 @@ describe("DatabaseService Comprehensive Tests", () => {
       const mysql = new MockDatabase();
       const sqlite = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           postgres,
           mysql,
@@ -165,7 +165,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     });
 
     test("registers databases with special name formats", async () => {
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           'primary-db': new MockDatabase(),
           'cache_db': new MockDatabase(),
@@ -192,7 +192,7 @@ describe("DatabaseService Comprehensive Tests", () => {
 
       const startTime = Date.now();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({ db1, db2, db3 }))
         .listen(6010);
 
@@ -209,7 +209,7 @@ describe("DatabaseService Comprehensive Tests", () => {
       const db = new FailingConnectDatabase();
 
       await expect(
-        new Server()
+        new Server({ isolated: true })
           .use(database({ production: db }))
           .listen(6012)
       ).rejects.toThrow();
@@ -219,7 +219,7 @@ describe("DatabaseService Comprehensive Tests", () => {
       const goodDb = new MockDatabase();
       const badDb = new FailingDisconnectDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({ good: goodDb, bad: badDb }))
         .listen(6014);
 
@@ -239,7 +239,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     test("retrieves database by name and default", async () => {
       const db = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .listen(6020);
 
@@ -252,7 +252,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     });
 
     test("throws error when database not found", async () => {
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({ existing: new MockDatabase() }))
         .listen(6022);
 
@@ -267,7 +267,7 @@ describe("DatabaseService Comprehensive Tests", () => {
       const db2 = new MockDatabase();
       const db3 = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           postgres: db1,
           mysql: db2,
@@ -287,7 +287,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     test("get returns same instance on multiple calls", async () => {
       const db = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .listen(6025);
 
@@ -308,7 +308,7 @@ describe("DatabaseService Comprehensive Tests", () => {
 
   describe("Query Operations", () => {
     test("has returns true for existing database", async () => {
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           primary: new MockDatabase(),
           cache: new MockDatabase(),
@@ -322,7 +322,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     });
 
     test("getNames returns sorted list of database names", async () => {
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           zebra: new MockDatabase(),
           alpha: new MockDatabase(),
@@ -338,7 +338,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     });
 
     test("DatabaseService is not available if plugin is not used", async () => {
-      const server = await new Server().listen(6035);
+      const server = await new Server({ isolated: true }).listen(6035);
       const isRegistered = server.container.has(DatabaseService);
       expect(isRegistered).toBe(false);
       await server.stop();
@@ -355,7 +355,7 @@ describe("DatabaseService Comprehensive Tests", () => {
       const db2 = new MockDatabase();
       const db3 = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({ db1, db2, db3 }))
         .listen(6040);
 
@@ -374,7 +374,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     test("clear handles databases without disconnect method", async () => {
       const db = new MockDatabaseNoLifecycle();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .listen(6042);
 
@@ -385,7 +385,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     });
 
     test("clear can be called multiple times safely", async () => {
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(new MockDatabase()))
         .listen(6044);
 
@@ -427,7 +427,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(UserRepository, UserController)
         .listen(6050);
@@ -463,7 +463,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({ postgres: postgresDb }))
         .load(PostgresRepository, DbController)
         .listen(6051);
@@ -516,7 +516,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           postgres: pgDb,
           mysql: mysqlDb,
@@ -542,7 +542,7 @@ describe("DatabaseService Comprehensive Tests", () => {
 
   describe("Validation & Error Handling", () => {
     test("throws error for invalid database names", async () => {
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(new MockDatabase()))
         .listen(6060);
 
@@ -557,7 +557,7 @@ describe("DatabaseService Comprehensive Tests", () => {
       const db1 = new MockDatabase();
       const db2 = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({ mydb: db1 }))
         .listen(6063);
 
@@ -569,7 +569,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     });
 
     test("handles null database instance", async () => {
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(new MockDatabase()))
         .listen(6064);
 
@@ -589,7 +589,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     test("handles database with $client property", async () => {
       const db = new DatabaseWithClient();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .listen(6070);
 
@@ -601,7 +601,7 @@ describe("DatabaseService Comprehensive Tests", () => {
     test("handles rapid get operations", async () => {
       const db = new MockDatabase();
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .listen(6074);
 
@@ -646,7 +646,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(UserService, UserController)
         .listen(6090);
@@ -682,7 +682,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({ analytics: analyticsDb }))
         .load(AnalyticsService, AnalyticsController)
         .listen(6091);
@@ -731,7 +731,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           default: primaryDb,
           cache: cacheDb,
@@ -768,7 +768,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(DirectController)
         .listen(6093);
@@ -825,7 +825,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           default: primaryDb,
           legacy: legacyDb,
@@ -880,7 +880,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(sharedDb))
         .load(ServiceA, ServiceB, SharedController)
         .listen(6096);
@@ -923,7 +923,7 @@ describe("DatabaseService Comprehensive Tests", () => {
       }
 
       await expect(
-        new Server()
+        new Server({ isolated: true })
           .use(database({ existing: existingDb }))
           .load(BrokenService, BrokenController)
           .listen(6097)
@@ -974,7 +974,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           write: writeDb,
           read: readDb,
@@ -1062,7 +1062,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           tenant_a: new MockDatabase(),
           tenant_b: new MockDatabase(),
@@ -1146,7 +1146,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           primary: new MockDatabase(),
           replica: new MockDatabase(),
@@ -1234,7 +1234,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           users_db: new MockDatabase(),
           orders_db: new MockDatabase(),
@@ -1316,7 +1316,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           cache: new RedisCache(),
           postgres: new MockDatabase(),
@@ -1407,7 +1407,7 @@ describe("DatabaseService Comprehensive Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           events: new MockDatabase(),
           projections: new MockDatabase(),

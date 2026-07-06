@@ -160,7 +160,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(UserRepository, UserController)
         .listen(7001);
@@ -212,7 +212,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(UserRepository, UserController)
         .listen(7002);
@@ -247,7 +247,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(TestController)
         .listen(7003);
@@ -299,7 +299,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(OrderRepository, OrderService, OrderController)
         .listen(7010);
@@ -351,7 +351,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           default: primaryDb,
           analytics: analyticsDb,
@@ -391,7 +391,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(IsolatedService, IsolatedController)
         .listen(7012);
@@ -428,7 +428,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(FailingService, FailingController)
         .listen(7013);
@@ -486,7 +486,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(InnerService, OuterService, NestedController)
         .listen(7020);
@@ -542,7 +542,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(DepthTrackingService, DepthController)
         .listen(7021);
@@ -587,7 +587,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(ServiceA, ServiceB, NestedDecoratorsController)
         .listen(7022);
@@ -629,7 +629,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(RetryService, RetryController)
         .listen(7030);
@@ -664,7 +664,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(SerializableService, SerializableController)
         .listen(7031);
@@ -709,7 +709,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(NonRetriableService, NonRetriableController)
         .listen(7033);
@@ -771,7 +771,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(ProductRepository, ProductController)
         .listen(7040);
@@ -809,7 +809,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(SimpleRepository, SimpleController)
         .listen(7041);
@@ -872,7 +872,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database({
           primary: primaryDb,
           secondary: secondaryDb,
@@ -908,7 +908,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(ActiveController)
         .listen(7051);
@@ -948,7 +948,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(StateController)
         .listen(7060);
@@ -978,7 +978,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(ActiveTrxController)
         .listen(7061);
@@ -1056,7 +1056,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(AccountRepository, TransferService, TransferController)
         .listen(7070);
@@ -1128,7 +1128,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(AccountRepository, TransferService, TransferController)
         .listen(7071);
@@ -1224,7 +1224,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(InventoryRepository, OrderRepository, OrderService, OrderController)
         .listen(7080);
@@ -1304,7 +1304,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(InventoryRepository, OrderRepository, OrderService, OrderController)
         .listen(7081);
@@ -1345,7 +1345,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(EmptyController)
         .listen(7090);
@@ -1381,7 +1381,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(PrimitiveController)
         .listen(7091);
@@ -1422,7 +1422,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(TimeoutController)
         .listen(7092);
@@ -1454,7 +1454,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(NoOptionsController)
         .listen(7094);
@@ -1493,7 +1493,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(db))
         .load(ConcurrentController)
         .listen(7093);
@@ -1568,7 +1568,7 @@ describe("Transaction Integration Tests", () => {
         }
       }
 
-      server = await new Server()
+      server = await new Server({ isolated: true })
         .use(database(prisma))
         .load(PrismaController)
         .listen(7100);
