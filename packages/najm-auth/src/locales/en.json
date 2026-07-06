@@ -16,7 +16,8 @@
       "unauthorized": "Unauthorized access",
       "sessionExpired": "Session has expired",
       "accountLocked": "Account is temporarily locked. Please try again later.",
-      "accountInactive": "Account is inactive. Please contact support."
+      "accountInactive": "Account is inactive. Please contact support.",
+      "emailNotVerified": "Please verify your email address before signing in."
     },
     "success": {
       "login": "Login successful",
@@ -25,7 +26,16 @@
       "passwordChanged": "Password changed successfully",
       "passwordResetSent": "If that email exists, a reset link has been sent",
       "passwordReset": "Password has been reset successfully",
+      "accountInviteSent": "Invitation sent successfully",
       "tokenRefreshed": "Token refreshed successfully"
+    },
+    "emails": {
+      "passwordReset": {
+        "subject": "Reset your password"
+      },
+      "accountInvite": {
+        "subject": "You've been invited — set up your account"
+      }
     }
   },
   "users": {
@@ -50,7 +60,9 @@
       "notFound": "Role not found",
       "exists": "Role already exists",
       "nameRequired": "Role name is required",
-      "cannotDeleteSystem": "Cannot delete system role"
+      "cannotDeleteSystem": "Cannot delete system role",
+      "cannotRenameSystem": "Cannot rename the system admin role",
+      "roleInUse": "Cannot delete a role that is assigned to users"
     },
     "success": {
       "created": "Role created successfully",

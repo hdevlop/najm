@@ -15,7 +15,11 @@ import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Colum
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import type { ViewMode } from "./store";
-import { HEADER_HEX, type TableHeaderColor } from "./tableColors";
+import {
+  DEFAULT_TABLE_HEADER_COLOR,
+  DEFAULT_TABLE_HEADER_TEXT_COLOR,
+  resolveTableColor,
+} from "./tableColors";
 
 function SearchFilter({ placeholder }: { placeholder?: string }) {
   const table = useTableStore.use.table();
@@ -140,13 +144,15 @@ function TableAddButton() {
   const onAddClick = useTableStore.use.onAddClick();
   const showAddButton = useTableStore.use.showAddButton();
   const addButtonText = useTableStore.use.addButtonText();
-  const headerColor = useTableStore.use.headerColor() as TableHeaderColor | undefined;
+  const headerColor = useTableStore.use.headerColor();
+  const headerTextColor = useTableStore.use.headerTextColor();
   const bordered = useTableStore.use.bordered();
   if (!showAddButton) return null;
 
-  const accentHex = headerColor ? HEADER_HEX[headerColor] : undefined;
-  const btnStyle = accentHex ? { backgroundColor: accentHex } : undefined;
-  const baseCls = accentHex ? "hover:opacity-90" : "bg-primary hover:bg-primary/90";
+  const btnStyle = {
+    backgroundColor: resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR),
+    color: resolveTableColor(headerTextColor, DEFAULT_TABLE_HEADER_TEXT_COLOR),
+  };
   // Add button is filled — only show a border when consumer explicitly opts in.
   const borderedCls = bordered ? "border border-muted-foreground" : "";
 
@@ -158,7 +164,7 @@ function TableAddButton() {
       aria-label={addButtonText || "Create"}
       title={addButtonText || "Create"}
       data-bordered={bordered ? "true" : undefined}
-      className={`h-10 w-10 shrink-0 cursor-pointer flex items-center justify-center rounded-lg text-white transition-opacity ${baseCls} ${borderedCls}`}
+      className={`h-10 w-10 shrink-0 cursor-pointer flex items-center justify-center rounded-lg transition-opacity hover:opacity-90 ${borderedCls}`}
     >
       <Plus className="h-5 w-5" />
     </button>

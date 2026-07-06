@@ -35,6 +35,7 @@ export const navGroups: NavGroup[] = [
       { slug: 'alert', label: 'Alert' },
       { slug: 'navatar', label: 'Avatar' },
       { slug: 'card', label: 'Card' },
+      { slug: 'stat-card', label: 'Stat Card' },
       { slug: 'progress', label: 'Progress' },
       { slug: 'tabs', label: 'Tabs' },
       { slug: 'separator', label: 'Separator' },

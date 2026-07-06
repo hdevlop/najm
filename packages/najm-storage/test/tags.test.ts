@@ -267,9 +267,9 @@ describe('file-tags', () => {
 });
 
 describe('tag capabilities', () => {
-  test('DbStorageProvider reports tags enabled when tables exist', () => {
+  test('DbStorageProvider reports tags enabled when tables exist', async () => {
     const db = createTestDb();
-    const { DbStorageProvider } = require('../src/providers/DbStorageProvider');
+    const { DbStorageProvider } = await import('../src/providers/DbStorageProvider');
     const provider = new DbStorageProvider(db, {
       storageFiles,
       storageTags,
@@ -280,17 +280,17 @@ describe('tag capabilities', () => {
     expect(provider.getCapabilities().buckets).toBe(false);
   });
 
-  test('DbStorageProvider reports tags disabled when tag tables missing', () => {
+  test('DbStorageProvider reports tags disabled when tag tables missing', async () => {
     const db = createTestDb();
-    const { DbStorageProvider } = require('../src/providers/DbStorageProvider');
+    const { DbStorageProvider } = await import('../src/providers/DbStorageProvider');
     const provider = new DbStorageProvider(db, {
       storageFiles,
     }, 'sqlite');
     expect(provider.getCapabilities().tags).toBe(false);
   });
 
-  test('LocalStorageProvider reports tags disabled', () => {
-    const { LocalStorageProvider } = require('../src/providers/LocalStorageProvider');
+  test('LocalStorageProvider reports tags disabled', async () => {
+    const { LocalStorageProvider } = await import('../src/providers/LocalStorageProvider');
     const provider = new LocalStorageProvider('/tmp/test-storage');
     const caps = provider.getCapabilities();
     expect(caps.tags).toBe(false);

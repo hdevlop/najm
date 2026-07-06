@@ -148,7 +148,7 @@ export { resolveSlot } from "./lib/slots";
 
 // Dialog
 export { NDialog, NMultiDialog, dialogVariants, NConfirmDialog, NDeleteDialog, NDeleteDialogContent, useDialog, useDialogStore, createDialogStore, NSheet, NPortalScopeProvider, useNPortalScope } from "./components/Dialog";
-export type { NDialogDirectProps, NDialogProps, NMultiDialogProps, NConfirmDialogProps, NDeleteDialogContentProps, NDeleteDialogProps, NSheetProps, ButtonConfig, DialogActionMode, DialogConfig, DialogRenderContext, DialogRenderer, PushDialogOptions, DeleteDialogOptions, DialogApi, DialogStore } from "./components/Dialog";
+export type { NDialogDirectProps, NDialogProps, NMultiDialogProps, NConfirmDialogProps, NDeleteDialogContentProps, NDeleteDialogProps, NSheetProps, ButtonConfig, DialogActionMode, DialogConfig, DialogContentProps, DialogPadding, DialogRenderContext, DialogRenderer, PushDialogOptions, DeleteDialogOptions, DialogApi, DialogStore } from "./components/Dialog";
 export { NSmartPasteDialog, type NSmartPasteDialogProps, type SmartPastePreview } from "./components/Dialog/NSmartPasteDialog";
 
 // Sidebar sub-components

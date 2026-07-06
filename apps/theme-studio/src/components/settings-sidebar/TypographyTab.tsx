@@ -37,15 +37,7 @@ const HEADING_FONT_OPTIONS: FontOption[] = [
   { label: "Body Font", value: "inherit" },
 ];
 
-const MONO_FONT_OPTIONS: FontOption[] = [
-  { label: "JetBrains Mono", value: "JetBrains Mono, ui-monospace, monospace" },
-  { label: "IBM Plex Mono", value: "IBM Plex Mono, monospace" },
-  { label: "Fira Code", value: "Fira Code, ui-monospace, monospace" },
-  { label: "Roboto Mono", value: "Roboto Mono, ui-monospace, monospace" },
-  { label: "Source Code Pro", value: "Source Code Pro, ui-monospace, monospace" },
-  { label: "Space Mono", value: "Space Mono, ui-monospace, monospace" },
-  { label: "System Mono", value: "ui-monospace, monospace" },
-];
+const DEFAULT_MONO_FONT = "ui-monospace, monospace";
 
 function fontLabel(value: string): string {
   return value.split(",")[0]?.replaceAll("'", "").trim() || "Custom font";
@@ -61,7 +53,7 @@ export function TypographyTab() {
   const t = config.typography ?? {};
   const bodyFont = t.fontSans ?? SANS_FONT_OPTIONS[0].value;
   const headingFont = t.fontHeading ?? bodyFont;
-  const monoFont = t.fontMono ?? MONO_FONT_OPTIONS[0].value;
+  const monoFont = t.fontMono ?? DEFAULT_MONO_FONT;
   const headingFollowsBody = !t.fontHeading || t.fontHeading === bodyFont || t.fontHeading === "inherit";
 
   function updateBodyFont(value: string) {
@@ -85,13 +77,6 @@ export function TypographyTab() {
           value={headingFont}
           options={fontOptionsWithCurrent(HEADING_FONT_OPTIONS, headingFont)}
           onChange={(e) => setTypography({ fontHeading: e.target.value })}
-        />
-      </Field>
-      <Field label="Mono font">
-        <NativeSelect
-          value={monoFont}
-          options={fontOptionsWithCurrent(MONO_FONT_OPTIONS, monoFont)}
-          onChange={(e) => setTypography({ fontMono: e.target.value })}
         />
       </Field>
       <Field label="Base size">

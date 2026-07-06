@@ -45,6 +45,16 @@ export interface ChatDebugTraceOptions {
   redactKeys?: string[];
 }
 
+export interface ChatDebugRequest {
+  message?: string;
+  messages?: Array<{ id?: string; role: 'system' | 'user' | 'assistant'; content: string }>;
+  sessionKey?: string;
+  includeKnowledge?: boolean;
+  includeRouting?: boolean;
+  includeToolCalls?: boolean;
+  traceOptions?: ChatDebugTraceOptions;
+}
+
 export type ChatDebugWarningCode =
   | 'MISSING_ROUTED_TOOL_CALL'
   | 'EXPECTED_KNOWLEDGE_EMPTY'

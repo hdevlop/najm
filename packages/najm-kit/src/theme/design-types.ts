@@ -37,6 +37,12 @@ export interface NajmComponentStyleConfig {
   defaultVariant?: string;
   defaultSize?: string;
   density?: NajmDensity;
+  /** NTable-only: CSS color used for the table header and add button. */
+  headerColor?: string;
+  /** NTable-only: CSS color used for table header text and add button text. */
+  headerTextColor?: string;
+  /** NTable-only: CSS color used for table container and row borders. */
+  borderColor?: string;
   radius?: NajmComponentRadius;
   borderWidth?: string;
   slots?: Record<string, NajmSlotStyle>;

@@ -54,12 +54,15 @@ const ROOT_KEYS = new Set([
   'mode',
   'accent',
   'tokens',
+  'overrides',
   'accentOnly',
   'appearance',
   'radius',
   'radiusScale',
+  'spacing',
 ]);
 const TOKEN_KEY_SET = new Set<string>(TOKEN_KEYS);
+const MODE_KEY_SET = new Set<string>(MODES);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -101,6 +104,22 @@ function parseTokens(value: unknown): NajmThemeTokens | undefined {
     if (token !== undefined) tokens[key] = token;
   }
   return tokens;
+}
+
+function parseOverrides(
+  value: unknown,
+): Partial<Record<NajmMode, NajmThemeTokens>> | undefined {
+  if (value === undefined) return undefined;
+  if (!isRecord(value)) throw new TypeError('theme.overrides must be an object');
+  assertKnownKeys(value, MODE_KEY_SET, 'theme.overrides');
+
+  const overrides: Partial<Record<NajmMode, NajmThemeTokens>> = {};
+  for (const mode of MODES) {
+    const entry = value[mode];
+    if (entry === undefined) continue;
+    overrides[mode] = parseTokens(entry) ?? {};
+  }
+  return overrides;
 }
 
 /** Keeps authored TypeScript theme objects type-checked without changing them. */
@@ -145,17 +164,21 @@ export function parseNajmThemeConfig(input: unknown): NajmThemeConfig {
   const mode = optionalEnum(value.mode, MODES, 'theme.mode');
   const accent = optionalEnum(value.accent, ACCENTS, 'theme.accent');
   const tokens = parseTokens(value.tokens);
+  const overrides = parseOverrides(value.overrides);
   const radius = optionalString(value.radius, 'theme.radius');
   const radiusScale = optionalEnum(value.radiusScale, RADIUS_SCALES, 'theme.radiusScale');
+  const spacing = optionalString(value.spacing, 'theme.spacing');
 
   if (preset !== undefined) config.preset = preset;
   if (mode !== undefined) config.mode = mode;
   if (accent !== undefined) config.accent = accent;
   if (tokens !== undefined) config.tokens = tokens;
+  if (overrides !== undefined) config.overrides = overrides;
   if (parsedAccentOnly !== undefined) config.accentOnly = parsedAccentOnly;
   if (appearance !== undefined) config.appearance = appearance;
   if (radius !== undefined) config.radius = radius;
   if (radiusScale !== undefined) config.radiusScale = radiusScale;
+  if (spacing !== undefined) config.spacing = spacing;
 
   return config;
 }

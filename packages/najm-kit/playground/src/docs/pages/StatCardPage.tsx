@@ -1,6 +1,20 @@
 import React from 'react';
 import { NStatCard, NStatCardSkeleton } from 'najm-kit';
-import { FileText, ShoppingCart, TrendingUp, Users, DollarSign } from 'lucide-react';
+import {
+  Award,
+  BookOpen,
+  CalendarClock,
+  CalendarX,
+  Clock3,
+  DollarSign,
+  FileText,
+  GraduationCap,
+  Percent,
+  ShoppingCart,
+  TrendingUp,
+  UserRound,
+  Users,
+} from 'lucide-react';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
 
@@ -71,6 +85,59 @@ import { Users, ShoppingCart, TrendingUp, DollarSign } from 'lucide-react';
             value="24.5%"
             icon={TrendingUp}
           />
+        </div>
+      </Example>
+
+      <Example
+        title="Compact student profile stats"
+        description="Compact keeps the default horizontal card structure with a smaller icon block and tighter text scale."
+        center={false}
+        previewHeight="h-[520px]"
+        code={`import { NStatCard } from 'najm-kit';
+import {
+  Award,
+  BookOpen,
+  CalendarClock,
+  CalendarX,
+  Clock3,
+  DollarSign,
+  GraduationCap,
+  Percent,
+  UserRound,
+} from 'lucide-react';
+
+<div className="grid w-[360px] grid-cols-2 gap-3">
+  <NStatCard variant="compact" icon={UserRound} label="Age" value="19 yrs" />
+  <NStatCard variant="compact" icon={DollarSign} label="Fees" value={6} />
+  <NStatCard variant="compact" icon={CalendarX} label="Absences" value={0} />
+  <NStatCard variant="compact" icon={Clock3} label="Late" value={0} />
+  <NStatCard variant="compact" icon={Award} label="Exams Avg" value="0%" />
+  <NStatCard variant="compact" icon={BookOpen} label="Grades" value={0} />
+  <NStatCard variant="compact" icon={GraduationCap} label="GPA" value="0.00" />
+  <NStatCard variant="compact" icon={CalendarClock} label="Next Due" value="Sep 1" />
+  <div className="col-span-2">
+    <NStatCard variant="compact" icon={GraduationCap} label="Avg Grade" value="0%" />
+  </div>
+  <div className="col-span-2">
+    <NStatCard variant="compact" icon={Percent} label="Due" value="8.2k DH" />
+  </div>
+</div>`}
+      >
+        <div className="grid w-[360px] grid-cols-2 gap-3">
+          <NStatCard variant="compact" icon={UserRound} label="Age" value="19 yrs" />
+          <NStatCard variant="compact" icon={DollarSign} label="Fees" value={6} />
+          <NStatCard variant="compact" icon={CalendarX} label="Absences" value={0} />
+          <NStatCard variant="compact" icon={Clock3} label="Late" value={0} />
+          <NStatCard variant="compact" icon={Award} label="Exams Avg" value="0%" />
+          <NStatCard variant="compact" icon={BookOpen} label="Grades" value={0} />
+          <NStatCard variant="compact" icon={GraduationCap} label="GPA" value="0.00" />
+          <NStatCard variant="compact" icon={CalendarClock} label="Next Due" value="Sep 1" />
+          <div className="col-span-2">
+            <NStatCard variant="compact" icon={GraduationCap} label="Avg Grade" value="0%" />
+          </div>
+          <div className="col-span-2">
+            <NStatCard variant="compact" icon={Percent} label="Due" value="8.2k DH" />
+          </div>
         </div>
       </Example>
 

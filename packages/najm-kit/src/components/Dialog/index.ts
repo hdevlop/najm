@@ -1,4 +1,5 @@
 export { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogOverlay, DialogPortal, DialogTitle, DialogTrigger } from "./Dialog";
+export type { DialogContentProps, DialogPadding } from "./Dialog";
 export { NDialog, NMultiDialog, dialogVariants } from "./NMultiDialog";
 export type { NDialogDirectProps, NDialogProps, NMultiDialogProps } from "./NMultiDialog";
 export { NConfirmDialog } from "./NConfirmDialog";

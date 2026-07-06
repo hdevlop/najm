@@ -34,7 +34,10 @@ export function decodeToken(token: string): DecodedToken | null {
  * Check if a decoded token is expired.
  */
 export function isTokenExpired(decoded: DecodedToken): boolean {
-  if (!decoded.exp) return false;
+  // A token with no exp claim is malformed for our server (access tokens always
+  // carry exp). Treat it as expired so the client refreshes rather than trusting
+  // it indefinitely.
+  if (!decoded.exp) return true;
   return Date.now() / 1000 >= decoded.exp;
 }
 

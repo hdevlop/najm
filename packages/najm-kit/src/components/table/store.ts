@@ -2,7 +2,6 @@ import { create } from "zustand";
 import { StoreApi, UseBoundStore } from "zustand";
 import { type ComponentType, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import type { ExpandedState, SortingState } from "@tanstack/react-table";
-import type { TableHeaderColor } from "./tableColors";
 
 export interface NTableClassNames {
   root?: string;
@@ -50,6 +49,8 @@ export interface TableState {
   bordered?: boolean;
   headerClassName: string;
   headerColor: string | undefined;
+  headerTextColor: string | undefined;
+  borderColor: string | undefined;
   showCheckbox: boolean;
   selectedRowId: string | null;
   headerSlot: ReactNode | null;
@@ -61,6 +62,7 @@ export interface TableState {
   onRowContextMenu: any;
   onBackgroundContextMenu: ((e: ReactMouseEvent) => void) | null;
   openRowMenu: ((e: ReactMouseEvent, row: any) => void) | null;
+  getRowClassName: ((row: any) => string | undefined | null | false) | null;
   menuButton: boolean;
   onCellClick: any;
   onBulkDelete: any;
@@ -173,8 +175,8 @@ export const createTableStore = () => {
     table: null, data: [], columns: [], filters: [], isLoading: false, error: null, viewMode: "table" as ViewMode,
     showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: true, dynamicHeight: true,
     showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true,
-    onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
-    CardComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: "primary" as TableHeaderColor, showCheckbox: true, selectedRowId: null, headerSlot: null,
+    onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
+    CardComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,
     noResultsText: "No results.", filterPlaceholder: "", loadingText: "Loading...", noDataText: "No data available", addButtonText: "",
     pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, maxHeight: null,
     // JSON mode

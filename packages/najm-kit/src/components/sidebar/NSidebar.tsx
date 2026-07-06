@@ -142,6 +142,7 @@ export function NSidebar({
   const collapsedWidth = widths?.collapsed ?? 64;
   const mobileWidth = widths?.mobile ?? expandedWidth;
   const railVar = typeof collapsedWidth === 'number' ? `${collapsedWidth}px` : collapsedWidth;
+  const sidebarEdgeWidth = bordered === false ? '0px' : recipe?.borderWidth ?? 'var(--border-width, 1px)';
   const showEdgeCollapse = showCollapseButton && collapseButtonPosition === 'edge';
   const showRailCollapse = showCollapseButton && collapseButtonPosition === 'rail';
   const effectiveShowSectionLabels = showSectionLabels ?? recipe?.showSectionLabels ?? true;
@@ -229,6 +230,7 @@ export function NSidebar({
         style={{
           width: collapsed ? collapsedWidth : expandedWidth,
           ['--rail' as any]: railVar,
+          ['--sidebar-edge-width' as any]: sidebarEdgeWidth,
           ...(bordered !== false && recipe?.borderWidth ? { borderRightWidth: recipe.borderWidth } : {}),
         }}
       >

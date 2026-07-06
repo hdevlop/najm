@@ -2,7 +2,7 @@ import { sqliteTable, text, integer, index } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type { UIMessage } from 'ai';
-import type {
+import {
   chatbotRoutingSettingsTable,
   chatbotToolEmbeddingsTable,
   chatbotToolSemanticsTable,
@@ -73,7 +73,12 @@ export const chatbotCoreSchema = {
  * @deprecated Use `chatbotCoreSchema` from "najm-chatbot/sqlite" together with
  * `ragSchema` from "najm-rag/sqlite".
  */
-export const chatbotSchema = chatbotCoreSchema;
+export const chatbotSchema = {
+  ...chatbotCoreSchema,
+  chatbotToolEmbeddings: chatbotToolEmbeddingsTable,
+  chatbotToolSemantics: chatbotToolSemanticsTable,
+  chatbotRoutingSettings: chatbotRoutingSettingsTable,
+} as const;
 
 export type AiSettings = typeof aiSettingsTable.$inferSelect;
 export type NewAiSettings = typeof aiSettingsTable.$inferInsert;

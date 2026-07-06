@@ -1,6 +1,6 @@
 {
   "name": "najm-cli",
-  "version": "1.1.13",
+  "version": "1.1.14",
   "description": "CLI tool for najm framework - scaffolding, code generation, and project setup",
   "type": "module",
   "main": "dist/index.js",

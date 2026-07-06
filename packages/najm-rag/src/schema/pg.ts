@@ -90,7 +90,7 @@ export const chatbotDocumentEmbeddingsTable = pgTable('chatbot_document_embeddin
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow(),
 }, (table) => [
   index('chatbot_document_embeddings_hnsw_idx')
-    .using('hnsw', sql`${table.embedding} vector_cosine_ops`),
+    .using('hnsw', table.embedding.op('vector_cosine_ops')),
 ]);
 
 export const chatbotStudioAuditLogsTable = pgTable('chatbot_studio_audit_logs', {

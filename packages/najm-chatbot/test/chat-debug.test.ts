@@ -12,7 +12,7 @@ import { ChatDebugController } from '../src/chat/ChatDebugController';
 import { ChatSessionRepository } from '../src/sessions/ChatSessionRepository';
 import { DbConversationStore, CacheConversationStore } from '../src/sessions/ConversationStore';
 import { CHATBOT_CONFIG, CHATBOT_SCHEMA } from '../src/tokens';
-import { EncryptionService } from 'najm-auth';
+import { AUTH_CONFIG, EncryptionService } from 'najm-auth';
 import { cache } from 'najm-cache';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
@@ -61,6 +61,7 @@ const chatbotTestPlugin = (config: Record<string, any>) =>
     .version('1.0.0')
     .depends(events())
     .config(CHATBOT_CONFIG, config)
+    .set(AUTH_CONFIG, { bcryptRounds: 10 } as any)
     .set(CHATBOT_SCHEMA, schema)
     .set(Symbol.for('najm:auth:encryption-key'), process.env.NAJM_ENCRYPTION_KEY)
     .services(

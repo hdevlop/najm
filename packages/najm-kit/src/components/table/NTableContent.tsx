@@ -9,7 +9,12 @@ import { surfaceBorderClasses } from "../../theme/borders";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
 import { useTableStore } from "./TableContext";
-import { HEADER_COLORS, type TableHeaderColor } from "./tableColors";
+import {
+  DEFAULT_TABLE_BORDER_COLOR,
+  DEFAULT_TABLE_HEADER_COLOR,
+  DEFAULT_TABLE_HEADER_TEXT_COLOR,
+  resolveTableColor,
+} from "./tableColors";
 
 const ROW_CONTEXT_HANDLED = "__ntableRowContextHandled";
 
@@ -68,10 +73,29 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   const noResultsText = useTableStore.use.noResultsText();
   const headerClassName = useTableStore.use.headerClassName();
   const headerColor = useTableStore.use.headerColor();
-  const colorStyle = headerColor ? HEADER_COLORS[headerColor as TableHeaderColor] : null;
+  const headerTextColor = useTableStore.use.headerTextColor();
+  const tableBorderColor = useTableStore.use.borderColor();
+  const resolvedHeaderColor = resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR);
+  const resolvedHeaderTextColor = resolveTableColor(headerTextColor, DEFAULT_TABLE_HEADER_TEXT_COLOR);
+  const resolvedBorderColor = resolveTableColor(tableBorderColor, DEFAULT_TABLE_BORDER_COLOR);
+  const headerCellStyle: React.CSSProperties = {
+    backgroundColor: resolvedHeaderColor,
+    color: resolvedHeaderTextColor,
+  };
+  const contentStyle: React.CSSProperties | undefined =
+    recipeStyle || tableBorderColor
+      ? {
+          ...(recipeStyle ?? {}),
+          ...(tableBorderColor ? { borderColor: resolvedBorderColor } : {}),
+        }
+      : undefined;
+  const rowBorderStyle: React.CSSProperties | undefined = tableBorderColor
+    ? { borderColor: resolvedBorderColor }
+    : undefined;
   const onRowClick = useTableStore.use.onRowClick();
   const onRowContextMenu = useTableStore.use.onRowContextMenu();
   const onBackgroundContextMenu = useTableStore.use.onBackgroundContextMenu();
+  const getRowClassName = useTableStore.use.getRowClassName();
   const onCellEdit = useTableStore.use.onCellEdit();
   const isLoading = useTableStore.use.isLoading();
   const error = useTableStore.use.error();
@@ -114,15 +138,18 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
         bordered === true ? surfaceBorderClasses(true) : "shadow-sm",
         classNames?.content
       )}
-      style={recipeStyle}
+      style={contentStyle}
       onContextMenu={handleBackgroundContextMenu}
     >
       <Table>
-        <TableHeader data-ntable-table-header className={cn("bg-card sticky top-0 z-10", colorStyle?.text, headerClassName, bordered === true && "[&_tr]:border-border", classNames?.tableHeader)}>
+        <TableHeader data-ntable-table-header className={cn("bg-card sticky top-0 z-10", headerClassName, bordered === true && "[&_tr]:border-border", classNames?.tableHeader)}>
           {table.getHeaderGroups().map((hg) => (
-            <TableRow key={hg.id} className={cn("hover:bg-transparent", bordered === true && "border-border")}>
+            <TableRow key={hg.id} style={rowBorderStyle} className={cn("hover:bg-transparent", bordered === true && "border-border")}>
               {showCheckbox && (
-                <TableHead className={cn("w-10 text-foreground h-12 text-center", colorStyle?.bg)}>
+                <TableHead
+                  className="w-10 text-foreground h-12 text-center"
+                  style={headerCellStyle}
+                >
                   <Checkbox
                     aria-label="Select all rows"
                     checked={table.getIsAllPageRowsSelected()}
@@ -130,9 +157,19 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                   />
                 </TableHead>
               )}
-              {hasExpansion && <TableHead aria-label="Expand column" className={cn("w-10 text-foreground h-12", colorStyle?.bg)} />}
+              {hasExpansion && (
+                <TableHead
+                  aria-label="Expand column"
+                  className="w-10 text-foreground h-12"
+                  style={headerCellStyle}
+                />
+              )}
               {hg.headers.map((header) => (
-                <TableHead key={header.id} className={cn("text-foreground h-12", colorStyle?.bg)}>
+                <TableHead
+                  key={header.id}
+                  className="text-foreground h-12"
+                  style={headerCellStyle}
+                >
                   {header.isPlaceholder ? null : (
                     <div className={cn("flex items-center gap-2", header.column.getCanSort() && showSorting && "cursor-pointer select-none")} onClick={header.column.getToggleSortingHandler()}>
                       {flexRender(header.column.columnDef.header, header.getContext())}
@@ -151,6 +188,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
               const canExpand = hasExpansion && row.getCanExpand();
               const isExpanded = canExpand && row.getIsExpanded();
               const totalCols = row.getVisibleCells().length + (showCheckbox ? 1 : 0) + (hasExpansion ? 1 : 0);
+              const rowClassName = getRowClassName?.(row.original);
               return (
                 <React.Fragment key={row.id}>
                   <TableRow
@@ -163,7 +201,8 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                       (e.nativeEvent as any)[ROW_CONTEXT_HANDLED] = true;
                       onRowContextMenu(e, row.original);
                     } : undefined}
-                    className={cn(colorStyle?.row, classNames?.row, onRowClick && "cursor-pointer", isSelectedByRowId && "bg-primary/5 hover:bg-primary/5", bordered === true && "border-border")}
+                    style={rowBorderStyle}
+                    className={cn(classNames?.row, rowClassName, onRowClick && "cursor-pointer", isSelectedByRowId && "bg-primary/5 hover:bg-primary/5", bordered === true && "border-border")}
                   >
                     {showCheckbox && (
                       <TableCell className="h-14 w-10 text-center">
@@ -205,7 +244,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                     })}
                   </TableRow>
                   {isExpanded && renderSubRow && (
-                    <TableRow data-expanded-row="true" className="bg-muted/40 hover:bg-muted/40">
+                    <TableRow data-expanded-row="true" style={rowBorderStyle} className="bg-muted/40 hover:bg-muted/40">
                       <TableCell colSpan={totalCols} className="p-0">
                         {renderSubRow(row.original)}
                       </TableCell>
@@ -215,7 +254,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
               );
             })
           ) : (
-            <TableRow><TableCell colSpan={columns.length + (showCheckbox ? 1 : 0) + (hasExpansion ? 1 : 0)} className="h-16 text-center">{noResultsText}</TableCell></TableRow>
+            <TableRow style={rowBorderStyle}><TableCell colSpan={columns.length + (showCheckbox ? 1 : 0) + (hasExpansion ? 1 : 0)} className="h-16 text-center">{noResultsText}</TableCell></TableRow>
           )}
         </TableBody>
       </Table>

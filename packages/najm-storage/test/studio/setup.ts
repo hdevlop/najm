@@ -1,3 +1,4 @@
+import '../../../../scripts/bun-test-legacy-decorators';
 import { Window } from 'happy-dom';
 import { afterEach } from 'bun:test';
 

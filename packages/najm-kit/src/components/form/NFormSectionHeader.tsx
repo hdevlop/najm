@@ -19,13 +19,13 @@ export function NFormSectionHeader({
   return (
     <div
       className={cn(
-        "w-full flex items-center gap-2 px-2 py-1 rounded-sm mb-3",
+        "w-full flex items-center gap-2 px-2 py-1 rounded-sm",
         color,
         className
       )}
     >
-      {Icon && <Icon className="w-4 h-4 shrink-0" />}
-      <Label className="text-sm font-semibold leading-none">{title}</Label>
+      {Icon && <Icon className="w-4 h-4 shrink-0 text-current" />}
+      <Label className="text-sm font-semibold leading-none text-current">{title}</Label>
     </div>
   );
 }

@@ -117,4 +117,34 @@ describe("cards-renderCard-root.test.tsx", () => {
     const card1 = container.querySelector("[data-testid=card-1]");
     expect(card1).toBeTruthy();
   });
+
+  test("getRowClassName is applied to card shells", async () => {
+    mockMatchMedia(true);
+    function CardComponent({ data: row }: { data: Row }) {
+      return <div data-testid={`card-${row.id}`}>{row.name}</div>;
+    }
+
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable
+          data={data}
+          columns={columns}
+          getRowId={(r) => r.id}
+          mode="cards"
+          renderCard={CardComponent}
+          getRowClassName={(row) => row.id === "2" ? "opacity-50 bg-muted/60" : undefined}
+          dynamicHeight={false}
+          showPagination={false}
+          showAddButton={false}
+          showCheckbox={false}
+        />
+      </div>
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    const rowShells = container.querySelectorAll("[data-row-id]");
+    expect(rowShells[0].className).not.toContain("opacity-50");
+    expect(rowShells[1].className).toContain("opacity-50");
+    expect(rowShells[1].className).toContain("bg-muted/60");
+  });
 });

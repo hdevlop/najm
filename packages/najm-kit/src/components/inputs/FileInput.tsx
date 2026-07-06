@@ -25,13 +25,13 @@ export const FileInput: React.FC<FileInputProps> = ({ value, onChange, placehold
   };
 
   return (
-    <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("flex px-0 p-0 text-muted-foreground", className)} onClick={() => fileInputRef.current?.click()}>
+    <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("flex px-0 p-0", className)} onClick={() => fileInputRef.current?.click()}>
       <input type="file" ref={fileInputRef} onChange={(e) => onChange(e.target.files?.[0] || null)} className="hidden" />
       <div className="bg-muted flex h-full items-center px-3">
         {showIcon && (icon ? <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span> : <FileUp className={cn(iconProps.className)} />)}
         <Label className="flex cursor-pointer h-full justify-center items-center px-2 text-muted-foreground">Choose File</Label>
       </div>
-      <Label className="ml-2 flex-1">{displayFilename() || <span className="text-muted-foreground">{placeholder}</span>}</Label>
+      <Label className="ml-2 flex-1 text-foreground">{displayFilename() || <span className="text-muted-foreground">{placeholder}</span>}</Label>
     </BaseInput>
   );
 };

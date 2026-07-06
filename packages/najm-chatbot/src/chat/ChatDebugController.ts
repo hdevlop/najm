@@ -1,11 +1,12 @@
 import { Body, Controller, Post } from 'najm-core';
 import { isAdmin } from 'najm-auth';
-import type { ChatDebugRequest, ChatDebugTraceOptions } from 'najm-rag';
 import { ChatAgent } from '../agent/ChatAgent';
 import type {
   ChatAgentDebugInput,
   ChatDebugError,
+  ChatDebugRequest,
   ChatDebugResponse,
+  ChatDebugTraceOptions,
 } from '../agent/ChatAgent';
 
 const DEFAULT_TRACE_OPTIONS: ChatDebugTraceOptions = {

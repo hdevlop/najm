@@ -112,7 +112,16 @@ describe('ToolIndexerService', () => {
     const registry = { tools: [{ name: 'a', description: 'A' }] } as any;
     let resolveBatch: (v: number[][]) => void;
     const batchPromise = new Promise<number[][]>((r) => { resolveBatch = r; });
-    const embedding = { embedBatch: mock(() => batchPromise) } as any;
+    const embedding = {
+      health: mock(() => Promise.resolve({
+        ok: true,
+        provider: 'ollama',
+        baseUrl: 'http://localhost:11434',
+        model: 'test',
+        latencyMs: 1,
+      })),
+      embedBatch: mock(() => batchPromise),
+    } as any;
     const repository = {
       listEmbeddings: mock(() => Promise.resolve([])),
       upsertEmbedding: mock(() => Promise.resolve()),
@@ -129,6 +138,8 @@ describe('ToolIndexerService', () => {
 
     // onReady returns immediately (void)
     service.onReady();
+    await Promise.resolve();
+    expect(embedding.health).toHaveBeenCalledWith(undefined, { retries: 1 });
     expect(log.info).toHaveBeenCalledWith(
       '[chatbot-rag] Starting tool indexing on boot (background)...',
     );

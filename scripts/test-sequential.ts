@@ -25,7 +25,7 @@ for (const target of TEST_TARGETS) {
   console.log('='.repeat(60));
 
   try {
-    await $`bun test ${target.workspace}`;
+    await $`bun run --cwd ${target.workspace} test`;
     const duration = Date.now() - start;
     results.push({ package: pkg, passed: true, duration });
     console.log(`✅ ${pkg} - PASSED (${duration}ms)`);

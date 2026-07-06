@@ -1,9 +1,13 @@
-import { Injectable } from 'najm-core';
+import { Injectable, Err } from 'najm-core';
+import { I18n, type TFn } from 'najm-i18n';
 import { RoleRepository } from './RoleRepository';
 import { RoleValidator } from './RoleValidator';
+import { ROLES } from './constants';
 
 @Injectable()
 export class RoleService {
+  @I18n('roles') private t!: TFn;
+
   constructor(
     private roleRepository: RoleRepository,
     private roleValidator: RoleValidator
@@ -27,14 +31,27 @@ export class RoleService {
     return await this.roleRepository.create(data);
   }
 
-  async update(id, data) {
-    await this.roleValidator.checkRoleExists(id);
+  async update(id: string, data: { name?: string; description?: string }) {
+    const role = await this.roleValidator.checkRoleExists(id);
+    // The built-in admin role is matched by literal name in isAdmin(); renaming
+    // it would silently break every @isAdmin() guard and lock out administration.
+    if (role.name === ROLES.ADMIN && data.name && data.name !== ROLES.ADMIN) {
+      Err(this.t('errors.cannotRenameSystem'), 403);
+    }
     await this.roleValidator.checkNameUnique(data.name, id);
     return await this.roleRepository.update(id, data);
   }
 
-  async delete(id) {
-    await this.roleValidator.checkRoleExists(id);
+  async delete(id: string) {
+    const role = await this.roleValidator.checkRoleExists(id);
+    if (role.name === ROLES.ADMIN) {
+      Err(this.t('errors.cannotDeleteSystem'), 403);
+    }
+    // users.roleId has no ON DELETE rule, so deleting a referenced role would
+    // raise a raw FK violation (500). Fail cleanly with a 409 instead.
+    if (await this.roleRepository.hasUsers(id)) {
+      Err(this.t('errors.roleInUse'), 409);
+    }
     return await this.roleRepository.delete(id);
   }
 

@@ -1,6 +1,6 @@
 {
   "name": "najm-cache",
-  "version": "1.2.10",
+  "version": "1.2.11",
   "description": "Unified cache plugin for najm framework - Memory and Redis drivers with auto-fallback",
   "type": "module",
   "files": [

@@ -134,6 +134,15 @@ describe("theme.css — source-level checks", () => {
     const src = readFileSync(themeCssPath, "utf-8");
     expect(src).toMatch(/\.najm-border\s*\{[^}]*border-width:\s*var\(--border-width\)/);
   });
+
+  test("NajmDesignProvider typography variables are applied by theme.css", () => {
+    const src = readFileSync(themeCssPath, "utf-8");
+    expect(src).toMatch(/\[data-najm-design-vars\]\s*\{[^}]*font-family:\s*var\(--font-sans/);
+    expect(src).toMatch(/\[data-najm-design-vars\]\s*\{[^}]*font-size:\s*var\(--font-size-base/);
+    expect(src).toMatch(/\[data-najm-design-vars\]\s*\{[^}]*--text-sm:\s*calc\(var\(--font-size-base/);
+    expect(src).toMatch(/\[data-najm-design-vars\]\s*:where\([^}]*h1,[^}]*h6,[^}]*\[data-slot="card-title"\][^)]*\)\s*\{[^}]*font-family:\s*var\(--font-heading/);
+    expect(src).toMatch(/\[data-najm-design-vars\]\s*:where\(code,\s*kbd,\s*pre,\s*samp\)\s*\{[^}]*font-family:\s*var\(--font-mono/);
+  });
 });
 
 describe("dist/theme.css — published artifact", () => {
@@ -163,5 +172,12 @@ describe("dist/theme.css — published artifact", () => {
   test("dist/theme.css has @theme inline mapping --color-background: var(--background)", () => {
     const dist = readFileSync(distThemeCssPath, "utf-8");
     expect(dist).toMatch(/@theme\s+inline\s*\{[^}]*--color-background:\s*var\(--background\)/);
+  });
+
+  test("dist/theme.css applies NajmDesignProvider typography variables", () => {
+    const dist = readFileSync(distThemeCssPath, "utf-8");
+    expect(dist).toMatch(/\[data-najm-design-vars\]\s*\{[^}]*font-family:\s*var\(--font-sans/);
+    expect(dist).toMatch(/\[data-najm-design-vars\]\s*\{[^}]*--text-sm:\s*calc\(var\(--font-size-base/);
+    expect(dist).toMatch(/\[data-najm-design-vars\]\s*:where\([^}]*h1,[^}]*h6,[^}]*\[data-slot="card-title"\][^)]*\)\s*\{[^}]*font-family:\s*var\(--font-heading/);
   });
 });

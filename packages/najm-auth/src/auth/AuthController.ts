@@ -3,18 +3,21 @@ import { Get, Post, ResMsg } from 'najm-core';
 import { Params, Body, User, Headers } from 'najm-core';
 import { AuthService } from './AuthService';
 import { isAuth } from './AuthGuard';
+import { isAdmin } from '../roles';
 import { Validate } from 'najm-validation';
 import { RateLimit } from 'najm-rate';
 import type { Context } from 'hono';
 import { createHash } from 'node:crypto';
 import {
-  createUserDto,
+  registerDto,
+  inviteUserDto,
   loginDto,
   userIdParam,
   changePasswordDto,
   resetPasswordDto,
   confirmResetPasswordDto,
-  type CreateUserDto,
+  type RegisterDto,
+  type InviteUserDto,
   type ChangePasswordDto,
   type LoginDto,
   type UserIdParam,
@@ -61,9 +64,9 @@ export class AuthController {
 
   @Post('/register')
   @RateLimit({ limit: 5, window: '15m', key: ipAndEmail })
-  @Validate(createUserDto)
+  @Validate(registerDto)
   @ResMsg('auth.success.register')
-  async registerUser(@Body() body: CreateUserDto) {
+  async registerUser(@Body() body: RegisterDto) {
     return this.authService.registerUser(body);
   }
 
@@ -73,6 +76,15 @@ export class AuthController {
   @ResMsg('auth.success.login')
   async loginUser(@Body() body: LoginDto) {
     return this.authService.loginUser(body);
+  }
+
+  @Post('/invite')
+  @isAdmin()
+  @RateLimit({ limit: 20, window: '15m', key: 'user' })
+  @Validate(inviteUserDto)
+  @ResMsg('auth.success.accountInviteSent')
+  async inviteUser(@Body() body: InviteUserDto) {
+    return this.authService.inviteUser(body);
   }
 
   @Post('/refresh')

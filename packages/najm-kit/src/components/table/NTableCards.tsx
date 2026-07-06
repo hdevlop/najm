@@ -20,6 +20,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const onRowClick = useTableStore.use.onRowClick();
   const onRowContextMenu = useTableStore.use.onRowContextMenu();
   const onBackgroundContextMenu = useTableStore.use.onBackgroundContextMenu();
+  const getRowClassName = useTableStore.use.getRowClassName();
   const openRowMenu = useTableStore.use.openRowMenu();
   const menuButton = useTableStore.use.menuButton();
   const onView = useTableStore.use.onView();
@@ -87,6 +88,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
         const canExpand = hasExpansion && row.getCanExpand();
         const isExpanded = canExpand && row.getIsExpanded();
         const handleClick = onRowClick ? () => onRowClick(row.original) : undefined;
+        const rowClassName = getRowClassName?.(row.original);
 
         const handleCardContextMenu = onRowContextMenu
           ? (e: React.MouseEvent) => {
@@ -103,7 +105,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
               onContextMenu={handleCardContextMenu}
               data-row="true"
               data-row-id={row.id}
-              className="group relative"
+              className={cn("group relative text-card-foreground", rowClassName)}
             >
               {menuButton && openRowMenu && (
                 <button
@@ -113,7 +115,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
                     e.stopPropagation();
                     openRowMenu(e, row.original);
                   }}
-                  className="absolute top-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-md p-0 text-muted-foreground opacity-0 transition-all duration-200 hover:bg-muted/50 hover:text-foreground group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
+                  className="absolute top-2 right-2 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-muted-foreground opacity-0 transition-all duration-200 hover:bg-muted/50 hover:text-foreground group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>
@@ -146,6 +148,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
             openRowMenu={openRowMenu}
             menuButton={menuButton}
             bordered={bordered}
+            className={rowClassName || undefined}
           >
             <CardComponent
               data={row.original}

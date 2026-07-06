@@ -11,7 +11,7 @@ export const TextInput: React.FC<TextInputProps> = ({ value, onChange, placehold
   return (
     <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("gap-2", className)} disabled={disabled}>
       {shouldDisplayIcon && <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span>}
-      <Input placeholder={placeholder} value={value} onChange={(ev) => onChange(ev.target.value)} className="p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 text-muted-foreground" disabled={disabled} {...props} />
+      <Input placeholder={placeholder} value={value} onChange={(ev) => onChange(ev.target.value)} className="p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground" disabled={disabled} {...props} />
     </BaseInput>
   );
 };

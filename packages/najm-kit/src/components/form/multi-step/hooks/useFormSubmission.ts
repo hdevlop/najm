@@ -15,9 +15,13 @@ interface UseFormSubmissionOptions {
 
 interface FormSubmissionState {
   formDataRef: React.MutableRefObject<Record<string, any>>;
-  handleStepSubmit: (stepData: any) => Promise<void>;
+  handleStepSubmit: (stepData: any) => Promise<StepSubmitResult>;
   getStepDefaultValues: (stepId: string) => Record<string, any>;
 }
+
+export type StepSubmitResult =
+  | { ok: true }
+  | { ok: false; error: any; data: Record<string, any> };
 
 export function useFormSubmission({
   steps,
@@ -55,29 +59,41 @@ export function useFormSubmission({
   );
 
   const handleStepSubmit = useCallback(
-    async (stepData: any) => {
+    async (stepData: any): Promise<StepSubmitResult> => {
       const stepId = steps[currentStep - 1]?.id;
       if (stepId) {
         formDataRef.current = { ...formDataRef.current, ...stepData };
       }
 
-      markStepCompleted(currentStep - 1);
-
       if (!isLastStep) {
+        markStepCompleted(currentStep - 1);
         handleNext();
+        return { ok: true };
       } else {
         const fullData = { ...formDataRef.current };
+        let submitData = fullData;
+
         if (schema?.parse) {
-          const validated = schema.parse(fullData);
-          await onSubmit(validated);
-        } else {
-          await onSubmit(fullData);
+          const result = schema.safeParse?.(fullData);
+
+          if (result) {
+            if (!result.success) {
+              return { ok: false, error: result.error, data: fullData };
+            }
+            submitData = result.data;
+          } else {
+            submitData = schema.parse(fullData);
+          }
         }
+
+        await onSubmit(submitData);
+        markStepCompleted(currentStep - 1);
         reset();
-        formDataRef.current = {};
+        formDataRef.current = defaultValues ?? {};
+        return { ok: true };
       }
     },
-    [steps, currentStep, isLastStep, schema, onSubmit, handleNext, markStepCompleted, reset]
+    [steps, currentStep, isLastStep, schema, onSubmit, handleNext, markStepCompleted, reset, defaultValues]
   );
 
   return { formDataRef, handleStepSubmit, getStepDefaultValues };

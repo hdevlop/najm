@@ -4,6 +4,7 @@ import { render } from "@testing-library/react";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { NTable } from "../../src/components/table/NTable";
+import { NajmDesignProvider } from "../../src/theme/design-provider";
 
 interface Row {
   id: string;
@@ -44,13 +45,15 @@ function getHeaderCells(container: HTMLElement): HTMLElement[] {
 }
 
 describe("NTable header text contrast", () => {
-  test("default TableHead uses high-contrast foreground color, not muted-foreground", () => {
+  test("default TableHead uses full primary background and primary foreground text", () => {
     const { container } = render(<TableWrapper />);
     const heads = getHeaderCells(container);
     expect(heads.length).toBeGreaterThan(0);
     for (const head of heads) {
       expect(head.className).toContain("text-foreground");
       expect(head.className).not.toContain("text-muted-foreground");
+      expect(head.getAttribute("style")).toContain("background-color: var(--primary)");
+      expect(head.getAttribute("style")).toContain("color: var(--primary-foreground)");
     }
   });
 
@@ -65,33 +68,60 @@ describe("NTable header text contrast", () => {
     }
   });
 
-  test("rose headerColor applies stronger background and dark text in light mode", () => {
-    const { container } = render(<TableWrapper headerColor="rose" />);
-    const headerRow = container.querySelector('[data-ntable-table-header]');
-    expect(headerRow).toBeTruthy();
-    const cls = headerRow!.className;
-    expect(cls).toContain("[&_th]:text-rose-800");
-    // background is applied on each TableHead cell
+  test("headerColor accepts arbitrary CSS colors without generated slash classes", () => {
+    const { container } = render(
+      <TableWrapper
+        headerColor="rgb(82, 39, 149)"
+        headerTextColor="rgb(255, 255, 255)"
+      />,
+    );
     const heads = getHeaderCells(container);
-    expect(heads.some((h) => h.className.includes("bg-rose-600/30"))).toBe(true);
+    expect(heads.length).toBeGreaterThan(0);
+    expect(heads[0].getAttribute("style")).toContain("background-color: rgb(82, 39, 149)");
+    expect(heads[0].getAttribute("style")).toContain("color: rgb(255, 255, 255)");
+    expect(heads[0].className).not.toContain("/");
   });
 
-  test("colored header tokens keep `text-rose-800` (no `text-rose-700`) for rose", () => {
-    const { container } = render(<TableWrapper headerColor="rose" />);
-    const headerRow = container.querySelector('[data-ntable-table-header]');
-    const cls = headerRow!.className;
-    expect(cls).not.toContain("text-rose-700");
+  test("token names resolve to CSS variables", () => {
+    const { container } = render(
+      <TableWrapper headerColor="secondary" headerTextColor="secondary-foreground" />,
+    );
+    const heads = getHeaderCells(container);
+    expect(heads[0].getAttribute("style")).toContain("background-color: var(--secondary)");
+    expect(heads[0].getAttribute("style")).toContain("color: var(--secondary-foreground)");
   });
 
-  test("colored header tokens use a darker dark-mode text shade (>=300) for less harsh contrast", () => {
-    const { container: rose } = render(<TableWrapper headerColor="rose" />);
-    const { container: violet } = render(<TableWrapper headerColor="violet" />);
-    const { container: emerald } = render(<TableWrapper headerColor="emerald" />);
-    const roseCls = rose.querySelector('[data-ntable-table-header]')!.className;
-    const violetCls = violet.querySelector('[data-ntable-table-header]')!.className;
-    const emeraldCls = emerald.querySelector('[data-ntable-table-header]')!.className;
-    expect(roseCls).toMatch(/dark:\[&_th\]:text-rose-(300|400|500)\b/);
-    expect(violetCls).toMatch(/dark:\[&_th\]:text-violet-(300|400|500)\b/);
-    expect(emeraldCls).toMatch(/dark:\[&_th\]:text-emerald-(300|400|500)\b/);
+  test("borderColor applies to the table rows", () => {
+    const { container } = render(<TableWrapper bordered borderColor="rgb(85, 85, 85)" />);
+    const row = container.querySelector('[data-slot="table-row"]') as HTMLElement;
+    expect(row.getAttribute("style")).toContain("border-color: rgb(85, 85, 85)");
+  });
+
+  test("design recipe applies table header and border colors", () => {
+    const { container } = render(
+      <NajmDesignProvider
+        config={{
+          version: 1,
+          theme: {},
+          components: {
+            table: {
+              headerColor: "rgb(82, 39, 149)",
+              headerTextColor: "rgb(255, 255, 255)",
+              borderColor: "rgb(85, 85, 85)",
+            },
+          },
+        }}
+      >
+        <TableWrapper />
+      </NajmDesignProvider>,
+    );
+
+    const head = getHeaderCells(container)[0];
+    const row = container.querySelector('[data-slot="table-row"]') as HTMLElement;
+    const shell = container.querySelector("[data-ntable-body] [data-bordered]") as HTMLElement;
+    expect(head.getAttribute("style")).toContain("background-color: rgb(82, 39, 149)");
+    expect(head.getAttribute("style")).toContain("color: rgb(255, 255, 255)");
+    expect(row.getAttribute("style")).toContain("border-color: rgb(85, 85, 85)");
+    expect(shell.getAttribute("data-bordered")).toBe("true");
   });
 });

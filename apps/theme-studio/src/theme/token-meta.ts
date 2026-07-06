@@ -5,6 +5,7 @@ export type TokenKey = keyof NajmThemeTokens;
 export type TokenCategoryId =
   | "foundation"
   | "sidebar"
+  | "table"
   | "charts";
 
 export interface TokenCategory {
@@ -59,9 +60,14 @@ export const TOKEN_CATEGORIES: TokenCategory[] = [
     ],
   },
   {
+    id: "table",
+    label: "Table",
+    tokens: [],
+  },
+  {
     id: "charts",
     label: "Charts",
-    tokens: ["chart-1", "chart-2", "chart-3"],
+    tokens: ["chart-1", "chart-2", "chart-3", "chart-4", "chart-5"],
   },
 ];
 
@@ -78,18 +84,24 @@ const TOKEN_LABELS: Partial<Record<TokenKey, string>> = {
   "chart-1": "Primary series",
   "chart-2": "Secondary series",
   "chart-3": "Tertiary series",
+  "chart-4": "Fourth series",
+  "chart-5": "Fifth series",
 };
 
 export const CHART_TOKENS: TokenKey[] = [
   "chart-1",
   "chart-2",
   "chart-3",
+  "chart-4",
+  "chart-5",
 ];
 
 export const CHART_TOKEN_DEFAULTS: Partial<Record<TokenKey, TokenKey>> = {
   "chart-1": "primary",
   "chart-2": "secondary",
   "chart-3": "tertiary",
+  "chart-4": "accent",
+  "chart-5": "destructive",
 };
 
 export function tokenLabel(key: TokenKey): string {

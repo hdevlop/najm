@@ -9,16 +9,15 @@ import { NTableCards } from "./NTableCards";
 import { NTablePagination } from "./NTablePagination";
 import { NTableHeader } from "./NTableHeader";
 import { NTableJson } from "./NTableJson";
-import { NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
+import { NTableCardsLoadingSkeleton, NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
 import { cn } from "../../lib/cn";
-import { NLoadingState } from "../feedback/NLoadingState";
 import { NErrorState } from "../feedback/NErrorState";
 import { NEmptyState } from "../feedback/NEmptyState";
 import { Button } from "../Button";
 import { useTableStore } from "./TableContext";
 import type { ComponentType } from "react";
 import type { ViewMode, CustomModeRenderers, NTableClassNames as NTableClassNamesAlias } from "./store";
-import type { TableHeaderColor } from "./tableColors";
+import { useNajmComponentStyle } from "../../theme/design-provider";
 export type { NTableClassNames } from "./store";
 export type { TableHeaderColor } from "./tableColors";
 
@@ -119,10 +118,16 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   toolbarLabels?: boolean;
   dynamicHeight?: boolean;
   headerClassName?: string;
-  headerColor?: TableHeaderColor;
+  /** CSS color or Najm token name for the table header background. Defaults to primary. */
+  headerColor?: string;
+  /** CSS color or Najm token name for table header text. Defaults to primary foreground. */
+  headerTextColor?: string;
+  /** CSS color or Najm token name for table borders. Defaults to border. */
+  borderColor?: string;
   showCheckbox?: boolean;
   onRowClick?: (row: T) => void;
   onRowContextMenu?: (e: React.MouseEvent, row: T) => void;
+  getRowClassName?: (row: T) => string | undefined | null | false;
   menu?: NTableMenuProp<T>;
   menuButton?: boolean;
   onCellEdit?: (row: T, columnId: string, value: any) => Promise<any>;
@@ -185,7 +190,6 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
   const isLoading = useTableStore.use.isLoading();
   const error = useTableStore.use.error();
   const hasNoData = useTableStore.use.hasNoData();
-  const loadingText = useTableStore.use.loadingText();
   const noDataText = useTableStore.use.noDataText();
   const isFilteredEmpty = useTableStore.use.isFilteredEmpty();
   const renderFilteredEmpty = useTableStore.use.renderFilteredEmpty();
@@ -240,7 +244,9 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
                 ? <TableStateSlot>{props.renderLoading()}</TableStateSlot>
                 : effectiveMode === "table"
                   ? <NTableLoadingSkeleton />
-                  : <TableStateSlot><NLoadingState label={loadingText} /></TableStateSlot>
+                  : effectiveMode === "cards"
+                    ? <NTableCardsLoadingSkeleton />
+                    : <NTableLoadingSkeleton />
             )}
             {error && !isLoading && (
               <TableStateSlot>
@@ -263,7 +269,7 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
           </>
         )}
       </div>
-      <div data-ntable-pagination className="shrink-0">
+      <div data-ntable-pagination className="min-w-0 shrink-0 bg-background text-foreground">
         <NTablePagination />
       </div>
     </div>
@@ -271,6 +277,8 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
 }
 
 export function NTable<T = any, M extends ViewMode = ViewMode>(props: NTableProps<T, M>) {
+  const recipe = useNajmComponentStyle("table");
+  const recipeBordered = Boolean(recipe?.borderColor || recipe?.borderWidth);
   const availableModes = props.availableModes ?? (["table", "cards", "json"] as const);
   const lastInvalidModeRef = useRef<M | undefined>(undefined);
 
@@ -381,9 +389,11 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(props: NTableProp
     CardComponent: props.renderCard ?? null,
     className: props.className ?? "",
     classNames: props.classNames ?? {},
-    bordered: props.bordered,
+    bordered: props.bordered ?? (recipeBordered ? true : undefined),
     headerClassName: props.headerClassName ?? "bg-card",
-    headerColor: props.headerColor ?? "primary",
+    headerColor: props.headerColor ?? recipe?.headerColor,
+    headerTextColor: props.headerTextColor ?? recipe?.headerTextColor,
+    borderColor: props.borderColor ?? recipe?.borderColor,
     showCheckbox: props.showCheckbox ?? true,
     selectedRowId: props.selectedRowId ?? null,
     headerSlot: props.headerSlot ?? null,
@@ -395,6 +405,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(props: NTableProp
     onRowContextMenu: (onRowContextMenu || effectiveRowMenu) ? handleRowContextMenu : null,
     onBackgroundContextMenu: normalizedMenu.background ? handleBackgroundContextMenu : null,
     openRowMenu: autoOpenRowMenu,
+    getRowClassName: props.getRowClassName ?? null,
     menuButton: effectiveMenuButton,
     onCellEdit: props.onCellEdit ?? null,
     onBulkDelete: props.onBulkDelete ?? null,

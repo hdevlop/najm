@@ -1,6 +1,6 @@
 {
   "name": "najm-mcp",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "MCP plugin for Najm framework",
   "type": "module",
   "files": [

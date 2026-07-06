@@ -53,6 +53,8 @@ export function createDialogStore() {
           id,
           title: config.title,
           description: config.description,
+          pageHeader: config.pageHeader,
+          padding: config.padding,
           children: config.children,
           primaryButton: primaryButtonConfig,
           secondaryButton: secondaryButtonConfig,

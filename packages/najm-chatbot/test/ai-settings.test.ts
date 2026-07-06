@@ -49,8 +49,8 @@ function createSchema(sqlite: Database, options: { legacyAiSettings?: boolean } 
     created_at TEXT, updated_at TEXT
   )`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS tokens (
-    id TEXT PRIMARY KEY, user_id TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
-    token TEXT NOT NULL, token_family TEXT, previous_hash TEXT,
+    id TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    token TEXT NOT NULL, token_family TEXT NOT NULL UNIQUE, previous_hash TEXT,
     previous_valid_until TEXT, previous_used_at TEXT,
     type TEXT DEFAULT 'refresh', status TEXT DEFAULT 'active',
     expires_at TEXT NOT NULL, created_at TEXT, updated_at TEXT

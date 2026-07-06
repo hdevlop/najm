@@ -13,8 +13,8 @@ interface TableActionCellProps {
 }
 
 const actionButtonClass = (bordered?: boolean, danger?: boolean) => cn(
-  "flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors",
-  danger ? "hover:bg-red-500/10 hover:text-red-400" : "hover:bg-muted hover:text-foreground",
+  "flex h-7 w-7 cursor-pointer items-center justify-center rounded-md border border-transparent text-muted-foreground transition-colors",
+  danger ? "hover:border-red-200 hover:bg-red-50 hover:text-red-500" : "hover:border-border hover:bg-muted hover:text-foreground",
   bordered && "border border-muted-foreground"
 );
 

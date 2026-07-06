@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from "react";
+import React, { useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "../../ui/form";
@@ -8,7 +8,27 @@ import { StepsHeader } from "./StepsHeader";
 import { useStepNavigation } from "./hooks/useStepNavigation";
 import { useFormSubmission } from "./hooks/useFormSubmission";
 import { VariantProvider } from "../VariantContext";
-import type { WizardFormProps } from "./types";
+import type { WizardFooterDivider, WizardFormProps } from "./types";
+
+type ValidationIssue = {
+  path?: Array<string | number>;
+  message?: string;
+};
+
+function issuePath(issue: ValidationIssue) {
+  return issue.path?.map(String).join(".") ?? "";
+}
+
+function matchesFieldPath(path: string, field: string) {
+  return path === field || path.startsWith(`${field}.`) || field.startsWith(`${path}.`);
+}
+
+function footerDividerClass(divider: WizardFooterDivider = "none") {
+  if (divider === false || divider === "none") return "border-t-0";
+  if (divider === "dashed") return "border-t border-dashed border-border";
+  if (divider === "dotted") return "border-t border-dotted border-border";
+  return "border-t border-solid border-border";
+}
 
 export function WizardForm({
   steps,
@@ -28,6 +48,8 @@ export function WizardForm({
   className,
   classNames,
   footerSlot,
+  footerDivider = "none",
+  footerDividerClassName,
 }: WizardFormProps) {
   const nav = useStepNavigation({
     steps,
@@ -49,6 +71,18 @@ export function WizardForm({
 
   const currentStepConfig = nav.currentStepConfig;
   const stepDefaults = getStepDefaultValues(currentStepConfig.id);
+  const pendingIssuesRef = useRef<{ stepIndex: number; issues: ValidationIssue[] } | null>(null);
+
+  const getIssueStepIndex = (issue: ValidationIssue) => {
+    const path = issuePath(issue);
+    if (!path) return nav.currentStep - 1;
+
+    const stepIndex = steps.findIndex((step) =>
+      step.fields?.some((field) => matchesFieldPath(path, field))
+    );
+
+    return stepIndex >= 0 ? stepIndex : nav.currentStep - 1;
+  };
 
   const stepSchema = useMemo(() => {
     if (currentStepConfig.schema) return currentStepConfig.schema;
@@ -69,16 +103,61 @@ export function WizardForm({
     form.reset(newDefaults as any);
   }, [nav.currentStep, currentStepConfig.id]);
 
+  useEffect(() => {
+    const pending = pendingIssuesRef.current;
+    if (!pending || pending.stepIndex !== nav.currentStep - 1) return;
+
+    pendingIssuesRef.current = null;
+    pending.issues.forEach((issue, index) => {
+      const name = issuePath(issue) || "root";
+      form.setError(
+        name as any,
+        { type: "validate", message: issue.message ?? "Invalid value" },
+        { shouldFocus: index === 0 }
+      );
+    });
+  }, [nav.currentStep, currentStepConfig.id, form]);
+
   const handleSubmit = async (data: any) => {
     onStepComplete?.(nav.currentStep - 1, data);
-    await handleStepSubmit(data);
+    const result = await handleStepSubmit(data);
+    if (result.ok === true) return;
+
+    const issues: ValidationIssue[] = Array.isArray(result.error?.issues)
+      ? result.error.issues
+      : [];
+
+    if (issues.length === 0) {
+      throw result.error;
+    }
+
+    const targetStepIndex = getIssueStepIndex(issues[0]);
+    const targetIssues = issues.filter((issue) => getIssueStepIndex(issue) === targetStepIndex);
+
+    if (targetStepIndex === nav.currentStep - 1) {
+      pendingIssuesRef.current = { stepIndex: targetStepIndex, issues: targetIssues };
+      const pending = pendingIssuesRef.current;
+      pendingIssuesRef.current = null;
+      pending.issues.forEach((issue, index) => {
+        const name = issuePath(issue) || "root";
+        form.setError(
+          name as any,
+          { type: "validate", message: issue.message ?? "Invalid value" },
+          { shouldFocus: index === 0 }
+        );
+      });
+      return;
+    }
+
+    pendingIssuesRef.current = { stepIndex: targetStepIndex, issues: targetIssues };
+    nav.goToStep(targetStepIndex + 1);
   };
 
   return (
     <div
       data-najm-wizard-form="true"
       data-najm-dialog-actions="content"
-      className={cn("flex w-full flex-col gap-4", classNames?.root, className)}
+      className={cn("flex min-h-full w-full flex-col gap-4", classNames?.root, className)}
     >
       {showHeader && (
         <StepsHeader
@@ -95,7 +174,7 @@ export function WizardForm({
           <form
             id={`step-${currentStepConfig.id}`}
             onSubmit={form.handleSubmit(handleSubmit)}
-            className={cn("flex flex-col gap-4", classNames?.step)}
+            className={cn("min-h-0 flex-1 overflow-y-auto pb-4 flex flex-col gap-4", classNames?.step)}
             autoComplete="off"
           >
             {currentStepConfig.description && (
@@ -107,7 +186,15 @@ export function WizardForm({
       </Form>
 
       {showFooter && (
-        <div className={cn("flex items-center justify-between", classNames?.footer)}>
+        <div
+          data-najm-wizard-footer="true"
+          className={cn(
+            "sticky bottom-0 z-10 mt-auto flex shrink-0 items-center justify-between bg-background/95 pt-3 backdrop-blur",
+            footerDividerClass(footerDivider),
+            footerDividerClassName,
+            classNames?.footer
+          )}
+        >
           <div>
             {!nav.isFirstStep && (
               <Button type="button" variant="outline" onClick={nav.handlePrevious}>

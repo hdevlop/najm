@@ -66,4 +66,27 @@ describe('NTable classNames.row', () => {
     const dataRows = container.querySelectorAll('tr[data-row="true"]');
     expect(dataRows.length).toBe(0);
   });
+
+  test('getRowClassName is applied only to matching data rows', () => {
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable
+          data={data}
+          columns={columns}
+          availableModes={['table']}
+          mode="table"
+          showCheckbox={false}
+          showViewToggle={false}
+          dynamicHeight={false}
+          showPagination={false}
+          getRowClassName={(row) => row.id === '2' ? 'opacity-50 bg-muted/60' : undefined}
+        />
+      </div>,
+    );
+
+    const rows = container.querySelectorAll('tr[data-row="true"]');
+    expect(rows[0].className).not.toContain('opacity-50');
+    expect(rows[1].className).toContain('opacity-50');
+    expect(rows[1].className).toContain('bg-muted/60');
+  });
 });

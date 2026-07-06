@@ -49,6 +49,7 @@ const defaultRag = {
     model: 'embeddinggemma',
     dimensions: 768,
     timeoutMs: 8000,
+    healthTimeoutMs: 15000,
   },
   queryEmbeddingCacheSize: 256,
   indexOnBoot: true,

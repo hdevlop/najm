@@ -1,5 +1,5 @@
 ﻿import React from "react";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Calendar } from "../ui/calendar";
 import { Calendar as CalendarIcon } from "lucide-react";
@@ -11,20 +11,24 @@ import type { DateInputProps } from "./types";
 
 export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placeholder = "Pick a date", className = "", icon, showIcon = true, iconColor, variant = "default", status = "default", bordered, borderColor }) => {
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
-  const toDateString = (date: Date | undefined) => date?.toISOString().split("T")[0];
+  // Serialize using local date parts, not toISOString() — the calendar returns a
+  // local-midnight Date, and toISOString() shifts it to UTC (a day earlier in GMT+ zones).
+  const toDateString = (date: Date | undefined) => (date ? format(date, "yyyy-MM-dd") : undefined);
+  // Parse "yyyy-MM-dd" as a local date; native new Date() would read it as UTC midnight.
+  const toDate = (val: Date | string | undefined) => (typeof val === "string" ? parseISO(val) : val);
 
   return (
     <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={className}>
       <Popover>
         <PopoverTrigger asChild>
-          <div className={cn("w-full flex items-center cursor-pointer gap-2 justify-start text-left font-normal", !value && "text-foreground")}>
-            <Label className="text-muted-foreground cursor-pointer">
-              {value ? format(typeof value === "string" ? new Date(value) : value, "PPP") : placeholder}
+          <div className="w-full flex items-center cursor-pointer gap-2 justify-start text-left font-normal">
+            <Label className={cn("cursor-pointer", value ? "text-foreground" : "text-muted-foreground")}>
+              {value ? format(toDate(value)!, "PPP") : placeholder}
             </Label>
           </div>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={typeof value === "string" ? new Date(value) : value} onSelect={(date) => onChange(toDateString(date))} captionLayout="dropdown" />
+          <Calendar mode="single" selected={toDate(value)} onSelect={(date) => onChange(toDateString(date))} captionLayout="dropdown" />
         </PopoverContent>
       </Popover>
       {!icon && showIcon && <CalendarIcon className={iconProps.className} style={iconProps.style} />}

@@ -11,7 +11,7 @@ export const NumberInput: React.FC<NumberInputProps> = ({ value, onChange, place
   return (
     <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("gap-2", className)}>
       {shouldDisplayIcon && <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span>}
-      <Input type="number" placeholder={placeholder} value={value ?? ""} onChange={(ev) => onChange(Number(ev.target.value))} className="p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 text-muted-foreground" />
+      <Input type="number" placeholder={placeholder} value={value ?? ""} onChange={(ev) => onChange(Number(ev.target.value))} className="p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground" />
     </BaseInput>
   );
 };

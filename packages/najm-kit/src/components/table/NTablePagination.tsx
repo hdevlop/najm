@@ -59,29 +59,29 @@ export function NTablePagination() {
   };
 
   return (
-    <div className={cn("flex items-center justify-between gap-4", classNames?.pagination)}>
-      <div className="flex items-center gap-4 lg:gap-6">
+    <div className={cn("flex w-full min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-2 py-1 text-foreground", classNames?.pagination)}>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-4 lg:gap-6">
         {(!isPaginationControlled || manualPagination) && (
-          <div className="flex items-center gap-2">
-            <p className="text-sm font-medium">Rows/page</p>
+          <div className="flex items-center gap-2 text-foreground">
+            <p className="text-sm font-medium text-foreground">Rows/page</p>
             <Select value={`${pageSize}`} onValueChange={handlePageSizeChange}>
               <SelectTrigger
                 data-bordered={bordered ? "true" : undefined}
-                className={cn("h-8 w-[80px]", bordered && "najm-border border-border")}
+                className={cn("h-8 w-[80px] text-foreground", bordered && "najm-border border-border")}
               ><SelectValue placeholder={pageSize} /></SelectTrigger>
               <SelectContent side="top">{currentPageSizeOptions.map((size) => <SelectItem key={size} value={`${size}`}>{size}</SelectItem>)}</SelectContent>
             </Select>
           </div>
         )}
-        <div className="text-sm font-medium">Page {pageIndex + 1} of {effectivePageCount}</div>
+        <div className="text-sm font-medium text-foreground">Page {pageIndex + 1} of {effectivePageCount}</div>
         <div className="flex items-center gap-2">
-          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 hidden lg:flex" aria-label="First page" onClick={() => navigate("first")} disabled={!table.getCanPreviousPage?.() || pageIndex === 0}><ChevronsLeft className="h-4 w-4" /></Button>
-          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0" aria-label="Previous" onClick={() => navigate("prev")} disabled={!table.getCanPreviousPage?.() || pageIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0" aria-label="Next" onClick={() => navigate("next")} disabled={!table.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronRight className="h-4 w-4" /></Button>
-          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 hidden lg:flex" aria-label="Last page" onClick={() => navigate("last")} disabled={!table.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronsRight className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="hidden h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70 lg:flex" aria-label="First page" onClick={() => navigate("first")} disabled={!table.getCanPreviousPage?.() || pageIndex === 0}><ChevronsLeft className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70" aria-label="Previous" onClick={() => navigate("prev")} disabled={!table.getCanPreviousPage?.() || pageIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70" aria-label="Next" onClick={() => navigate("next")} disabled={!table.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronRight className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="hidden h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70 lg:flex" aria-label="Last page" onClick={() => navigate("last")} disabled={!table.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronsRight className="h-4 w-4" /></Button>
         </div>
       </div>
-      <div className="text-sm text-muted-foreground">
+      <div className="min-w-0 flex-none whitespace-nowrap text-sm text-muted-foreground max-sm:hidden">
         {selectedRows.length} of {manualPagination && rowCount !== undefined ? rowCount : filteredRows.length} row(s) selected.
       </div>
     </div>

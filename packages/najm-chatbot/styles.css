@@ -1,0 +1,15 @@
+/*
+ * najm-chatbot UI utility sources. The React components (Chatbot launcher,
+ * AiSettingsPanel, ...) ship no compiled CSS — they use Tailwind utility
+ * classes and rely on the consumer's Tailwind v4 build to generate them.
+ * Consumers add, after tailwindcss:
+ *
+ *   @import "tailwindcss";
+ *   @import "najm-chatbot/styles.css";
+ *
+ * The `@source` below resolves relative to this file's location at the
+ * package root, so the consumer's Tailwind build scans the compiled react
+ * components for the utility classes they use. Without it the components
+ * render unstyled (e.g. the chat launcher sits off-screen and transparent).
+ */
+@source "./dist/react";

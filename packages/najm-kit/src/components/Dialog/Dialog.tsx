@@ -35,7 +35,23 @@ function DialogOverlay({ className, ...props }: React.ComponentProps<typeof Dial
   );
 }
 
-function DialogContent({ className, children, ...props }: React.ComponentProps<typeof DialogPrimitive.Content>) {
+export type DialogPadding = "none" | "sm" | "md" | "lg";
+
+const dialogPaddingMap: Record<DialogPadding, string> = {
+  none: "p-0 gap-0 overflow-hidden",
+  sm: "p-3",
+  md: "p-6",
+  lg: "p-8",
+};
+
+export interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
+  /** Controls the padding of the dialog surface. `none` also collapses the header/body/footer gap. Defaults to `md` (p-6). */
+  padding?: DialogPadding;
+  /** Hides the built-in top-right close (X). Use when the content provides its own close control (e.g. inside a page header). */
+  hideClose?: boolean;
+}
+
+function DialogContent({ className, children, padding = "md", hideClose = false, ...props }: DialogContentProps) {
   const portalClassName = useNPortalScope();
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -43,17 +59,21 @@ function DialogContent({ className, children, ...props }: React.ComponentProps<t
         <DialogOverlay />
         <DialogPrimitive.Content
           data-slot="dialog-content"
+          data-padding={padding}
           className={cn(
-            "bg-card text-card-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg najm-border border-border p-6 shadow-lg duration-200",
+            "bg-card text-card-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg najm-border border-border shadow-lg duration-200",
+            dialogPaddingMap[padding],
             className
           )}
           {...props}
         >
           {children}
-          <DialogPrimitive.Close className="ring-offset-background cursor-pointer focus:ring-ring absolute top-4 right-4 rounded-xs text-muted-foreground hover:text-foreground transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
-            <XIcon />
-            <span className="sr-only">Close</span>
-          </DialogPrimitive.Close>
+          {!hideClose && (
+            <DialogPrimitive.Close className="ring-offset-background cursor-pointer focus:ring-ring absolute top-4 right-4 rounded-xs text-muted-foreground hover:text-foreground transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+              <XIcon />
+              <span className="sr-only">Close</span>
+            </DialogPrimitive.Close>
+          )}
         </DialogPrimitive.Content>
       </div>
     </DialogPortal>

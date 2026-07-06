@@ -36,13 +36,25 @@ export class ToolIndexerService {
       return;
     }
 
-    this.log.info('[chatbot-rag] Starting tool indexing on boot (background)...');
+    void (async () => {
+      // An unreachable provider is a routine local-dev state (Ollama not
+      // started) — one warn line, no stack trace, and indexing retries on
+      // the next boot or manual reindex.
+      const health = await this.embedding.health(undefined, { retries: 1 });
+      if (!health.ok) {
+        this.log.warn(
+          `[chatbot-rag] Embedding provider unreachable (${health.provider} @ ${health.baseUrl}): ${health.error}. ` +
+          `Skipping tool indexing on boot — it will retry on next boot or manual reindex.`,
+        );
+        return;
+      }
 
-    this.indexTools()
-      .then((result) => {
+      this.log.info('[chatbot-rag] Starting tool indexing on boot (background)...');
+
+      try {
+        const result = await this.indexTools();
         this.log.info('[chatbot-rag] Tool indexing complete.', result);
-      })
-      .catch((error) => {
+      } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         if (msg.includes('no such table') || msg.includes('does not exist')) {
           this.log.error?.(
@@ -52,7 +64,8 @@ export class ToolIndexerService {
         } else {
           this.log.error?.('[chatbot-rag] Tool indexing failed on boot:', error);
         }
-      });
+      }
+    })();
   }
 
   async indexTools(): Promise<{ indexed: number; skipped: number }> {

@@ -8,6 +8,7 @@ import type {
   NajmLayoutConfig,
   NajmTypographyConfig,
 } from "./design-types";
+import type { NajmMode } from "./types";
 
 interface NajmDesignContextValue {
   components: NajmComponentThemeConfig;
@@ -58,6 +59,7 @@ function layoutToStyle(layout: NajmLayoutConfig): React.CSSProperties {
 
 export interface NajmDesignProviderProps {
   config: NajmDesignConfig;
+  mode?: NajmMode;
   className?: string;
   children: React.ReactNode;
 }
@@ -69,6 +71,7 @@ export interface NajmDesignProviderProps {
  */
 export function NajmDesignProvider({
   config,
+  mode,
   className,
   children,
 }: NajmDesignProviderProps) {
@@ -92,7 +95,7 @@ export function NajmDesignProvider({
 
   return (
     <NajmDesignContext.Provider value={contextValue}>
-      <NajmThemeProvider config={config.theme} className={className}>
+      <NajmThemeProvider config={config.theme} mode={mode} className={className}>
         {layoutStyle || typographyStyle ? (
           // `display: contents` lets design CSS variables cascade to
           // children without introducing a layout box that would break height

@@ -17,10 +17,6 @@ export function NSidebarLogo({
     : typeof icon === 'function' || (typeof icon === 'object' && icon !== null && '$$typeof' in icon)
       ? React.createElement(icon as ComponentType<{ className?: string }>, { className: 'h-6 w-6 text-sidebar-primary' })
       : icon;
-  // When collapsed, nudge the box back to the rail's center: rail/2 − boxHalf(1.25rem) − headerPad(1rem).
-  const collapsedCenter = collapsed
-    ? { marginLeft: 'calc(var(--rail, 4rem) / 2 - 2.25rem)' }
-    : undefined;
   return (
     <button
       type="button"
@@ -32,8 +28,10 @@ export function NSidebarLogo({
     >
       {IconNode && (
         <div
-          className="size-10 rounded-lg bg-sidebar-primary/10 flex items-center justify-center shrink-0"
-          style={collapsedCenter}
+          className={cn(
+            "size-10 rounded-lg bg-sidebar-primary/10 flex items-center justify-center shrink-0",
+            collapsed && "ml-[calc((var(--rail,4rem)-var(--sidebar-edge-width,0px))/2-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem))]"
+          )}
         >
           {IconNode}
         </div>

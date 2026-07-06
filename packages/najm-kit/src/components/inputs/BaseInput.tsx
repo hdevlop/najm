@@ -27,7 +27,7 @@ const PRESETS: Record<string, string> = {
 };
 
 const inputVariants = cva(
-  "relative w-full flex items-center h-10 bg-card overflow-hidden transition-colors",
+  "relative w-full flex items-center h-10 bg-card text-foreground overflow-hidden transition-colors",
   {
     variants: {
       variant: {

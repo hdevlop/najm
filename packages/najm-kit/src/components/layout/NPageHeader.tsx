@@ -86,8 +86,8 @@ export function NPageHeader({ icon: Icon, title, subtitle, actions, filters, top
       style={recipeStyle}
       className={cn(
         isCard
-          ? cn("rounded-xl bg-card shadow-none", surfaceBorderClasses(true))
-          : cn("border-b", surfaceBorderClasses(true, 'bottom').replace('najm-border-b', 'najm-border-b')),
+          ? cn("rounded-xl bg-card text-card-foreground shadow-none", surfaceBorderClasses(true))
+          : cn("border-b bg-background text-foreground", surfaceBorderClasses(true, 'bottom').replace('najm-border-b', 'najm-border-b')),
         className
       )}
     >

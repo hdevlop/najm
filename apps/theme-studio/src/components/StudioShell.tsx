@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
-import { NButton, Toaster } from "najm-kit";
+import { NButton, Toaster, type NajmTypographyConfig } from "najm-kit";
 import { useStudio } from "../app/studio-store";
 import { SettingsSidebar } from "./settings-sidebar";
 import { PreviewCanvas } from "./PreviewCanvas";
@@ -9,6 +9,30 @@ import { ImportDialog } from "./ImportPanel";
 import { ExportDialog } from "./ExportPanel";
 
 const AUTOSAVE_DELAY_MS = 3000;
+const TYPOGRAPHY_SCALE_FACTOR: Record<NonNullable<NajmTypographyConfig["scale"]>, string> = {
+  compact: "0.95",
+  default: "1",
+  comfortable: "1.05",
+};
+
+function typographyStyle(typography: NajmTypographyConfig | undefined): CSSProperties | undefined {
+  if (!typography) return undefined;
+
+  const style: Record<string, string> = {
+    fontFamily: "var(--font-sans, ui-sans-serif, system-ui, sans-serif)",
+    fontSize: "var(--font-size-base, 14px)",
+    lineHeight: "var(--line-height-base, 1.5)",
+    letterSpacing: "var(--letter-spacing-base, 0)",
+  };
+  if (typography.fontSans) style["--font-sans"] = typography.fontSans;
+  if (typography.fontHeading) style["--font-heading"] = typography.fontHeading;
+  if (typography.fontMono) style["--font-mono"] = typography.fontMono;
+  if (typography.baseSize) style["--font-size-base"] = typography.baseSize;
+  if (typography.lineHeight) style["--line-height-base"] = typography.lineHeight;
+  if (typography.letterSpacing) style["--letter-spacing-base"] = typography.letterSpacing;
+  if (typography.scale) style["--font-scale"] = TYPOGRAPHY_SCALE_FACTOR[typography.scale];
+  return style as CSSProperties;
+}
 
 export function StudioShell() {
   const router = useRouter();
@@ -28,6 +52,10 @@ export function StudioShell() {
   const [lastSavedKind, setLastSavedKind] = useState<"style" | "draft">("style");
   const [saveError, setSaveError] = useState<string | undefined>();
   const savingRef = useRef(false);
+  const shellTypographyStyle = useMemo(
+    () => typographyStyle(config.typography),
+    [config.typography],
+  );
 
   const saveSelectedStyle = useCallback(async () => {
     if (!activeProjectId || !activeStyleId || savingRef.current) return undefined;
@@ -91,7 +119,11 @@ export function StudioShell() {
   }
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden bg-background text-foreground md:flex-row">
+    <div
+      data-najm-design-vars=""
+      className="flex h-screen flex-col overflow-hidden bg-background text-foreground md:flex-row"
+      style={shellTypographyStyle}
+    >
       <aside className="h-80 shrink-0 overflow-y-auto border-b border-border bg-card md:h-auto md:w-64 md:border-b-0 md:border-r">
         <SettingsSidebar
           saving={saving}

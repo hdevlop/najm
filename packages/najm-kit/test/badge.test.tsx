@@ -15,7 +15,7 @@ describe("Badge", () => {
   test("exports variant helpers", () => {
     expect(typeof badgeVariants).toBe("function");
     expect(typeof badgeColorVariants).toBe("function");
-    expect(badgeColorVariants({ color: "success", look: "soft" })).toContain("emerald");
+    expect(badgeColorVariants({ color: "success", look: "soft" })).toContain("bg-success/10");
   });
 
   test("renders primitive badge with string icon", () => {

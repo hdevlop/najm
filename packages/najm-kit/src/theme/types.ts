@@ -64,7 +64,7 @@ export interface NajmThemeConfig {
    * Per-mode token overrides authored on top of the composed preset. Keeps
    * light and dark customizations independent: editing a token in one mode
    * records it here so it survives switching to the other mode and back.
-   * The provider ignores this field — consumers compose `tokens` from it.
+   * Providers resolve this field on top of the composed mode/accent preset.
    */
   overrides?: Partial<Record<NajmMode, NajmThemeTokens>>;
   accentOnly?: boolean;

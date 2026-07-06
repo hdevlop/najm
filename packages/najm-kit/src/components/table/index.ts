@@ -4,7 +4,7 @@ export { NTableCards } from "./NTableCards";
 export { NTablePagination } from "./NTablePagination";
 export { NTableHeader } from "./NTableHeader";
 export { NTableJson } from "./NTableJson";
-export { NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
+export { NTableCardsLoadingSkeleton, NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
 export { NDataCardShell, type NDataCardShellProps, type NDataCardShellActions } from "./NDataCardShell";
 export { NTableCardRoot, type NTableCardRootProps } from "./NTableCardRoot";
 export { NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, type NFileBrowserProps, type NFileBrowserCardProps, type NFileBrowserRenderThumbProps, type FileNode, type FileBrowserMode, type BuildDefaultFileColumnsOptions } from "./NFileBrowser";

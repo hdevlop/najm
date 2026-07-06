@@ -27,6 +27,7 @@ export function useDialog(store?: DialogStore): DialogApi {
             itemName: options.itemName,
             itemType: options.itemType,
             icon: options.icon,
+            warningText: options.warningText,
             title: dialog.title,
             description: dialog.description,
             confirmText: dialog.primaryButton?.text,

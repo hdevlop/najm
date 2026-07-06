@@ -15,6 +15,12 @@ export interface SessionCookieData {
   };
   roles: string[];
   permissions: string[];
+  /**
+   * Per-user session version captured when the cookie was written. Lets the
+   * fast-path reader reject a cookie whose session has since been invalidated
+   * (password change/reset, logout-all) without hitting the database.
+   */
+  sessionVersion: number;
   /** Epoch ms when the cookie was written */
   iat: number;
 }
@@ -26,6 +32,10 @@ export class CookieManager {
 
   private get cookieName(): string {
     return this.config.refreshCookieName || 'refreshToken';
+  }
+
+  private get refreshCookiePath(): string {
+    return this.config.refreshCookiePath || '/';
   }
 
   private get sessionCookieName(): string {
@@ -46,11 +56,12 @@ export class CookieManager {
 
   setRefreshToken(refreshToken: string): void {
     const maxAge = timestring(this.config.jwt.refreshExpiresIn, 's');
-    this.cookieService.set(this.cookieName, refreshToken, { maxAge });
+    this.cookieService.set(this.cookieName, refreshToken, { maxAge, path: this.refreshCookiePath });
   }
 
   clearRefreshToken(): void {
-    this.cookieService.delete(this.cookieName);
+    // Path must match how the cookie was set, or the browser won't clear it.
+    this.cookieService.delete(this.cookieName, { path: this.refreshCookiePath });
   }
 
   getRefreshToken(): string | undefined {

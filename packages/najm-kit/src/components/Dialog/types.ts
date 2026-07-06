@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
 import type { DialogSize, DialogWidth, DialogHeight } from "../../lib/types";
 import type { NIconSource } from "../Icon";
+import type { NPageHeaderProps } from "../layout/NPageHeader";
+import type { DialogPadding } from "./Dialog";
 
 export type DialogActionMode = "auto" | "dialog" | "content";
 
@@ -32,6 +34,10 @@ export interface DialogConfig {
   id: string;
   title?: string;
   description?: string;
+  /** Renders an NPageHeader as the dialog's header (icon, title, subtitle, actions). Replaces the plain title/description header; `title` is still used as the accessible label. */
+  pageHeader?: NPageHeaderProps;
+  /** Padding preset for the dialog surface. `none` is ideal for full-bleed content (custom headers, tables). Defaults to `md`. */
+  padding?: DialogPadding;
   children?: ReactNode;
   primaryButton?: ButtonConfig;
   secondaryButton?: ButtonConfig;
@@ -53,6 +59,10 @@ export interface PromiseDialogConfig extends DialogConfig {
 export interface PushDialogOptions {
   title?: string;
   description?: string;
+  /** Renders an NPageHeader as the dialog's header (icon, title, subtitle, actions). Replaces the plain title/description header; `title` is still used as the accessible label. */
+  pageHeader?: NPageHeaderProps;
+  /** Padding preset for the dialog surface. `none` is ideal for full-bleed content (custom headers, tables). Defaults to `md`. */
+  padding?: DialogPadding;
   children?: ReactNode;
   primaryButton?: Partial<ButtonConfig>;
   secondaryButton?: Partial<ButtonConfig>;
@@ -77,6 +87,7 @@ export interface DeleteDialogOptions {
   itemName: string;
   itemType?: string;
   icon?: NIconSource;
+  warningText?: string;
   confirmText?: string;
   cancelText?: string;
   size?: DialogSize;

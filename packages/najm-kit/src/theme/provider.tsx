@@ -2,7 +2,9 @@ import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import type {
   NajmAppearance,
+  NajmMode,
   NajmRadiusScale,
+  NajmThemeConfig,
   NajmThemeProviderProps,
   NajmThemeTokens,
 } from './types';
@@ -49,6 +51,46 @@ function radiusToStyle(radius: string, scale: NajmRadiusScale): React.CSSPropert
   return style as React.CSSProperties;
 }
 
+function resolveThemeTokens({
+  preset,
+  mode,
+  accent,
+  explicitTokens,
+  configTokens,
+  configMode,
+  overrides,
+}: {
+  preset: NajmThemeProviderProps['preset'] | undefined;
+  mode: NajmMode | undefined;
+  accent: NajmThemeProviderProps['accent'] | undefined;
+  explicitTokens: NajmThemeTokens | undefined;
+  configTokens: NajmThemeTokens | undefined;
+  configMode: NajmMode | undefined;
+  overrides: NajmThemeConfig['overrides'];
+}): NajmThemeTokens | null {
+  if (explicitTokens) return explicitTokens;
+
+  const tokenMode = mode ?? configMode;
+  const modeOverrides = tokenMode ? overrides?.[tokenMode] : undefined;
+  const tokensMatchMode = !configMode || !tokenMode || configMode === tokenMode;
+  const scopedTokens = tokensMatchMode ? configTokens : undefined;
+
+  if (preset) {
+    return { ...resolvePreset(preset), ...(scopedTokens ?? {}), ...(modeOverrides ?? {}) };
+  }
+
+  if (tokenMode) {
+    return {
+      ...composePreset(tokenMode, accent ?? 'neutral'),
+      ...(scopedTokens ?? {}),
+      ...(modeOverrides ?? {}),
+    };
+  }
+
+  if (scopedTokens || modeOverrides) return { ...(scopedTokens ?? {}), ...(modeOverrides ?? {}) };
+  return null;
+}
+
 // Tracks whether a parent NajmThemeProvider already exists in the tree.
 // Used so the depth context still flows through nested providers for
 // appearance/context propagation; with root mirroring removed, the depth
@@ -87,23 +129,31 @@ export function NajmThemeProvider({
   const effectivePreset = preset ?? config?.preset;
   const effectiveMode = mode ?? config?.mode;
   const effectiveAccent = accent ?? config?.accent;
-  const effectiveTokens = tokens ?? config?.tokens;
   const effectiveAccentOnly = accentOnly ?? config?.accentOnly;
   const effectiveRadius = radius ?? config?.radius;
   const effectiveRadiusScale = radiusScale ?? config?.radiusScale ?? 'shadcn';
   const effectiveSpacing = spacing ?? config?.spacing;
   const effectiveBorderWidth = appearance?.borderWidth ?? config?.appearance?.borderWidth;
 
-  // Opt-in: only inject token style when the caller or JSON config overrides
-  // the cascade. A bare provider is a no-op so :root/.dark owns theming.
-  const shouldApplyThemeTokens = Boolean(effectivePreset || effectiveMode || effectiveTokens);
-
   const resolved: NajmThemeTokens | null = React.useMemo(() => {
-    if (!shouldApplyThemeTokens) return null;
-    if (effectiveTokens) return effectiveTokens;
-    if (effectivePreset) return resolvePreset(effectivePreset);
-    return composePreset(effectiveMode!, effectiveAccent ?? 'neutral');
-  }, [effectivePreset, effectiveMode, effectiveAccent, effectiveTokens, shouldApplyThemeTokens]);
+    return resolveThemeTokens({
+      preset: effectivePreset,
+      mode: effectiveMode,
+      accent: effectiveAccent,
+      explicitTokens: tokens,
+      configTokens: config?.tokens,
+      configMode: config?.mode,
+      overrides: config?.overrides,
+    });
+  }, [
+    effectivePreset,
+    effectiveMode,
+    effectiveAccent,
+    tokens,
+    config?.tokens,
+    config?.mode,
+    config?.overrides,
+  ]);
 
   const style = React.useMemo(
     () => {
@@ -125,6 +175,12 @@ export function NajmThemeProvider({
   );
   const Comp: any = asChild ? Slot : 'div';
   const [container, setContainer] = React.useState<HTMLElement | null>(null);
+  const containerRef = React.useRef<HTMLElement | null>(null);
+  const handleContainerRef = React.useCallback((node: HTMLElement | null) => {
+    if (containerRef.current === node) return;
+    containerRef.current = node;
+    setContainer(node);
+  }, []);
 
   const resolvedAppearance = React.useMemo<NajmAppearance>(
     () => ({ ...parentAppearance, ...(config?.appearance ?? {}), ...(appearance ?? {}) }),
@@ -136,7 +192,8 @@ export function NajmThemeProvider({
       <NajmAppearanceContext.Provider value={resolvedAppearance}>
         <NajmThemeContainerCtx.Provider value={container}>
           <Comp
-            ref={setContainer}
+            ref={handleContainerRef}
+            suppressHydrationWarning
             data-najm-theme={effectivePreset ?? `${effectiveMode ?? 'light'}-${effectiveAccent ?? 'neutral'}`}
             className={className}
             style={style}

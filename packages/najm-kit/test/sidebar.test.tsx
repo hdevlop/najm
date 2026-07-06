@@ -177,6 +177,27 @@ describe("Sidebar", () => {
     expect(container.textContent).toContain("Studio");
   });
 
+  test("centers logo and nav icons in collapsed rail with spacing-aware offsets", () => {
+    const { container } = render(
+      <NSidebar navItems={navItems} logoIcon={FakeIcon} logoTitle="Studio" collapsed />
+    );
+    const desktopSidebar = Array.from(container.querySelectorAll("aside")).find((aside) =>
+      aside.className.includes("md:flex")
+    ) as HTMLElement;
+    const header = desktopSidebar.querySelector("div") as HTMLElement;
+    const navItem = Array.from(desktopSidebar.querySelectorAll("button")).find((button) =>
+      button.className.includes("bg-sidebar-primary") || button.className.includes("text-sidebar-foreground")
+    ) as HTMLElement;
+    const logoBox = header.querySelector(".size-10") as HTMLElement;
+
+    expect(header.className).toContain("justify-start");
+    expect(desktopSidebar.getAttribute("style") ?? "").toContain("--sidebar-edge-width");
+    expect(logoBox.className).toContain("var(--spacing");
+    expect(logoBox.className).not.toContain("2.25rem");
+    expect(navItem.className).toContain("var(--spacing");
+    expect(navItem.className).not.toContain("justify-center");
+  });
+
   test("collapses from the sidebar header button", () => {
     const { container } = render(<NSidebar navItems={navItems} logoTitle="Studio" />);
     const desktopSidebar = Array.from(container.querySelectorAll("aside")).find((aside) =>

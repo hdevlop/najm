@@ -3,7 +3,6 @@
  * Loads Tailwind v4 + najm-kit's theme contract, and scans the kit source so
  * utility classes used inside najm-kit components are emitted.
  */
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&family=Libre+Baskerville:wght@400;700&family=Lora:wght@400;500;600;700&family=Manrope:wght@400;500;600;700&family=Merriweather:wght@400;700&family=Outfit:wght@400;500;600;700&family=Playfair+Display:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;500;600&family=Sora:wght@400;500;600;700&family=Source+Code+Pro:wght@400;500;600&family=Source+Sans+3:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&family=Work+Sans:wght@400;500;600;700&display=swap");
 @import "tailwindcss";
 @import "najm-kit/theme.css";
 
@@ -43,10 +42,29 @@ body {
   font-size: var(--font-size-base, 14px);
   line-height: var(--line-height-base, 1.5);
   letter-spacing: var(--letter-spacing-base, 0);
+  --text-xs: calc(var(--font-size-base, 14px) * 0.857142857 * var(--font-scale, 1));
+  --text-xs--line-height: var(--line-height-base, 1.5);
+  --text-sm: calc(var(--font-size-base, 14px) * var(--font-scale, 1));
+  --text-sm--line-height: var(--line-height-base, 1.5);
+  --text-base: calc(var(--font-size-base, 14px) * 1.142857143 * var(--font-scale, 1));
+  --text-base--line-height: var(--line-height-base, 1.5);
+  --text-lg: calc(var(--font-size-base, 14px) * 1.285714286 * var(--font-scale, 1));
+  --text-lg--line-height: var(--line-height-base, 1.5);
+  --text-xl: calc(var(--font-size-base, 14px) * 1.428571429 * var(--font-scale, 1));
+  --text-xl--line-height: var(--line-height-base, 1.5);
 }
 
-.theme-studio [data-najm-design-vars] :where(h1, h2, h3, h4, h5, h6),
-.theme-studio [data-najm-design-vars] .theme-preview :where(.font-semibold, .font-medium) {
+.theme-studio [data-najm-design-vars] :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  [data-slot="card-title"],
+  [data-slot="dialog-title"],
+  [data-slot="sheet-title"]
+) {
   font-family: var(--font-heading, var(--font-sans, ui-sans-serif, system-ui, sans-serif));
 }
 

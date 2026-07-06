@@ -1,16 +1,31 @@
 import { Injectable, Inject } from 'najm-core';
 import { Err, Log, type ILogger } from 'najm-core';
 import { I18n, I18nService, type TFn } from 'najm-i18n';
-import { EmailService, passwordResetTemplate } from 'najm-email';
+import { EmailService, passwordResetTemplate, accountInviteTemplate } from 'najm-email';
+import { nanoid } from 'nanoid';
 import { UserService, type SanitizedUser } from '../users/UserService';
 import { UserValidator } from '../users/UserValidator';
 import { CookieManager } from './CookieManager';
 import { TokenService } from '../tokens/TokenService';
 import { EncryptionService } from './EncryptionService';
 import type { TokenPair, AuthUser, AuthConfig } from '../types';
-import type { CreateUserDto, LoginDto } from '../users/UserDto';
+import type { RegisterDto, LoginDto } from '../users/UserDto';
 import { AUTH_CONFIG } from '../auth.tokens';
 import timestring from 'timestring';
+
+/**
+ * Identity fields for creating a user behind a person record (parent, student,
+ * teacher, staff…). Role can be given by name (`role`) or id (`roleId`).
+ */
+export type ProvisionUserInput = {
+  id?: string;
+  name?: string;
+  email: string;
+  role?: string;
+  roleId?: string;
+  image?: string | null;
+  status?: 'active' | 'inactive' | 'pending';
+};
 
 @Injectable()
 export class AuthService {
@@ -50,8 +65,95 @@ export class AuthService {
   }
 
 
-  async registerUser(body: CreateUserDto): Promise<SanitizedUser> {
-    return await this.userService.create(body);
+  async registerUser(body: RegisterDto): Promise<SanitizedUser> {
+    // Self-registration must never carry privileged fields. registerDto already
+    // strips roleId/status/emailVerified, but we re-assert the safe shape here so
+    // the service is not implicitly trusting its caller: role comes from the
+    // configured defaultRole, status from registrationMode, verification stays false.
+    return await this.userService.create({
+      name: body.name,
+      email: body.email,
+      password: body.password,
+      image: body.image,
+      emailVerified: false,
+    });
+  }
+
+  /**
+   * Admin-initiated account creation. The user is created with a random,
+   * unusable password (the schema requires one) and then emailed a one-time
+   * link to set their own. They can't log in until they do, since they never
+   * learn the random password.
+   *
+   * Email is best-effort: a send failure logs a warning but never rolls back
+   * account creation (and with the console provider, nothing is actually sent).
+   */
+  async inviteUser(body: ProvisionUserInput): Promise<SanitizedUser & { emailSent: boolean }> {
+    // Random password satisfies the NOT NULL column + strength check; the
+    // invitee never receives it and overwrites it via the invite link.
+    const randomPassword = `${nanoid(24)}Aa1!`;
+
+    const user = await this.userService.create({
+      id: body.id,
+      name: body.name,
+      email: body.email,
+      role: body.role,
+      roleId: body.roleId,
+      image: body.image,
+      password: randomPassword,
+      status: body.status ?? 'active',
+      emailVerified: false,
+    });
+
+    const { token } = await this.tokenService.generateInviteToken(user.id);
+    const inviteLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
+
+    // Unlike forgot-password (which stays silent to prevent enumeration), invite
+    // is an admin action — surface whether the mail actually left so the caller
+    // can resend or fall back to sharing the link out-of-band.
+    let emailSent = false;
+    try {
+      await this.emailService.sendHtml(
+        body.email,
+        this.t('emails.accountInvite.subject'),
+        accountInviteTemplate({
+          inviteLink,
+          userName: (user as any).name || body.email,
+        })
+      );
+      emailSent = true;
+    } catch (error) {
+      this.logger.warn('Account invite email failed', { email: body.email, error });
+    }
+
+    return { ...user, emailSent };
+  }
+
+  /**
+   * Create a login for a person record. The branch is intentional and is the
+   * single rule callers rely on:
+   *   - password provided  → set it directly, NO email (seeding / imports)
+   *   - no password        → random password + emailed set-password invite
+   *
+   * Returns the created (sanitized) user so the caller can link `userId`.
+   */
+  async provisionUser(body: ProvisionUserInput & { password?: string | null }): Promise<SanitizedUser> {
+    const password = typeof body.password === 'string' ? body.password.trim() : '';
+
+    if (password) {
+      return this.userService.create({
+        id: body.id,
+        name: body.name,
+        email: body.email,
+        role: body.role,
+        roleId: body.roleId,
+        image: body.image,
+        password,
+        status: body.status ?? 'active',
+      });
+    }
+
+    return this.inviteUser(body);
   }
 
   async loginUser(body: LoginDto): Promise<TokenPair & { user: SanitizedUser }> {
@@ -88,6 +190,10 @@ export class AuthService {
       Err(this.t('errors.accountInactive'));
     }
 
+    if (this.config.requireVerifiedEmail && !user.emailVerified) {
+      Err(this.t('errors.emailNotVerified'), 403);
+    }
+
     if ((user.failedLoginAttempts ?? 0) > 0 || user.lockoutUntil) {
       await this.userService.resetFailedAttempts(user.id);
     }
@@ -102,14 +208,15 @@ export class AuthService {
     const { password: _, failedLoginAttempts: __, lockoutUntil: ___, ...sanitized } = user;
 
     // Cache session in signed cookie for instant SSR reads.
-    const { roles, permissions } = generated;
+    const { roles, permissions, sessionVersion } = generated;
     this.cookieManager.setSessionCookie({
       user: { id: sanitized.id, email: sanitized.email, name: (sanitized as any).name, role: (sanitized as any).role, status: sanitized.status ?? undefined },
       roles,
       permissions,
+      sessionVersion,
     });
 
-    const { userId: _userId, tokenFamily: _tokenFamily, roles: _roles, permissions: _permissions, ...tokens } = generated;
+    const { userId: _userId, tokenFamily: _tokenFamily, roles: _roles, permissions: _permissions, sessionVersion: _sv, ...tokens } = generated;
     return { ...tokens, user: sanitized };
   }
 
@@ -124,10 +231,11 @@ export class AuthService {
         user: { id: user.id, email: user.email, name: (user as any).name, role: (user as any).role, status: (user as any).status ?? undefined },
         roles: generated.roles,
         permissions: generated.permissions,
+        sessionVersion: generated.sessionVersion,
       });
     }
 
-    const { userId: _userId, tokenFamily: _tokenFamily, roles: _roles, permissions: _permissions, ...tokens } = generated;
+    const { userId: _userId, tokenFamily: _tokenFamily, roles: _roles, permissions: _permissions, sessionVersion: _sv, ...tokens } = generated;
     return tokens;
   }
 
@@ -172,7 +280,7 @@ export class AuthService {
    */
   async getMe(authorization?: string): Promise<SanitizedUser & { language: string }> {
     let result: SanitizedUser & { language: string };
-    let cachePayload: { roles: string[]; permissions: string[] } | null = null;
+    let cachePayload: { roles: string[]; permissions: string[]; sessionVersion: number } | null = null;
 
     if (authorization) {
       const user = await this.tokenService.getUser(authorization);
@@ -180,7 +288,7 @@ export class AuthService {
         const lang = this.i18nService.getCurrentLanguage();
         result = { ...user, language: lang };
         const token = this.tokenService.decodeAccessToken(authorization.replace(/^Bearer\s+/i, ''));
-        cachePayload = { roles: token?.roles ?? [], permissions: token?.permissions ?? [] };
+        cachePayload = { roles: token?.roles ?? [], permissions: token?.permissions ?? [], sessionVersion: token?.sessionVersion ?? 0 };
       } else {
         result = await this.getUserFromCookie();
       }
@@ -194,6 +302,7 @@ export class AuthService {
         user: { id: result.id, email: result.email, name: (result as any).name, role: (result as any).role, status: (result as any).status ?? undefined },
         roles: cachePayload.roles,
         permissions: cachePayload.permissions,
+        sessionVersion: cachePayload.sessionVersion,
       });
     }
 

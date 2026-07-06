@@ -9,6 +9,7 @@ import { CookieManager } from '../src/auth/CookieManager';
 import { EncryptionService } from '../src/auth/EncryptionService';
 import { clean } from '../src/shared';
 import { TokenService } from '../src/tokens/TokenService';
+import { registerDto } from '../src/users/UserDto';
 
 const authConfig = {
   jwt: {
@@ -84,7 +85,51 @@ describe('auth security regressions', () => {
     expect(await (service as any).getDummyHash()).toBe(dummyHash);
   });
 
-  test('valid session cookie bypasses token and database resolution', async () => {
+  test('registerDto strips privileged fields (no self-assigned role/status/verification)', () => {
+    const parsed = registerDto.parse({
+      name: 'Mallory',
+      email: 'mallory@evil.com',
+      password: 'Passw0rd',
+      roleId: 'role_admin',
+      status: 'active',
+      emailVerified: true,
+      isAdmin: true,
+    } as any);
+
+    expect(parsed).toEqual({ name: 'Mallory', email: 'mallory@evil.com', password: 'Passw0rd' });
+    expect('roleId' in parsed).toBe(false);
+    expect('status' in parsed).toBe(false);
+    expect('emailVerified' in parsed).toBe(false);
+  });
+
+  test('registerUser never forwards privileged fields to user creation', async () => {
+    let received: Record<string, unknown> | undefined;
+    const service = new AuthService(
+      {} as any,
+      { create: async (data: Record<string, unknown>) => { received = data; return { id: 'u1' }; } } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {} as any,
+    );
+
+    // Even if a privileged field slips past the DTO layer, the service must not relay it.
+    await service.registerUser({
+      email: 'x@test.com',
+      password: 'Passw0rd',
+      roleId: 'role_admin',
+      status: 'active',
+      emailVerified: true,
+    } as any);
+
+    expect(received).toBeDefined();
+    expect(received!.roleId).toBeUndefined();
+    expect(received!.status).toBeUndefined();
+    expect(received!.emailVerified).toBe(false);
+  });
+
+  test('valid session cookie resolves via a cache-only version check, no database', async () => {
     let middleware: ((ctx: any, next: () => Promise<void>) => Promise<void>) | undefined;
     const resolved: unknown[] = [];
     const writes: Array<{ token: unknown; value: unknown }> = [];
@@ -102,11 +147,16 @@ describe('auth security regressions', () => {
               user: { id: 'user-1', email: 'user@test.com', role: 'admin' },
               roles: ['admin'],
               permissions: ['read:users'],
+              sessionVersion: 0,
               iat: Date.now(),
             }),
           };
         }
-        throw new Error('TokenService should not be resolved on the session-cookie hot path');
+        if (target === TokenService) {
+          // Cache-only version check — must NOT hit the database.
+          return { getSessionVersion: async () => 0 };
+        }
+        throw new Error('unexpected resolve target');
       },
       isActive: () => true,
       set: (token: unknown, value: unknown) => writes.push({ token, value }),
@@ -116,8 +166,52 @@ describe('auth security regressions', () => {
     let nextCalls = 0;
     await middleware!({ req: { header: () => undefined } }, async () => { nextCalls++; });
 
-    expect(resolved).toEqual([CookieManager]);
+    expect(resolved).toEqual([CookieManager, TokenService]);
     expect(writes).toHaveLength(3);
+    expect(nextCalls).toBe(1);
+  });
+
+  test('session cookie is rejected when its stamped version is stale', async () => {
+    let middleware: ((ctx: any, next: () => Promise<void>) => Promise<void>) | undefined;
+    const writes: Array<{ token: unknown; value: unknown }> = [];
+    const resolver = new AuthResolver();
+    (resolver as any).app = {
+      use: (_path: string, handler: typeof middleware) => { middleware = handler; },
+    };
+    (resolver as any).log = { warn: () => undefined, debug: () => undefined };
+    (resolver as any).container = {
+      resolve: async (target: unknown) => {
+        if (target === CookieManager) {
+          return {
+            getSessionCookie: () => ({
+              user: { id: 'user-1', email: 'user@test.com', role: 'admin' },
+              roles: ['admin'],
+              permissions: ['read:users'],
+              sessionVersion: 0, // written before the session was invalidated
+              iat: Date.now(),
+            }),
+            // No refresh cookie, so the DB fallback also resolves to nothing.
+            getRefreshToken: () => undefined,
+          };
+        }
+        if (target === TokenService) {
+          return {
+            getSessionVersion: async () => 1, // session was invalidated since
+            getUserFromCookie: async () => { throw Object.assign(new Error('no cookie'), { status: 401 }); },
+          };
+        }
+        throw new Error('unexpected resolve target');
+      },
+      isActive: () => true,
+      set: (token: unknown, value: unknown) => writes.push({ token, value }),
+    };
+
+    await resolver.activate();
+    let nextCalls = 0;
+    await middleware!({ req: { header: () => undefined } }, async () => { nextCalls++; });
+
+    // Stale cookie rejected → no USER/ROLE/PERMISSIONS written, request continues unauthenticated.
+    expect(writes).toHaveLength(0);
     expect(nextCalls).toBe(1);
   });
 

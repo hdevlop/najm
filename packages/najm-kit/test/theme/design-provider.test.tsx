@@ -59,4 +59,47 @@ describe("NajmDesignProvider", () => {
     );
     expect(getByText("Aliased").className).toContain("alias-applied");
   });
+
+  test("resolves root tokens and active-mode overrides from design config", () => {
+    const config = defineNajmDesignConfig({
+      version: 1,
+      theme: {
+        mode: "light",
+        accent: "emerald",
+        tokens: { background: "light-root", primary: "light-primary" },
+        overrides: { light: { primary: "light-override" } },
+      },
+    });
+    const { container } = render(
+      <NajmDesignProvider config={config}>
+        <span>Theme</span>
+      </NajmDesignProvider>,
+    );
+
+    const theme = container.querySelector("[data-najm-theme]") as HTMLElement;
+    expect(theme.style.getPropertyValue("--background")).toBe("light-root");
+    expect(theme.style.getPropertyValue("--primary")).toBe("light-override");
+  });
+
+  test("mode prop resolves another mode without leaking root tokens", () => {
+    const config = defineNajmDesignConfig({
+      version: 1,
+      theme: {
+        mode: "light",
+        accent: "emerald",
+        tokens: { background: "light-root", primary: "light-primary" },
+        overrides: { dark: { primary: "dark-override" } },
+      },
+    });
+    const { container } = render(
+      <NajmDesignProvider config={config} mode="dark">
+        <span>Theme</span>
+      </NajmDesignProvider>,
+    );
+
+    const theme = container.querySelector("[data-najm-theme]") as HTMLElement;
+    expect(theme.getAttribute("data-najm-theme")).toBe("dark-emerald");
+    expect(theme.style.getPropertyValue("--background")).not.toBe("light-root");
+    expect(theme.style.getPropertyValue("--primary")).toBe("dark-override");
+  });
 });

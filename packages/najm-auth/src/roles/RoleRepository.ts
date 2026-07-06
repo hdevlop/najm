@@ -12,6 +12,17 @@ export class RoleRepository {
   @Inject(AUTH_SCHEMA) private schema: AuthSchema;
 
   private get roles() { return this.schema.roles; }
+  private get users() { return this.schema.users; }
+
+  /** True if any user currently references this role (blocks deletion). */
+  async hasUsers(roleId: string): Promise<boolean> {
+    const rows = await this.db
+      .select({ id: this.users.id })
+      .from(this.users)
+      .where(eq(this.users.roleId, roleId))
+      .limit(1);
+    return rows.length > 0;
+  }
 
   async getAll(): Promise<RoleEntity[]> {
     return await this.db.select().from(this.roles);

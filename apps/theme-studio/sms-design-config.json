@@ -1,0 +1,92 @@
+{
+  "theme": {
+    "mode": "light",
+    "accent": "emerald",
+    "radius": "0.625rem",
+    "radiusScale": "shadcn",
+    "tokens": {
+      "background": "oklch(1 0 0)",
+      "foreground": "oklch(0.1445 0 0)",
+      "card": "oklch(1 0 0)",
+      "card-foreground": "oklch(0.1445 0 0)",
+      "popover": "oklch(1 0 0)",
+      "popover-foreground": "oklch(0.1445 0 0)",
+      "secondary": "oklch(0.9703 0 0)",
+      "secondary-foreground": "oklch(0.2044 0 0)",
+      "tertiary": "oklch(0.9676 0.007 247.897)",
+      "tertiary-foreground": "oklch(0.3138 0.0453 249.447)",
+      "muted": "oklch(0.9703 0 0)",
+      "muted-foreground": "oklch(0.5555 0 0)",
+      "accent": "oklch(0.7249 0.0774 358.87)",
+      "accent-foreground": "oklch(0.42 0.12 162.368)",
+      "destructive": "oklch(0.6368 0.2078 25.326)",
+      "destructive-foreground": "oklch(0.9848 0 0)",
+      "border": "oklch(0.5555 0 0)",
+      "input": "oklch(0.5555 0 0)",
+      "radius": "0.5rem",
+      "sidebar": "oklch(0.2645 0 0)",
+      "sidebar-foreground": "oklch(1 0 0)",
+      "sidebar-primary": "oklch(0.5227 0.1920 9.5005)",
+      "sidebar-primary-foreground": "oklch(0.9848 0 0)",
+      "sidebar-accent": "oklch(0.9703 0 0)",
+      "sidebar-accent-foreground": "oklch(0.2044 0 0)",
+      "sidebar-border": "oklch(0.9219 0 0)",
+      "sidebar-ring": "oklch(0.5227 0.1920 9.5005)",
+      "primary": "oklch(0.5227 0.1920 9.5005)",
+      "primary-foreground": "oklch(1 0 0)",
+      "ring": "oklch(0.6902 0.1481 162.368)",
+      "chart-2": "oklch(0.6136 0.2482 28.91)",
+      "chart-3": "oklch(0.5976 0.1922 255.07)"
+    },
+    "overrides": {
+      "light": {
+        "accent": "oklch(0.7249 0.0774 358.87)",
+        "border": "oklch(0.5555 0 0)",
+        "input": "oklch(0.5555 0 0)",
+        "sidebar": "oklch(0.2645 0 0)",
+        "sidebar-foreground": "oklch(1 0 0)",
+        "sidebar-primary": "oklch(0.5227 0.1920 9.5005)",
+        "sidebar-ring": "oklch(0.5227 0.1920 9.5005)",
+        "primary": "oklch(0.5227 0.1920 9.5005)",
+        "chart-2": "oklch(0.6136 0.2482 28.91)",
+        "chart-3": "oklch(0.5976 0.1922 255.07)"
+      },
+      "dark": {
+        "accent": "oklch(0.5227 0.1920 9.5005)",
+        "border": "oklch(0.6374 0.0029 286.32)",
+        "input": "oklch(0.6374 0.0029 286.32)",
+        "sidebar-primary": "oklch(0.5227 0.1920 9.5005)",
+        "sidebar-ring": "oklch(0.5227 0.1920 9.5005)",
+        "primary": "oklch(0.5227 0.1920 9.5005)"
+      }
+    }
+  },
+  "version": 1,
+  "typography": {
+    "fontSans": "Plus Jakarta Sans, ui-sans-serif, system-ui, sans-serif",
+    "fontHeading": "Space Grotesk, ui-sans-serif, system-ui, sans-serif",
+    "fontMono": "Roboto Mono, ui-monospace, monospace",
+    "baseSize": "14px",
+    "scale": "default",
+    "lineHeight": "1.5",
+    "letterSpacing": "0"
+  },
+  "components": {
+    "pageHeader": {
+      "card": true
+    },
+    "sidebar": {
+      "showSectionSeparators": true,
+      "showSectionLabels": true,
+      "slots": {
+        "content": {
+          "paddingTop": "48px"
+        }
+      }
+    }
+  },
+  "layout": {
+    "pageGutter": "8px",
+    "sectionGap": "8px"
+  }
+}

@@ -13,6 +13,21 @@ export class AuthResolver {
   @Inject(APP) private app!: Hono;
   @Inject(LOGGER) private log!: LoggerService;
 
+  /**
+   * Missing/stale/invalid credentials (4xx) are an expected client state on
+   * these resolve paths — e.g. a refresh cookie that outlived its DB row
+   * after a reseed or rotation. Log those at debug; reserve warn for
+   * unexpected (5xx/non-HTTP) failures.
+   */
+  private logResolveMiss(message: string, error: unknown): void {
+    const status = (error as any)?.status;
+    if (typeof status === 'number' && status < 500) {
+      this.log.debug(message, error as any);
+    } else {
+      this.log.warn(message, error as any);
+    }
+  }
+
   async resolve(token: string): Promise<{ user: any; role?: string; permissions?: string[] } | false> {
     if (!token) return false;
 
@@ -28,7 +43,7 @@ export class AuthResolver {
         permissions: user.permissions,
       };
     } catch (error) {
-      this.log.warn('Token verification failed', error);
+      this.logResolveMiss('Token verification failed', error);
       return false;
     }
   }
@@ -39,6 +54,15 @@ export class AuthResolver {
       const session = cookieManager.getSessionCookie();
       if (!session) return false;
 
+      // The cookie is signed (tamper-proof) but caches roles/permissions, so a
+      // session invalidated after it was written (password change/reset,
+      // logout-all) would otherwise keep resolving. Reject the fast path when
+      // the stamped session version is behind the current one — the caller
+      // falls through to the DB-backed cookie resolver. One cache read, no DB.
+      const tokenService = await this.container.resolve(TokenService);
+      const currentVersion = await tokenService.getSessionVersion(session.user.id);
+      if ((session.sessionVersion ?? 0) !== currentVersion) return false;
+
       // Mirror the DB-backed paths: USER carries role/permissions so the
       // AuthUser contract holds regardless of which path resolved.
       return {
@@ -47,7 +71,7 @@ export class AuthResolver {
         permissions: session.permissions,
       };
     } catch (error) {
-      this.log.warn('Session cookie verification failed', error);
+      this.logResolveMiss('Session cookie verification failed', error);
       return false;
     }
   }
@@ -72,7 +96,7 @@ export class AuthResolver {
         permissions: (user as any).permissions,
       };
     } catch (error) {
-      this.log.warn('Cookie verification failed', error);
+      this.logResolveMiss('Cookie verification failed', error);
       return false;
     }
   }

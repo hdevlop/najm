@@ -56,30 +56,30 @@ const badgeColorVariants = cva(
       },
     },
     compoundVariants: [
-      { color: "primary", look: "solid", class: "bg-pink-500 text-white" },
-      { color: "primary", look: "soft", class: "bg-pink-500/10 text-pink-400 border-pink-500/20" },
-      { color: "primary", look: ["outline", "dash"], class: "text-pink-400 border-pink-500/60" },
-      { color: "secondary", look: "solid", class: "bg-indigo-500 text-white" },
-      { color: "secondary", look: "soft", class: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
-      { color: "secondary", look: ["outline", "dash"], class: "text-indigo-400 border-indigo-500/60" },
-      { color: "accent", look: "solid", class: "bg-orange-500 text-white" },
-      { color: "accent", look: "soft", class: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
-      { color: "accent", look: ["outline", "dash"], class: "text-orange-400 border-orange-500/60" },
-      { color: "neutral", look: "solid", class: "bg-slate-500 text-white" },
-      { color: "neutral", look: "soft", class: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
-      { color: "neutral", look: ["outline", "dash"], class: "text-slate-400 border-slate-500/60" },
-      { color: "info", look: "solid", class: "bg-sky-500 text-white" },
-      { color: "info", look: "soft", class: "bg-sky-500/10 text-sky-400 border-sky-500/20" },
-      { color: "info", look: ["outline", "dash"], class: "text-sky-400 border-sky-500/60" },
-      { color: "success", look: "solid", class: "bg-emerald-500 text-white" },
-      { color: "success", look: "soft", class: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20" },
-      { color: "success", look: ["outline", "dash"], class: "text-emerald-400 border-emerald-500/60" },
-      { color: "warning", look: "solid", class: "bg-amber-400 text-slate-900" },
-      { color: "warning", look: "soft", class: "bg-amber-400/10 text-amber-400 border-amber-400/20" },
-      { color: "warning", look: ["outline", "dash"], class: "text-amber-400 border-amber-400/60" },
-      { color: "destructive", look: "solid", class: "bg-red-500 text-white" },
-      { color: "destructive", look: "soft", class: "bg-red-500/10 text-red-400 border-red-500/20" },
-      { color: "destructive", look: ["outline", "dash"], class: "text-red-400 border-red-500/60" },
+      { color: "primary", look: "solid", class: "bg-primary text-primary-foreground" },
+      { color: "primary", look: "soft", class: "bg-primary/10 text-primary border-primary/20" },
+      { color: "primary", look: ["outline", "dash"], class: "text-primary border-primary/60" },
+      { color: "secondary", look: "solid", class: "bg-secondary text-secondary-foreground" },
+      { color: "secondary", look: "soft", class: "bg-secondary/10 text-secondary-foreground border-secondary/30" },
+      { color: "secondary", look: ["outline", "dash"], class: "text-secondary-foreground border-secondary/40" },
+      { color: "accent", look: "solid", class: "bg-accent text-accent-foreground" },
+      { color: "accent", look: "soft", class: "bg-accent/10 text-accent-foreground border-accent/30" },
+      { color: "accent", look: ["outline", "dash"], class: "text-accent-foreground border-accent/40" },
+      { color: "neutral", look: "solid", class: "bg-neutral text-neutral-foreground" },
+      { color: "neutral", look: "soft", class: "bg-neutral/10 text-neutral-foreground border-neutral/30" },
+      { color: "neutral", look: ["outline", "dash"], class: "text-neutral-foreground border-neutral/40" },
+      { color: "info", look: "solid", class: "bg-info text-info-foreground" },
+      { color: "info", look: "soft", class: "bg-info/10 text-info border-info/20" },
+      { color: "info", look: ["outline", "dash"], class: "text-info border-info/60" },
+      { color: "success", look: "solid", class: "bg-success text-success-foreground" },
+      { color: "success", look: "soft", class: "bg-success/10 text-success border-success/20" },
+      { color: "success", look: ["outline", "dash"], class: "text-success border-success/60" },
+      { color: "warning", look: "solid", class: "bg-warning text-warning-foreground" },
+      { color: "warning", look: "soft", class: "bg-warning/10 text-warning border-warning/20" },
+      { color: "warning", look: ["outline", "dash"], class: "text-warning border-warning/60" },
+      { color: "destructive", look: "solid", class: "bg-destructive text-destructive-foreground" },
+      { color: "destructive", look: "soft", class: "bg-destructive/10 text-destructive border-destructive/20" },
+      { color: "destructive", look: ["outline", "dash"], class: "text-destructive border-destructive/60" },
     ],
     defaultVariants: { color: "primary", look: "solid", size: "md", shape: "default" },
   }
@@ -113,12 +113,12 @@ export type BadgeProps = React.ComponentProps<"span"> & {
 };
 
 const COLOR_TEXT_MAP: Record<string, string> = {
-  success: "text-emerald-600",
-  warning: "text-amber-500",
-  accent: "text-orange-500",
-  info: "text-sky-600",
-  neutral: "text-slate-500",
-  destructive: "text-red-600",
+  success: "text-success",
+  warning: "text-warning",
+  accent: "text-accent-foreground",
+  info: "text-info",
+  neutral: "text-neutral-foreground",
+  destructive: "text-destructive",
 };
 
 const SIZE_TEXT_MAP: Record<string, string> = {
@@ -161,7 +161,7 @@ function Badge({
   const effVariant = (variant ?? (aliased.variant as BadgeVariant) ?? recipe?.defaultVariant) as BadgeProps["variant"];
   const recipeRadius = shape === undefined ? resolveRadiusValue(recipe?.radius) : undefined;
   const recipeStyle = recipeRadius ? { borderRadius: recipeRadius, ...style } : style;
-  const resolvedColor = statusMap?.[status ?? ""] ?? color;
+  const resolvedColor = statusMap?.[status ?? ""] ?? color ?? "primary";
   const resolvedLabel =
     label ??
     (typeof children === "string" ? children : undefined) ??

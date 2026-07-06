@@ -1,15 +1,20 @@
 import React from "react";
+import { X } from "lucide-react";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  type DialogPadding,
 } from "./Dialog";
 import { Button } from "../Button";
+import { IconButton } from "../ui/icon-button";
 import { NajmScroll } from "../ui/scroll";
+import { NPageHeader, type NPageHeaderProps } from "../layout/NPageHeader";
 import { cn } from "../../lib/cn";
 import { cva } from "class-variance-authority";
 import type { DialogStore } from "./store";
@@ -65,15 +70,22 @@ const CONTENT_ACTIONS_SELECTOR = '[data-najm-dialog-actions="content"], [data-na
 function useContentOwnsActions() {
   const [contentElement, setContentElement] = React.useState<HTMLElement | null>(null);
   const [contentOwnsActions, setContentOwnsActions] = React.useState(false);
+  const contentElementRef = React.useRef<HTMLElement | null>(null);
+  const handleContentElementRef = React.useCallback((node: HTMLElement | null) => {
+    if (contentElementRef.current === node) return;
+    contentElementRef.current = node;
+    setContentElement(node);
+  }, []);
 
   React.useLayoutEffect(() => {
     if (!contentElement) {
-      setContentOwnsActions(false);
+      setContentOwnsActions((current) => (current ? false : current));
       return;
     }
 
     const update = () => {
-      setContentOwnsActions(!!contentElement.querySelector(CONTENT_ACTIONS_SELECTOR));
+      const next = !!contentElement.querySelector(CONTENT_ACTIONS_SELECTOR);
+      setContentOwnsActions((current) => (current === next ? current : next));
     };
 
     update();
@@ -89,13 +101,85 @@ function useContentOwnsActions() {
     return () => observer.disconnect();
   }, [contentElement]);
 
-  return { contentOwnsActions, setContentElement };
+  return { contentOwnsActions, setContentElement: handleContentElementRef };
 }
 
 function shouldRenderDialogButtons(showButtons: boolean, actionMode: DialogActionMode = "auto", contentOwnsActions: boolean) {
   if (!showButtons || actionMode === "content") return false;
   if (actionMode === "auto" && contentOwnsActions) return false;
   return true;
+}
+
+interface DialogChromeProps {
+  pageHeader?: NPageHeaderProps;
+  title?: string;
+  description?: string;
+  padding?: DialogPadding;
+  contentRef: (node: HTMLElement | null) => void;
+  children: React.ReactNode;
+}
+
+/**
+ * Shared header + scrollable body for both the imperative (store) and direct
+ * dialog renderers. When `pageHeader` is provided it renders an NPageHeader as
+ * the dialog header (with a visually-hidden DialogTitle for accessibility);
+ * otherwise it falls back to the plain title/description header.
+ */
+function DialogChrome({ pageHeader, title, description, padding, contentRef, children }: DialogChromeProps) {
+  const noTitle = !title || title.trim() === "";
+  const noDescription = !description || description.trim() === "";
+  const noHeader = noTitle && noDescription;
+  const flush = padding === "none";
+
+  return (
+    <>
+      {pageHeader ? (
+        <>
+          <DialogTitle className="sr-only">{pageHeader.title || title || "Dialog"}</DialogTitle>
+          {(pageHeader.subtitle || description) && (
+            <DialogDescription className="sr-only">{pageHeader.subtitle || description}</DialogDescription>
+          )}
+          <div className="shrink-0">
+            {/* Force a flush, edge-to-edge header (no card rounding). The dialog's default
+                close (X) is hidden (see hideClose) and replaced by a close icon button that
+                sits inline with the header actions. */}
+            <NPageHeader
+              {...pageHeader}
+              card={false}
+              actions={
+                <>
+                  {pageHeader.actions}
+                  <DialogClose asChild>
+                    <IconButton aria-label="Close" variant="ghost">
+                      <X className="h-4 w-4" />
+                    </IconButton>
+                  </DialogClose>
+                </>
+              }
+            />
+          </div>
+        </>
+      ) : (
+        <DialogHeader className={cn(noHeader && "sr-only")}>
+          <DialogTitle className={cn(noTitle && "sr-only")}>{title}</DialogTitle>
+          <DialogDescription className={cn(noDescription && "sr-only")}>{description}</DialogDescription>
+        </DialogHeader>
+      )}
+
+      {flush ? (
+        // Full-bleed content owns its own layout/scrolling; no outer scroll wrapper.
+        <div ref={contentRef} className="flex min-h-0 flex-1 flex-col">
+          {children}
+        </div>
+      ) : (
+        <NajmScroll axis="y" className="flex-1 px-1 -mx-1">
+          <div ref={contentRef} style={{ display: "contents" }}>
+            {children}
+          </div>
+        </NajmScroll>
+      )}
+    </>
+  );
 }
 
 interface DialogItemProps {
@@ -125,6 +209,8 @@ function DialogItem({ dialog, index, store }: DialogItemProps) {
     id,
     title,
     description,
+    pageHeader,
+    padding,
     children,
     primaryButton,
     secondaryButton,
@@ -137,10 +223,6 @@ function DialogItem({ dialog, index, store }: DialogItemProps) {
   } = dialog;
   const { contentOwnsActions, setContentElement } = useContentOwnsActions();
   const renderDialogButtons = shouldRenderDialogButtons(showButtons, actionMode, contentOwnsActions);
-
-  const noTitle = !title || title.trim() === "";
-  const noDescription = !description || description.trim() === "";
-  const noHeader = noTitle && noDescription;
 
   const handlePrimary = async (e?: React.FormEvent) => {
     const hasForm = !!primaryButton?.form;
@@ -158,19 +240,20 @@ function DialogItem({ dialog, index, store }: DialogItemProps) {
     <Dialog key={id} open={true} onOpenChange={(open) => store.getState().handleOpenChange(id, open)}>
       <DialogContent
         data-dialog-id={id}
+        padding={padding}
+        hideClose={!!pageHeader}
         className={cn(dialogVariants({ size, width, height }), className)}
         style={{ zIndex: 9990 + index }}
       >
-        <DialogHeader className={cn(noHeader && "sr-only")}>
-          <DialogTitle className={cn(noTitle && "sr-only")}>{title}</DialogTitle>
-          <DialogDescription className={cn(noDescription && "sr-only")}>{description}</DialogDescription>
-        </DialogHeader>
-
-        <NajmScroll axis="y" className="flex-1 px-1 -mx-1">
-          <div ref={setContentElement} style={{ display: "contents" }}>
-            {children}
-          </div>
-        </NajmScroll>
+        <DialogChrome
+          pageHeader={pageHeader}
+          title={title}
+          description={description}
+          padding={padding}
+          contentRef={setContentElement}
+        >
+          {children}
+        </DialogChrome>
 
         <DialogFooter className={cn(!renderDialogButtons && "sr-only")}>
           {renderDialogButtons && secondaryButton && (
@@ -259,7 +342,9 @@ const isDirectDialogProps = (props: NDialogProps): props is NDialogDirectProps =
     "size" in props ||
     "width" in props ||
     "height" in props ||
-    "className" in props
+    "className" in props ||
+    "pageHeader" in props ||
+    "padding" in props
   );
 };
 
@@ -270,6 +355,8 @@ function NDirectDialog({
   onOpenChange,
   title,
   description,
+  pageHeader,
+  padding,
   children,
   primaryButton,
   secondaryButton,
@@ -310,9 +397,6 @@ function NDirectDialog({
     loadingText: "Processing...",
   });
 
-  const noTitle = !title || title.trim() === "";
-  const noDescription = !description || description.trim() === "";
-  const noHeader = noTitle && noDescription;
   const isPrimaryLoading = primaryLoading || !!resolvedPrimaryButton.loading;
   const { contentOwnsActions, setContentElement } = useContentOwnsActions();
   const renderDialogButtons = shouldRenderDialogButtons(showButtons, actionMode, contentOwnsActions);
@@ -351,17 +435,16 @@ function NDirectDialog({
   return (
     <Dialog open={currentOpen} onOpenChange={setOpen}>
       {trigger ? <DialogTrigger asChild>{trigger}</DialogTrigger> : null}
-      <DialogContent className={cn(dialogVariants({ size, width, height }), className)}>
-        <DialogHeader className={cn(noHeader && "sr-only")}>
-          <DialogTitle className={cn(noTitle && "sr-only")}>{title}</DialogTitle>
-          <DialogDescription className={cn(noDescription && "sr-only")}>{description}</DialogDescription>
-        </DialogHeader>
-
-        <NajmScroll axis="y" className="flex-1 px-1 -mx-1">
-          <div ref={setContentElement} style={{ display: "contents" }}>
-            {children}
-          </div>
-        </NajmScroll>
+      <DialogContent padding={padding} hideClose={!!pageHeader} className={cn(dialogVariants({ size, width, height }), className)}>
+        <DialogChrome
+          pageHeader={pageHeader}
+          title={title}
+          description={description}
+          padding={padding}
+          contentRef={setContentElement}
+        >
+          {children}
+        </DialogChrome>
 
         <DialogFooter className={cn(!renderDialogButtons && "sr-only")}>
           {renderDialogButtons && (

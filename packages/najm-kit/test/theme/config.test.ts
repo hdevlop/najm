@@ -12,6 +12,7 @@ describe('Najm theme JSON config', () => {
       accent: 'violet',
       radius: '0.75rem',
       radiusScale: 'uniform',
+      spacing: '0.2rem',
       appearance: { borderWidth: '2px' },
       tokens: {
         primary: 'oklch(0.62 0.2 290)',
@@ -23,10 +24,25 @@ describe('Najm theme JSON config', () => {
 
     expect(config.mode).toBe('dark');
     expect(config.radiusScale).toBe('uniform');
+    expect(config.spacing).toBe('0.2rem');
     expect(config.appearance?.borderWidth).toBe('2px');
     expect(config.tokens?.primary).toBe('oklch(0.62 0.2 290)');
     expect(config.tokens?.sidebar).toBe('oklch(0.18 0.02 290)');
     expect(config.tokens?.['chart-1']).toBe('oklch(0.7 0.2 40)');
+  });
+
+  test('parses per-mode token overrides', () => {
+    const config = parseNajmThemeConfig({
+      mode: 'light',
+      accent: 'emerald',
+      overrides: {
+        light: { primary: 'oklch(0.55 0.2 150)' },
+        dark: { primary: 'oklch(0.70 0.18 150)' },
+      },
+    });
+
+    expect(config.overrides?.light?.primary).toBe('oklch(0.55 0.2 150)');
+    expect(config.overrides?.dark?.primary).toBe('oklch(0.70 0.18 150)');
   });
 
   test('rejects unknown appearance keys', () => {
@@ -45,7 +61,7 @@ describe('Najm theme JSON config', () => {
   });
 
   test('supports typed authoring and JSON persistence', () => {
-    const config = defineNajmThemeConfig({ mode: 'light', radius: '0.5rem' });
+    const config = defineNajmThemeConfig({ mode: 'light', radius: '0.5rem', spacing: '0.25rem' });
     expect(parseNajmThemeConfig(stringifyNajmThemeConfig(config))).toEqual(config);
   });
 });

@@ -20,6 +20,8 @@ export interface WizardClassNames {
   progressBar?: string;
 }
 
+export type WizardFooterDivider = boolean | "none" | "solid" | "dashed" | "dotted";
+
 export interface WizardFormProps {
   steps: StepConfig[];
   schema: any;
@@ -38,6 +40,8 @@ export interface WizardFormProps {
   className?: string;
   classNames?: WizardClassNames;
   footerSlot?: ReactNode;
+  footerDivider?: WizardFooterDivider;
+  footerDividerClassName?: string;
   children?: ReactNode;
 }
 

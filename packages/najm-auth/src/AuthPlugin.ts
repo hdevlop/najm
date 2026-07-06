@@ -47,6 +47,8 @@ const mergeConfig = (config?: AuthPluginConfig): AuthConfig => {
     defaultRole: config?.defaultRole ?? null,
     frontendUrl: config?.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:3000',
     registrationMode: config?.registrationMode ?? 'active',
+    requireVerifiedEmail: config?.requireVerifiedEmail ?? false,
+    refreshCookiePath: config?.refreshCookiePath ?? '/',
     lockout: {
       maxAttempts: config?.lockout?.maxAttempts ?? 5,
       duration: config?.lockout?.duration ?? '15m',

@@ -153,20 +153,25 @@ function composeTokens(
 function withSeededOverrides(config: NajmDesignConfig): NajmDesignConfig {
   const theme = config.theme;
   const tokens = theme.tokens as Record<string, string> | undefined;
-  if (!tokens) return config;
   const mode = themeMode(theme.mode);
   const base = composePreset(mode, theme.accent ?? 'neutral') as Record<string, string>;
   const derived: Record<string, string> = {};
-  for (const [key, value] of Object.entries(tokens)) {
-    if (value != null && base[key] !== value) derived[key] = value;
+  if (tokens) {
+    for (const [key, value] of Object.entries(tokens)) {
+      if (value != null && base[key] !== value) derived[key] = value;
+    }
   }
   const merged = { ...derived, ...(theme.overrides?.[mode] ?? {}) };
-  if (!Object.keys(merged).length) return config;
+  const overrides = Object.keys(merged).length
+    ? { ...(theme.overrides ?? {}), [mode]: merged as NajmThemeTokens }
+    : theme.overrides;
+
   return {
     ...config,
     theme: {
       ...theme,
-      overrides: { ...(theme.overrides ?? {}), [mode]: merged as NajmThemeTokens },
+      overrides,
+      tokens: composeTokens(mode, theme.accent, overrides),
     },
   };
 }
@@ -272,6 +277,7 @@ export function StudioProvider({
     setConfig(seeded);
     setPreviewLayout(previewLayoutFromConfig(seeded, DEFAULT_PREVIEW_LAYOUT));
     if (shouldMarkDirty) markDirty();
+    return seeded;
   }, [markDirty]);
 
   const applyStyle = useCallback(
@@ -725,15 +731,20 @@ export function StudioProvider({
 
   const importConfig = useCallback(
     async (cfg: NajmDesignConfig) => {
-      applyConfig(clone(cfg), true);
+      const imported = applyConfig(clone(cfg), true);
       const saveRevision = dirtyRevisionRef.current;
+      setSelectedPresetId(undefined);
       if (!activeProjectId) return undefined;
       try {
         const saved = await themeStudioApi.createStyle(activeProjectId, {
           name: `${(activeStyleId ? 'Imported' : 'Imported')} ${new Date().toISOString().slice(0, 10)}`,
-          config: cfg,
+          config: imported,
+          isDefault: true,
         });
-        setStyles((prev) => [...prev, saved]);
+        setStyles((prev) => [
+          ...prev.map((style) => ({ ...style, isDefault: false })),
+          saved,
+        ]);
         setActiveStyleId(saved.id);
         markCleanIfUnchanged(saveRevision);
         return saved;
@@ -755,6 +766,9 @@ export function StudioProvider({
     if (name === 'sidebar') {
       setActiveSettingsTab('colors');
       setActiveTokenCategory('sidebar');
+    } else if (name === 'table') {
+      setActiveSettingsTab('colors');
+      setActiveTokenCategory('table');
     }
   }, []);
 

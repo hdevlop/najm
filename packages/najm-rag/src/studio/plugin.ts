@@ -11,7 +11,7 @@ import { StudioAssistantController } from './StudioAssistantController';
 export interface RagStudioOptions {
   /**
    * Deprecated no-op. The Studio UI is distributed as the standalone
-   * `apps/rag-studio` tool; this plugin exposes the API only.
+   * RAG Studio app; this plugin exposes the API only.
    */
   ui?: boolean;
   /**
@@ -30,7 +30,7 @@ export interface RagStudioOptions {
 
 /**
  * Registers the RAG Studio admin API on top of a `rag()` engine. All controllers
- * are `@isAdmin()` gated. The UI is the standalone `apps/rag-studio` tool.
+ * are `@isAdmin()` gated. The UI is the standalone RAG Studio app.
  *
  * Requires `rag`, `auth`, and `database` plugins to already be registered.
  * When the assistant is enabled (default), `chatbot-studio-assistant` from

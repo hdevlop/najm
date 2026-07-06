@@ -55,7 +55,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, plac
   return (
     <BaseInput variant={variant} status={currentStatus} bordered={bordered} borderColor={borderColor} className={cn("gap-2", className)}>
       {showIcon && (icon ? <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span> : <Clock className={iconProps.className} style={iconProps.style} />)}
-      <Input type="text" placeholder={placeholder || (showSeconds ? "HH:MM:SS" : "HH:MM")} value={inputValue} onChange={(e) => handleInputChange(e.target.value)} onKeyDown={(e) => { if (!/\d/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) e.preventDefault(); }} onBlur={handleBlur} disabled={disabled} className={cn("p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0", !isValid ? "text-red-500" : "text-muted-foreground")} />
+      <Input type="text" placeholder={placeholder || (showSeconds ? "HH:MM:SS" : "HH:MM")} value={inputValue} onChange={(e) => handleInputChange(e.target.value)} onKeyDown={(e) => { if (!/\d/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) e.preventDefault(); }} onBlur={handleBlur} disabled={disabled} className={cn("p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 placeholder:text-muted-foreground", !isValid ? "text-red-500" : "text-foreground")} />
     </BaseInput>
   );
 };

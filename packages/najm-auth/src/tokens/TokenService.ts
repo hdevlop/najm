@@ -221,7 +221,7 @@ export class TokenService {
     roles?: string[];
     permissions?: string[];
     tokenFamily?: string;
-  }): Promise<{ token: string; expiresAt: number }> {
+  }): Promise<{ token: string; expiresAt: number; sessionVersion: number }> {
     const jti = nanoid(16);
     const sessionVersion = await this.getUserSessionVersion(data.userId);
     const expiresAt = this.expiresAt(this.config.jwt.accessExpiresIn);
@@ -232,7 +232,16 @@ export class TokenService {
       { ...data, jti, sessionVersion, exp: expiresAt },
       this.config.jwt.accessSecret,
     );
-    return { token, expiresAt };
+    return { token, expiresAt, sessionVersion };
+  }
+
+  /**
+   * Current per-user session version (0 when never invalidated). The signed
+   * session cookie stamps this so a fast-path reader can reject a cookie whose
+   * session was invalidated after it was written.
+   */
+  async getSessionVersion(userId: string): Promise<number> {
+    return this.getUserSessionVersion(userId);
   }
 
   /**
@@ -282,6 +291,7 @@ export class TokenService {
       tokenFamily: family,
       roles: accessTokenData.roles,
       permissions: accessTokenData.permissions,
+      sessionVersion: access.sessionVersion,
       accessToken: access.token,
       refreshToken: refresh.token,
       accessTokenExpiresAt: access.expiresAt,
@@ -573,26 +583,49 @@ export class TokenService {
   // ============ PASSWORD RESET TOKENS ============
 
   /**
-   * Generate secure password reset token
-   * Returns both the plain token (to send via email) and userId for identification
+   * Generate a one-time set-password token (used by both password reset and
+   * account invites). Stores the jti in cache so the token can only be used
+   * once, with a TTL matching the JWT expiry.
    */
-  async generateResetToken(userId: string): Promise<{ token: string; userId: string }> {
+  private async generateSetPasswordToken(
+    userId: string,
+    type: 'reset' | 'invite',
+    expiresIn: string,
+  ): Promise<{ token: string; userId: string }> {
     const jti = nanoid(16);
-    const resetData = {
+    const data = {
       userId,
-      type: 'reset',
+      type,
       jti,
       timestamp: Date.now(),
     };
 
-    // Generate token with short expiration (1 hour)
-    const token = jwt.sign(resetData, this.config.jwt.refreshSecret, {
-      expiresIn: '1h'
+    const token = jwt.sign(data, this.config.jwt.refreshSecret, {
+      expiresIn
     } as any);
 
-    await this.cache.set(`${this.resetTokenPrefix}${userId}`, jti, 3_600_000);
+    // Cache TTL mirrors the token expiry so a consumed/expired token can't be reused.
+    await this.cache.set(`${this.resetTokenPrefix}${userId}`, jti, timestring(expiresIn, 'ms'));
 
     return { token, userId };
+  }
+
+  /**
+   * Generate secure password reset token
+   * Returns both the plain token (to send via email) and userId for identification
+   */
+  async generateResetToken(userId: string): Promise<{ token: string; userId: string }> {
+    // Short expiry (1h): the user is actively waiting for the email.
+    return this.generateSetPasswordToken(userId, 'reset', '1h');
+  }
+
+  /**
+   * Generate secure account-invite token.
+   * Longer expiry (3d) than reset because an invited user may not check
+   * their email immediately. Consumed via the same reset-password endpoint.
+   */
+  async generateInviteToken(userId: string): Promise<{ token: string; userId: string }> {
+    return this.generateSetPasswordToken(userId, 'invite', '3d');
   }
 
   /**
@@ -608,7 +641,8 @@ export class TokenService {
       Err(this.t('errors.resetTokenExpired'));
     }
 
-    if (decoded.type !== 'reset' || !decoded.jti) {
+    // Accept both reset and invite tokens — both grant a one-time password set.
+    if ((decoded.type !== 'reset' && decoded.type !== 'invite') || !decoded.jti) {
       Err(this.t('errors.invalidResetToken'));
     }
 

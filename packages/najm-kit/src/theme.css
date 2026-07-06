@@ -47,6 +47,14 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-accent: var(--accent);
   --color-accent-foreground: var(--accent-foreground);
+  --color-neutral: var(--neutral);
+  --color-neutral-foreground: var(--neutral-foreground);
+  --color-info: var(--info);
+  --color-info-foreground: var(--info-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-warning: var(--warning);
+  --color-warning-foreground: var(--warning-foreground);
   --color-destructive: var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
@@ -86,6 +94,42 @@
   100% { transform: translateX(200%); width: 40%; }
 }
 
+/* Typography variables emitted by NajmDesignProvider. */
+[data-najm-design-vars] {
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: var(--font-size-base, 14px);
+  line-height: var(--line-height-base, 1.5);
+  letter-spacing: var(--letter-spacing-base, 0);
+  --text-xs: calc(var(--font-size-base, 14px) * 0.857142857 * var(--font-scale, 1));
+  --text-xs--line-height: var(--line-height-base, 1.5);
+  --text-sm: calc(var(--font-size-base, 14px) * var(--font-scale, 1));
+  --text-sm--line-height: var(--line-height-base, 1.5);
+  --text-base: calc(var(--font-size-base, 14px) * 1.142857143 * var(--font-scale, 1));
+  --text-base--line-height: var(--line-height-base, 1.5);
+  --text-lg: calc(var(--font-size-base, 14px) * 1.285714286 * var(--font-scale, 1));
+  --text-lg--line-height: var(--line-height-base, 1.5);
+  --text-xl: calc(var(--font-size-base, 14px) * 1.428571429 * var(--font-scale, 1));
+  --text-xl--line-height: var(--line-height-base, 1.5);
+}
+
+[data-najm-design-vars] :where(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  [data-slot="card-title"],
+  [data-slot="dialog-title"],
+  [data-slot="sheet-title"]
+) {
+  font-family: var(--font-heading, var(--font-sans, ui-sans-serif, system-ui, sans-serif));
+}
+
+[data-najm-design-vars] :where(code, kbd, pre, samp) {
+  font-family: var(--font-mono, ui-monospace, monospace);
+}
+
 /* Default token values (oklch). Override globally via :root / .dark, or per
    subtree via <NajmThemeProvider>. */
 :root {
@@ -105,6 +149,14 @@
   --muted-foreground: oklch(0.5555 0 0);
   --accent: oklch(0.2747 0.006 286.001);
   --accent-foreground: oklch(0.9848 0 0);
+  --neutral: oklch(0.556 0 0);
+  --neutral-foreground: oklch(0.9848 0 0);
+  --info: oklch(0.6231 0.1679 254.149);
+  --info-foreground: oklch(0.9848 0 0);
+  --success: oklch(0.696 0.17 162.48);
+  --success-foreground: oklch(0.1445 0 0);
+  --warning: oklch(0.769 0.188 70.08);
+  --warning-foreground: oklch(0.1445 0 0);
   --destructive: oklch(0.6368 0.2078 25.326);
   --destructive-foreground: oklch(0.9848 0 0);
   --border: oklch(0.9219 0 0);
@@ -147,6 +199,14 @@
   --muted-foreground: oklch(0.6255 0.0171 285.896);
   --accent: oklch(0.2313 0.007 285.839);
   --accent-foreground: oklch(0.9683 0.0014 286.375);
+  --neutral: oklch(0.7155 0 0);
+  --neutral-foreground: oklch(0.1445 0 0);
+  --info: oklch(0.6231 0.1679 254.149);
+  --info-foreground: oklch(0.9683 0.0014 286.375);
+  --success: oklch(0.696 0.17 162.48);
+  --success-foreground: oklch(0.1445 0 0);
+  --warning: oklch(0.769 0.188 70.08);
+  --warning-foreground: oklch(0.1445 0 0);
   --destructive: oklch(0.6356 0.2082 25.378);
   --destructive-foreground: oklch(1 0 0);
   --border: oklch(0.262 0.0085 285.799);
@@ -227,24 +287,33 @@
 }
 
 /* OverlayScrollbars theme used by the <NajmScroll> component — a thin,
-   translucent slate bar that floats over content with no reserved space. */
-.os-theme-najm {
+   translucent slate bar that floats over content with no reserved space.
+   Keep this selector more specific than OverlayScrollbars' appended
+   `.os-scrollbar` variable reset in dist/theme.css. */
+.os-scrollbar.os-theme-najm {
+  z-index: 20;
   --os-size: 10px;
   --os-padding-perpendicular: 2px;
   --os-padding-axis: 2px;
+  --os-track-bg: transparent;
   --os-track-border-radius: 9999px;
   --os-handle-border-radius: 9999px;
-  --os-handle-bg: rgba(148, 163, 184, 0.3);
-  --os-handle-bg-hover: rgba(148, 163, 184, 0.45);
-  --os-handle-bg-active: rgba(148, 163, 184, 0.6);
+  --os-handle-bg: rgba(100, 116, 139, 0.22);
+  --os-handle-bg-hover: rgba(100, 116, 139, 0.5);
+  --os-handle-bg-active: rgba(71, 85, 105, 0.62);
   --os-handle-min-size: 33px;
-  --os-handle-perpendicular-size: 60%;
-  --os-handle-perpendicular-size-hover: 90%;
+  --os-handle-perpendicular-size: 4px;
+  --os-handle-perpendicular-size-hover: 6px;
+  --os-handle-perpendicular-size-active: 6px;
+}
+
+.os-scrollbar.os-theme-najm:hover .os-scrollbar-handle {
+  background: var(--os-handle-bg-hover);
 }
 
 /* Darker, more subtle handle in dark mode */
-.dark .os-theme-najm {
-  --os-handle-bg: rgba(82, 82, 91, 0.45);
-  --os-handle-bg-hover: rgba(113, 113, 122, 0.6);
-  --os-handle-bg-active: rgba(113, 113, 122, 0.75);
+.dark .os-scrollbar.os-theme-najm {
+  --os-handle-bg: rgba(113, 113, 122, 0.36);
+  --os-handle-bg-hover: rgba(161, 161, 170, 0.62);
+  --os-handle-bg-active: rgba(212, 212, 216, 0.72);
 }

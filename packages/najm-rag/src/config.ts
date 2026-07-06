@@ -14,6 +14,12 @@ export interface RagEmbeddingConfig {
    * Defaults to 8000ms.
    */
   timeoutMs?: number;
+  /**
+   * Timeout in milliseconds for lightweight health checks. Health checks still
+   * issue a real embedding request, so cold local models often need more than
+   * a ping-sized timeout during app boot. Defaults to 15000ms.
+   */
+  healthTimeoutMs?: number;
 }
 
 export interface RagToolRoutingConfig {
@@ -65,6 +71,7 @@ export interface RagMergedConfig {
       model: string;
       dimensions: number;
       timeoutMs: number;
+      healthTimeoutMs: number;
     };
     queryEmbeddingCacheSize: number;
     indexOnBoot: boolean;

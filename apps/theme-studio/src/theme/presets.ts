@@ -95,6 +95,8 @@ const smsLightTokens = {
   "chart-1": "oklch(0.7686 0.1647 70.0804)",
   "chart-2": "oklch(0.6658 0.1574 58.3183)",
   "chart-3": "oklch(0.5553 0.1455 48.9975)",
+  "chart-4": "oklch(0.4732 0.1247 46.2007)",
+  "chart-5": "oklch(0.4137 0.1054 45.9038)",
   sidebar: "oklch(30.309% 0.03847 275.569)",
   "sidebar-foreground": "oklch(23.106% 0.05801 273.883)",
   "sidebar-primary": "oklch(0.7686 0.1647 70.0804)",
@@ -130,6 +132,8 @@ const smsDarkTokens = {
   "chart-1": "oklch(0.8369 0.1644 84.4286)",
   "chart-2": "oklch(0.6658 0.1574 58.3183)",
   "chart-3": "oklch(0.4732 0.1247 46.2007)",
+  "chart-4": "oklch(0.5553 0.1455 48.9975)",
+  "chart-5": "oklch(0.4732 0.1247 46.2007)",
   sidebar: "oklch(21.821% 0.07 271.185)",
   "sidebar-foreground": "oklch(0.9219 0 0)",
   "sidebar-primary": "oklch(0.7686 0.1647 70.0804)",
@@ -139,6 +143,8 @@ const smsDarkTokens = {
   "sidebar-border": "oklch(0.3715 0 0)",
   "sidebar-ring": "oklch(0.7686 0.1647 70.0804)",
 };
+
+export const SMS_DASHBOARD_PRESET_ID = "sms-dashboard";
 
 const RAW_PRESETS: StudioPreset[] = [
   {
@@ -282,5 +288,4 @@ const RAW_PRESETS: StudioPreset[] = [
 
 export const PRESETS: StudioPreset[] = RAW_PRESETS.map(mapPreset);
 
-export const SMS_DASHBOARD_PRESET_ID = "sms-dashboard";
-export const DEFAULT_PRESET = PRESETS[0];
+export const DEFAULT_PRESET = PRESETS.find((preset) => preset.id === SMS_DASHBOARD_PRESET_ID) ?? PRESETS[0];

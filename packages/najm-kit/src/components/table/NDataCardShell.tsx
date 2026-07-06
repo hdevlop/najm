@@ -54,7 +54,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
       onContextMenu={onContextMenu}
       style={recipeStyle}
       className={cn(
-        "relative group w-full rounded-lg bg-card",
+        "relative group w-full rounded-lg bg-card text-card-foreground overflow-hidden",
         surfaceBorderClasses(bordered),
         isActive && (bordered ? "border-primary" : "ring-2 ring-primary ring-offset-1 ring-offset-background"),
         onClick && "cursor-pointer",

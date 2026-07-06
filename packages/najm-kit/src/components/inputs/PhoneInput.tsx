@@ -7,7 +7,7 @@ import type { PhoneInputProps } from "./types";
 export function PhoneInput({
   value = "",
   onChange,
-  defaultCountry = "us",
+  defaultCountry = "ma",
   placeholder = "Enter phone number",
   disabled = false,
   className,

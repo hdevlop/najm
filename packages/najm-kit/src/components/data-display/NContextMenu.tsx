@@ -108,7 +108,7 @@ export function NContextMenu({ x, y, items, onAction, onClose, className }: NCon
                   onClose();
                 }}
                 className={cn(
-                  'flex w-full items-center justify-between gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground disabled:opacity-40 disabled:cursor-not-allowed',
+                  'flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40',
                   item.danger && 'text-destructive hover:text-destructive',
                 )}
               >
@@ -129,7 +129,7 @@ export function NContextMenu({ x, y, items, onAction, onClose, className }: NCon
                         disabled={sub.disabled}
                         onClick={() => { onAction(sub.id); onClose(); }}
                         className={cn(
-                          'flex w-full items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground disabled:opacity-40',
+                          'flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40',
                           sub.danger && 'text-destructive hover:text-destructive',
                         )}
                       >

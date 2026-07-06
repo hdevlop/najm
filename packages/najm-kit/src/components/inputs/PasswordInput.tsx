@@ -13,7 +13,7 @@ export const PasswordInput: React.FC<PasswordInputProps> = ({ value, onChange, p
   return (
     <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("gap-2", className)}>
       {shouldDisplayIcon && <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span>}
-      <Input type={showPassword ? "text" : "password"} placeholder={placeholder} value={value} onChange={(ev) => onChange(ev.target.value)} className="p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 text-muted-foreground" />
+      <Input type={showPassword ? "text" : "password"} placeholder={placeholder} value={value} onChange={(ev) => onChange(ev.target.value)} className="p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 text-foreground placeholder:text-muted-foreground" />
       {showPassword ? <Eye className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" onClick={() => setShowPassword(false)} /> : <EyeOff className="absolute right-2 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground cursor-pointer" onClick={() => setShowPassword(true)} />}
     </BaseInput>
   );

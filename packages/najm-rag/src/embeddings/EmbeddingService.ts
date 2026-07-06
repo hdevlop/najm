@@ -20,13 +20,14 @@ export class EmbeddingService {
     this.queryCache = new EmbeddingLru(Math.max(0, cacheSize));
   }
 
-  private get embeddingConfig(): EmbeddingConfig & { timeoutMs: number } {
+  private get embeddingConfig(): EmbeddingConfig & { timeoutMs: number; healthTimeoutMs: number } {
     const emb = this.config.rag?.embedding ?? (this.config as any).toolRouting?.embedding;
     return {
       provider: emb?.provider ?? 'ollama',
       baseUrl: emb?.baseUrl ?? 'http://localhost:11434',
       model: emb?.model ?? 'embeddinggemma',
       timeoutMs: (emb as any)?.timeoutMs ?? 8000,
+      healthTimeoutMs: (emb as any)?.healthTimeoutMs ?? 15000,
     };
   }
 
@@ -42,7 +43,7 @@ export class EmbeddingService {
   }
 
   async embedBatch(texts: string[]): Promise<number[][]> {
-    const { baseUrl, model, timeoutMs } = this.embeddingConfig;
+    const { provider, baseUrl, model, timeoutMs } = this.embeddingConfig;
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
     try {
@@ -62,7 +63,13 @@ export class EmbeddingService {
     } catch (err) {
       const aborted = (err as any)?.name === 'AbortError';
       if (aborted) {
-        throw new Error(`Embedding request timed out after ${timeoutMs}ms — is the embedding provider reachable?`);
+        throw new Error(`Embedding request timed out after ${timeoutMs}ms — is ${provider} running at ${baseUrl}?`);
+      }
+      // undici surfaces connection failures (ECONNREFUSED, DNS, …) as a bare
+      // "TypeError: fetch failed" — rethrow with the provider/baseUrl hint.
+      if (err instanceof TypeError) {
+        const cause = (err as any)?.cause?.code ?? (err as any)?.cause?.message ?? err.message;
+        throw new Error(`Embedding request could not reach ${provider} at ${baseUrl} (${cause}) — is it running?`);
       }
       throw err;
     } finally {
@@ -74,7 +81,24 @@ export class EmbeddingService {
     return `[${embedding.join(',')}]`;
   }
 
-  async health(timeoutMs = 3000): Promise<EmbeddingHealth> {
+  async health(timeoutMs?: number, options: EmbeddingHealthOptions = {}): Promise<EmbeddingHealth> {
+    const { healthTimeoutMs } = this.embeddingConfig;
+    const effectiveTimeoutMs = timeoutMs ?? healthTimeoutMs;
+    const retries = Math.max(0, options.retries ?? 0);
+    let last: EmbeddingHealth | null = null;
+
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const result = await this.probeHealth(effectiveTimeoutMs);
+      last = result;
+      if (result.ok || !result.timedOut) {
+        return this.toPublicHealth(result);
+      }
+    }
+
+    return this.toPublicHealth(last!);
+  }
+
+  private async probeHealth(timeoutMs: number): Promise<EmbeddingHealthProbe> {
     const { provider, baseUrl, model } = this.embeddingConfig;
     const started = Date.now();
     const controller = new AbortController();
@@ -102,11 +126,20 @@ export class EmbeddingService {
       const message = aborted
         ? `No response within ${timeoutMs}ms — is ${provider} running at ${baseUrl}?`
         : err instanceof Error ? err.message : String(err);
-      return { ok: false, provider, baseUrl, model, error: message, latencyMs: Date.now() - started };
+      return { ok: false, provider, baseUrl, model, error: message, latencyMs: Date.now() - started, timedOut: aborted };
     } finally {
       clearTimeout(timeout);
     }
   }
+
+  private toPublicHealth(health: EmbeddingHealthProbe): EmbeddingHealth {
+    const { timedOut: _timedOut, ...publicHealth } = health;
+    return publicHealth;
+  }
+}
+
+export interface EmbeddingHealthOptions {
+  retries?: number;
 }
 
 export interface EmbeddingHealth {
@@ -116,4 +149,8 @@ export interface EmbeddingHealth {
   model: string;
   error?: string;
   latencyMs: number;
+}
+
+interface EmbeddingHealthProbe extends EmbeddingHealth {
+  timedOut?: boolean;
 }

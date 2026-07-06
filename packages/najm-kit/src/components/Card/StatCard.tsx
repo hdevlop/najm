@@ -240,23 +240,32 @@ function CompactCard({ icon, label, value, unit, iconColor, onClick, bordered, c
       onClick={onClick}
       bordered={bordered}
       className={cn(
-        !bordered && "border-0",
-        "bg-foreground/10 p-3 shadow-none",
+        "group px-3 py-2.5 transition-colors",
         onClick && "cursor-pointer",
         className,
       )}
       classNames={{
         root: classNames?.root,
-        content: "items-center justify-center",
+        content: "flex-row items-center gap-2.5",
       }}
     >
-      <div className="flex items-center gap-2 mb-1">
-        <NIcon icon={icon} className={cn("w-4 h-4", iconColor ?? "text-primary", classNames?.icon)} />
-        <span className={cn("text-xs text-muted-foreground", classNames?.label)}>{label}</span>
+      <div
+        className={cn(
+          "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary transition-colors group-hover:bg-primary/20",
+          classNames?.icon,
+        )}
+      >
+        <NIcon icon={icon} className={cn("w-4 h-4", iconColor ?? "text-primary")} />
       </div>
-      <p className={cn("text-lg font-semibold text-foreground leading-none", classNames?.value)}>
-        {value}{unit ? ` ${unit}` : ""}
-      </p>
+
+      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        <p className={cn("truncate text-[11px] leading-none text-muted-foreground", classNames?.label)}>
+          {label}
+        </p>
+        <p className={cn("truncate text-base font-semibold leading-tight text-foreground", classNames?.value)}>
+          {value}{unit ? ` ${unit}` : ""}
+        </p>
+      </div>
     </NCard>
   );
 }

@@ -56,5 +56,6 @@ export {
   escapeHtml,
   passwordResetTemplate,
   welcomeEmailTemplate,
+  accountInviteTemplate,
   emailVerificationTemplate,
 } from './templates';

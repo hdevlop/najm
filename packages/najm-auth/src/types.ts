@@ -58,6 +58,10 @@ export interface AuthConfig {
   frontendUrl: string;
   /** Registration mode: 'active' auto-activates, 'pending' requires admin approval (default: 'active') */
   registrationMode: 'active' | 'pending';
+  /** When true, users with emailVerified=false are blocked from logging in (default: false) */
+  requireVerifiedEmail: boolean;
+  /** Cookie path for the refresh token. Scope to the refresh endpoint to limit exposure (default: '/') */
+  refreshCookiePath: string;
   /** Per-account lockout settings */
   lockout: LockoutConfig;
   /** Bcrypt work factor (default: 10) */
@@ -109,6 +113,10 @@ export type AuthPluginConfig = {
   frontendUrl?: string;
   /** Registration mode: 'active' auto-activates new users, 'pending' requires admin approval (default: 'active') */
   registrationMode?: 'active' | 'pending';
+  /** Block login for users whose email is not verified (default: false) */
+  requireVerifiedEmail?: boolean;
+  /** Cookie path for the refresh token (default: '/'). Set e.g. '/auth' to keep it off unrelated routes. */
+  refreshCookiePath?: string;
   /** Per-account lockout settings */
   lockout?: Partial<LockoutConfig>;
   /** Bcrypt work factor (default: 10, valid range: 4-31) */

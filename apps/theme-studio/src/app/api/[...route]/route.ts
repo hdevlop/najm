@@ -1,13 +1,27 @@
 import 'reflect-metadata';
 import { handle } from 'najm-core';
-import { server } from '@/server';
+import type { server as ThemeStudioServer } from '@/server';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
-const adapt = handle(server);
+let adapt: ReturnType<typeof handle> | undefined;
 
-export const GET = adapt;
-export const POST = adapt;
-export const PUT = adapt;
-export const PATCH = adapt;
-export const DELETE = adapt;
+async function getAdapt() {
+  if (!adapt) {
+    const { server } = await import('@/server') as { server: typeof ThemeStudioServer };
+    adapt = handle(server);
+  }
+
+  return adapt;
+}
+
+async function route(req: Request) {
+  return (await getAdapt())(req);
+}
+
+export const GET = route;
+export const POST = route;
+export const PUT = route;
+export const PATCH = route;
+export const DELETE = route;

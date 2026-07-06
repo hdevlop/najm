@@ -28,6 +28,9 @@ const COMPONENT_KEYS = new Set([
   "defaultVariant",
   "defaultSize",
   "density",
+  "headerColor",
+  "headerTextColor",
+  "borderColor",
   "radius",
   "borderWidth",
   "slots",
@@ -142,6 +145,9 @@ function parseComponentStyle(
   const defaultVariant = optionalString(value.defaultVariant, `${path}.defaultVariant`);
   const defaultSize = optionalString(value.defaultSize, `${path}.defaultSize`);
   const density = optionalEnum(value.density, DENSITIES, `${path}.density`);
+  const headerColor = optionalString(value.headerColor, `${path}.headerColor`);
+  const headerTextColor = optionalString(value.headerTextColor, `${path}.headerTextColor`);
+  const borderColor = optionalString(value.borderColor, `${path}.borderColor`);
   const radius = optionalString(value.radius, `${path}.radius`);
   const borderWidth = optionalString(value.borderWidth, `${path}.borderWidth`);
   if (card !== undefined) cfg.card = card;
@@ -150,6 +156,9 @@ function parseComponentStyle(
   if (defaultVariant !== undefined) cfg.defaultVariant = defaultVariant;
   if (defaultSize !== undefined) cfg.defaultSize = defaultSize;
   if (density !== undefined) cfg.density = density as NajmComponentStyleConfig["density"];
+  if (headerColor !== undefined) cfg.headerColor = headerColor as NajmComponentStyleConfig["headerColor"];
+  if (headerTextColor !== undefined) cfg.headerTextColor = headerTextColor;
+  if (borderColor !== undefined) cfg.borderColor = borderColor;
   if (radius !== undefined) cfg.radius = radius;
   if (borderWidth !== undefined) cfg.borderWidth = borderWidth;
   if (value.slots !== undefined) {
