@@ -11,8 +11,8 @@ import { Container, Inject, Meta, Service } from 'diject';
 // FACTORY
 // ============================================================================
 
-export function createLogger(): LoggerService {
-   return new LoggerService();
+export function createLogger(config?: LoggerConfig, silent = false): LoggerService {
+   return new LoggerService(config, silent);
 }
 
 // ============================================================================
@@ -30,6 +30,8 @@ export class LoggerService extends ServerLog {
    private includeTimestamp!: boolean;
    private includeRequestId!: boolean;
    private colors!: boolean;
+   private readonly overrideConfig?: LoggerConfig;
+   private readonly overrideSilent: boolean;
  
    private readonly colorMap = {
       DEBUG: '\x1b[36m',
@@ -47,8 +49,10 @@ export class LoggerService extends ServerLog {
    };
    private injectorRegistered = false;
 
-   constructor() {
+   constructor(config?: LoggerConfig, silent = false) {
       super();
+      this.overrideConfig = config;
+      this.overrideSilent = silent;
       // Standalone loggers (createLogger(), pre-boot Server logging) never go
       // through onInit/configure, so derive env defaults now; DI boot re-parses
       // later with SERVER_OPTS applied.
@@ -76,7 +80,7 @@ export class LoggerService extends ServerLog {
    }
 
    private parseConfig(): void {
-      const config = this.opts?.logger || this.getDefaultConfig();
+      const config = this.opts?.logger ?? this.overrideConfig ?? this.getDefaultConfig();
 
       this.level = this.parseLogLevel(config.level);
       this.format = config.format ?? this.resolveDefaultFormat();
@@ -84,7 +88,7 @@ export class LoggerService extends ServerLog {
       this.includeRequestId = config.includeRequestId ?? true;
       this.colors = config.colors ?? this.resolveDefaultColors();
 
-      if (this.opts?.silent) {
+      if (this.opts?.silent || this.overrideSilent) {
          this.level = LogLevel.SILENT;
       }
    }
@@ -233,10 +237,17 @@ export class LoggerService extends ServerLog {
 
    private formatLog(entry: LogEntry, level: LogLevel): string {
       if (this.format === 'json') {
-         return JSON.stringify(entry);
+         return JSON.stringify({
+            ...entry,
+            message: this.stripMessageIcon(entry.message),
+         });
       }
 
       return this.formatPretty(entry, level);
+   }
+
+   private stripMessageIcon(message: string): string {
+      return message.replace(/^(?:[\u{1F680}\u{1F6D1}\u{2699}\u{2705}\u{274C}\u{1F3A8}\u{1F4DA}]\uFE0F?\s*)+/u, '');
    }
 
    private formatPretty(entry: LogEntry, level: LogLevel): string {

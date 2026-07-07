@@ -22,6 +22,7 @@ export * from './decorators';
 // TOKENS
 // ============================================
 export { CONTEXT, REQUEST, PARSER, PARAM_CONFIG,PARAMS } from './tokens';
+export { getRequestData, getRequestParser } from './requestContext';
 
 // ============================================
 // TYPES

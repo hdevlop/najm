@@ -1,5 +1,14 @@
 // src/server/logging/ServerLog.ts
 
+export interface ServerStartedInfo {
+   port: number;
+   basePath?: string;
+   env?: string;
+   runtime?: string;
+   pid?: number;
+   version?: string;
+}
+
 export abstract class ServerLog {
    // Abstract methods to be implemented by LoggerService
    protected abstract info(message: string, context?: Record<string, any>): void;
@@ -11,8 +20,8 @@ export abstract class ServerLog {
    // SERVER LIFECYCLE
    // ============================================================================
 
-   serverStarted(port: number): void {
-      this.info('🚀 Server started successfully', { port });
+   serverStarted(info: number | ServerStartedInfo): void {
+      this.info('🚀 Server started successfully', typeof info === 'number' ? { port: info } : info);
    }
 
    serverStopped(): void {
@@ -23,8 +32,10 @@ export abstract class ServerLog {
       this.info('⚙️ Initializing server...');
    }
 
-   serverInitialized(): void {
-      this.info('✅ Server initialized successfully');
+   serverInitialized(ms?: number): void {
+      this.info(ms === undefined
+         ? '✅ Server initialized successfully'
+         : `✅ Server initialized in ${Math.round(ms)}ms`);
    }
 
    serverError(error: any): void {

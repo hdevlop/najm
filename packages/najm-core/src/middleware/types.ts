@@ -12,6 +12,7 @@ import type { Constructor, InjectionDefinition } from 'diject';
 export interface MiddlewareConfig {
    debug?: boolean;
    requestIdHeader?: string;
+   requestId?: 'uuid' | 'fast' | ((ctx: Context) => string);
    exclude?: string[];
    use?: MiddlewareHandler[];
 }
@@ -67,4 +68,3 @@ export interface Interceptor extends InjectionDefinition {
 export interface MiddlewareClass {
    use(ctx: Context, next: Next): Promise<Response | void>;
 }
-

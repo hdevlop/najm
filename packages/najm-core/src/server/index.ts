@@ -3,36 +3,29 @@
 // ============================================================================
 
 import { Hono, MiddlewareHandler } from 'hono';
+import { randomUUID } from 'node:crypto';
+import { container, Container } from 'diject';
 import { createLogger, LoggerService } from '../logging/LoggerService';
 import { BootService } from '../boot/BootService';
 import { BootDiagnostics } from '../boot/BootDiagnostics';
 import { Err } from '../errors';
 import type { NajmPlugin, Constructor, ServerOpts, Loadable, ScanTarget } from './types';
-import {
-   container,
-   Container,
-   isInjectable,
-} from 'diject';
 import { ScannerService } from '../scanner';
 import { router } from '../router';
 import { params } from '../params';
 import { middleware } from '../middleware';
 import { APP, BASE_PATH, SERVER_OPTS, LOGGER } from './tokens';
-import { existsSync, readdirSync, statSync } from 'node:fs';
-import { randomUUID } from 'node:crypto';
-import { isAbsolute, join, resolve } from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { PluginRegistry } from './PluginRegistry';
+import { createListener, type ServerHandle } from './listener';
+import { collectInjectables, loadInjectablesFromRoots } from './moduleLoader';
+import { StartupLogBuffer, stringifyLogEntry } from './startupLog';
+import { normalizeBasePath, normalizePort, DEFAULT_PORT } from './utils';
 
 // Re-export plugin builder
 export { plugin, type ContributionToken, type PluginContribution } from './plugin';
 export { handle } from './handle';
 
 const CORE_SERVICES = [BootService, LoggerService, ScannerService];
-
-type ServerHandle = {
-   readonly port: number;
-   stop?: () => void | Promise<void>;
-};
 
 type ShutdownSignal = 'SIGINT' | 'SIGTERM';
 
@@ -47,34 +40,41 @@ const enum ServerState {
 export class Server {
    public readonly container: Container;
    public readonly app: Hono;
+   public basePath = '';
 
    private readonly opts: ServerOpts = {};
-   private logger: LoggerService = createLogger();
-   private readonly plugins = new Map<string, NajmPlugin>();
-   private readonly contributions = new Map<symbol, unknown[]>();
-   private readonly registeredContributions = new Set<string>();
-   private readonly pendingRequirements = new Map<string, Set<string>>();
+   private logger: LoggerService;
+   private readonly registry = new PluginRegistry();
    private readonly middlewareHandlers: MiddlewareHandler[] = [];
    private readonly scanRoots = new Set<string>();
-   private readonly startupLogs: unknown[][] = [];
+   private readonly startupLogs = new StartupLogBuffer();
+   private readonly appServices = new Set<Constructor>();
 
    private server?: ServerHandle;
    private initPromise?: Promise<void>;
    private initError?: unknown;
    private _fetchHandler?: (req: Request) => Promise<Response>;
-   private readonly appServices = new Set<Constructor>();
    private shutdownHandlers?: Array<{ signal: ShutdownSignal; handler: () => void }>;
-   public basePath = '';
    private state: ServerState = ServerState.IDLE;
+
+   private inFlight = 0;
+   private drainWaiters: Array<() => void> = [];
 
    constructor(opts: ServerOpts = {}) {
       this.app = opts.app ?? new Hono({ strict: false });
       this.opts = { ...opts, app: this.app };
       this.container = opts.isolated ? new Container() : container;
+      this.logger = createLogger(opts.logger, opts.silent);
 
-      this.app.onError((error, c) => {
-         return Err.handle(error);
-      });
+      if (opts.requestLogging) {
+         this.middleware(this.createRequestLoggingMiddleware());
+      }
+
+      if (this.isDrainEnabled()) {
+         this.middleware(this.createInFlightMiddleware());
+      }
+
+      this.app.onError((error) => Err.handle(error));
    }
 
    // ============================================================================
@@ -82,7 +82,7 @@ export class Server {
    // ============================================================================
 
    public base(path: string): this {
-      this.basePath = this.normalizePath(path);
+      this.basePath = normalizeBasePath(path);
       return this;
    }
 
@@ -101,16 +101,16 @@ export class Server {
          : messages;
 
       if (this.state === ServerState.READY) {
-         this.logger.info(this.stringifyLogEntry(entry));
-         return this;
+         this.logger.info(stringifyLogEntry(entry));
+      } else {
+         this.startupLogs.push(entry);
       }
 
-      this.startupLogs.push(entry);
       return this;
    }
 
    public use(plugin: NajmPlugin): this {
-      this.registerPlugin(plugin, new Set());
+      this.registry.register(plugin);
       return this;
    }
 
@@ -123,15 +123,11 @@ export class Server {
       for (const item of items) {
          if (typeof item === 'function') {
             this.appServices.add(item as Constructor);
-            continue;
          } else if (Array.isArray(item)) {
             for (const ctor of item) {
                this.appServices.add(ctor as Constructor);
             }
-            continue;
-         }
-
-         if (typeof item === 'object' && item !== null) {
+         } else if (typeof item === 'object' && item !== null) {
             this.addInjectablesFromModule(item as Record<string, unknown>);
          }
       }
@@ -173,14 +169,14 @@ export class Server {
       const rawPort = typeof portOrCb === 'function' || portOrCb === undefined
          ? this.opts.port
          : portOrCb;
-      const port = this.normalizePort(rawPort);
+      const port = normalizePort(rawPort);
       const callback = typeof portOrCb === 'function' ? portOrCb : cb;
 
       this.opts.port = port;
       await this.ensureInitialized();
 
       try {
-         this.server = await this.createListener(port);
+         this.server = await createListener(this.createFetchHandler(), port);
       } catch (error) {
          if (!this.opts.silent) {
             this.logger.serverError(error);
@@ -188,7 +184,7 @@ export class Server {
          throw Err.startFailed(port, error);
       }
 
-      this.logger.serverStarted(this.server.port);
+      this.logger.serverStarted(this.createStartedInfo(this.server.port));
       this.logDevModeStartup(this.server.port);
       this.flushStartupLogs();
       this.registerGracefulShutdownHandlers();
@@ -197,82 +193,24 @@ export class Server {
       return this;
    }
 
-   private async createListener(port: number): Promise<ServerHandle> {
-      const fetch = this.createFetchHandler();
-
-      if (this.hasBunServe()) {
-         return Bun.serve({ fetch, port });
-      }
-
-      const { serve } = await this.importNodeServer();
-      let resolvedPort = port;
-      const nodeServer = await new Promise<any>((resolve, reject) => {
-         let server: any;
-         const onError = (error: unknown) => {
-            server?.off?.('error', onError);
-            reject(error);
-         };
-
-         server = serve({ fetch, port }, (info) => {
-            resolvedPort = info.port;
-            server?.off?.('error', onError);
-            resolve(server);
-         });
-         server?.once?.('error', onError);
-      });
-
-      return {
-         get port() {
-            const address = nodeServer.address();
-            return typeof address === 'object' && address !== null ? address.port : resolvedPort;
-         },
-         stop: () => new Promise<void>((resolve, reject) => {
-            if ('listening' in nodeServer && !nodeServer.listening) {
-               resolve();
-               return;
-            }
-
-            nodeServer.close((error?: Error) => {
-               if (error) {
-                  if ((error as NodeJS.ErrnoException).code === 'ERR_SERVER_NOT_RUNNING') {
-                     resolve();
-                     return;
-                  }
-                  reject(error);
-                  return;
-               }
-               resolve();
-            });
-         }),
-      };
-   }
-
-   private createFetchHandler(): (req: Request) => Promise<Response> {
-      return async (req) => {
+   private createFetchHandler(): (req: Request) => Response | Promise<Response> {
+      return (req) => {
          try {
-            return await this.app.fetch(req);
+            const response = this.app.fetch(req);
+            return response instanceof Promise
+               ? response.catch((error) => this.handleFetchError(error))
+               : response;
          } catch (error) {
-            if (!this.opts.silent) {
-               this.logger.serverError(error);
-            }
-            return Err.handle(error);
+            return this.handleFetchError(error);
          }
       };
    }
 
-   private hasBunServe(): boolean {
-      return typeof Bun !== 'undefined' && typeof Bun.serve === 'function';
-   }
-
-   private async importNodeServer(): Promise<typeof import('@hono/node-server')> {
-      try {
-         return await import('@hono/node-server');
-      } catch (cause) {
-         throw Err.invalidState(
-            'Running on Node requires the optional "@hono/node-server" package. Install it with: bun add @hono/node-server (or npm install @hono/node-server)',
-            cause,
-         );
+   private handleFetchError(error: unknown): Response {
+      if (!this.opts.silent) {
+         this.logger.serverError(error);
       }
+      return Err.handle(error);
    }
 
    public async init(): Promise<this> {
@@ -323,13 +261,26 @@ export class Server {
       try {
          this.removeGracefulShutdownHandlers();
 
+         // 1. Stop accepting new connections.
+         await server?.stop?.();
+
+         // 2. Drain: let in-flight requests finish (up to the configured timeout).
+         if (this.inFlight > 0) {
+            const timeout = this.resolveShutdownTimeout();
+            const drained = await this.drainInFlight(timeout);
+            if (!drained) {
+               this.logger.warn(
+                  `Shutdown drain timed out after ${timeout}ms with ${this.inFlight} request(s) still in flight`,
+               );
+            }
+         }
+
+         // 3. Run onDestroy lifecycle on all services (reverse boot order).
          if (shouldDestroy) {
-            // Run onDestroy lifecycle on all services (reverse boot order)
             const bootService = this.container.get(BootService);
             if (bootService) await bootService.destroy();
          }
 
-         await server?.stop?.();
          this.server = undefined;
          this.state = ServerState.STOPPED;
          this.initPromise = undefined;
@@ -367,18 +318,17 @@ export class Server {
    private async initialize(): Promise<void> {
       this.state = ServerState.INITIALIZING;
       this.initError = undefined;
+      const startedAt = performance.now();
 
-      if (!this.opts.silent) {
-         this.logger.serverInitializing();
-      }
+      this.logger.serverInitializing();
 
       try {
          this.registerDefaultPlugins();
-         this.validatePendingRequirements();
-         this.mergeMiddlewareHandlers();
+         this.registry.validatePendingRequirements();
+         this.registry.mergeMiddlewareHandlers(this.middlewareHandlers);
          await this.resolveScanRoots();
 
-         const pluginServices = this.collectPluginServices();
+         const pluginServices = this.registry.applyTo(this.container);
          const coreServices = this.isDiagnosticsEnabled()
             ? [...CORE_SERVICES, BootDiagnostics]
             : CORE_SERVICES;
@@ -396,30 +346,13 @@ export class Server {
          await bootService.boot();
          this.logger = await this.container.resolve(LoggerService);
 
-         // Ensure every plugin alias target is materialised. With diject ^0.1.5,
-         // alias() registers a transparent forwarder — get(token) follows to the
-         // target — so this only needs to instantiate any target that wasn't part
-         // of the booted service set.
-         for (const plugin of this.plugins.values()) {
-            if (plugin.aliases) {
-               for (const [, target] of plugin.aliases) {
-                  try {
-                     await this.container.resolve(target);
-                  } catch (err) {
-                     this.logger.error(`Alias target resolve failed for ${target?.name ?? 'anonymous'}`, err);
-                     throw err;
-                  }
-               }
-            }
-         }
+         await this.materializeAliasTargets();
 
          this.state = ServerState.READY;
          this.initError = undefined;
-         this.logger.serverInitialized();
+         this.logger.serverInitialized(performance.now() - startedAt);
       } catch (error) {
-         if (!this.opts.silent) {
-            this.logger.serverError(error);
-         }
+         this.logger.serverError(error);
          this.state = ServerState.FAILED;
          this.initPromise = undefined;
          this.initError = error;
@@ -427,151 +360,43 @@ export class Server {
       }
    }
 
-   // ============================================================================
-   // PLUGIN MANAGEMENT
-   // ============================================================================
-
-   /**
-    * Register a plugin with circular dependency detection
-    */
-   private registerPlugin(plugin: NajmPlugin, stack: Set<string>): void {
-      // Circular dependency detection
-      if (stack.has(plugin.name)) {
-         throw Err.circularDependency([...stack, plugin.name]);
-      }
-
-      // Already registered - just merge tokens
-      if (this.plugins.has(plugin.name)) {
-         this.mergePluginTokens(plugin);
-         return;
-      }
-
-      // Add to stack for cycle detection
-      stack.add(plugin.name);
-
-      // Register dependencies first
-      this.registerDependencies(plugin, stack);
-
-      // Accumulate contributions (only once per plugin)
-      this.accumulateContributions(plugin);
-
-      // Register plugin
-      this.plugins.set(plugin.name, plugin);
-
-      // Remove from stack
-      stack.delete(plugin.name);
-   }
-
-   /**
-    * Register plugin dependencies
-    */
-   private registerDependencies(plugin: NajmPlugin, stack: Set<string>): void {
-      if (!plugin.dependencies?.length) return;
-
-      for (const dep of plugin.dependencies) {
-         if (typeof dep === 'string') {
-            // String = required dependency. Validate after all .use() calls and
-            // default plugins are registered so plugin order does not matter.
-            if (!this.plugins.has(dep)) {
-               this.addPendingRequirement(plugin.name, dep);
-            }
-            continue;
-         }
-
-         // NajmPlugin = auto-register
-         if (!this.plugins.has(dep.name)) {
-            this.registerPlugin(dep, stack);
-         }
-      }
-   }
-
-   /**
-    * Accumulate contributions (only once per plugin)
-    */
-   private accumulateContributions(plugin: NajmPlugin): void {
-      if (!plugin.contributions?.length) return;
-      if (this.registeredContributions.has(plugin.name)) return;
-
-      for (const { token, value } of plugin.contributions) {
-         const existing = this.contributions.get(token) ?? [];
-         existing.push(value);
-         this.contributions.set(token, existing);
-      }
-
-      this.registeredContributions.add(plugin.name);
-   }
-
-   private mergePluginTokens(plugin: NajmPlugin): void {
-      if (!plugin.tokens?.length) return;
-
-      const existing = this.plugins.get(plugin.name);
-      if (!existing) return;
-
-      existing.tokens = [...(existing.tokens || []), ...plugin.tokens];
-   }
-
    private registerDefaultPlugins(): void {
-      const stack = new Set<string>();
-
-      if (!this.plugins.has('middleware')) {
-         this.registerPlugin(middleware(), stack);
+      if (!this.registry.has('middleware')) {
+         this.registry.register(middleware());
       }
 
-      if (!this.plugins.has('params')) {
-         this.registerPlugin(params(), stack);
+      if (!this.registry.has('params')) {
+         this.registry.register(params());
       }
 
-      if (!this.plugins.has('router')) {
-         this.registerPlugin(router(), stack);
+      if (!this.registry.has('router')) {
+         this.registry.register(router());
       }
    }
 
-   private mergeMiddlewareHandlers(): void {
-      if (!this.middlewareHandlers.length) return;
-
-      const plugin = this.plugins.get('middleware');
-      if (!plugin) return;
-
-      const existingHandlers = plugin.config?.use || [];
-      plugin.config = {
-         ...plugin.config,
-         use: [...existingHandlers, ...this.middlewareHandlers],
-      };
+   /**
+    * Ensure every plugin alias target is materialised. With diject ^0.1.5,
+    * alias() registers a transparent forwarder — get(token) follows to the
+    * target — so this only needs to instantiate any target that wasn't part
+    * of the booted service set.
+    */
+   private async materializeAliasTargets(): Promise<void> {
+      for (const target of this.registry.aliasTargets()) {
+         try {
+            await this.container.resolve(target);
+         } catch (err) {
+            this.logger.error(`Alias target resolve failed for ${target?.name ?? 'anonymous'}`, err);
+            throw err;
+         }
+      }
    }
 
-   private collectPluginServices(): Constructor[] {
-      const services: Constructor[] = [];
+   private async resolveScanRoots(): Promise<void> {
+      if (!this.scanRoots.size) return;
 
-      for (const plugin of this.plugins.values()) {
-         if (plugin.services?.length) {
-            for (const service of plugin.services) {
-               services.push(service);
-            }
-         }
-
-         if (plugin.token && plugin.config !== undefined) {
-            this.container.set(plugin.token, plugin.config);
-         }
-
-         if (plugin.tokens?.length) {
-            for (const [token, value] of plugin.tokens) {
-               this.container.set(token, value);
-            }
-         }
-
-         if (plugin.aliases?.length) {
-            for (const [token, target] of plugin.aliases) {
-               this.container.alias(token, target);
-            }
-         }
+      for (const injectable of await loadInjectablesFromRoots(this.scanRoots)) {
+         this.appServices.add(injectable);
       }
-
-      // Set accumulated contributions
-      for (const [token, values] of this.contributions) {
-         this.container.set(token, values);
-      }
-
-      return services;
    }
 
    // ============================================================================
@@ -601,6 +426,48 @@ export class Server {
       });
    }
 
+   private isDrainEnabled(): boolean {
+      return this.opts.gracefulShutdown === true || this.opts.shutdownTimeout !== undefined;
+   }
+
+   private resolveShutdownTimeout(): number {
+      const t = this.opts.shutdownTimeout;
+      return typeof t === 'number' && t >= 0 ? t : 10_000;
+   }
+
+   private createInFlightMiddleware(): MiddlewareHandler {
+      return async (_context, next) => {
+         this.inFlight++;
+         try {
+            await next();
+         } finally {
+            this.inFlight--;
+            if (this.inFlight === 0 && this.drainWaiters.length) {
+               const waiters = this.drainWaiters;
+               this.drainWaiters = [];
+               for (const resolve of waiters) resolve();
+            }
+         }
+      };
+   }
+
+   private drainInFlight(timeoutMs: number): Promise<boolean> {
+      if (this.inFlight === 0) return Promise.resolve(true);
+
+      return new Promise<boolean>((resolve) => {
+         let settled = false;
+         const done = (ok: boolean) => {
+            if (settled) return;
+            settled = true;
+            resolve(ok);
+         };
+
+         this.drainWaiters.push(() => done(true));
+         const timer = setTimeout(() => done(false), timeoutMs);
+         (timer as { unref?: () => void }).unref?.();
+      });
+   }
+
    private removeGracefulShutdownHandlers(): void {
       if (!this.shutdownHandlers?.length) {
          return;
@@ -616,188 +483,64 @@ export class Server {
    }
 
    private addInjectablesFromModule(moduleExports: Record<string, unknown>): void {
-      for (const exported of Object.values(moduleExports)) {
-         if (typeof exported === 'function' && isInjectable(exported)) {
-            this.appServices.add(exported as Constructor);
-         }
+      for (const injectable of collectInjectables(moduleExports)) {
+         this.appServices.add(injectable);
       }
-   }
-
-   private addPendingRequirement(pluginName: string, dependency: string): void {
-      const requirements = this.pendingRequirements.get(pluginName) ?? new Set<string>();
-      requirements.add(dependency);
-      this.pendingRequirements.set(pluginName, requirements);
-   }
-
-   private validatePendingRequirements(): void {
-      if (!this.pendingRequirements.size) return;
-
-      const missing: Array<{ plugin: string; dependency: string }> = [];
-
-      for (const [plugin, dependencies] of this.pendingRequirements) {
-         for (const dependency of dependencies) {
-            if (!this.plugins.has(dependency)) {
-               missing.push({ plugin, dependency });
-            }
-         }
-      }
-
-      if (missing.length) {
-         Err.missingDependencies(missing);
-      }
-   }
-
-   private async resolveScanRoots(): Promise<void> {
-      if (!this.scanRoots.size) return;
-
-      for (const root of this.scanRoots) {
-         const absoluteRoot = this.resolveScanRoot(root);
-         const barrels = this.collectBarrelEntries(absoluteRoot);
-
-         for (const barrel of barrels) {
-            const mod = await import(/* webpackIgnore: true */ pathToFileURL(barrel).href);
-            this.addInjectablesFromModule(mod as Record<string, unknown>);
-         }
-      }
-   }
-
-   private resolveScanRoot(root: string): string {
-      const absoluteRoot = isAbsolute(root) ? root : resolve(process.cwd(), root);
-
-      if (!existsSync(absoluteRoot)) {
-         throw new Error(`[najm] scan root does not exist: ${root}`);
-      }
-
-      if (!statSync(absoluteRoot).isDirectory()) {
-         throw new Error(`[najm] scan root must be a directory: ${root}`);
-      }
-
-      return absoluteRoot;
-   }
-
-   private collectBarrelEntries(root: string): string[] {
-      const barrels: string[] = [];
-      const queue: string[] = [root];
-
-      while (queue.length) {
-         const current = queue.pop();
-         if (!current) continue;
-
-         for (const entry of readdirSync(current, { withFileTypes: true })) {
-            const fullPath = join(current, entry.name);
-
-            if (entry.isDirectory()) {
-               queue.push(fullPath);
-               continue;
-            }
-
-            if (entry.isFile() && this.isBarrelEntry(entry.name)) {
-               barrels.push(fullPath);
-            }
-         }
-      }
-
-      barrels.sort();
-      return barrels;
-   }
-
-   private isBarrelEntry(fileName: string): boolean {
-      return /^index\.(ts|tsx|js|mjs|cjs|mts|cts)$/.test(fileName);
-   }
-
-   private normalizePath(path: string): string {
-      return path.replace(/\/+$/, '').replace(/^(?!\/)/, '/');
-   }
-
-   private normalizePort(rawPort: ServerOpts['port']): number {
-      if (rawPort === undefined || rawPort === null || rawPort === '') {
-         return 3000;
-      }
-
-      if (typeof rawPort === 'number') {
-         if (this.isValidPort(rawPort)) {
-            return rawPort;
-         }
-
-         Err.invalidConfig('port', 'must be an integer between 0 and 65535');
-      }
-
-      if (typeof rawPort !== 'string') {
-         Err.invalidConfig('port', `must be a number or numeric string, received "${String(rawPort)}"`);
-      }
-
-      const portString = rawPort as string;
-      const trimmed = portString.trim();
-      if (!trimmed) {
-         return 3000;
-      }
-
-      if (!/^\d+$/.test(trimmed)) {
-         Err.invalidConfig('port', `must be a numeric string, received "${rawPort}"`);
-      }
-
-      const port = Number.parseInt(trimmed, 10);
-      if (!this.isValidPort(port)) {
-         Err.invalidConfig('port', 'must be an integer between 0 and 65535');
-      }
-
-      return port;
-   }
-
-   private isValidPort(port: number): boolean {
-      return Number.isInteger(port) && port >= 0 && port <= 65535;
    }
 
    private resolvePortForErrors(): number {
       try {
-         return this.normalizePort(this.opts.port);
+         return normalizePort(this.opts.port);
       } catch {
-         return 3000;
+         return DEFAULT_PORT;
       }
    }
 
    private flushStartupLogs(): void {
-      if (!this.startupLogs.length) {
-         return;
-      }
-
-      const entries = this.startupLogs.splice(0);
-
-      for (const entry of entries) {
-         this.logger.info(this.stringifyLogEntry(entry));
-      }
+      this.startupLogs.flush((message) => this.logger.info(message));
    }
 
-   private stringifyLogEntry(values: unknown[]): string {
-      return values.map((value) => this.stringifyLogValue(value)).join(' ');
+   private createStartedInfo(port: number) {
+      const info = {
+         port,
+         basePath: this.basePath || undefined,
+         env: process.env.NODE_ENV ?? 'development',
+         runtime: typeof Bun !== 'undefined' ? `bun ${Bun.version}` : `node ${process.version}`,
+         pid: process.pid,
+         version: process.env.npm_package_version,
+      };
+
+      return Object.fromEntries(
+         Object.entries(info).filter(([, value]) => value !== undefined),
+      ) as {
+         port: number;
+         basePath?: string;
+         env: string;
+         runtime: string;
+         pid: number;
+         version?: string;
+      };
    }
 
-   private stringifyLogValue(value: unknown): string {
-      if (typeof value === 'string') {
-         return value;
-      }
+   private createRequestLoggingMiddleware(): MiddlewareHandler {
+      return async (context, next) => {
+         const startedAt = performance.now();
+         const method = context.req.method;
+         const path = context.req.path;
 
-      if (value === null) {
-         return 'null';
-      }
-
-      if (value === undefined) {
-         return 'undefined';
-      }
-
-      if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') {
-         return String(value);
-      }
-
-      if (value instanceof Error) {
-         return value.stack ?? `${value.name}: ${value.message}`;
-      }
-
-      try {
-         return JSON.stringify(value);
-      } catch {
-         return String(value);
-      }
+         try {
+            await next();
+            this.logger.requestCompleted(
+               method,
+               path,
+               context.res.status,
+               performance.now() - startedAt,
+            );
+         } catch (error) {
+            this.logger.requestError(method, path, error);
+            throw error;
+         }
+      };
    }
 
    private logDevModeStartup(port: number): void {

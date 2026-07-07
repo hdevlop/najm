@@ -22,6 +22,14 @@ export abstract class ServerOpts {
    isolated?: boolean;
    diagnostics?: boolean;
    gracefulShutdown?: boolean;
+   /**
+    * Max time (ms) to wait for in-flight requests to finish during `stop()`
+    * after the listener stops accepting new connections. Enables drain
+    * tracking on its own (independent of `gracefulShutdown` signal handlers).
+    * Default when draining: 10000.
+    */
+   shutdownTimeout?: number;
+   requestLogging?: boolean;
 }
 
 export type Constructor<T = any> = new (...args: any[]) => T;

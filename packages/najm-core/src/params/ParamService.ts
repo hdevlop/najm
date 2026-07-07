@@ -6,6 +6,7 @@ import type { ParamInjection } from './types';
 import { ParamResolver } from './ParamResolver';
 import { getParameterMetadata } from './metadata';
 
+const ASYNC_PARAM_TYPES = new Set(['body', 'file', 'json', 'text', 'formData', 'arrayBuffer', 'blob']);
 
 @Service()
 @Meta({ layer: 'plugin' })
@@ -52,10 +53,18 @@ export class ParamService {
             target,
             methodName,
             metadata,
-            resolve: () => this.resolver.resolveArgs(handler)
+            resolve: () => this.resolver.resolveArgs(handler),
+            resolveSync: this.canResolveSync(handler, metadata)
+               ? () => this.resolver.resolveArgsSync(handler)
+               : undefined,
          });
          this.paramCount++;
       }
+   }
+
+   private canResolveSync(handler: Function, metadata: ReturnType<typeof getParameterMetadata>): boolean {
+      return metadata.length === handler.length
+         && metadata.every((meta) => !ASYNC_PARAM_TYPES.has(meta.type));
    }
 
    // ============================================================================

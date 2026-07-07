@@ -4,10 +4,11 @@
 
 import { Container, createAlsToken } from 'diject';
 import { ParameterMetadata, HRequest } from './types';
-import { REQUEST, CONTEXT, PARSER } from './tokens';
+import { CONTEXT } from './tokens';
 import { Context } from 'hono';
 import { Err } from '../errors';
 import { getParameterMetadata } from './metadata';
+import { getRequestData, getRequestParser } from './requestContext';
 
 const USER = createAlsToken<any>('user');
 const ROLE = createAlsToken<string>('role');
@@ -22,10 +23,24 @@ const VALIDATED_PARAMS = createAlsToken<any>('validated:params');
 const VALIDATED_QUERY = createAlsToken<any>('validated:query');
 const VALIDATED_HEADERS = createAlsToken<any>('validated:headers');
 
+type Extractor = (ctx: Context) => unknown;
+type AsyncExtractor = (ctx: Context) => Promise<unknown>;
+
+interface CompiledExtractor {
+   index: number;
+   extract: Extractor | AsyncExtractor;
+   async: boolean;
+}
+
+interface CompiledPlan {
+   extractors: CompiledExtractor[];
+   allSync: boolean;
+}
 
 export class ParamResolver {
    private readonly parameterNamesCache = new WeakMap<Function, string[]>();
    private readonly parameterMetadataCache = new WeakMap<Function, ParameterMetadata[]>();
+   private readonly compiledPlanCache = new WeakMap<Function, CompiledPlan>();
 
    constructor(private container: Container) { }
 
@@ -35,16 +50,12 @@ export class ParamResolver {
 
       if (paramCount === 0) return [];
 
-      const requestData = this.getRequestData();
-      const context = this.getContext();
-
       if (paramMetadata.length === paramCount) {
-         return Promise.all(
-            paramMetadata
-               .map(meta => this.extractParameterValue(meta))
-         );
+         return this.resolveCompiledArgs(handler);
       }
 
+      const requestData = this.getRequestData();
+      const context = this.getContext();
       const args: any[] = new Array(paramCount).fill(undefined);
       const decoratedIndices = new Set<number>();
 
@@ -62,6 +73,60 @@ export class ParamResolver {
             if (decoratedIndices.has(i)) continue;
             args[i] = this.resolveLegacyParameter(paramNames[i], i, requestData, context);
          }
+      }
+
+      return args;
+   }
+
+   public compile(handler: Function): CompiledPlan {
+      let plan = this.compiledPlanCache.get(handler);
+
+      if (!plan) {
+         const extractors = this.getCachedParameterMetadata(handler)
+            .map((meta) => this.createCompiledExtractor(meta));
+
+         plan = {
+            extractors,
+            allSync: extractors.every((extractor) => !extractor.async),
+         };
+         this.compiledPlanCache.set(handler, plan);
+      }
+
+      return plan;
+   }
+
+   public resolveArgsSync(handler: Function): any[] {
+      const plan = this.compile(handler);
+      if (!plan.allSync) {
+         Err('Cannot resolve async parameters synchronously.');
+      }
+
+      const context = this.getContext();
+      const args = new Array(plan.extractors.length);
+
+      for (let i = 0; i < plan.extractors.length; i++) {
+         args[i] = (plan.extractors[i].extract as Extractor)(context);
+      }
+
+      return args;
+   }
+
+   private async resolveCompiledArgs(handler: Function): Promise<any[]> {
+      const plan = this.compile(handler);
+      const context = this.getContext();
+      const args = new Array(plan.extractors.length);
+
+      if (plan.allSync) {
+         for (let i = 0; i < plan.extractors.length; i++) {
+            args[i] = (plan.extractors[i].extract as Extractor)(context);
+         }
+         return args;
+      }
+
+      for (let i = 0; i < plan.extractors.length; i++) {
+         const extractor = plan.extractors[i];
+         const value = extractor.extract(context);
+         args[i] = extractor.async ? await value : value;
       }
 
       return args;
@@ -101,13 +166,13 @@ export class ParamResolver {
                return propertyKey ? validated?.[propertyKey] : validated;
             }
             // Fallback to parsing raw body
-            const parser = this.container.get(PARSER);
+            const parser = this.getParser();
             const body = await parser.parseBody();
             return propertyKey ? body?.[propertyKey] : body;
          }
 
          case 'file': {
-            const parser = this.container.get(PARSER);
+            const parser = this.getParser();
             const files = await parser.parseFiles();
             return propertyKey ? files?.[propertyKey] : files;
          }
@@ -275,6 +340,204 @@ export class ParamResolver {
       }
    }
 
+   private createCompiledExtractor(meta: ParameterMetadata): CompiledExtractor {
+      const { index, type, propertyKey } = meta;
+      let async = false;
+      let extract: Extractor | AsyncExtractor;
+
+      switch (type) {
+         case 'body':
+            async = true;
+            extract = async () => {
+               const validated = this.container.get(VALIDATED_BODY);
+               if (validated !== undefined) {
+                  return propertyKey ? validated?.[propertyKey] : validated;
+               }
+
+               const parser = this.getParser();
+               const body = await parser.parseBody();
+               return propertyKey ? body?.[propertyKey] : body;
+            };
+            break;
+
+         case 'file':
+            async = true;
+            extract = async () => {
+               const parser = this.getParser();
+               const files = await parser.parseFiles();
+               return propertyKey ? files?.[propertyKey] : files;
+            };
+            break;
+
+         case 'params':
+            extract = (context) => {
+               const validated = this.container.get(VALIDATED_PARAMS);
+               if (validated !== undefined) {
+                  return propertyKey ? validated?.[propertyKey] : validated;
+               }
+
+               if (propertyKey) {
+                  return context.req.param(propertyKey);
+               }
+
+               return context.req.param();
+            };
+            break;
+
+         case 'query':
+            extract = (context) => {
+               const validated = this.container.get(VALIDATED_QUERY);
+               if (validated !== undefined) {
+                  return propertyKey ? validated?.[propertyKey] : validated;
+               }
+
+               if (propertyKey) {
+                  return context.req.query(propertyKey);
+               }
+
+               return context.req.query();
+            };
+            break;
+
+         case 'headers':
+            extract = (context) => {
+               const validated = this.container.get(VALIDATED_HEADERS);
+               if (validated !== undefined) {
+                  return propertyKey ? validated?.[propertyKey] : validated;
+               }
+
+               return propertyKey
+                  ? this.extractHeaders(context)?.[propertyKey]
+                  : this.extractHeaders(context);
+            };
+            break;
+
+         case 'contentType':
+            extract = (context) => context.req.header('content-type');
+            break;
+         case 'contentLength':
+            extract = (context) => {
+               const len = context.req.header('content-length');
+               return len ? parseInt(len, 10) : undefined;
+            };
+            break;
+         case 'origin':
+            extract = (context) => context.req.header('origin');
+            break;
+         case 'referer':
+            extract = (context) => context.req.header('referer');
+            break;
+         case 'language':
+            extract = (context) => context.req.header('accept-language');
+            break;
+         case 'encoding':
+            extract = (context) => context.req.header('accept-encoding');
+            break;
+         case 'connection':
+            extract = (context) => context.req.header('connection');
+            break;
+         case 'upgrade':
+            extract = (context) => context.req.header('upgrade');
+            break;
+         case 'protocol':
+            extract = (context) => context.req.header('x-forwarded-proto') || 'http';
+            break;
+         case 'cookie':
+            extract = (context) => {
+               const cookies = this.parseCookies(context);
+               return propertyKey ? cookies?.[propertyKey] : cookies;
+            };
+            break;
+         case 'ip':
+            extract = (context) => this.extractClientIP(context);
+            break;
+         case 'path':
+            extract = (context) => context.req.path;
+            break;
+         case 'url':
+            extract = (context) => context.req.url;
+            break;
+         case 'method':
+            extract = (context) => context.req.method;
+            break;
+         case 'routePath':
+            extract = (context) => context.req.routePath;
+            break;
+         case 'matchedRoutes':
+            extract = (context) => context.req.matchedRoutes;
+            break;
+         case 'routeIndex':
+            extract = (context) => context.req.routeIndex;
+            break;
+         case 'raw':
+            extract = (context) => context.req.raw;
+            break;
+         case 'json':
+            async = true;
+            extract = (context) => context.req.json();
+            break;
+         case 'text':
+            async = true;
+            extract = (context) => context.req.text();
+            break;
+         case 'arrayBuffer':
+            async = true;
+            extract = (context) => context.req.arrayBuffer();
+            break;
+         case 'blob':
+            async = true;
+            extract = (context) => context.req.blob();
+            break;
+         case 'formData':
+            async = true;
+            extract = (context) => context.req.formData();
+            break;
+         case 'queries':
+            extract = (context) => propertyKey
+               ? context.req.queries(propertyKey)
+               : context.req.queries.bind(context.req);
+            break;
+         case 'valid':
+            extract = (context) => context.req.valid.bind(context.req);
+            break;
+         case 'user':
+            extract = () => this.getFromAlsToken('user', propertyKey);
+            break;
+         case 'info':
+            extract = () => this.getFromAlsToken('info', propertyKey);
+            break;
+         case 'owner':
+            extract = () => this.getFromAlsToken('owner', propertyKey);
+            break;
+         case 'data':
+            extract = () => this.getFromAlsToken('data', propertyKey);
+            break;
+         case 'filter':
+            extract = () => this.getFromAlsToken('filter', propertyKey);
+            break;
+         case 'role':
+            extract = () => this.getFromAlsToken('role', propertyKey);
+            break;
+         case 'permissions':
+            extract = () => this.getFromAlsToken('permissions', propertyKey);
+            break;
+         case 'guardParams':
+            extract = () => this.getFromAlsToken('guardParams', propertyKey);
+            break;
+         case 'req':
+            extract = () => this.getRequestData();
+            break;
+         case 'context':
+            extract = (context) => context;
+            break;
+         default:
+            extract = () => undefined;
+            break;
+      }
+
+      return { index, extract, async };
+   }
+
    // ============================================================================
    // UTILITIES
    // ============================================================================
@@ -311,11 +574,7 @@ export class ParamResolver {
    }
 
    private getRequestData(): HRequest {
-      const requestData = this.container.get(REQUEST);
-      if (!requestData) {
-         Err('REQUEST not found. Ensure middleware is configured.');
-      }
-      return requestData;
+      return getRequestData(this.getContext());
    }
 
    private getContext(): Context {
@@ -324,6 +583,54 @@ export class ParamResolver {
          Err('CONTEXT not found. Ensure middleware is configured.');
       }
       return context;
+   }
+
+   private getParser() {
+      return getRequestParser(this.getContext());
+   }
+
+   private extractHeaders(context: Context): Record<string, string> {
+      const headers: Record<string, string> = {};
+      context.req.raw.headers.forEach((value, key) => {
+         headers[key] = value;
+      });
+      return headers;
+   }
+
+   private parseCookies(context: Context): Record<string, string> {
+      const cookieHeader = context.req.header('cookie');
+      if (!cookieHeader) return {};
+
+      const cookies: Record<string, string> = {};
+      for (const cookie of cookieHeader.split(';')) {
+         const [name, ...rest] = cookie.trim().split('=');
+         if (name && rest.length > 0) {
+            cookies[name] = decodeURIComponent(rest.join('='));
+         }
+      }
+      return cookies;
+   }
+
+   private extractClientIP(context: Context): string {
+      const headers = context.req.raw.headers;
+      const ipHeaders = [
+         'x-forwarded-for',
+         'x-real-ip',
+         'cf-connecting-ip',
+         'x-client-ip',
+         'x-forwarded',
+         'forwarded-for',
+         'forwarded',
+      ];
+
+      for (const header of ipHeaders) {
+         const value = headers.get(header);
+         if (value) {
+            return value.split(',')[0].trim();
+         }
+      }
+
+      return 'unknown';
    }
 
 private getFromAlsToken<T>(tokenName: string, propertyKey?: string): any {

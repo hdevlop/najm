@@ -7,7 +7,8 @@
   "workspaces": {
     "packages": [
       "packages/*",
-      "apps/*"
+      "apps/*",
+      "benchmarks"
     ],
     "nohoist": []
   },
@@ -108,6 +109,9 @@
     "test:whatsapp": "turbo run test --filter=najm-whatsapp",
     "test:ui": "bun run --cwd packages/najm-kit test",
     "test:seq": "bun run scripts/test-sequential.ts",
+    "bench": "bun benchmarks/http.bench.ts",
+    "bench:hotpath": "bun benchmarks/hotpath.bench.ts",
+    "bench:frameworks": "bun benchmarks/frameworks.bench.ts",
     "publish:all": "bun scripts/publish-all.ts",
     "publish:all:dry": "bun scripts/publish-all.ts --dry-run",
     "publish:pkg": "bun scripts/publish-package.ts",

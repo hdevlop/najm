@@ -1,5 +1,4 @@
 import { Context, Hono, MiddlewareHandler, Next } from 'hono';
-import { contextStorage } from 'hono/context-storage';
 import { randomUUID } from 'node:crypto';
 import { Service, Meta, DI, Inject, Container, Constructor } from 'diject';
 import { Scan, ScannerService, ScanType, INJECTION_TYPES } from '../scanner';
@@ -17,7 +16,13 @@ import type {
    MiddlewareClass,
    Interceptor,
 } from './types';
-import { RequestParser } from '../router';
+import { clearRequestContextCache } from '../params/requestContext';
+
+let requestIdSeq = 0;
+
+function createFastRequestId(): string {
+   return `${process.pid.toString(36)}-${(requestIdSeq++).toString(36)}`;
+}
 
 @Service()
 @Meta({ layer: 'plugin', order: 5 })
@@ -35,6 +40,7 @@ export class MiddlewareService {
    private static readonly DEFAULT_CONFIG: MiddlewareConfig = {
       debug: false,
       requestIdHeader: 'x-request-id',
+      requestId: 'fast',
       exclude: [],
       use: [],
    };
@@ -108,49 +114,62 @@ export class MiddlewareService {
       this.container.setInjection({
          type: INJECTION_TYPES.MIDDLEWARE,
          scope: 'global',
-         name: 'context-storage',
-         order: 1,
-         handler: contextStorage(),
-      });
-
-      this.container.setInjection({
-         type: INJECTION_TYPES.MIDDLEWARE,
-         scope: 'global',
          name: 'request-context',
-         order: 2,
+         order: 1,
          handler: this.createRequestContextMiddleware(),
       });
    }
 
    private createRequestContextMiddleware(): MiddlewareHandler {
       const headerName = this.parsedConfig.requestIdHeader ?? 'x-request-id';
+      const requestIdGenerator = this.parsedConfig.requestId ?? 'fast';
 
       return async (context: Context, next: Next) => {
-         const requestId = context.req.header(headerName) || randomUUID();
+         const requestId = context.req.header(headerName)
+            || this.createRequestId(context, requestIdGenerator);
 
-         const parser = new RequestParser(context);
-         const request = parser.createRequest();
+         // Echo the id back so clients and downstream proxies can correlate the
+         // request with server logs (the logger already tags entries via ALS).
+         context.header(headerName, requestId);
 
          return this.container.run(
             {
                requestId,
-               context,
-               request,
-               parser
+               context
             },
             async () => {
                try {
                   return await next();
                } finally {
                   try {
-                     await this.container.cleanupReq();
+                     if (this.hasRequestScopeWork(requestId)) {
+                        await this.container.cleanupReq(requestId);
+                     }
                   } catch (error) {
                      this.log.error?.('Failed to cleanup request scope', error);
+                  } finally {
+                     clearRequestContextCache(context);
                   }
                }
             }
          );
       };
+   }
+
+   private createRequestId(
+      context: Context,
+      generator: NonNullable<MiddlewareConfig['requestId']>
+   ): string {
+      if (typeof generator === 'function') {
+         return generator(context);
+      }
+
+      return generator === 'uuid' ? randomUUID() : createFastRequestId();
+   }
+
+   private hasRequestScopeWork(requestId: string): boolean {
+      return this.container.requestScoped.has(requestId)
+         || this.container.requestPromises.has(requestId);
    }
 
    private registerConfigMiddleware(): void {

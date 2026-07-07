@@ -72,4 +72,5 @@ export interface ParamsInjection {
    methodName: string;
    metadata?: unknown[];
    resolve?: () => Promise<unknown[]>;
+   resolveSync?: () => unknown[];
 }

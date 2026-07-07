@@ -1,5 +1,6 @@
+import 'reflect-metadata';
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
-import { LoggerService, Server } from '../dist/index.mjs';
+import { Controller, Get, LoggerService, Server } from '../dist/index.mjs';
 
 describe('Server startup logging', () => {
   let originalServe: typeof Bun.serve;
@@ -31,7 +32,8 @@ describe('Server startup logging', () => {
     const infoMessages: string[] = [];
 
     (server as any).logger = {
-      serverStarted: (port: number) => events.push(`started:${port}`),
+      serverStarted: (info: number | { port: number }) =>
+        events.push(`started:${typeof info === 'number' ? info : info.port}`),
       serverStopped: () => events.push('stopped'),
       serverError: () => events.push('error'),
       info: (message: string) => infoMessages.push(message),
@@ -67,7 +69,8 @@ describe('Server startup logging', () => {
     const infoMessages: string[] = [];
 
     (server as any).logger = {
-      serverStarted: (port: number) => events.push(`started:${port}`),
+      serverStarted: (info: number | { port: number }) =>
+        events.push(`started:${typeof info === 'number' ? info : info.port}`),
       serverStopped: () => events.push('stopped'),
       serverError: () => events.push('error'),
       info: (message: string) => infoMessages.push(message),
@@ -308,6 +311,124 @@ describe('Server startup logging', () => {
     expect(messages[0]).toContain('production pretty');
     expect(messages[0]).not.toContain('\x1b[');
   });
+
+  test('constructor logger config applies to every startup line before DI boot', async () => {
+    process.env.NODE_ENV = 'development';
+    delete process.env.LOG_FORMAT;
+
+    const originalLog = console.log;
+    const logs: string[] = [];
+    console.log = (message?: unknown) => {
+      logs.push(String(message));
+    };
+
+    try {
+      const server = new Server({
+        isolated: true,
+        logger: {
+          format: 'json',
+          includeTimestamp: false,
+          includeRequestId: false,
+        },
+      });
+
+      await server.init();
+      await server.stop();
+    } finally {
+      console.log = originalLog;
+    }
+
+    expect(logs.length).toBeGreaterThan(0);
+    const entries = logs.map((line) => JSON.parse(line));
+    expect(entries[0].message).toBe('Initializing server...');
+    expect(entries.some((entry) => /^Server initialized in \d+ms$/.test(entry.message))).toBe(true);
+
+    for (const entry of entries) {
+      expect(entry.message).toMatch(/^[\x00-\x7F]*$/);
+    }
+  });
+
+  test('production started record includes operational context', async () => {
+    Bun.serve = (() => ({
+      port: 61636,
+      stop: () => {},
+    })) as unknown as typeof Bun.serve;
+
+    process.env.NODE_ENV = 'production';
+    delete process.env.LOG_FORMAT;
+
+    const originalLog = console.log;
+    const logs: string[] = [];
+    console.log = (message?: unknown) => {
+      logs.push(String(message));
+    };
+
+    try {
+      const server = new Server({ isolated: true }).base('/api');
+      await server.listen(0);
+      await server.stop();
+    } finally {
+      console.log = originalLog;
+    }
+
+    const started = logs
+      .map((line) => JSON.parse(line))
+      .find((entry) => entry.message === 'Server started successfully');
+
+    expect(started.context).toMatchObject({
+      port: 61636,
+      basePath: '/api',
+      env: 'production',
+      pid: process.pid,
+    });
+    expect(started.context.runtime).toMatch(/^(bun|node) /);
+  });
+
+  test('requestLogging records completed requests when opted in', async () => {
+    class AccessLogController {
+      ok() {
+        return { ok: true };
+      }
+    }
+
+    decorateMethod(AccessLogController.prototype, 'ok', Get('/ok'));
+    decorateClass(AccessLogController, Controller('/access'));
+
+    const originalLog = console.log;
+    const logs: string[] = [];
+    console.log = (message?: unknown) => {
+      logs.push(String(message));
+    };
+
+    try {
+      const server = new Server({
+        isolated: true,
+        requestLogging: true,
+        logger: {
+          format: 'json',
+          includeTimestamp: false,
+          includeRequestId: false,
+        },
+      }).load(AccessLogController);
+
+      await server.init();
+      await server.fetch(new Request('http://localhost/access/ok'));
+      await server.stop();
+    } finally {
+      console.log = originalLog;
+    }
+
+    const requestLog = logs
+      .map((line) => JSON.parse(line))
+      .find((entry) => entry.message === 'Request completed');
+
+    expect(requestLog.context).toMatchObject({
+      method: 'GET',
+      path: '/access/ok',
+      status: 200,
+    });
+    expect(requestLog.context.duration).toMatch(/^\d+(\.\d+)?ms$/);
+  });
 });
 
 function restoreEnv(key: string, value: string | undefined) {
@@ -317,4 +438,25 @@ function restoreEnv(key: string, value: string | undefined) {
   }
 
   process.env[key] = value;
+}
+
+function decorateClass(target: Function, ...decorators: ClassDecorator[]) {
+  for (const decorator of decorators.reverse()) {
+    decorator(target);
+  }
+}
+
+function decorateMethod(
+  target: object,
+  methodName: string,
+  ...decorators: MethodDecorator[]
+) {
+  const descriptor = Object.getOwnPropertyDescriptor(target, methodName);
+  if (!descriptor) {
+    throw new Error(`Missing descriptor for ${methodName}`);
+  }
+
+  for (const decorator of decorators.reverse()) {
+    decorator(target, methodName, descriptor);
+  }
 }
