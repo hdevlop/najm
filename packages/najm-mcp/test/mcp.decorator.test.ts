@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { describe, expect, test } from 'bun:test';
 import { MetaHelper } from 'najm-core';
-import { Annotations, McpTool, Tool, ToolGroup } from '../src/decorator';
+import { McpTool, Tool, ToolGroup } from '../src/decorator';
 import {
   MCP_ANNOTATIONS_META,
   MCP_CONFIRMATION_META,
@@ -50,19 +50,6 @@ describe('najm-mcp decorators', () => {
     class DemoGroupedController {}
 
     expect(Reflect.getMetadata(MCP_GROUP_META, DemoGroupedController)).toBe('orders');
-  });
-
-  test('@Annotations stores method-level behavioral metadata', () => {
-    class DemoController {
-      @Tool({ name: 'dangerous_action', description: 'Dangerous action' })
-      @Annotations({ destructive: true, idempotent: false })
-      run() {
-        return 'ok';
-      }
-    }
-
-    const annotations = Reflect.getMetadata(MCP_ANNOTATIONS_META, DemoController.prototype.run);
-    expect(annotations).toEqual({ destructive: true, idempotent: false });
   });
 
   test('@McpTool registers method as both Tool and controller tool', () => {

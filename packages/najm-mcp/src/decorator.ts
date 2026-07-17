@@ -30,16 +30,6 @@ export function ToolGroup(prefix: string): ClassDecorator {
   };
 }
 
-/**
- * @deprecated Use object-form `@McpTool({ description, destructive, readOnly, idempotent, openWorld })` instead.
- * Will be removed in the next minor version.
- */
-export function Annotations(annotations: McpAnnotations): MethodDecorator {
-  return (target: any, methodKey: string | symbol) => {
-    Reflect.defineMetadata(MCP_ANNOTATIONS_META, annotations, target[methodKey as any]);
-  };
-}
-
 export function McpTool(
   meta: string | {
     description: string;

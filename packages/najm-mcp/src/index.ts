@@ -13,7 +13,6 @@ export {
   Tool,
   McpTool,
   ToolGroup,
-  Annotations,
   getMcpTools,
   getMcpToolGroup,
   getMcpAnnotations,

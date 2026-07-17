@@ -3,7 +3,7 @@ import { Get, Post, ResMsg } from 'najm-core';
 import { Params, Body, User, Headers } from 'najm-core';
 import { AuthService } from './AuthService';
 import { isAuth } from './AuthGuard';
-import { isAdmin } from '../roles';
+import { isAdmin } from '../roles/RoleGuards';
 import { Validate } from 'najm-validation';
 import { RateLimit } from 'najm-rate';
 import type { Context } from 'hono';

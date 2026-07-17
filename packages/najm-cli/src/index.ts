@@ -25,7 +25,7 @@ async function main() {
             break;
 
          case 'init':
-            if (subCommand === 'next' || subCommand === 'nextjs') {
+            if (subCommand === 'next') {
                const nextCmd = new NextCommand();
                await nextCmd.initialize();
             } else {
@@ -35,7 +35,6 @@ async function main() {
             break;
 
          case 'new':
-         case 'generate':
             let componentType: ComponentType | undefined = undefined;
             if (subCommand) {
                switch (subCommand.toLowerCase()) {
@@ -95,7 +94,7 @@ async function main() {
             break;
          default:
             if (!command) {
-               log.warn('No command specified. Use "najm-api init" to create a new project.');
+               log.warn('No command specified. Use "najm init" to create a new project.');
                await showHelp();
             } else {
                log.error(`Unknown command: ${command}`);

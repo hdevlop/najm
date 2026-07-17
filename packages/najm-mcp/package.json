@@ -1,6 +1,7 @@
 {
   "name": "najm-mcp",
-  "version": "0.0.18",
+  "version": "2.0.1",
+  "license": "MIT",
   "description": "MCP plugin for Najm framework",
   "type": "module",
   "files": [

@@ -60,8 +60,11 @@ server
 ### Knowledge RAG
 
 ```typescript
+import { isAuth } from 'najm-auth';
+import { storage } from 'najm-storage';
+
 server
-  .use(storage({ provider: 'local', basePath: 'storage' }))  // required for document uploads
+  .use(storage({ provider: 'local', basePath: 'storage', guards: [isAuth()] }))  // required for document uploads
   .use(rag({
     dialect: 'sqlite',
     knowledge: true,    // enable document ingestion + search

@@ -43,14 +43,6 @@ najm new repository product   # → src/features/product/product.repository.ts
 najm new module product       # → full feature module
 ```
 
-### `najm generate <type> <name>`
-
-Alias for `najm new`.
-
-```bash
-najm generate controller user
-```
-
 ### `najm database <action>`
 
 Database management.

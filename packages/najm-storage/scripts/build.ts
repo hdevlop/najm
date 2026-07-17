@@ -5,7 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 const packageDir = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
-function runTsup(target: 'backend' | 'studio') {
+function runTsup(target: 'backend' | 'studio' | 'client') {
   const result = spawnSync(process.execPath, ['run', 'tsup'], {
     cwd: packageDir,
     env: { ...process.env, NAJM_STORAGE_BUILD_TARGET: target },
@@ -19,3 +19,4 @@ function runTsup(target: 'backend' | 'studio') {
 
 runTsup('backend');
 runTsup('studio');
+runTsup('client');

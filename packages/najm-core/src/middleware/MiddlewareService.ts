@@ -142,7 +142,7 @@ export class MiddlewareService {
                   return await next();
                } finally {
                   try {
-                     if (this.hasRequestScopeWork(requestId)) {
+                     if (this.container.hasRequestScope(requestId)) {
                         await this.container.cleanupReq(requestId);
                      }
                   } catch (error) {
@@ -165,11 +165,6 @@ export class MiddlewareService {
       }
 
       return generator === 'uuid' ? randomUUID() : createFastRequestId();
-   }
-
-   private hasRequestScopeWork(requestId: string): boolean {
-      return this.container.requestScoped.has(requestId)
-         || this.container.requestPromises.has(requestId);
    }
 
    private registerConfigMiddleware(): void {

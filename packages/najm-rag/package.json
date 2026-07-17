@@ -1,6 +1,7 @@
 {
   "name": "najm-rag",
-  "version": "0.0.12",
+  "version": "2.0.1",
+  "license": "MIT",
   "description": "RAG engine for Najm framework — embeddings, vector search, and semantic tool routing",
   "type": "module",
   "files": [

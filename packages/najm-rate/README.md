@@ -82,3 +82,16 @@ rateLimit({
 - Configure Redis via `najm-cache` for distributed rate limiting across instances
 - Use `@SkipRateLimit()` on health checks and internal endpoints
 - Plugin-level `keyGenerator` sets the default; route-level `key` takes precedence per-route
+
+## Security Defaults
+
+- Rate limiting is enabled by default when the plugin is registered.
+- Route-level decorators use isolated buckets per method and route path, so
+  unrelated endpoints do not share the same counter.
+- Controller-level decorators share a controller-scoped bucket.
+- Plugin-level `defaultLimit` creates a global bucket.
+- The default key strategy is IP address. Behind a proxy, only trust
+  `x-forwarded-for` / `x-real-ip` when that proxy is controlled by you; otherwise
+  provide a custom `keyGenerator`.
+- Counters use the configured `najm-cache` backend. Use Redis or another shared
+  cache for multi-instance deployments.

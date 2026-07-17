@@ -6,6 +6,7 @@ import type { FileCategory } from './fileUtils';
 
 export type StorageBackend = 'local' | 'database';
 export type StorageDialect = 'sqlite' | 'pg' | 'mysql';
+export type StorageRouteGuard = ClassDecorator & MethodDecorator;
 
 export interface BucketConfig {
   name: string;
@@ -36,6 +37,12 @@ export interface StorageConfig {
   provider?: StorageBackend;
   /** Register MCP tools for file operations (default: false) */
   mcp?: boolean;
+  /**
+   * Guards applied to the storage REST controllers.
+   * This option is required: pass guards such as `isAuth()` to protect routes,
+   * or pass `[]` to explicitly opt into public storage routes.
+   */
+  guards?: StorageRouteGuard[];
   /** Required when provider is 'database' — auto-selects schema */
   dialect?: StorageDialect;
   /** Explicit drizzle schema override (advanced use — takes priority over dialect) */

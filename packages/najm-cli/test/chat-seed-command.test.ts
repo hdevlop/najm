@@ -27,7 +27,7 @@ describe('chat:seed command', () => {
     const result = await runCli(['chat:seed', '--help']);
 
     expect(result.exitCode).toBe(0);
-    expect(result.output).toContain('najm-api chat:seed');
+    expect(result.output).toContain('najm chat:seed');
     expect(result.output).toContain('Generates seed code');
     expect(result.output).not.toContain('Select LLM provider');
   });

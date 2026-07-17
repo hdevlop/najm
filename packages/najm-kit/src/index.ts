@@ -59,8 +59,8 @@ export { Switch } from "./components/ui/switch";
 export type { SwitchSize, SwitchColor } from "./components/ui/switch";
 export { Tabs, TabsList, TabsTrigger, TabsContent } from "./components/ui/tabs";
 export type { TabsProps, TabsListProps, TabsTriggerProps, TabsVariant, TabsOrientation } from "./components/ui/tabs";
-export { NTabs, TAB_COLORS } from "./components/tabs";
-export type { NTabsProps, NTabsItem, NTabsClassNames, NTabsStyles, NTabsColor } from "./components/tabs";
+export { NTabs, TAB_COLORS, NEditorTabs, getNextEditorTabValue } from "./components/tabs";
+export type { NTabsProps, NTabsItem, NTabsClassNames, NTabsStyles, NTabsColor, NEditorTab, NEditorTabsProps } from "./components/tabs";
 export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, tooltipContentVariants } from "./components/ui/tooltip";
 export { SimpleTooltip, type SimpleTooltipProps } from "./components/ui/simple-tooltip";
 export { NProgress, Progress } from "./components/Progress";
@@ -133,7 +133,7 @@ export { Combobox, type ComboboxOption, type ComboboxProps } from "./components/
 
 // Form
 export { NForm, FormInput, NFormSectionHeader, RepeatingFields, DynamicArray, PrefixProvider, usePrefix, VariantProvider, useVariant, useVariantPreset, useNForm, WizardForm, StepIndicator, StepsHeader, StepsProgress, useStepNavigation, useFormSubmission } from "./components/form";
-export type { FormInputProps, FormProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./components/form";
+export type { FormInputBackground, FormInputProps, FormProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./components/form";
 
 // Table
 export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard } from "./components/table";
@@ -147,8 +147,8 @@ export type { SelectItemType as SelectItemDataType, DialogSize, DialogWidth, Dia
 export { resolveSlot } from "./lib/slots";
 
 // Dialog
-export { NDialog, NMultiDialog, dialogVariants, NConfirmDialog, NDeleteDialog, NDeleteDialogContent, useDialog, useDialogStore, createDialogStore, NSheet, NPortalScopeProvider, useNPortalScope } from "./components/Dialog";
-export type { NDialogDirectProps, NDialogProps, NMultiDialogProps, NConfirmDialogProps, NDeleteDialogContentProps, NDeleteDialogProps, NSheetProps, ButtonConfig, DialogActionMode, DialogConfig, DialogContentProps, DialogPadding, DialogRenderContext, DialogRenderer, PushDialogOptions, DeleteDialogOptions, DialogApi, DialogStore } from "./components/Dialog";
+export { NDialog, NDialogDescription, NDialogHeader, NDialogPrimaryButton, NDialogSecondaryButton, NMultiDialog, dialogVariants, NConfirmDialog, NDeleteDialog, NDeleteDialogContent, useDialog, useDialogStore, createDialogStore, NSheet, NPortalScopeProvider, useNPortalScope } from "./components/Dialog";
+export type { NDialogActionProps, NDialogDescriptionProps, NDialogDirectProps, NDialogHeaderProps, NDialogProps, NMultiDialogProps, NConfirmDialogProps, NDeleteDialogContentProps, NDeleteDialogProps, NSheetProps, ButtonConfig, DialogActionMode, DialogVariant, DialogConfig, DialogContentProps, DialogPadding, DialogRenderContext, DialogRenderer, PushDialogOptions, DeleteDialogOptions, DialogApi, DialogStore } from "./components/Dialog";
 export { NSmartPasteDialog, type NSmartPasteDialogProps, type SmartPastePreview } from "./components/Dialog/NSmartPasteDialog";
 
 // Sidebar sub-components

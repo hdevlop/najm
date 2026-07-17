@@ -9,7 +9,7 @@ export { rateLimit, RateLimit, SkipRateLimit, RateLimitService } from 'najm-rate
 export { cors, CorsService } from 'najm-cors';
 export { cookies, Cookies, Cookie, CookieService, getCookiesOptions } from 'najm-cookies';
 export { i18n, I18n, I18nService, t } from 'najm-i18n';
-export { mcp, Tool, McpTool, ToolGroup, Annotations } from 'najm-mcp';
+export { mcp, Tool, McpTool, ToolGroup } from 'najm-mcp';
 export { events, Events, On, EventService } from 'najm-event';
 export { database, DB, Transaction, DatabaseService, TransactionService, SeedService } from 'najm-database';
 export { storage, StorageService, StorageController, StorageMcpTools, StorageStudioController, AuditService } from 'najm-storage';

@@ -1,14 +1,13 @@
 {
   "name": "najm-cli",
-  "version": "1.1.14",
+  "version": "2.0.1",
   "description": "CLI tool for najm framework - scaffolding, code generation, and project setup",
   "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
     "najm": "./dist/index.js",
-    "najm-cli": "./dist/index.js",
-    "najm-api": "./dist/index.js"
+    "najm-cli": "./dist/index.js"
   },
   "exports": {
     ".": {

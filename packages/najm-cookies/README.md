@@ -125,6 +125,16 @@ cookies({
 })
 ```
 
+## Security Defaults
+
+- `httpOnly` defaults to `true`.
+- `secure` defaults to `true` in production.
+- `sameSite` defaults to `Lax`.
+- `path` defaults to `/`.
+- Signed cookies must be written and verified with an application secret; do not
+  reuse JWT secrets for unrelated cookie purposes.
+- Set `secure: false` only for local HTTP development.
+
 ## Example: Using Both Together
 
 ```typescript

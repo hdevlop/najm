@@ -14,6 +14,10 @@ const commandSource = readFileSync(
   fileURLToPath(new URL("../src/components/ui/command.tsx", import.meta.url)),
   "utf8",
 );
+const tabsSource = readFileSync(
+  fileURLToPath(new URL("../src/components/ui/tabs.tsx", import.meta.url)),
+  "utf8",
+);
 
 function blockAfter(source: string, marker: RegExp, end: RegExp): string {
   const m = source.match(marker);
@@ -79,6 +83,17 @@ describe("dropdown option cursor classes", () => {
 });
 
 describe("select option cursor classes", () => {
+  test("SelectContent uses the popover surface by default", () => {
+    const block = blockAfter(
+      selectSource,
+      /function SelectContent\b/,
+      /function SelectLabel\b/,
+    );
+    expect(block).toContain("bg-popover");
+    expect(block).toContain("text-popover-foreground");
+    expect(block).not.toMatch(/\brounded-md border\b/);
+  });
+
   test("SelectItem uses cursor-pointer, not cursor-default", () => {
     const block = blockAfter(
       selectSource,
@@ -106,6 +121,19 @@ describe("select option cursor classes", () => {
       /function SelectScrollDownButton\b/,
     );
     expect(upBlock).toContain("cursor-default");
+  });
+});
+
+describe("tabs trigger cursor classes", () => {
+  test("TabsTrigger uses cursor-pointer, not cursor-default", () => {
+    const block = blockAfter(tabsSource, /function TabsTrigger\b/, /function TabsContent\b/);
+    expect(block).toContain("cursor-pointer");
+    expect(block).not.toContain("cursor-default");
+  });
+
+  test("TabsTrigger is non-interactive when disabled", () => {
+    const block = blockAfter(tabsSource, /function TabsTrigger\b/, /function TabsContent\b/);
+    expect(block).toContain("disabled:pointer-events-none");
   });
 });
 

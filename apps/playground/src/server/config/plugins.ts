@@ -8,7 +8,7 @@ import { rateLimit } from 'najm-rate';
 import { storage } from 'najm-storage';
 import { translations } from '../locales';
 import { databaseConfig } from './database';
-import { auth } from 'najm-auth';
+import { auth, isAuth } from 'najm-auth';
 import { rag, ragStudio } from 'najm-rag';
 import { chatbot } from 'najm-chatbot';
 import { studioAssistant } from 'najm-chatbot/studio-assistant';
@@ -82,7 +82,7 @@ export const mcpConfig = () => mcp({
   cors: true,
 });
 
-export const storageConfig = () => storage({ provider: 'local', basePath: 'storage', studio: true, maxFileSize: 100 * 1024 * 1024, preview: { enabled: true, cacheDir: '.cache/thumbnails' } });
+export const storageConfig = () => storage({ provider: 'local', basePath: 'storage', studio: true, guards: [isAuth()], maxFileSize: 100 * 1024 * 1024, preview: { enabled: true, cacheDir: '.cache/thumbnails' } });
 
 export const ragConfig = () => rag({
   dialect: process.env.PLAYGROUND_DB === 'pg' ? 'pg' : 'sqlite',

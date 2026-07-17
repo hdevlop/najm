@@ -61,6 +61,7 @@ export type NajmComponentName =
   | "pageHeader"
   | "input"
   | "select"
+  | "dropdown"
   | "sheet"
   | "popover"
   | "tooltip"
@@ -108,6 +109,7 @@ export const NAJM_COMPONENT_NAMES: readonly NajmComponentName[] = [
   "pageHeader",
   "input",
   "select",
+  "dropdown",
   "sheet",
   "popover",
   "tooltip",

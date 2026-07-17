@@ -1,11 +1,33 @@
 import React, { useState } from 'react';
-import { NTabs, Tabs, TabsList, TabsTrigger, TabsContent, ColorPickerInput } from 'najm-kit';
+import { NTabs, NEditorTabs, getNextEditorTabValue, Tabs, TabsList, TabsTrigger, TabsContent, ColorPickerInput, NButton } from 'najm-kit';
+import type { NEditorTab } from 'najm-kit';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
+
+const editorContent = (text: string) => (
+  <div className="h-24 bg-card p-4 text-sm text-muted-foreground">{text}</div>
+);
+
+const initialEditorTabs: NEditorTab[] = [
+  { value: 'home', name: 'Home', icon: 'Home', closable: false, content: editorContent('Home — not closable.') },
+  { value: 'classy.ase', name: 'classy.ase', dirty: true, content: editorContent('classy.ase — dirty: hover the dot to reveal the close button.') },
+  { value: 'palette.ase', name: 'palette.ase', content: editorContent('palette.ase — clean, closable.') },
+  { value: 'long.ase', name: 'a-really-long-file-name-that-truncates.ase', content: editorContent('Long name — hover the tab label for the truncation tooltip.') },
+];
 
 export function TabsPage() {
   const [accentColor, setAccentColor] = useState('#6366f1');
   const [showBordered, setShowBordered] = useState(false);
+
+  const [editorTabs, setEditorTabs] = useState(initialEditorTabs);
+  const [activeEditorTab, setActiveEditorTab] = useState('classy.ase');
+
+  const closeEditorTab = (value: string) => {
+    if (value === activeEditorTab) {
+      setActiveEditorTab(getNextEditorTabValue(editorTabs, value) ?? '');
+    }
+    setEditorTabs(editorTabs.filter((tab) => tab.value !== value));
+  };
 
   const tabItems = [
     { value: 'account',  icon: 'User',     label: 'Account',  content: <p className="text-sm text-muted-foreground pt-2">Account settings content.</p> },
@@ -137,6 +159,53 @@ export function TabsPage() {
               { value: 'pricing',  label: 'Pricing',  content: <p className="text-sm text-muted-foreground pt-3 border-t border-border mt-0">Pricing content goes here.</p> },
             ]}
           />
+        </div>
+      </Example>
+
+      <Example
+        title="Editor tabs"
+        description="IDE/browser-style tab bar: closable tabs, dirty-state dot, optional icon, and a tooltip when the name truncates. getNextEditorTabValue picks the tab to activate after a close."
+        code={`const [tabs, setTabs] = useState<NEditorTab[]>([
+  { value: 'home', name: 'Home', icon: 'Home', closable: false, content: ... },
+  { value: 'classy.ase', name: 'classy.ase', dirty: true, content: ... },
+  { value: 'palette.ase', name: 'palette.ase', content: ... },
+]);
+const [active, setActive] = useState('classy.ase');
+
+<NEditorTabs
+  items={tabs}
+  value={active}
+  onValueChange={setActive}
+  onClose={(value) => {
+    if (value === active) setActive(getNextEditorTabValue(tabs, value) ?? '');
+    setTabs(tabs.filter((tab) => tab.value !== value));
+  }}
+/>`}
+        center={false}
+      >
+        <div className="w-full">
+          {editorTabs.length > 0 ? (
+            <NEditorTabs
+              items={editorTabs}
+              value={activeEditorTab}
+              onValueChange={setActiveEditorTab}
+              onClose={closeEditorTab}
+            />
+          ) : (
+            <div className="flex items-center gap-3 border-b border-border pb-3">
+              <p className="text-sm text-muted-foreground">All tabs closed.</p>
+              <NButton
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  setEditorTabs(initialEditorTabs);
+                  setActiveEditorTab('classy.ase');
+                }}
+              >
+                Reset demo
+              </NButton>
+            </div>
+          )}
         </div>
       </Example>
 

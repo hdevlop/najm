@@ -14,7 +14,7 @@ function renderItems(items: (string | SelectItemType)[]) {
   });
 }
 
-export const SelectInput: React.FC<SelectInputProps> = ({ placeholder = "", value, onChange, icon, showIcon = true, iconColor, items, className = "", variant = "default", status = "default", bordered, borderColor, disabled = false }) => {
+export const SelectInput: React.FC<SelectInputProps> = ({ placeholder = "", value, onChange, icon, showIcon = true, iconColor, items, className = "", dropdownClassName, variant = "default", status = "default", bordered, borderColor, disabled = false }) => {
   const shouldDisplayIcon = Boolean(icon) && showIcon && !value;
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
   const displayLabel = value ? (() => { const found = items.find((i) => typeof i === "string" ? i === value : i.value === value); return typeof found === "string" ? found : found?.label ?? value; })() : "";
@@ -32,7 +32,7 @@ export const SelectInput: React.FC<SelectInputProps> = ({ placeholder = "", valu
           disabled={disabled}
           aria-label={placeholder || "Select"}
         />
-        <SelectContent>{renderItems(items)}</SelectContent>
+        <SelectContent className={dropdownClassName}>{renderItems(items)}</SelectContent>
       </Select>
     </div>
   );

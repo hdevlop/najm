@@ -20,6 +20,7 @@ import { createListener, type ServerHandle } from './listener';
 import { collectInjectables, loadInjectablesFromRoots } from './moduleLoader';
 import { StartupLogBuffer, stringifyLogEntry } from './startupLog';
 import { normalizeBasePath, normalizePort, DEFAULT_PORT } from './utils';
+import { generateOpenAPI, type OpenAPIDocument, type OpenAPIGenerateOptions } from '../router/openapi';
 
 // Re-export plugin builder
 export { plugin, type ContributionToken, type PluginContribution } from './plugin';
@@ -217,6 +218,11 @@ export class Server {
       await this.ensureInitialized();
       this.flushStartupLogs();
       return this;
+   }
+
+   public async openapi(options: OpenAPIGenerateOptions = {}): Promise<OpenAPIDocument> {
+      await this.ensureInitialized();
+      return generateOpenAPI(this.container, options);
    }
 
    public async runAs<T>(

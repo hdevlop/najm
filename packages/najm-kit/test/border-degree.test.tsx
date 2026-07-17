@@ -107,6 +107,17 @@ describe("appearance.borderWidth", () => {
     expect(input.className).toContain("najm-border");
   });
 
+  test("FormInput applies its semantic background prop", () => {
+    const { container } = render(
+      <NForm onSubmit={() => {}} as="div">
+        <FormInput name="name" type="text" background="muted" />
+      </NForm>
+    );
+
+    const input = container.querySelector("[data-bordered]") as HTMLElement;
+    expect(input.className).toContain("!bg-muted");
+  });
+
   test("NTable shell draws a border when bordered", () => {
     const { container } = render(
       <NajmThemeProvider appearance={{ borderWidth: "2px" }}>

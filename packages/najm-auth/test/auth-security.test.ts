@@ -3,6 +3,8 @@ import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
 import { USER } from 'najm-guard';
+import { getRateLimitOptions } from 'najm-rate';
+import { AuthController } from '../src/auth/AuthController';
 import { AuthService } from '../src/auth/AuthService';
 import { AuthResolver } from '../src/auth/AuthResolver';
 import { CookieManager } from '../src/auth/CookieManager';
@@ -61,6 +63,23 @@ function createTokenService(overrides: {
 }
 
 describe('auth security regressions', () => {
+  test('public auth entrypoints ship brute-force rate limits', () => {
+    expect(getRateLimitOptions(AuthController, 'registerUser')).toMatchObject({
+      limit: 5,
+      window: '15m',
+    });
+    expect(getRateLimitOptions(AuthController, 'loginUser')).toMatchObject({
+      limit: 5,
+      window: '15m',
+      message: 'Too many login attempts. Please try again later.',
+    });
+    expect(getRateLimitOptions(AuthController, 'forgotPassword')).toMatchObject({
+      limit: 3,
+      window: '15m',
+      message: 'Too many password reset requests. Please try again later.',
+    });
+  });
+
   test('dummy login hash is lazy and uses configured bcrypt rounds', async () => {
     const encryption = new EncryptionService(
       '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef',

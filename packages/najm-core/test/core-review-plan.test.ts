@@ -5,6 +5,8 @@ import {
   Get,
   INJECTION_TYPES,
   Meta,
+  MetaHelper,
+  Post,
   RequestParser,
   Server,
   Service,
@@ -30,6 +32,38 @@ function decorateMethod(
   for (const decorator of decorators.reverse()) {
     decorator(target, methodName, descriptor);
   }
+}
+
+const VALIDATE_META = Symbol.for('najm:validate');
+
+function schema(type: string, extra: Record<string, unknown> = {}) {
+  return {
+    _zod: {
+      def: {
+        type,
+        ...extra,
+      },
+    },
+    parse(value: unknown) {
+      return value;
+    },
+  };
+}
+
+function objectSchema(shape: Record<string, unknown>) {
+  return schema('object', { shape });
+}
+
+function optionalSchema(innerType: unknown) {
+  return schema('optional', { innerType });
+}
+
+function setValidation(
+  target: object,
+  methodName: string,
+  config: Record<string, unknown>,
+) {
+  MetaHelper.define(VALIDATE_META, config, (target as any)[methodName]);
 }
 
 describe('core review plan regressions', () => {
@@ -228,5 +262,86 @@ describe('core review plan regressions', () => {
 
     expect(logs.some((line) => line.includes('Routes (1)'))).toBe(true);
     expect(logs.some((line) => line.includes('GET') && line.includes('/diag/ping'))).toBe(true);
+  });
+
+  test('generates an OpenAPI document from registered routes and validation metadata', async () => {
+    class OpenApiUsersController {
+      list() {
+        return [];
+      }
+
+      create() {
+        return { id: '1' };
+      }
+
+      show() {
+        return { id: '1' };
+      }
+    }
+    decorateMethod(OpenApiUsersController.prototype, 'list', Get('/'));
+    decorateMethod(OpenApiUsersController.prototype, 'create', Post('/'));
+    decorateMethod(OpenApiUsersController.prototype, 'show', Get('/:id'));
+    setValidation(OpenApiUsersController.prototype, 'list', {
+      query: objectSchema({
+        page: optionalSchema(schema('string')),
+      }),
+    });
+    setValidation(OpenApiUsersController.prototype, 'create', {
+      body: objectSchema({
+        email: schema('string', {
+          checks: [{ _zod: { def: { check: 'string_format', format: 'email' } } }],
+        }),
+        name: schema('string'),
+      }),
+    });
+    setValidation(OpenApiUsersController.prototype, 'show', {
+      params: objectSchema({
+        id: schema('string'),
+      }),
+    });
+    decorateClass(OpenApiUsersController, Controller('/users'));
+
+    const server = new Server({ isolated: true, silent: true })
+      .base('/api')
+      .load(OpenApiUsersController);
+
+    const document = await server.openapi({
+      title: 'Test API',
+      version: '2.0.0',
+      securitySchemes: {
+        bearerAuth: { type: 'http', scheme: 'bearer' },
+      },
+    });
+
+    expect(document.openapi).toBe('3.1.0');
+    expect(document.info.title).toBe('Test API');
+    expect(document.paths['/api/users'].get.operationId).toBe('OpenApiUsersController_list');
+    expect(document.paths['/api/users'].get.parameters?.[0]).toMatchObject({
+      name: 'page',
+      in: 'query',
+      required: false,
+      schema: { type: 'string' },
+    });
+    expect(document.paths['/api/users'].post.requestBody?.content['application/json'].schema)
+      .toMatchObject({
+        type: 'object',
+        required: ['email', 'name'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          name: { type: 'string' },
+        },
+      });
+    expect(document.paths['/api/users/{id}'].get.parameters?.[0]).toMatchObject({
+      name: 'id',
+      in: 'path',
+      required: true,
+      schema: { type: 'string' },
+    });
+    expect(document.components?.securitySchemes?.bearerAuth).toMatchObject({
+      type: 'http',
+      scheme: 'bearer',
+    });
+
+    await server.stop();
   });
 });

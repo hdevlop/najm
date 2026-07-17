@@ -12,13 +12,21 @@ import type {
   TimeWindow,
   KeyStrategy,
 } from './types';
-import { CONTEXT, HRequest, REQUEST } from 'najm-core';
+import { CONTEXT, HRequest, getRequestData } from 'najm-core';
 
 // ============================================================
 // CONSTANTS
 // ============================================================
 const DEFAULT_WINDOW = '15m';
 const DEFAULT_KEY_PREFIX = 'rl:';
+
+/**
+ * Bucket scoping for a rate-limit registration:
+ * - 'route'       — per matched route (method-level decorators)
+ * - 'global'      — one bucket for the whole app (plugin default limit)
+ * - `ctrl:<Name>` — shared across a controller's routes (class-level decorators)
+ */
+type KeyScope = 'route' | 'global' | `ctrl:${string}`;
 
 const TIME_MULTIPLIERS: Record<string, number> = {
   s: 1_000,
@@ -78,11 +86,16 @@ export class RateLimitService {
   ): void {
     const windowMs = this.parseWindow(options.window);
 
+    // Method-level limits get a per-route bucket; controller-level limits
+    // share one bucket across all of the controller's routes (a controller
+    // budget), keyed by controller name so distinct controllers never share.
+    const scope: KeyScope = methodName !== undefined ? 'route' : `ctrl:${controller.name}`;
+
     this.container.setInjection({
       type: INJECTION_TYPES.MIDDLEWARE,
       target: controller,
       methodName,
-      handler: this.createMiddleware(options, windowMs, true),
+      handler: this.createMiddleware(options, windowMs, scope),
       order: 15,
       source: 'rate-limit',
     });
@@ -107,7 +120,7 @@ export class RateLimitService {
             key: this.config.keyGenerator ?? 'ip',
           },
           windowMs,
-          false,
+          'global',
         ),
         order: 15,
       });
@@ -145,7 +158,7 @@ export class RateLimitService {
   // ============================================================
   // MIDDLEWARE FACTORY
   // ============================================================
-  private createMiddleware(options: RateLimitOptions, windowMs: number, scopeByRoute: boolean): MiddlewareHandler {
+  private createMiddleware(options: RateLimitOptions, windowMs: number, scope: KeyScope): MiddlewareHandler {
     const { limit, key = 'ip', message = 'Too many requests', statusCode = 429, headers = true } = options;
 
     return async (_: Context, next: Next) => {
@@ -157,7 +170,7 @@ export class RateLimitService {
 
       const request = this.getRequest();
       const baseKey = await this.generateKey(request, context, key);
-      const rateLimitKey = this.buildRateLimitKey(request, baseKey, scopeByRoute);
+      const rateLimitKey = this.buildRateLimitKey(request, baseKey, scope);
       this.rememberKey(baseKey, rateLimitKey);
       const { count, resetAt } = await this.cache.incr(rateLimitKey, windowMs);
       const remaining = Math.max(0, limit - count);
@@ -182,9 +195,9 @@ export class RateLimitService {
   // ALS DATA ACCESS
   // ============================================================
   private getRequest(): HRequest {
-    const request = this.container.get<HRequest>(REQUEST);
-    if (!request) Err('REQUEST not found in ALS');
-    return request;
+    // Request data is built lazily per Context since the Tier 1 hot-path work
+    // (the ALS store only carries { requestId, context } now).
+    return getRequestData(this.getContext());
   }
 
   private getContext(): Context {
@@ -236,9 +249,9 @@ export class RateLimitService {
     return request.ip ?? 'unknown';
   }
 
-  private buildRateLimitKey(request: HRequest, baseKey: string, scopeByRoute: boolean): string {
-    const scope = scopeByRoute ? this.getRouteScope(request) : 'global';
-    return `${this.keyPrefix}${scope}:${baseKey}`;
+  private buildRateLimitKey(request: HRequest, baseKey: string, scope: KeyScope): string {
+    const resolved = scope === 'route' ? this.getRouteScope(request) : scope;
+    return `${this.keyPrefix}${resolved}:${baseKey}`;
   }
 
   private rememberKey(baseKey: string, fullKey: string): void {

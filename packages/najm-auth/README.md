@@ -506,6 +506,8 @@ await seedAuthData({
 ## Rate Limiting
 
 Auth routes have built-in rate limiting to prevent brute force attacks.
+The auth plugin registers `najm-rate` as a dependency, so these decorator-level
+limits are active when `auth()` is registered.
 
 | Route | Limit | Window | Key Strategy |
 |-------|-------|--------|--------------|
@@ -576,6 +578,19 @@ throw new HttpError(403, 'Insufficient permissions for this action');
 ---
 
 ## Security Considerations
+
+### Security Defaults
+
+- JWT access and refresh secrets are required and must pass minimum strength
+  checks.
+- Refresh tokens rotate by session family and suspected family compromise does
+  not revoke unrelated user sessions.
+- Password reset and password change revoke existing user sessions.
+- Login uses a dummy password hash for missing users to reduce timing leaks.
+- Forgot-password responses avoid email enumeration.
+- Auth routes register `najm-rate` and ship route-level brute-force limits.
+- Session cookies are signed, short-lived, and checked against session version
+  invalidation.
 
 ### Password Reset Tokens
 

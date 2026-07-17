@@ -471,19 +471,6 @@ async deleteUser(@Params('id') id: string) {}
 
 `confirm` is Najm metadata, not MCP wire annotation. Use `confirm: true` for a default confirmation, or pass `{ level, message }`. `message` may be literal text or an i18n key resolved by the consumer using the active user language.
 
-### `@Annotations(meta)` — method decorator (**deprecated**)
-
-> **Deprecated** — use the object form of `@McpTool({ description, destructive, ... })` instead. Will be removed in the next minor.
-
-```typescript
-// old — still works through deprecation window
-@McpTool('Delete a user')
-@Annotations({ destructive: true, idempotent: false })
-async deleteUser(@Params('id') id: string) {}
-```
-
----
-
 ### `@Bridge(description, options?)` — method decorator
 
 Exposes a `@Service()` method directly as a tool (no wrapper `@McpServer` class needed).
@@ -762,6 +749,20 @@ Protect your MCP endpoints with bearer tokens or API keys:
   },
 }))
 ```
+
+## Security Defaults
+
+- MCP HTTP transport is unauthenticated unless `config.auth` is set or exposed
+  controller methods use Najm guards.
+- Tool execution resolves Najm auth/guard context when guards are present.
+- Discovery endpoints (`GET /mcp`, `GET /mcp/tools`) are protected only by
+  `config.auth`; if tool names, descriptions, or schemas are sensitive, set
+  `auth`.
+- SSE is opt-in and should be used only where long-lived connections are
+  expected.
+- Stdio is intended for local clients and runs as a separate process.
+- The built-in OAuth option is a development stub and refuses to mount in
+  production unless explicitly marked unsafe.
 
 > ⚠️ **The built-in `oauth` option mounts a DEV-ONLY stub.** It authenticates
 > *nobody* (any visitor who clicks "Allow" gets a code) and exchanges codes for

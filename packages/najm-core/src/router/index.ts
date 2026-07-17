@@ -13,6 +13,13 @@ export { router } from './RouterPlugin';
 export { RouterService } from './RouterService';
 export { RequestParser } from './RequestParser';
 export { ResponseFormatter } from './ResponseFormatter';
+export { generateOpenAPI } from './openapi';
+export type {
+   OpenAPIDocument,
+   OpenAPIGenerateOptions,
+   OpenAPIOperation,
+   OpenAPIParameter,
+} from './openapi';
 
 // ============================================
 // DECORATORS
@@ -75,4 +82,3 @@ export type {
    HRequest,
    ValidFunction,
 } from './types';
-

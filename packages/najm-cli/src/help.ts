@@ -8,7 +8,7 @@ export async function showHelp() {
 ${pc.blue('NajmApi Backend CLI')} ${pc.green('v0.1.0')}
 
 ${pc.yellow('USAGE:')}
-  najm-api <command>
+  najm <command>
 
 ${pc.yellow('COMMANDS:')}
   ${pc.green('init')}         Initialize a new NajmApi project with optional database setup
@@ -21,10 +21,10 @@ ${pc.yellow('COMMANDS:')}
   ${pc.green('help')}         Show this help message
 
 ${pc.yellow('NEW COMMAND USAGE:')}
-  najm-api new controller UserController    Create a new controller
-  najm-api new service AuthService          Create a new service
-  najm-api new repository ProductRepository Create a new repository
-  najm-api new module blog                  Create a complete module
+  najm new controller UserController    Create a new controller
+  najm new service AuthService          Create a new service
+  najm new repository ProductRepository Create a new repository
+  najm new module blog                  Create a complete module
 
 ${pc.yellow('DATABASE COMMANDS:')}
   ${pc.green('db:generate')}  Generate migrations based on your schema changes
@@ -37,13 +37,13 @@ ${pc.yellow('RAG COMMANDS:')}
   ${pc.green('rag:scan')}     Scan controllers and auto-fill semantics.json
 
 ${pc.yellow('EXAMPLES:')}
-  najm-api init                        Start interactive project creation with optional DB setup
-  najm-api generate                    Start interactive component generation
-  najm-api new controller UserController  Create a new controller
-  najm-api new module blog             Create a complete blog module
-  najm-api db:setup                    Add database support to your project
-  najm-api rag:init                    Scaffold chatbot config
-  najm-api rag:scan                    Auto-fill semantics from controllers
-  najm-api help                        Show this help message
+  najm init                        Start interactive project creation with optional DB setup
+  najm new                         Start interactive component generation
+  najm new controller UserController  Create a new controller
+  najm new module blog             Create a complete blog module
+  najm database                    Add database support to your project
+  najm rag:init                    Scaffold chatbot config
+  najm rag:scan                    Auto-fill semantics from controllers
+  najm help                        Show this help message
   `);
 } 

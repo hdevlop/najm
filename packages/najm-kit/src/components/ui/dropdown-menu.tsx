@@ -4,6 +4,29 @@ import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react"
 import { cn } from "../../lib/cn"
 import { NajmThemeContainerCtx } from "../../theme/provider"
 import { useNajmPortalLayerStyles } from "../../theme/portal-layer"
+import { useNajmComponentStyle } from "../../theme/design-provider"
+import { resolveRadiusValue } from "../../theme/design-types"
+
+function useDropdownSurfaceRecipe(slotName: "content" | "subContent") {
+  const recipe = useNajmComponentStyle("dropdown");
+  const slot = recipe?.slots?.[slotName];
+  const borderWidth = slot?.borderWidth ?? recipe?.borderWidth;
+  const radius = resolveRadiusValue(slot?.radius ?? recipe?.radius);
+
+  return {
+    className: slot?.className,
+    style: {
+      ...(radius ? { borderRadius: radius } : {}),
+      ...(borderWidth !== undefined
+        ? {
+            borderWidth,
+            borderStyle: borderWidth === "0" ? "none" : "solid",
+            borderColor: "var(--border)",
+          }
+        : {}),
+    } satisfies React.CSSProperties,
+  };
+}
 
 function DropdownMenu({ ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
   return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />
@@ -38,7 +61,8 @@ function DropdownMenuSubTrigger({ className, inset, children, ...props }: React.
   )
 }
 
-function DropdownMenuSubContent({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+function DropdownMenuSubContent({ className, style, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
+  const surface = useDropdownSurfaceRecipe("subContent");
   useNajmPortalLayerStyles();
 
   return (
@@ -46,15 +70,18 @@ function DropdownMenuSubContent({ className, ...props }: React.ComponentProps<ty
       data-slot="dropdown-menu-sub-content"
       className={cn(
         "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=top]:slide-in-from-bottom-2 data-[side=right]:slide-in-from-left-2 z-[10000] min-w-[8rem] overflow-hidden rounded-md border p-1 shadow-lg",
+        surface.className,
         className
       )}
+      style={{ ...surface.style, ...style }}
       {...props}
     />
   )
 }
 
-function DropdownMenuContent({ className, sideOffset = 4, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+function DropdownMenuContent({ className, sideOffset = 4, style, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
   const container = React.useContext(NajmThemeContainerCtx);
+  const surface = useDropdownSurfaceRecipe("content");
   useNajmPortalLayerStyles();
 
   return (
@@ -64,8 +91,10 @@ function DropdownMenuContent({ className, sideOffset = 4, ...props }: React.Comp
         sideOffset={sideOffset}
         className={cn(
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-[10000] min-w-[8rem] overflow-hidden rounded-md border border-border p-1 shadow-md",
+          surface.className,
           className
         )}
+        style={{ ...surface.style, ...style }}
         {...props}
       />
     </DropdownMenuPrimitive.Portal>

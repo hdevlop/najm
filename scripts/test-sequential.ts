@@ -11,6 +11,7 @@ interface TestResult {
 }
 
 const results: TestResult[] = [];
+const bunExecutable = process.execPath;
 
 console.log('🧪 Running all tests sequentially...\n');
 
@@ -25,7 +26,7 @@ for (const target of TEST_TARGETS) {
   console.log('='.repeat(60));
 
   try {
-    await $`bun run --cwd ${target.workspace} test`;
+    await $`${bunExecutable} run --cwd ${target.workspace} test`;
     const duration = Date.now() - start;
     results.push({ package: pkg, passed: true, duration });
     console.log(`✅ ${pkg} - PASSED (${duration}ms)`);

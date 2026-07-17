@@ -207,6 +207,11 @@ describe("Root barrel import", () => {
     expect(najmUI.NInspectorSheet).toBeDefined();
   });
 
+  test("exports NEditorTabs component", () => {
+    expect(najmUI.NEditorTabs).toBeDefined();
+    expect(typeof najmUI.getNextEditorTabValue).toBe("function");
+  });
+
   test("exports Swap component", () => {
     expect(najmUI.Swap).toBeDefined();
   });

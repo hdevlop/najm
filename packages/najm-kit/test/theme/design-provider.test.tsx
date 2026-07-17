@@ -5,7 +5,11 @@ import { NajmDesignProvider } from "../../src/theme/design-provider";
 import { NajmThemeProvider } from "../../src/theme/provider";
 import { Badge } from "../../src/components/Badge/Badge";
 import { Button } from "../../src/components/Button/Button";
+import { IconButton } from "../../src/components/ui/icon-button";
+import { BaseInput } from "../../src/components/inputs/BaseInput";
 import { defineNajmDesignConfig } from "../../src/theme/design-config";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../src/components/ui/select";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../../src/components/ui/dropdown-menu";
 
 describe("NajmDesignProvider", () => {
   test("applies component radius recipe to Badge", () => {
@@ -35,6 +39,90 @@ describe("NajmDesignProvider", () => {
       </NajmDesignProvider>,
     );
     expect(getByRole("button").className).toContain("destructive");
+  });
+
+  test("applies the button radius recipe to regular and icon buttons", () => {
+    const config = defineNajmDesignConfig({
+      version: 1,
+      theme: {},
+      components: { button: { radius: "7px" } },
+    });
+    const { getAllByRole } = render(
+      <NajmDesignProvider config={config}>
+        <Button>Save</Button>
+        <IconButton aria-label="Close">×</IconButton>
+      </NajmDesignProvider>,
+    );
+
+    for (const button of getAllByRole("button")) {
+      expect(button.style.borderRadius).toBe("7px");
+    }
+  });
+
+  test("applies the input radius recipe to BaseInput", () => {
+    const config = defineNajmDesignConfig({
+      version: 1,
+      theme: {},
+      components: { input: { radius: "9px" } },
+    });
+    const { getByTestId } = render(
+      <NajmDesignProvider config={config}>
+        <BaseInput data-testid="input-surface">Value</BaseInput>
+        <BaseInput data-testid="rounded-input-surface" variant="rounded">Value</BaseInput>
+      </NajmDesignProvider>,
+    );
+
+    expect(getByTestId("input-surface").style.borderRadius).toBe("9px");
+    expect(getByTestId("rounded-input-surface").style.borderRadius).toBe("");
+    expect(getByTestId("rounded-input-surface").className).toContain("rounded-full");
+  });
+
+  test("applies the select border recipe to the dropdown surface", () => {
+    const config = defineNajmDesignConfig({
+      version: 1,
+      theme: {},
+      components: { select: { borderWidth: "2px" } },
+    });
+    const { container } = render(
+      <NajmDesignProvider config={config}>
+        <Select defaultOpen>
+          <SelectTrigger>
+            <SelectValue placeholder="Pick" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="a">Apple</SelectItem>
+          </SelectContent>
+        </Select>
+      </NajmDesignProvider>,
+    );
+
+    const themed = container.querySelector("[data-najm-theme]") as HTMLElement;
+    const content = themed.querySelector('[data-slot="select-content"]') as HTMLElement;
+    expect(content.style.borderWidth).toBe("2px");
+    expect(content.style.borderColor).toBe("var(--border)");
+  });
+
+  test("applies the dropdown border recipe to menu surfaces", () => {
+    const config = defineNajmDesignConfig({
+      version: 1,
+      theme: {},
+      components: { dropdown: { borderWidth: "0" } },
+    });
+    const { container } = render(
+      <NajmDesignProvider config={config}>
+        <DropdownMenu open>
+          <DropdownMenuTrigger>Open</DropdownMenuTrigger>
+          <DropdownMenuContent>
+            <DropdownMenuItem>Item</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </NajmDesignProvider>,
+    );
+
+    const themed = container.querySelector("[data-najm-theme]") as HTMLElement;
+    const content = themed.querySelector('[data-slot="dropdown-menu-content"]') as HTMLElement;
+    expect(content.style.borderWidth).toBe("0px");
+    expect(content.style.borderStyle).toBe("none");
   });
 
   test("NajmThemeProvider works without NajmDesignProvider", () => {

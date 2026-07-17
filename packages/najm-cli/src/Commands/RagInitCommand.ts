@@ -22,7 +22,7 @@ export class RagInitCommand {
 ${pc.blue('NajmApi RAG Init')}
 
 ${pc.yellow('USAGE:')}
-  najm-api rag:init [--help]
+  najm rag:init [--help]
 
 ${pc.yellow('DESCRIPTION:')}
   Scaffolds chatbot routing config, semantics, and test fixtures.
@@ -32,8 +32,8 @@ ${pc.yellow('OPTIONS:')}
   ${pc.green('--help, -h')} Show this help message
 
 ${pc.yellow('EXAMPLES:')}
-  najm-api rag:init
-  najm-api rag:init --help
+  najm rag:init
+  najm rag:init --help
 `);
   }
 
@@ -145,7 +145,7 @@ ${pc.yellow('EXAMPLES:')}
     log.info(pc.dim('  2. Run your normal Drizzle generate/migrate'));
     log.info(pc.dim(`  3. Wire chatbot({ configPath: '${CONFIG_DIR}/routing.json' }) into your plugin setup`));
     log.info(pc.dim('  4. Make sure Ollama is running and the embedding model is pulled'));
-    log.info(pc.dim('  5. Run \`najm-cli rag:scan\` to fill semantics from your controllers'));
+    log.info(pc.dim('  5. Run \`najm rag:scan\` to fill semantics from your controllers'));
   }
 
   private buildRoutingJson(opts: { mode: string; baseUrl: string; model: string; maxTools?: number }): Record<string, any> {

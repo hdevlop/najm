@@ -4,6 +4,8 @@ import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import { cn } from "../../lib/cn"
 import { NajmThemeContainerCtx } from "../../theme/provider"
 import { useNajmPortalLayerStyles } from "../../theme/portal-layer"
+import { useNajmComponentStyle } from "../../theme/design-provider"
+import { resolveRadiusValue } from "../../theme/design-types"
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />
@@ -45,8 +47,22 @@ function SelectScrollDownButton({ className, ...props }: React.ComponentProps<ty
     </SelectPrimitive.ScrollDownButton>
   )
 }
-function SelectContent({ className, children, position = "popper", ...props }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+function SelectContent({ className, children, position = "popper", style, ...props }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   const container = React.useContext(NajmThemeContainerCtx);
+  const recipe = useNajmComponentStyle("select");
+  const contentSlot = recipe?.slots?.content;
+  const borderWidth = contentSlot?.borderWidth ?? recipe?.borderWidth;
+  const radius = resolveRadiusValue(contentSlot?.radius ?? recipe?.radius);
+  const recipeStyle: React.CSSProperties = {
+    ...(radius ? { borderRadius: radius } : {}),
+    ...(borderWidth !== undefined
+      ? {
+          borderWidth,
+          borderStyle: borderWidth === "0" ? "none" : "solid",
+          borderColor: "var(--border)",
+        }
+      : {}),
+  };
   useNajmPortalLayerStyles();
 
   return (
@@ -54,10 +70,12 @@ function SelectContent({ className, children, position = "popper", ...props }: R
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-[10000] max-h-(--radix-select-content-available-height) min-w-[8rem] overflow-hidden rounded-md border shadow-md",
+          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-[10000] max-h-(--radix-select-content-available-height) min-w-[8rem] overflow-hidden rounded-md shadow-md",
           position === "popper" && "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1 w-[var(--radix-select-trigger-width)]",
+          contentSlot?.className,
           className
         )}
+        style={{ ...recipeStyle, ...style }}
         position={position}
         {...props}
       >

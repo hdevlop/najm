@@ -11,7 +11,7 @@ export type {
 export { RATE_LIMIT_META, RATE_LIMIT_CONFIG, RATE_LIMIT_SKIP } from './tokens';
 
 // Decorators
-export { RateLimit, SkipRateLimit } from './decorator';
+export { RateLimit, SkipRateLimit, getRateLimitOptions, isRateLimitSkipped } from './decorator';
 
 // Plugin
 export { rateLimit } from './RateLimitPlugin';

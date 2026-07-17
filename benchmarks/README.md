@@ -88,6 +88,23 @@ passes. Treat these as local regression anchors, not portable headline numbers.
 | `najm /plain` | 28.1 us/op | 9.34 us/op | 3.0x faster |
 | `najm /users/:id` | 53.9 us/op | 10.32 us/op | 5.2x faster |
 
+#### diject 0.1.6 hot-path pass (2026-07-08)
+
+Adopted `diject@0.1.6` (run() no-parent fast path, alias/get lookup collapse,
+`hasRequestScope()` cleanup early-out). Measured as a same-machine A/B against
+`diject@0.1.5`, best-of-3 — the machine ran hotter this session, so absolute
+µs are inflated vs the 2026-07-07 anchor above; the **A/B delta** is the signal,
+not the absolutes.
+
+| Metric (best-of-3) | 0.1.5 | 0.1.6 | Change |
+| --- | ---: | ---: | ---: |
+| Layer D (parser + container.run + cleanup) | 19.77 us/op | 17.15 us/op | 13% faster |
+| `najm /plain` | 12.16 us/op | 11.22 us/op | 8% faster |
+| `najm /users/:id` | 14.27 us/op | 12.24 us/op | 14% faster |
+
+Cross-repo verification also green: 6 najm suites (najm-core/rate/validation/
+guard/cookies/auth) = 179 tests, 0 failures against the published 0.1.6.
+
 ### Framework Comparison
 
 `bun run bench:frameworks` (50 connections, 5000ms per route)

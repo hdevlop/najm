@@ -2,7 +2,17 @@ import React from "react";
 import { describe, expect, test } from "bun:test";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import { Button } from "../src/components/Button";
-import { Dialog, DialogContent, DialogTitle, NConfirmDialog, NDialog } from "../src/components/Dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+  NConfirmDialog,
+  NDialog,
+  NDialogDescription,
+  NDialogHeader,
+  NDialogPrimaryButton,
+  NDialogSecondaryButton,
+} from "../src/components/Dialog";
 import { Dialog as LegacyDialog } from "../src/components/ui/dialog";
 import { NConfirmDialog as LegacyNConfirmDialog } from "../src/components/Dialog/NConfirmDialog";
 
@@ -72,6 +82,55 @@ describe("NDialog", () => {
 
     expect(getByText("Archive")).toBeDefined();
     expect(container.querySelector("button[data-button-type='primary'] svg")).toBeDefined();
+  });
+
+  test("renders the window variant with an inline bordered close button", () => {
+    const { getByLabelText, getByRole } = render(
+      <NDialog
+        defaultOpen
+        variant="window"
+        title="New Sprite"
+        showButtons={false}
+        headerClassName="custom-window-header"
+        titleClassName="custom-window-title"
+        closeButtonClassName="custom-window-close"
+      >
+        <p>Sprite settings</p>
+      </NDialog>
+    );
+
+    const dialog = getByRole("dialog");
+    const header = dialog.querySelector('[data-slot="dialog-header"]');
+    const closeButton = getByLabelText("Close");
+
+    expect(dialog.getAttribute("data-variant")).toBe("window");
+    expect(header?.className).toContain("bg-secondary");
+    expect(header?.className).toContain("custom-window-header");
+    expect(header?.querySelector('[data-slot="dialog-title"]')?.className).toContain("custom-window-title");
+    expect(closeButton.className).toContain("border");
+    expect(closeButton.className).toContain("custom-window-close");
+  });
+
+  test("supports standalone declarative header, description, and action slots", () => {
+    const { getByRole, getByText } = render(
+      <NDialog defaultOpen variant="window">
+        <NDialogHeader label="Compound dialog" className="compound-header" />
+        <NDialogDescription label="Declarative description" />
+        <p>Body content</p>
+        <NDialogSecondaryButton label="Back" variant="outline" className="compound-secondary" />
+        <NDialogPrimaryButton label="Save" variant="default" className="compound-primary" />
+      </NDialog>
+    );
+
+    const dialog = getByRole("dialog");
+    expect(getByText("Compound dialog")).toBeDefined();
+    expect(getByText("Declarative description")).toBeDefined();
+    expect(getByText("Body content")).toBeDefined();
+    expect(getByText("Back").getAttribute("data-button-type")).toBe("secondary");
+    expect(getByText("Save").getAttribute("data-button-type")).toBe("primary");
+    expect(getByText("Back").className).toContain("compound-secondary");
+    expect(getByText("Save").className).toContain("compound-primary");
+    expect(dialog.querySelector('[data-slot="dialog-header"]')?.className).toContain("compound-header");
   });
 
   test("submits external forms when a button config has a form id", async () => {

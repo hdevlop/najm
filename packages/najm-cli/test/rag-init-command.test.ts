@@ -37,7 +37,7 @@ describe('rag:init command', () => {
     const result = await runCli(['rag:init', '--help']);
 
     expect(result.exitCode).toBe(0);
-    expect(result.output).toContain('najm-api rag:init');
+    expect(result.output).toContain('najm rag:init');
     expect(result.output).toContain('Scaffolds chatbot routing config');
     expect(result.output).not.toContain('Database dialect');
   });

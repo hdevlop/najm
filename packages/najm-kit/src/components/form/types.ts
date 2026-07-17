@@ -4,6 +4,8 @@ import type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInpu
 import type { FormSlotClassNames, FormVariant } from "./VariantContext";
 import type { NIconSource } from "../Icon";
 
+export type FormInputBackground = "card" | "background" | "secondary" | "muted" | "transparent";
+
 interface BaseFormInputProps {
   name: string;
   formLabel?: string;
@@ -16,6 +18,8 @@ interface BaseFormInputProps {
   readOnly?: boolean;
   hidden?: boolean;
   className?: string;
+  /** Semantic surface color for the input control. */
+  background?: FormInputBackground;
   classNames?: FormSlotClassNames;
   onChange?: (value: any) => void;
 }

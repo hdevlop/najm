@@ -1,5 +1,5 @@
 import type { CoreService } from './types';
-import { Container, DI, Meta, Service } from 'diject';
+import { Container, DI, Meta, Scope, Service } from 'diject';
 import { LoggerService } from '../logging/LoggerService';
 
 type Phase = 'scan' | 'configure' | 'activate' | 'onReady';
@@ -92,7 +92,10 @@ export class BootService {
 
    private async bootAppServices(): Promise<void> {
       const appTokens = this.container.find({ layer: 'app' });
-      await this.container.boot(appTokens);
+      const bootableTokens = appTokens.filter(
+         (token) => this.container.registry.get(token)?.scope !== Scope.REQUEST,
+      );
+      await this.container.boot(bootableTokens);
    }
 
    public getTimings(): readonly BootTiming[] {

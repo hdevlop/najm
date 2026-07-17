@@ -4,7 +4,6 @@ import { Body, Controller, GuardParams, Params, Post, Get, Put, Delete, Server, 
 import { createGuard } from 'najm-guard';
 import { z } from 'zod';
 import {
-  Annotations,
   McpErrorCode,
   McpException,
   McpError,
@@ -346,9 +345,10 @@ describe('najm-mcp integration', () => {
       @Post('/delete')
       @McpTool({
         description: 'Delete an item',
+        destructive: true,
+        readOnly: false,
         confirm: { level: 'danger', message: 'items.confirm.delete' },
       })
-      @Annotations({ destructive: true, readOnlyHint: false })
       @Validate(z.object({ id: z.string() }))
       deleteItem(@Body('id') id: string) {
         return { deleted: id };

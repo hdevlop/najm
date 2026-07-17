@@ -2,6 +2,8 @@ import React from "react";
 import { cn } from "../../lib/cn";
 import { cva } from "class-variance-authority";
 import { inputBorderClasses } from "../../theme/borders";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
 import type { TailwindColor } from "./types";
 
 interface BaseInputProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -52,11 +54,13 @@ const HOVER_INTERACTIVE_BASE = "hover:border-primary";
 const STATIC_BASE = "border";
 
 export const BaseInput = React.forwardRef<HTMLDivElement, BaseInputProps>(
-  ({ children, variant = "default", status = "default", bordered, borderColor, className, disabled = false, onHover, onClick, hasIcon, ...rest }, ref) => {
+  ({ children, variant = "default", status = "default", bordered, borderColor, className, style, disabled = false, onHover, onClick, hasIcon, ...rest }, ref) => {
+    const recipe = useNajmComponentStyle("input");
     const isGhost = variant === "ghost";
     const isError = status === "error";
     const hasExplicitColor = !!borderColor;
     const isBordered = bordered !== false;
+    const recipeRadius = variant === "default" ? resolveRadiusValue(recipe?.radius) : undefined;
 
     let colorClass = "";
     let borderClass = "";
@@ -79,6 +83,7 @@ export const BaseInput = React.forwardRef<HTMLDivElement, BaseInputProps>(
       <div
         ref={ref}
         data-bordered={!isGhost && !isBordered ? "false" : !isGhost ? "true" : undefined}
+        style={recipeRadius ? { borderRadius: recipeRadius, ...style } : style}
         className={cn(
           inputVariants({ variant, status, hasIcon, disabled }),
           !isGhost && borderClass,

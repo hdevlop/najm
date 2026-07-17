@@ -1,6 +1,38 @@
 import 'reflect-metadata';
-import { describe, expect, test } from 'bun:test';
-import { ProductService } from './ProductService';
+import { beforeAll, describe, expect, mock, test } from 'bun:test';
+
+const decorator = () => (...args: any[]) => args[0];
+
+mock.module('najm-api', () => ({
+  Service: decorator,
+  Repository: decorator,
+  Err: (status: number, message: string) => {
+    const error = new Error(message);
+    (error as any).status = status;
+    throw error;
+  },
+  resolveBy: async () => ({ kind: 'not_found' }),
+  normalizeResolutionQuery: (value: string) => value.trim(),
+  escapeLike: (value: string) => value.replace(/[\\%_]/g, '\\$&'),
+}));
+
+mock.module('najm-event', () => ({
+  Events: decorator,
+}));
+
+mock.module('najm-database', () => ({
+  DB: decorator,
+}));
+
+mock.module('najm-i18n', () => ({
+  I18n: decorator,
+}));
+
+let ProductService: typeof import('./ProductService').ProductService;
+
+beforeAll(async () => {
+  ({ ProductService } = await import('./ProductService'));
+});
 
 function createServiceWithThrowingResolver() {
   const error = new Error('Multiple products match');

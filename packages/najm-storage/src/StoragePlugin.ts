@@ -16,6 +16,7 @@ import { AuditService } from './AuditService';
 const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provider' | 'mcp'>> & StorageConfig => ({
   provider: config.provider ?? 'local',
   mcp: config.mcp ?? false,
+  guards: config.guards,
   dialect: config.dialect,             // optional — auto-detected if omitted
   schema: config.schema,               // optional — overrides auto-detection
   database: config.database ?? 'default',
@@ -36,6 +37,24 @@ const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provi
   },
 });
 
+function assertExplicitGuards(config: StorageConfig): void {
+  if (!Object.prototype.hasOwnProperty.call(config, 'guards')) {
+    throw new Error(
+      'storage.guards must be configured explicitly. Pass guards such as [isAuth()] to protect storage routes, or guards: [] to intentionally expose public storage routes.',
+    );
+  }
+}
+
+function applyRouteGuards(guards: StorageConfig['guards'], controllers: Function[]): void {
+  if (!guards?.length) return;
+
+  for (const controller of controllers) {
+    for (const guard of guards) {
+      (guard as ClassDecorator)(controller);
+    }
+  }
+}
+
 /**
  * Create the storage plugin.
  *
@@ -45,14 +64,20 @@ const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provi
  * ```typescript
  * new Server()
  *   .use(mcp({ name: 'app', version: '1.0.0' }))  // first
- *   .use(storage({ mcp: true }))                   // then storage
+ *   .use(storage({ mcp: true, guards: [isAuth()] })) // then storage
  * ```
  *
  * Similarly, when `provider: 'database'`, the `database()` plugin must
  * be registered before `storage()`.
  */
 export const storage = (config: StorageConfig = {}) => {
+  assertExplicitGuards(config);
   const merged = mergeConfig(config);
+  const routeControllers = merged.studio
+    ? [StorageController, StorageStudioController]
+    : [StorageController];
+
+  applyRouteGuards(merged.guards, routeControllers);
 
   const builder = plugin('storage')
     .version('2.0.0')
@@ -62,6 +87,10 @@ export const storage = (config: StorageConfig = {}) => {
 
   if (merged.provider === 'database' || merged.studio) {
     builder.requires('database');
+  }
+
+  if (merged.guards?.length) {
+    builder.requires('guards');
   }
 
   if (merged.mcp) {

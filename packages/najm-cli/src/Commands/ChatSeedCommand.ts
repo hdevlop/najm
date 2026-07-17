@@ -7,7 +7,7 @@ export class ChatSeedCommand {
 ${pc.blue('NajmApi Chat Seed')}
 
 ${pc.yellow('USAGE:')}
-  najm-api chat:seed [--help]
+  najm chat:seed [--help]
 
 ${pc.yellow('DESCRIPTION:')}
   Generates seed code for the singleton ai_settings row used by najm-chatbot.
@@ -17,8 +17,8 @@ ${pc.yellow('OPTIONS:')}
   ${pc.green('--help, -h')} Show this help message
 
 ${pc.yellow('EXAMPLES:')}
-  najm-api chat:seed
-  najm-api chat:seed --help
+  najm chat:seed
+  najm chat:seed --help
 `);
   }
 

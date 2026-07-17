@@ -88,10 +88,26 @@ const studio = defineConfig({
   async onSuccess() { buildStyles(); },
 });
 
-const buildTarget = process.env.NAJM_STORAGE_BUILD_TARGET;
+const client = defineConfig({
+  entry: {
+    'client/index': 'src/client/index.ts',
+    'client-db/index': 'src/client-db/index.ts',
+  },
+  format: ['esm'],
+  target: 'es2022',
+  platform: 'browser',
+  clean: false,
+  splitting: false,
+  treeshake: true,
+  sourcemap: false,
+  dts: { compilerOptions: { composite: false, declaration: true, declarationMap: false } },
+  external: ['@electric-sql/pglite', 'drizzle-orm'],
+  outExtension: () => ({ js: '.mjs' }),
+});
 
-export default buildTarget === 'backend'
-  ? backend
-  : buildTarget === 'studio'
-    ? studio
-    : [backend, studio];
+const configs = { backend, studio, client } as const;
+const buildTarget = process.env.NAJM_STORAGE_BUILD_TARGET as keyof typeof configs | undefined;
+
+export default buildTarget && configs[buildTarget]
+  ? configs[buildTarget]
+  : [backend, studio, client];

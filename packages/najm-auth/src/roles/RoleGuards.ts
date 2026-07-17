@@ -1,7 +1,7 @@
 import { Service } from 'najm-core';
 import { GuardParams, User } from "najm-core";
 import { composeGuards, createGuard } from "najm-guard";
-import { isAuth } from "../auth";
+import { isAuth } from "../auth/AuthGuard";
 import { ROLES, ROLE_GROUPS, type RoleInput } from "./constants";
 
 // ============ ROLE GUARD ============ //

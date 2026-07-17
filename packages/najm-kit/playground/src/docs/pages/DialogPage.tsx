@@ -2,6 +2,10 @@ import React, { useState } from 'react';
 import {
   NButton,
   NDialog,
+  NDialogDescription,
+  NDialogHeader,
+  NDialogPrimaryButton,
+  NDialogSecondaryButton,
   TextInput,
   SelectInput,
   TextAreaInput,
@@ -63,6 +67,36 @@ function ReviewNoteFields() {
     <Field label="Note">
       <TextAreaInput value={note} onChange={setNote} rows={5} placeholder="Write a short note..." />
     </Field>
+  );
+}
+
+function NewSpriteFields() {
+  const [width, setWidth] = useState('508');
+  const [height, setHeight] = useState('517');
+  const [colorMode, setColorMode] = useState('rgba');
+
+  return (
+    <div className="grid gap-4">
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Width (px)">
+          <TextInput value={width} onChange={setWidth} />
+        </Field>
+        <Field label="Height (px)">
+          <TextInput value={height} onChange={setHeight} />
+        </Field>
+      </div>
+      <Field label="Color mode">
+        <SelectInput
+          value={colorMode}
+          onChange={setColorMode}
+          items={[
+            { value: 'rgba', label: 'RGBA Color' },
+            { value: 'grayscale', label: 'Grayscale' },
+            { value: 'indexed', label: 'Indexed Color' },
+          ]}
+        />
+      </Field>
+    </div>
   );
 }
 
@@ -285,6 +319,28 @@ export function App() {
       </Example>
 
       <Example
+        title="Declarative Slots"
+        description="Compose a direct dialog with standalone header, description, and action declarations. Slot declarations are rendered in the correct accessible dialog regions."
+        code={`<NDialog trigger={<NButton variant="outline">Open dialog</NButton>} variant="window">
+  <NDialogHeader label="New Sprite" className="bg-secondary" />
+  <NDialogDescription label="Create a new sprite document." />
+
+  <NewSpriteFields />
+
+  <NDialogSecondaryButton label="Cancel" variant="outline" />
+  <NDialogPrimaryButton label="Create" onClick={createSprite} />
+</NDialog>`}
+      >
+        <NDialog trigger={<NButton variant="outline">Open declarative dialog</NButton>} variant="window">
+          <NDialogHeader label="New Sprite" className="bg-secondary" />
+          <NDialogDescription label="Create a new sprite document." />
+          <NewSpriteFields />
+          <NDialogSecondaryButton label="Cancel" variant="outline" />
+          <NDialogPrimaryButton label="Create" onClick={() => showResult('Declarative sprite created')} />
+        </NDialog>
+      </Example>
+
+      <Example
         title="Programmatic Dialog"
         description="Open a full modal with title, description, content, and footer buttons from one function call."
         code={`const dialog = useDialog();
@@ -304,6 +360,34 @@ dialog.custom({
           <NButton variant="outline" onClick={openBasic}>Open dialog</NButton>
           {result && <span className="text-sm text-green-500">{result}</span>}
         </div>
+      </Example>
+
+      <Example
+        title="Window Variant"
+        description="Use the compact window chrome for desktop-style tools and editors. The title bar owns its bordered close button."
+        code={`<NDialog
+  trigger={<NButton variant="outline">New sprite</NButton>}
+  variant="window"
+  title="New Sprite"
+  headerClassName="bg-primary text-primary-foreground"
+  size="sm"
+  primaryButton={{ text: 'Create' }}
+  secondaryButton={{ text: 'Cancel' }}
+>
+  <NewSpriteFields />
+</NDialog>`}
+      >
+        <NDialog
+          trigger={<NButton variant="outline">Open window dialog</NButton>}
+          variant="window"
+          title="New Sprite"
+          headerClassName="bg-primary text-primary-foreground"
+          size="sm"
+          primaryButton={{ text: 'Create' }}
+          secondaryButton={{ text: 'Cancel' }}
+        >
+          <NewSpriteFields />
+        </NDialog>
       </Example>
 
       <Example

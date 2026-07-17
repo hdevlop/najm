@@ -668,8 +668,27 @@ describe('storage service convenience methods', () => {
 // ===========================================================================
 
 describe('storage plugin MCP toggle', () => {
+  test('requires an explicit public or guarded route decision', () => {
+    expect(() => storage()).toThrow('storage.guards must be configured explicitly');
+  });
+
+  test('allows explicitly public storage routes with guards: []', () => {
+    const plugin = storage({ guards: [] });
+
+    const deps = (plugin.dependencies ?? []).filter((dep) => typeof dep === 'string');
+    expect(deps).not.toContain('guards');
+  });
+
+  test('requires guard plugin when storage route guards are configured', () => {
+    const guard = (() => () => {}) as any;
+    const plugin = storage({ guards: [guard()] });
+
+    const deps = (plugin.dependencies ?? []).filter((dep) => typeof dep === 'string');
+    expect(deps).toContain('guards');
+  });
+
   test('does not register MCP requirements by default', () => {
-    const plugin = storage();
+    const plugin = storage({ guards: [] });
 
     const deps = (plugin.dependencies ?? []).filter((dep) => typeof dep === 'string');
     expect(deps).not.toContain('mcp');
@@ -677,7 +696,7 @@ describe('storage plugin MCP toggle', () => {
   });
 
   test('registers MCP requirements and services when enabled', () => {
-    const plugin = storage({ mcp: true });
+    const plugin = storage({ mcp: true, guards: [] });
 
     const deps = (plugin.dependencies ?? []).filter((dep) => typeof dep === 'string');
     expect(deps).toContain('mcp');

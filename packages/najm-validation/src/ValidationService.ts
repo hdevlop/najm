@@ -1,7 +1,7 @@
 import { Context, MiddlewareHandler, Next } from 'hono';
 import { LoggerService, ScannerService, Scan, ScanType, INJECTION_TYPES, Err } from 'najm-core';
 import { Container, DI, Inject, Meta, Service } from 'najm-core';
-import { CONTEXT, REQUEST, PARSER } from 'najm-core';  // Import ALS tokens
+import { CONTEXT, getRequestData, getRequestParser } from 'najm-core';  // ALS context + lazy request helpers
 import type {
   ValidationConfig,
   ValidationPluginConfig,
@@ -194,22 +194,22 @@ export class ValidationService {
    * Extract data from ALS instead of ctx
    */
   private async extractData(target: ValidationTarget): Promise<unknown> {
-    const request = this.container.get(REQUEST);
-    const parser = this.container.get(PARSER);
+    // Request data/parser are built lazily per Context since the Tier 1
+    // hot-path work (the ALS store only carries { requestId, context } now).
     const context = this.container.get(CONTEXT);
 
     switch (target) {
       case 'body':
-        return parser.parseBody();
+        return getRequestParser(context).parseBody();
 
       case 'params':
-        return context.req.param();  // or request.params if HRequest has it parsed
+        return context.req.param();
 
       case 'query':
-        return request.query;
+        return getRequestData(context).query;
 
       case 'headers':
-        return request.headers;
+        return getRequestData(context).headers;
 
       default:
         return {};

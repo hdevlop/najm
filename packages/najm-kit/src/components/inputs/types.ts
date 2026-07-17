@@ -71,6 +71,8 @@ export interface SelectInputProps extends BaseProps {
   icon?: InputIcon;
   showIcon?: boolean;
   disabled?: boolean;
+  /** Class applied to the portalled dropdown surface. */
+  dropdownClassName?: string;
 }
 
 export interface ComboboxInputProps extends BaseProps {

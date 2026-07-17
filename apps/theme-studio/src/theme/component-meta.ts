@@ -98,6 +98,11 @@ export const COMPONENT_META: Record<NajmComponentName, ComponentMeta> = {
     label: "Select",
     controls: { radius: true, borderWidth: true },
   },
+  dropdown: {
+    name: "dropdown",
+    label: "Dropdown",
+    controls: { radius: true, borderWidth: true },
+  },
   sheet: {
     name: "sheet",
     label: "Sheet",
@@ -127,7 +132,7 @@ export const COMPONENT_META: Record<NajmComponentName, ComponentMeta> = {
 
 export const COMPONENT_CATEGORIES: ComponentCategory[] = [
   { id: "actions", label: "Actions", components: ["button", "badge", "alert"] },
-  { id: "surfaces", label: "Surfaces", components: ["card", "dialog", "sheet", "popover", "tooltip"] },
+  { id: "surfaces", label: "Surfaces", components: ["card", "dialog", "sheet", "popover", "dropdown", "tooltip"] },
   { id: "navigation", label: "Navigation", components: ["sidebar", "pageHeader", "tabs"] },
   { id: "data", label: "Data", components: ["table", "progress", "avatar"] },
   { id: "inputs", label: "Inputs", components: ["input", "select"] },

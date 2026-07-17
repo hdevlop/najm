@@ -8,6 +8,14 @@ import { cn } from "../../lib/cn";
 import { NIcon } from "../Icon";
 import type { FormInputProps } from "./types";
 
+const inputBackgroundClasses = {
+  card: "!bg-card [&>div:first-child]:!bg-card",
+  background: "!bg-background [&>div:first-child]:!bg-background",
+  secondary: "!bg-secondary [&>div:first-child]:!bg-secondary",
+  muted: "!bg-muted [&>div:first-child]:!bg-muted",
+  transparent: "!bg-transparent [&>div:first-child]:!bg-transparent",
+} as const;
+
 const Inputs: Record<string, React.ComponentType<any>> = {
   switch: SwitchInput,
   checkbox: CheckboxInput,
@@ -32,7 +40,7 @@ const Inputs: Record<string, React.ComponentType<any>> = {
   slider: SliderInput,
 };
 
-export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, formDescription, required = false, disabled = false, readOnly = false, hidden = false, icon, iconColor, classNames, ...rest }) => {
+export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, formDescription, required = false, disabled = false, readOnly = false, hidden = false, icon, iconColor, classNames, background, ...rest }) => {
   const InputComponent = Inputs[type];
   const { control } = useFormContext();
   const { className, onChange: consumerOnChange, ...inputRest } = rest as any;
@@ -57,7 +65,7 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
   const slot = {
     item: cn(preset.item, classNames?.item),
     label: cn(preset.label, classNames?.label),
-    input: cn(presetInput, classNames?.input, className),
+    input: cn(presetInput, background && inputBackgroundClasses[background], classNames?.input, className),
     description: cn(preset.description, classNames?.description),
     error: cn(preset.error, classNames?.error),
   };

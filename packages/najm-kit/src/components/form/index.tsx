@@ -6,7 +6,7 @@ export { default as DynamicArray, RepeatingFields } from "./DynamicArray";
 export { PrefixProvider, usePrefix } from "./PrefixContext";
 export { VariantProvider, useVariant, useVariantPreset } from "./VariantContext";
 export { useNForm } from "./useNForm";
-export type { FormInputProps, FormProps } from "./types";
+export type { FormInputBackground, FormInputProps, FormProps } from "./types";
 export type { FormVariant, FormSlotClassNames } from "./VariantContext";
 export type { UseNFormOptions } from "./useNForm";
 export type { DynamicArrayProps, RepeatingFieldsProps } from "./DynamicArray";

@@ -1,5 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn";
+import { useNajmComponentStyle } from "../../theme/design-provider";
+import { resolveRadiusValue } from "../../theme/design-types";
 
 export type IconButtonVariant = "primary" | "secondary" | "ghost" | "destructive";
 export type IconButtonSize = "sm" | "md" | "lg";
@@ -39,15 +41,20 @@ export const IconButton = React.forwardRef<HTMLButtonElement, IconButtonProps>(
       active = false,
       type = "button",
       children,
+      style,
       ...props
     },
     ref
   ) => {
+    const recipe = useNajmComponentStyle("button");
+    const recipeRadius = resolveRadiusValue(recipe?.radius);
+
     return (
       <button
         ref={ref}
         type={type}
         aria-pressed={active || undefined}
+        style={recipeRadius ? { borderRadius: recipeRadius, ...style } : style}
         className={cn(
           "inline-flex shrink-0 cursor-pointer items-center justify-center rounded-md transition-colors",
           "outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",

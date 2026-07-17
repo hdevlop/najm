@@ -1,6 +1,6 @@
 {
   "name": "najm-chatbot",
-  "version": "1.0.12",
+  "version": "2.0.1",
   "description": "Chatbot plugin for najm framework — AI settings, LLM provider factory, MCP tool adapter, chat agent, and React UI",
   "type": "module",
   "files": [

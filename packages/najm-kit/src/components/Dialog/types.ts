@@ -5,9 +5,11 @@ import type { NPageHeaderProps } from "../layout/NPageHeader";
 import type { DialogPadding } from "./Dialog";
 
 export type DialogActionMode = "auto" | "dialog" | "content";
+export type DialogVariant = "default" | "window";
 
 export interface ButtonConfig {
   text: string;
+  className?: string;
   variant?: "default" | "destructive" | "secondary" | "outline" | "tertiary" | "ghost";
   icon?: NIconSource;
   loadingText?: string;
@@ -46,6 +48,16 @@ export interface DialogConfig {
   width?: DialogWidth;
   height?: DialogHeight;
   className?: string;
+  /** Class applied to the rendered dialog header. */
+  headerClassName?: string;
+  /** Class applied to the dialog title. */
+  titleClassName?: string;
+  /** Class applied to the dialog description. */
+  descriptionClassName?: string;
+  /** Class applied to the inline close button used by window/page-header dialogs. */
+  closeButtonClassName?: string;
+  /** Visual treatment for the dialog chrome. `window` adds a compact title bar with an inline bordered close button. */
+  variant?: DialogVariant;
   actionMode?: DialogActionMode;
   render?: DialogRenderer;
 }
@@ -71,6 +83,16 @@ export interface PushDialogOptions {
   width?: DialogWidth;
   height?: DialogHeight;
   className?: string;
+  /** Class applied to the rendered dialog header. */
+  headerClassName?: string;
+  /** Class applied to the dialog title. */
+  titleClassName?: string;
+  /** Class applied to the dialog description. */
+  descriptionClassName?: string;
+  /** Class applied to the inline close button used by window/page-header dialogs. */
+  closeButtonClassName?: string;
+  /** Visual treatment for the dialog chrome. `window` adds a compact title bar with an inline bordered close button. */
+  variant?: DialogVariant;
   /**
    * Controls which layer owns action buttons.
    * - auto: hide dialog buttons when content declares its own actions

@@ -37,7 +37,7 @@ describe('rag:scan command', () => {
     const result = await runCli(['rag:scan', '--help']);
 
     expect(result.exitCode).toBe(0);
-    expect(result.output).toContain('najm-api rag:scan');
+    expect(result.output).toContain('najm rag:scan');
     expect(result.output).toContain('Scans controllers for @McpTool methods');
     expect(result.output).not.toContain('Scanning controllers');
   });
