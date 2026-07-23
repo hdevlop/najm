@@ -83,7 +83,7 @@ export class ParamService {
 
    async onReady(): Promise<void> {
       const count = this.container.getInjections(INJECTION_TYPES.PARAMS).length;
-      this.log.info(`Param plugin ready: ${count} method(s) with parameter injection`);
+      this.log.debug(`Param plugin ready: ${count} method(s) with parameter injection`);
    }
 
    // ============================================================================

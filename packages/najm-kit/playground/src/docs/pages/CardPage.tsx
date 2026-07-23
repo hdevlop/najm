@@ -1,8 +1,23 @@
 import React from 'react';
-import { NCard, NCardAction, NCardFooter, NStatCard, NButton, Badge, NLoadingState, NEmptyState, NErrorState } from 'najm-kit';
+import {
+  NAvatar,
+  NButton,
+  NCard,
+  NCardAction,
+  NCardInfo,
+  NCardMedia,
+  NCardSection,
+  NCardFooter,
+  NEmptyState,
+  NErrorState,
+  NLoadingState,
+  NProgress,
+  NStatCard,
+  Badge,
+} from 'najm-kit';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
-import { CheckCircle2, Star, Users, FileText } from 'lucide-react';
+import { CalendarDays, CheckCircle2, FileText, Fuel, Gauge, HeartHandshake, MapPin, Settings2, Star, Users } from 'lucide-react';
 
 const planFeatures = [
   { label: '2 team members', included: true },
@@ -22,11 +37,82 @@ const customers = [
   { name: 'Thomas Lean', email: 'thomas@windster.com', amount: '$2367', avatar: 'TL' },
 ];
 
+const familyPhoto = 'https://images.unsplash.com/photo-1609220136736-443140cffec6?auto=format&fit=crop&w=900&q=80';
+const vehiclePhoto = 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?auto=format&fit=crop&w=1200&q=80';
+
+function FamilyMediaCard() {
+  return (
+    <NCard title="Ahmed & Fatima" bordered className="w-full overflow-hidden">
+      <NCardMedia variant="image" placement="side" size={104}>
+        <img src={familyPhoto} alt="Family sitting together" className="absolute inset-0 size-full object-cover" />
+      </NCardMedia>
+      <NCardAction><Badge color="warning" look="soft">Pending funding</Badge></NCardAction>
+      <NCardSection density="compact" surface="plain">
+        <NCardInfo icon={MapPin} value="Casablanca, Grand Casablanca" />
+        <NCardInfo icon={Users} value="5 members" />
+      </NCardSection>
+      <div className="space-y-1">
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="font-medium text-emerald-600">75%</span>
+          <span>MAD 5,400 / MAD 7,200</span>
+        </div>
+        <NProgress value={75} size="sm" color="success" />
+      </div>
+      <NCardFooter className="flex-wrap justify-between gap-2 pt-0">
+        <div className="flex flex-wrap gap-1.5">
+          <Badge color="success" look="soft">Food</Badge>
+          <Badge color="info" look="soft">School</Badge>
+          <Badge color="secondary" look="soft">Health</Badge>
+        </div>
+        <NButton size="sm" leftIcon={HeartHandshake}>Support</NButton>
+      </NCardFooter>
+    </NCard>
+  );
+}
+
+function ProfileMediaCard() {
+  return (
+    <NCard title="Abdelouahed Zitouni" description="Male" bordered className="w-full overflow-hidden">
+      <NCardMedia variant="avatar" size="sm">
+        <NAvatar fallback="AZ" size="xl" />
+      </NCardMedia>
+      <NCardAction><Badge color="success" look="soft">Active</Badge></NCardAction>
+      <NCardSection density="default" surface="soft">
+        <NCardInfo icon={CalendarDays} label="Date of birth" value="Jan 1, 2021" />
+        <NCardInfo icon={Users} label="School level" value="Primary" />
+        <NCardInfo icon={HeartHandshake} label="Family profile" value="Samira Family" maxChars={18} />
+      </NCardSection>
+    </NCard>
+  );
+}
+
+function VehicleMediaCard() {
+  return (
+    <NCard title="HYUNDAI Tucson" description="2023 · Casablanca" bordered className="w-full max-w-[430px] overflow-hidden">
+      <NCardMedia variant="hero" aspect="4/3">
+        <img src={vehiclePhoto} alt="Silver Hyundai Tucson" className="absolute inset-0 size-full object-cover" />
+        <button className="absolute end-3 top-3 rounded bg-black/65 px-2 py-1 text-xs text-amber-300" type="button">Compare</button>
+        <div className="absolute bottom-4 start-3 overflow-hidden rounded-md text-center text-white shadow-lg">
+          <div className="bg-sky-500 px-4 py-1.5 text-sm font-bold">312 000 Dh</div>
+          <div className="bg-amber-500 px-3 py-1.5 text-xs">From 3 855 dh / month</div>
+        </div>
+      </NCardMedia>
+      <NCardAction><Badge color="success">B</Badge></NCardAction>
+      <p className="text-sm text-muted-foreground">Tucson IV – Ph2 – 1.6 CRDi Ultimate BVA 136ch</p>
+      <NCardFooter className="grid grid-cols-3 gap-2 text-xs text-muted-foreground">
+        <span className="flex items-center gap-1"><Fuel className="size-3.5" />Diesel</span>
+        <span className="flex items-center gap-1"><Settings2 className="size-3.5" />Automatic</span>
+        <span className="flex items-center gap-1"><Gauge className="size-3.5" />108 126 km</span>
+      </NCardFooter>
+    </NCard>
+  );
+}
+
 export function CardPage() {
   return (
     <ComponentPage
       title="NCard"
-      description="A smart card with built-in header props, async states, and compound NCardAction / NCardFooter slots."
+      description="A reusable card with media, information sections, actions, footers, and async states."
       category="Card"
     >
       <Example
@@ -231,6 +317,78 @@ export function CardPage() {
           <NCard title="Invoices" icon="file-text" className="flex-1">
             <NEmptyState title="No invoices yet" description="Create your first to get started." icon={FileText} />
           </NCard>
+        </div>
+      </Example>
+
+      <Example
+        title="NCardMedia layouts"
+        description="One NCard supports side images, avatar headers, and full hero media. Use placement='auto' for responsive switching, or force a placement to keep one layout."
+        center={false}
+        previewHeight="h-[900px]"
+        code={`import {
+  NCard,
+  NCardAction,
+  NCardFooter,
+  NCardMedia,
+  NCardSection,
+  NCardInfo,
+} from 'najm-kit';
+
+// Omit placement (or use placement="auto") to switch automatically by viewport.
+// size accepts sm | md | lg | xl or an exact pixel number.
+
+<NCard title="Ahmed & Fatima">
+  <NCardMedia variant="image" placement="side" size={104}>
+    <img src={family.image} alt={family.name} className="absolute inset-0 size-full object-cover" />
+  </NCardMedia>
+  <NCardAction><StatusBadge status="pending" /></NCardAction>
+  <NCardSection density="compact" surface="plain">
+    <NCardInfo icon={MapPin} value="Casablanca, Grand Casablanca" />
+    <NCardInfo icon={Users} value="5 members" />
+  </NCardSection>
+  <FundingProgress progress={family.funding} />
+  <NCardFooter><NButton>Support</NButton></NCardFooter>
+</NCard>
+
+<NCard title="Abdelouahed Zitouni" description="Male">
+  <NCardMedia variant="avatar" size="sm">
+    <NAvatar fallback="AZ" size="xl" />
+  </NCardMedia>
+  <NCardAction><StatusBadge status="active" /></NCardAction>
+  <NCardSection surface="soft">
+    <NCardInfo icon={CalendarDays} label="Date of birth" value="Jan 1, 2021" />
+  </NCardSection>
+</NCard>
+
+<NCard title="HYUNDAI Tucson" description="2023 · Casablanca">
+  <NCardMedia variant="hero" aspect="4/3">
+    <img src={vehicle.image} alt={vehicle.name} className="absolute inset-0 size-full object-cover" />
+    <PriceOverlay />
+  </NCardMedia>
+  <p>Vehicle description</p>
+  <NCardFooter><VehicleSpecifications /></NCardFooter>
+</NCard>`}
+      >
+        <div className="grid w-full items-start gap-6 xl:grid-cols-2">
+          <section className="space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold">Side image</h4>
+              <p className="text-xs text-muted-foreground">Family/list presentation</p>
+            </div>
+            <FamilyMediaCard />
+            <div>
+              <h4 className="text-sm font-semibold">Responsive avatar</h4>
+              <p className="text-xs text-muted-foreground">Compact mobile list, expanded desktop information</p>
+            </div>
+            <ProfileMediaCard />
+          </section>
+          <section className="space-y-3">
+            <div>
+              <h4 className="text-sm font-semibold">Hero image</h4>
+              <p className="text-xs text-muted-foreground">Vehicle, property, and product presentation</p>
+            </div>
+            <VehicleMediaCard />
+          </section>
         </div>
       </Example>
 

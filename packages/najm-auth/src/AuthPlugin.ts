@@ -22,6 +22,7 @@ import { validation } from 'najm-validation';
 import { rateLimit } from 'najm-rate';
 import { email } from 'najm-email';
 import { AUTH_LOCALES } from './locales';
+import { OAUTH_MODULE } from './oauth';
 
 const DEFAULT_JWT = {
   accessSecret: process.env.JWT_ACCESS_SECRET || '',
@@ -30,7 +31,63 @@ const DEFAULT_JWT = {
   refreshExpiresIn: process.env.REFRESH_EXPIRES_IN || '7d',
 };
 
-const mergeConfig = (config?: AuthPluginConfig): AuthConfig => {
+const validateFrontendPath = (value: string, name: string): string => {
+  if (!value.startsWith('/') || value.startsWith('//') || value.includes('\\')) {
+    throw new Error(`${name} must be a same-origin path starting with a single '/'`);
+  }
+  return value;
+};
+
+const resolveGoogleConfig = (config?: AuthPluginConfig) => {
+  const configuredGoogle = config?.oauth?.google;
+  if (!configuredGoogle) return undefined;
+  const google = configuredGoogle === true ? {} : configuredGoogle;
+
+  const clientId = google.clientId ?? process.env.GOOGLE_CLIENT_ID ?? '';
+  const clientSecret = google.clientSecret ?? process.env.GOOGLE_CLIENT_SECRET ?? '';
+  if (!clientId) throw Err.configRequired('auth.oauth.google', 'GOOGLE_CLIENT_ID');
+  if (!clientSecret) throw Err.configRequired('auth.oauth.google', 'GOOGLE_CLIENT_SECRET');
+
+  const frontendUrl = config?.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  const callbackUrl = google.callbackUrl
+    ?? process.env.GOOGLE_CALLBACK_URL
+    ?? `${frontendUrl.replace(/\/$/, '')}/api/auth/oauth/google/callback`;
+
+  let callback: URL;
+  try {
+    callback = new URL(callbackUrl);
+  } catch {
+    throw new Error('auth.oauth.google.callbackUrl must be an absolute URL');
+  }
+  const local = callback.hostname === 'localhost'
+    || callback.hostname === '127.0.0.1'
+    || callback.hostname === '[::1]'
+    || callback.hostname === '::1';
+  if (callback.protocol !== 'https:' && !(local && callback.protocol === 'http:')) {
+    throw new Error('auth.oauth.google.callbackUrl must use HTTPS (HTTP is allowed only for localhost)');
+  }
+
+  return {
+    clientId,
+    clientSecret,
+    callbackUrl: callback.toString(),
+    frontendCallbackPath: validateFrontendPath(
+      google.frontendCallbackPath ?? '/auth/oauth/callback',
+      'auth.oauth.google.frontendCallbackPath',
+    ),
+    errorRedirectPath: validateFrontendPath(
+      google.errorRedirectPath ?? '/login',
+      'auth.oauth.google.errorRedirectPath',
+    ),
+    allowSignup: google.allowSignup ?? true,
+    autoLinkVerifiedEmail: google.autoLinkVerifiedEmail ?? false,
+    allowedHostedDomains: [...new Set((google.allowedHostedDomains ?? [])
+      .map((domain) => domain.trim().toLowerCase())
+      .filter(Boolean))],
+  };
+};
+
+export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
   const bcryptRounds = config?.bcryptRounds ?? 10;
   if (!Number.isInteger(bcryptRounds) || bcryptRounds < 4 || bcryptRounds > 31) {
     throw new Error('auth.bcryptRounds must be an integer between 4 and 31');
@@ -59,6 +116,9 @@ const mergeConfig = (config?: AuthPluginConfig): AuthConfig => {
       maxAge: config?.session?.maxAge ?? 300,
       secret: config?.session?.secret, // fallback to jwt.accessSecret at use site
     },
+    oauth: {
+      google: resolveGoogleConfig(config),
+    },
   };
 
   if (!finalConfig.jwt.accessSecret) {
@@ -74,9 +134,14 @@ const mergeConfig = (config?: AuthPluginConfig): AuthConfig => {
 /**
  * Select auth schema based on dialect
  */
-const selectSchema = (config?: AuthPluginConfig): AuthSchema => {
+export const selectAuthSchema = (config?: AuthPluginConfig): AuthSchema => {
   // Explicit schema takes precedence
-  if (config?.schema) return config.schema;
+  if (config?.schema) {
+    if (config.oauth?.google && !config.schema.oauthAccounts) {
+      throw new Error('auth.schema.oauthAccounts is required when Google OAuth is enabled');
+    }
+    return config.schema;
+  }
 
   // Auto-select based on dialect
   const dialect = config?.dialect ?? 'pg';
@@ -99,19 +164,20 @@ export const auth = (config?: AuthPluginConfig) =>
       guards(),
       validation(config?.validation),
       rateLimit(config?.rateLimit),
-      email()
+      email(config?.email)
     )
     .requires('database')
     .contributes(I18N_CONTRIBUTIONS, AUTH_LOCALES)
     .services(
       AuthModule.AUTH_MODULE,
+      OAUTH_MODULE,
       UserModule,
       RoleModule,
       PermissionModule,
       TokenModule,
       ScopeContext,
     )
-    .config(AUTH_CONFIG, mergeConfig(config))
-    .set(AUTH_SCHEMA, selectSchema(config))
+    .config(AUTH_CONFIG, resolveAuthConfig(config))
+    .set(AUTH_SCHEMA, selectAuthSchema(config))
     .set(AUTH_ENCRYPTION_KEY, config?.encryptionKey ?? null)
     .build();

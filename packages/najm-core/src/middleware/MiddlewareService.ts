@@ -280,7 +280,7 @@ export class MiddlewareService {
 
    async onReady(): Promise<void> {
       const count = this.container.getInjections(INJECTION_TYPES.MIDDLEWARE).length;
-      this.log.info(`Middleware plugin ready: ${count} middleware(s) applied`);
+      this.log.debug(`Middleware plugin ready: ${count} middleware(s) applied`);
    }
 
    // ============================================================================

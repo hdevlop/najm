@@ -55,7 +55,7 @@ export class EmailService {
   }
 
   async onReady(): Promise<void> {
-    this.log.info(`Email service ready (provider: ${this.provider.name})`);
+    this.log.debug(`Email service ready (provider: ${this.provider.name})`);
 
     if (this.config.debug) {
       const verified = await this.verify();

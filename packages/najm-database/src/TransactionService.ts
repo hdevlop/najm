@@ -6,6 +6,15 @@ import type { TransactionalOptions, TransactionInjection } from './types';
 import { TRANSACTION_DEPTH, TRANSACTIONS } from './tokens';
 import { getTransactionalMethods } from './decorator';
 
+const TRANSACTION_WRAPPER = Symbol('najm:transaction-wrapper');
+
+type WrappedTransactionMethod = Function & {
+   [TRANSACTION_WRAPPER]?: {
+      target: Function;
+      database: string;
+   };
+};
+
 @Service()
 @Meta({ layer: 'plugin' })
 export class TransactionService {
@@ -50,8 +59,18 @@ export class TransactionService {
          inject: (instance, ctor) => {
             const injections = this.container.getInjectionsFor<TransactionInjection>('transaction', ctor);
 
-            for (const { propertyKey, options } of injections) {
-               this.wrapMethod(instance, propertyKey, options);
+            for (const { target, propertyKey, options } of injections) {
+               if (target !== ctor) {
+                  this.invalidTransactionConfig(
+                     target,
+                     ctor,
+                     propertyKey,
+                     options,
+                     'Injection target does not match the constructor being wrapped',
+                  );
+               }
+
+               this.wrapMethod(instance, ctor, target, propertyKey, options);
             }
          }
       });
@@ -59,21 +78,46 @@ export class TransactionService {
 
    private wrapMethod(
       instance: any,
+      actualTarget: Function,
+      expectedTarget: Function,
       propertyKey: string | symbol,
       options: TransactionalOptions
    ): void {
-      const original = instance[propertyKey];
+      const original = instance[propertyKey] as WrappedTransactionMethod;
 
       if (typeof original !== 'function') {
-         this.log.warn(`@Transaction on non-method: ${String(propertyKey)}`);
-         return;
+         this.invalidTransactionConfig(
+            expectedTarget,
+            actualTarget,
+            propertyKey,
+            options,
+            'Decorated transaction property is not a method',
+         );
+      }
+
+      if (original[TRANSACTION_WRAPPER]) {
+         this.invalidTransactionConfig(
+            expectedTarget,
+            actualTarget,
+            propertyKey,
+            options,
+            'Duplicate transaction wrapper detected',
+         );
       }
 
       const service = this;
-
-      instance[propertyKey] = async function (...args: any[]) {
+      const wrapped = async function (this: unknown, ...args: any[]) {
          return service.executeMethod(instance, original, args, options);
-      };
+      } as WrappedTransactionMethod;
+
+      Object.defineProperty(wrapped, TRANSACTION_WRAPPER, {
+         value: {
+            target: expectedTarget,
+            database: options.database ?? 'default',
+         },
+      });
+
+      instance[propertyKey] = wrapped;
    }
 
    // ============================================================================
@@ -86,8 +130,32 @@ export class TransactionService {
 
    private validateInjections(): void {
       const injections = this.container.getInjections<TransactionInjection>('transaction');
+      const seen = new Map<Function, Set<string | symbol>>();
 
-      for (const { options } of injections) {
+      for (const { target, propertyKey, options } of injections) {
+         const methods = seen.get(target) ?? new Set<string | symbol>();
+         if (methods.has(propertyKey)) {
+            this.invalidTransactionConfig(
+               target,
+               target,
+               propertyKey,
+               options,
+               'Duplicate transaction injection detected',
+            );
+         }
+         methods.add(propertyKey);
+         seen.set(target, methods);
+
+         if (typeof target?.prototype?.[propertyKey] !== 'function') {
+            this.invalidTransactionConfig(
+               target,
+               target,
+               propertyKey,
+               options,
+               'Decorated transaction property is not a method',
+            );
+         }
+
          const dbName = options?.database ?? 'default';
          if (!this.databaseService.has(dbName)) {
             throw Err.notFound(`Database '${dbName}' for @Transaction`);
@@ -95,9 +163,26 @@ export class TransactionService {
       }
    }
 
+   private invalidTransactionConfig(
+      expectedTarget: Function | undefined,
+      actualTarget: Function | undefined,
+      propertyKey: string | symbol,
+      options: TransactionalOptions,
+      reason: string,
+   ): never {
+      const expected = expectedTarget?.name || '<unknown>';
+      const actual = actualTarget?.name || '<unknown>';
+      const database = options?.database ?? 'default';
+
+      return Err.invalidConfig(
+         '@Transaction',
+         `${reason}; expectedConstructor=${expected}; actualConstructor=${actual}; method=${String(propertyKey)}; database=${database}`,
+      );
+   }
+
    async onReady(): Promise<void> {
       const count = this.container.getInjections('transaction').length;
-      this.log.info(`Transaction plugin ready: ${count} transactional method(s)`);
+      this.log.debug(`Transaction plugin ready: ${count} transactional method(s)`);
    }
 
    // ============================================================================

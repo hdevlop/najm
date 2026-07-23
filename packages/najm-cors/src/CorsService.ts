@@ -197,11 +197,11 @@ export class CorsService {
       const corsGlobal = globalMiddleware.filter(m => m.name === 'cors-global');
 
       if (corsGlobal.length > 0) {
-         this.log.info('Global CORS enabled');
+         this.log.debug('Global CORS enabled');
       }
 
       if (this.methodCorsCount > 0) {
-         this.log.info(`Route-level CORS: ${this.methodCorsCount} route(s)`);
+         this.log.debug(`Route-level CORS: ${this.methodCorsCount} route(s)`);
       }
    }
 

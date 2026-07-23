@@ -1,6 +1,6 @@
 {
   "name": "najm-core",
-  "version": "2.0.1",
+  "version": "2.0.4",
   "license": "MIT",
   "type": "module",
   "files": [
@@ -27,7 +27,7 @@
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
-    "diject": "^0.1.7",
+    "diject": "^0.1.8",
     "hono": "^4.7.2",
     "reflect-metadata": "^0.2.2"
   },

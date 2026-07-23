@@ -17,7 +17,17 @@
       "sessionExpired": "Session has expired",
       "accountLocked": "Account is temporarily locked. Please try again later.",
       "accountInactive": "Account is inactive. Please contact support.",
-      "emailNotVerified": "Please verify your email address before signing in."
+      "emailNotVerified": "Please verify your email address before signing in.",
+      "oauthProviderDisabled": "Google sign-in is not configured.",
+      "oauthStateInvalid": "The Google sign-in attempt is invalid or expired.",
+      "oauthAccessDenied": "Google sign-in was cancelled.",
+      "oauthProviderError": "Google sign-in could not be completed.",
+      "oauthVerifiedEmailRequired": "Google must provide a verified email address.",
+      "oauthAccountLinkRequired": "Sign in with your password and link Google from your account.",
+      "oauthProviderAccountLinked": "This Google account is already linked.",
+      "oauthSignupDisabled": "Registration with Google is disabled.",
+      "oauthHostedDomainDenied": "This Google Workspace domain is not allowed.",
+      "oauthLinkSessionExpired": "Your session changed before Google could be linked. Please try again."
     },
     "success": {
       "login": "Login successful",
@@ -27,7 +37,9 @@
       "passwordResetSent": "If that email exists, a reset link has been sent",
       "passwordReset": "Password has been reset successfully",
       "accountInviteSent": "Invitation sent successfully",
-      "tokenRefreshed": "Token refreshed successfully"
+      "tokenRefreshed": "Token refreshed successfully",
+      "oauthLogin": "Google sign-in successful",
+      "oauthLinked": "Google account linked successfully"
     },
     "emails": {
       "passwordReset": {

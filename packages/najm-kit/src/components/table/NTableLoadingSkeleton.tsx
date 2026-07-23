@@ -19,13 +19,20 @@ function NTableHeaderSkeleton() {
   const hasToolbar = Boolean(useTableStore.use.renderToolbar());
   const filterCount = Math.min(Math.max(filters?.length ?? 0, 1), 3);
   const hasActions = showViewToggle || showColumnVisibility || showAddButton || hasHeaderSlot || hasToolbar;
+  const hasSettings = showViewToggle || showColumnVisibility || hasHeaderSlot || hasToolbar;
 
   if (!filters?.length && !hasActions) return null;
 
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-between gap-2">
+    <div
+      data-ntable-loading-header
+      className="flex shrink-0 flex-wrap items-center justify-between gap-2"
+    >
       {filters?.length ? (
-        <div className="flex min-w-0 flex-1 flex-wrap gap-2">
+        <div
+          data-ntable-loading-desktop-filters
+          className="hidden min-w-0 flex-1 flex-wrap gap-2 md:flex"
+        >
           {Array.from({ length: filterCount }).map((_, index) => (
             <NSkeleton
               key={index}
@@ -34,11 +41,36 @@ function NTableHeaderSkeleton() {
           ))}
         </div>
       ) : (
-        <span className="min-w-0 flex-1" />
+        <span className="hidden min-w-0 flex-1 md:block" />
       )}
+
+      <div
+        data-ntable-loading-mobile-toolbar
+        className="flex w-full min-w-0 items-center gap-2 md:hidden"
+      >
+        {filters?.length ? (
+          <NSkeleton
+            data-ntable-loading-mobile-primary
+            className="h-10 min-w-0 flex-1 rounded-lg"
+          />
+        ) : null}
+        {filters?.length > 1 ? (
+          <NSkeleton
+            data-ntable-loading-mobile-filter-button
+            className="h-10 w-10 shrink-0 rounded-lg"
+          />
+        ) : null}
+        {showAddButton ? (
+          <NSkeleton
+            data-ntable-loading-mobile-add-button
+            className="h-10 w-10 shrink-0 rounded-lg"
+          />
+        ) : null}
+      </div>
+
       {hasActions && (
-        <div className="flex shrink-0 gap-2">
-          {(showViewToggle || showColumnVisibility || hasHeaderSlot || hasToolbar) && (
+        <div className="hidden shrink-0 gap-2 md:flex">
+          {hasSettings && (
             <NSkeleton className="h-10 w-10 rounded-lg" />
           )}
           {showAddButton && <NSkeleton className="h-10 w-10 rounded-lg" />}
@@ -149,20 +181,45 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
           {Array.from({ length: cardCount }).map((_, index) => (
             <Card
               key={index}
-              className={cn("rounded-lg bg-card p-4 shadow-none", surfaceBorderClasses(bordered))}
+              className={cn("rounded-lg bg-card p-3 shadow-none sm:p-4", surfaceBorderClasses(bordered))}
             >
-              <div className="flex items-start gap-4">
-                <NSkeleton className="h-12 w-12 shrink-0 rounded-full" />
-                <div className="flex min-w-0 flex-1 flex-col gap-3">
-                  <div className="flex flex-col gap-2">
-                    <NSkeleton className="h-5 w-36" />
-                    <NSkeleton className="h-3 w-48 max-w-full" />
+              <div
+                data-ntable-loading-card-layout="responsive-avatar"
+                className="grid grid-cols-[80px_minmax(0,1fr)] gap-3 sm:grid-cols-[72px_minmax(0,1fr)]"
+              >
+                <div className="col-start-1 row-start-1 flex items-start justify-center sm:justify-start">
+                  <NSkeleton
+                    data-ntable-loading-card-avatar
+                    className="size-20 shrink-0 rounded-full sm:size-16"
+                  />
+                </div>
+
+                <div className="col-start-2 row-start-1 flex min-w-0 items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1 space-y-2">
+                    <NSkeleton className="h-5 w-36 max-w-full" />
+                    <NSkeleton className="hidden h-3 w-16 sm:block" />
                   </div>
-                  <div className="flex flex-col gap-2">
-                    <NSkeleton className="h-4 w-full" />
-                    <NSkeleton className="h-4 w-4/5" />
-                    <NSkeleton className="h-4 w-3/4" />
-                  </div>
+                  <NSkeleton
+                    data-ntable-loading-card-status
+                    className="hidden h-6 w-14 shrink-0 rounded-full sm:block"
+                  />
+                </div>
+
+                <div
+                  data-ntable-loading-card-details
+                  className="col-start-2 row-start-2 space-y-1 sm:col-span-full sm:col-start-1 sm:space-y-2 sm:rounded-lg sm:bg-muted/50 sm:p-3"
+                >
+                  {Array.from({ length: 3 }).map((_, detailIndex) => (
+                    <div key={detailIndex} className="flex items-center gap-1.5 sm:gap-2">
+                      <NSkeleton className="size-3.5 shrink-0 rounded-sm sm:size-4" />
+                      <NSkeleton
+                        className={cn(
+                          "h-3 max-w-full sm:h-4",
+                          detailIndex === 0 ? "w-full" : detailIndex === 1 ? "w-4/5" : "w-3/4",
+                        )}
+                      />
+                    </div>
+                  ))}
                 </div>
               </div>
             </Card>

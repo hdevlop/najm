@@ -77,10 +77,10 @@ export class GuardService {
 
    async onReady(): Promise<void> {
       if (!this.enabled) {
-         this.log.info('Guard plugin disabled');
+         this.log.debug('Guard plugin disabled');
          return;
       }
-      this.log.info(`Guard plugin ready: ${this.guardCount} guard(s) registered`);
+      this.log.debug(`Guard plugin ready: ${this.guardCount} guard(s) registered`);
    }
 
    private createGuardsMiddleware(guards: GuardMetadata[]): MiddlewareHandler {

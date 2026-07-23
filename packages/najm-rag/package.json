@@ -1,6 +1,6 @@
 {
   "name": "najm-rag",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "description": "RAG engine for Najm framework — embeddings, vector search, and semantic tool routing",
   "type": "module",
@@ -74,6 +74,7 @@
     "@types/pdf-parse": "^1.1.5",
     "najm-auth": "workspace:*",
     "najm-database": "workspace:*",
+    "najm-guard": "workspace:*",
     "najm-mcp": "workspace:*",
     "najm-storage": "workspace:*",
     "najm-validation": "workspace:*",

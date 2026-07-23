@@ -22,5 +22,6 @@ export type {
   NavItem,
   NavItemGroup,
   NAppShellClassNames,
+  SidebarWidth,
   SidebarWidths,
 } from './types';

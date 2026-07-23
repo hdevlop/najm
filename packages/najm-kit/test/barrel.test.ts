@@ -127,6 +127,12 @@ describe("Root barrel import", () => {
     expect(najmUI.NStatCard).toBeDefined();
   });
 
+  test("exports card media and information components", () => {
+    expect(najmUI.NCardMedia).toBeDefined();
+    expect(najmUI.NCardSection).toBeDefined();
+    expect(najmUI.NCardInfo).toBeDefined();
+  });
+
   test("exports NAvatar component", () => {
     expect(najmUI.NAvatar).toBeDefined();
   });
@@ -201,6 +207,10 @@ describe("Root barrel import", () => {
 
   test("exports NPageHeader component", () => {
     expect(najmUI.NPageHeader).toBeDefined();
+  });
+
+  test("exports NPageHeader compact actions slot", () => {
+    expect(najmUI.NPageHeaderCompactActions).toBeDefined();
   });
 
   test("exports NInspectorSheet component", () => {

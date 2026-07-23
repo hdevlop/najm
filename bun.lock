@@ -8,6 +8,7 @@
         "@clack/prompts": "^1.0.1",
         "@hono/node-server": "^1.19.9",
         "bcrypt": "^6.0.0",
+        "diject": "^0.1.8",
         "dotenv-pro": "^0.2.0",
         "forji": "^1.0.5",
         "hono": "^4.12.0",
@@ -171,7 +172,7 @@
     },
     "packages/najm-api": {
       "name": "najm-api",
-      "version": "2.0.1",
+      "version": "2.0.3",
       "dependencies": {
         "najm-auth": "workspace:*",
         "najm-cache": "workspace:*",
@@ -196,9 +197,10 @@
     },
     "packages/najm-auth": {
       "name": "najm-auth",
-      "version": "2.0.1",
+      "version": "2.0.3",
       "dependencies": {
         "bcryptjs": "^3.0.2",
+        "jose": "^6.1.3",
         "jsonwebtoken": "^9.0.3",
         "lodash.isempty": "^4.4.0",
         "najm-cache": "workspace:*",
@@ -216,10 +218,12 @@
         "zod": "^4.2.1",
       },
       "devDependencies": {
+        "@testing-library/react": "^16.3.2",
         "@types/jsonwebtoken": "^9.0.10",
         "@types/node": "^25.0.2",
         "drizzle-kit": "^0.31.8",
         "drizzle-orm": "^0.45.1",
+        "happy-dom": "^17.6.3",
         "tsup": "^8.5.1",
         "typescript": "^5.9.3",
       },
@@ -236,7 +240,7 @@
     },
     "packages/najm-cache": {
       "name": "najm-cache",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "najm-core": "workspace:*",
       },
@@ -260,7 +264,7 @@
     },
     "packages/najm-chatbot": {
       "name": "najm-chatbot",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "@ai-sdk/anthropic": "^1.0.0",
         "@ai-sdk/google": "^1.0.0",
@@ -309,7 +313,7 @@
     },
     "packages/najm-cli": {
       "name": "najm-cli",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "bin": {
         "najm": "./dist/index.js",
         "najm-cli": "./dist/index.js",
@@ -324,13 +328,15 @@
       },
       "devDependencies": {
         "@types/bun": "latest",
+        "najm-core": "workspace:*",
+        "najm-mcp": "workspace:*",
         "rimraf": "^6.0.1",
         "typescript": "^5.7.3",
       },
     },
     "packages/najm-cookies": {
       "name": "najm-cookies",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "devDependencies": {
         "najm-core": "workspace:*",
         "tsup": "^8.0.0",
@@ -344,9 +350,9 @@
     },
     "packages/najm-core": {
       "name": "najm-core",
-      "version": "2.0.1",
+      "version": "2.0.4",
       "dependencies": {
-        "diject": "^0.1.7",
+        "diject": "^0.1.8",
         "hono": "^4.7.2",
         "reflect-metadata": "^0.2.2",
       },
@@ -364,7 +370,7 @@
     },
     "packages/najm-cors": {
       "name": "najm-cors",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "devDependencies": {
         "najm-core": "workspace:*",
       },
@@ -375,7 +381,7 @@
     },
     "packages/najm-database": {
       "name": "najm-database",
-      "version": "2.0.1",
+      "version": "2.0.3",
       "devDependencies": {
         "najm-core": "workspace:*",
         "tsup": "^8.0.0",
@@ -390,7 +396,7 @@
     },
     "packages/najm-email": {
       "name": "najm-email",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "devDependencies": {
         "@types/nodemailer": "^6.4.0",
         "najm-core": "workspace:*",
@@ -406,11 +412,12 @@
     },
     "packages/najm-event": {
       "name": "najm-event",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "mitt": "^3.0.1",
       },
       "devDependencies": {
+        "najm-core": "workspace:*",
         "rimraf": "^6.0.1",
         "typescript": "^5.7.3",
       },
@@ -421,7 +428,7 @@
     },
     "packages/najm-guard": {
       "name": "najm-guard",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "najm-core": "workspace:*",
       },
@@ -435,8 +442,9 @@
     },
     "packages/najm-i18n": {
       "name": "najm-i18n",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "devDependencies": {
+        "najm-core": "workspace:*",
         "rimraf": "^6.0.1",
         "typescript": "^5.7.3",
       },
@@ -448,7 +456,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.1.4",
+      "version": "2.1.23",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",
@@ -540,11 +548,12 @@
     },
     "packages/najm-mcp": {
       "name": "najm-mcp",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.12.1",
       },
       "devDependencies": {
+        "najm-auth": "workspace:*",
         "najm-core": "workspace:*",
         "najm-guard": "workspace:*",
         "najm-validation": "workspace:*",
@@ -553,6 +562,7 @@
       },
       "peerDependencies": {
         "hono": "^4.0.0",
+        "najm-auth": "workspace:*",
         "najm-core": "workspace:*",
         "najm-guard": "workspace:*",
         "najm-validation": "workspace:*",
@@ -560,12 +570,13 @@
         "zod": "^3.0.0 || ^4.0.0",
       },
       "optionalPeers": [
+        "najm-auth",
         "najm-validation",
       ],
     },
     "packages/najm-rag": {
       "name": "najm-rag",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "najm-core": "workspace:*",
         "pdf-parse": "^1.1.1",
@@ -575,6 +586,7 @@
         "@types/pdf-parse": "^1.1.5",
         "najm-auth": "workspace:*",
         "najm-database": "workspace:*",
+        "najm-guard": "workspace:*",
         "najm-mcp": "workspace:*",
         "najm-storage": "workspace:*",
         "najm-validation": "workspace:*",
@@ -603,7 +615,7 @@
     },
     "packages/najm-rate": {
       "name": "najm-rate",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "najm-cache": "workspace:*",
         "najm-core": "workspace:*",
@@ -619,7 +631,7 @@
     },
     "packages/najm-storage": {
       "name": "najm-storage",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "dependencies": {
         "@tanstack/react-router": "^1.170.8",
         "clsx": "^2.1.1",
@@ -643,6 +655,7 @@
         "drizzle-orm": "^0.45.1",
         "fake-indexeddb": "^6.0.0",
         "happy-dom": "^17.6.3",
+        "najm-mcp": "workspace:*",
         "postcss": "^8.5.1",
         "rimraf": "^6.0.1",
         "tailwindcss": "^4",
@@ -670,7 +683,7 @@
     },
     "packages/najm-validation": {
       "name": "najm-validation",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "najm-core": "workspace:*",
       },
@@ -685,7 +698,7 @@
     },
     "packages/najm-whatsapp": {
       "name": "najm-whatsapp",
-      "version": "2.0.1",
+      "version": "2.0.2",
       "dependencies": {
         "@hapi/boom": "^10.0.1",
         "@tanstack/react-router": "^1.170.8",
@@ -710,6 +723,9 @@
         "@types/react-dom": ">=18",
         "@types/react-window": "^2.0.0",
         "class-variance-authority": "^0.7.1",
+        "najm-auth": "workspace:*",
+        "najm-rate": "workspace:*",
+        "najm-validation": "workspace:*",
         "postcss": "^8.4.49",
         "postcss-prefix-selector": "^2.1.0",
         "rimraf": "^6.0.1",
@@ -1924,7 +1940,7 @@
 
     "diff-match-patch": ["diff-match-patch@1.0.5", "", {}, "sha512-IayShXAgj/QMXgB0IWmKx+rOPuGMhqm5w6jvFxmVenXKIzRqTAAsbBPT3kWQeGANj3jGgvcvv4yK6SxqYmikgw=="],
 
-    "diject": ["diject@0.1.7", "", { "peerDependencies": { "reflect-metadata": "^0.2.0" } }, "sha512-leUTLZYiwdRS5vnxj8kmWJCdiaRTet1J9Lk8H2h1DKj6kxhUtdKYvtdRgiu6zp/yyGSqXfUGoERpvIZixALwgg=="],
+    "diject": ["diject@0.1.8", "", { "peerDependencies": { "reflect-metadata": "^0.2.0" } }, "sha512-tv2FFf7jEF14HJ1PSNb/KfEqFCwU7e7B4R2sVBaC5UfCSHA62lbhc+RGt6hP1/jMIiouQ+2JoRID3BqsQbyiGA=="],
 
     "dir-glob": ["dir-glob@3.0.1", "", { "dependencies": { "path-type": "^4.0.0" } }, "sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA=="],
 
@@ -3376,6 +3392,8 @@
 
     "najm-cli/@clack/prompts": ["@clack/prompts@0.10.1", "", { "dependencies": { "@clack/core": "0.4.2", "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-Q0T02vx8ZM9XSv9/Yde0jTmmBQufZhPJfYAg2XrrrxWWaZgq1rr8nU8Hv710BQ1dhoP8rtY7YUdpGej2Qza/cw=="],
 
+    "najm-cli/@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
+
     "najm-email/nodemailer": ["nodemailer@6.10.1", "", {}, "sha512-Z+iLaBGVaSjbIzQ4pX6XV41HrooLsQ10ZWPUehGmuantvzWoDVBnmsdUcOIDM1t+yPor5pDhVlDESgOMEGxhHA=="],
 
     "najm-kit/lucide-react": ["lucide-react@0.474.0", "", { "peerDependencies": { "react": "^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0" } }, "sha512-CmghgHkh0OJNmxGKWc0qfPJCYHASPMVSyGY8fj3xgk4v84ItqDg64JNKFZn5hC6E0vHi6gxnbCgwhyVB09wQtA=="],
@@ -3671,6 +3689,8 @@
     "najm-chatbot/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 
     "najm-cli/@clack/prompts/@clack/core": ["@clack/core@0.4.2", "", { "dependencies": { "picocolors": "^1.0.0", "sisteransi": "^1.0.5" } }, "sha512-NYQfcEy8MWIxrT5Fj8nIVchfRFA26yYKJcvBS7WlUIlw2OmQOY9DhGGXMovyI5J5PpxrCPGkgUi207EBrjpBvg=="],
+
+    "najm-cli/@types/bun/bun-types": ["bun-types@1.3.14", "", { "dependencies": { "@types/node": "*" } }, "sha512-4N0ig0fEomHt5R0KCFWjovxow98rIoRwKolrYdCcknNwMekCXRnWEUvgu5soYV8QXtVsrUD8B95MBOZGPvr6KQ=="],
 
     "najm-playground/@types/node/undici-types": ["undici-types@6.21.0", "", {}, "sha512-iwDZqg0QAGrg9Rav5H4n0M64c3mkR59cJ6wQp+7C4nI0gsmExaedaYLNO44eT4AtBBwjbTiGPMlt2Md0T9H9JQ=="],
 

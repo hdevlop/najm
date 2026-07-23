@@ -34,6 +34,7 @@ import { FormPage } from './docs/pages/FormPage';
 import { AppShellPage } from './docs/pages/AppShellPage';
 import { SidebarPage } from './docs/pages/SidebarPage';
 import { PageHeaderPage } from './docs/pages/PageHeaderPage';
+import { GridPage } from './docs/pages/GridPage';
 import { WizardFormPage } from './docs/pages/MultiStepFormPage';
 import { ThemeJsonPage } from './docs/pages/ThemeJsonPage';
 
@@ -113,6 +114,7 @@ const pageRegistry: Record<string, () => React.ReactElement> = {
   'app-shell': () => <AppShellPage />,
   sidebar: () => <SidebarPage />,
   'page-header': () => <PageHeaderPage />,
+  'grid': () => <GridPage />,
   installation: () => <ComingSoonPage name="Installation" />,
   theming: () => <ComingSoonPage name="Theming" />,
   'json-viewer': () => <ComingSoonPage name="JSON Viewer" />,

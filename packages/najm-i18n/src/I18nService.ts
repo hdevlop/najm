@@ -353,8 +353,8 @@ export class I18nService {
 
    async onReady(): Promise<void> {
       const count = this.container.getInjections(INJECTION_TYPES.I18N).length;
-      this.log.info(`I18n plugin ready: ${count} injection(s)`);
-      this.log.info(`Languages: ${this.availableLanguages.join(', ')} (default: ${this.defaultLanguage})`);
+      this.log.debug(`I18n plugin ready: ${count} injection(s)`);
+      this.log.debug(`Languages: ${this.availableLanguages.join(', ')} (default: ${this.defaultLanguage})`);
    }
 
    // ============================================================================

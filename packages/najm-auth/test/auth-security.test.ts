@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
-import { USER } from 'najm-guard';
+import { PERMISSIONS, ROLE, USER } from 'najm-guard';
 import { getRateLimitOptions } from 'najm-rate';
 import { AuthController } from '../src/auth/AuthController';
 import { AuthService } from '../src/auth/AuthService';
@@ -186,7 +186,19 @@ describe('auth security regressions', () => {
     await middleware!({ req: { header: () => undefined } }, async () => { nextCalls++; });
 
     expect(resolved).toEqual([CookieManager, TokenService]);
-    expect(writes).toHaveLength(3);
+    expect(writes).toEqual([
+      {
+        token: USER,
+        value: {
+          id: 'user-1',
+          email: 'user@test.com',
+          role: 'admin',
+          permissions: ['read:users'],
+        },
+      },
+      { token: ROLE, value: 'admin' },
+      { token: PERMISSIONS, value: ['read:users'] },
+    ]);
     expect(nextCalls).toBe(1);
   });
 
@@ -274,8 +286,71 @@ describe('auth security regressions', () => {
 
     // Token path wins outright; the session cookie is never consulted.
     expect(resolved).toEqual([TokenService]);
-    const userWrite = writes.find((w) => w.token === USER);
-    expect((userWrite?.value as any).id).toBe('token-user');
+    expect(writes).toEqual([
+      {
+        token: USER,
+        value: {
+          id: 'token-user',
+          email: 'token@test.com',
+          role: 'editor',
+          permissions: ['write:posts'],
+        },
+      },
+      { token: ROLE, value: 'editor' },
+      { token: PERMISSIONS, value: ['write:posts'] },
+    ]);
+    expect(nextCalls).toBe(1);
+  });
+
+  test('refresh-cookie authentication publishes canonical user, role, and permissions', async () => {
+    let middleware: ((ctx: any, next: () => Promise<void>) => Promise<void>) | undefined;
+    const resolved: unknown[] = [];
+    const writes: Array<{ token: unknown; value: unknown }> = [];
+    const resolver = new AuthResolver();
+    (resolver as any).app = {
+      use: (_path: string, handler: typeof middleware) => { middleware = handler; },
+    };
+    (resolver as any).log = { warn: () => undefined, debug: () => undefined };
+    (resolver as any).container = {
+      resolve: async (target: unknown) => {
+        resolved.push(target);
+        if (target === CookieManager) {
+          return { getSessionCookie: () => undefined };
+        }
+        if (target === TokenService) {
+          return {
+            getUserFromCookie: async () => ({
+              id: 'cookie-user',
+              email: 'cookie@test.com',
+              role: 'member',
+              permissions: ['profile:read'],
+            }),
+          };
+        }
+        throw new Error('unexpected resolve target');
+      },
+      isActive: () => true,
+      set: (token: unknown, value: unknown) => writes.push({ token, value }),
+    };
+
+    await resolver.activate();
+    let nextCalls = 0;
+    await middleware!({ req: { header: () => undefined } }, async () => { nextCalls++; });
+
+    expect(resolved).toEqual([CookieManager, TokenService]);
+    expect(writes).toEqual([
+      {
+        token: USER,
+        value: {
+          id: 'cookie-user',
+          email: 'cookie@test.com',
+          role: 'member',
+          permissions: ['profile:read'],
+        },
+      },
+      { token: ROLE, value: 'member' },
+      { token: PERMISSIONS, value: ['profile:read'] },
+    ]);
     expect(nextCalls).toBe(1);
   });
 

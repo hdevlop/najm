@@ -1,6 +1,6 @@
 {
   "name": "najm-cli",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "CLI tool for najm framework - scaffolding, code generation, and project setup",
   "type": "module",
   "main": "dist/index.js",
@@ -38,6 +38,8 @@
   },
   "devDependencies": {
     "@types/bun": "latest",
+    "najm-core": "workspace:*",
+    "najm-mcp": "workspace:*",
     "rimraf": "^6.0.1",
     "typescript": "^5.7.3"
   },

@@ -51,13 +51,13 @@ export class McpTransportService {
     const path = this.resolvePath();
     const transports = this.resolveTransports();
 
-    this.log.info(`MCP plugin ready: ${this.config.name}@${this.config.version}`);
-    this.log.info(`MCP path: ${path}`);
-    this.log.info(`MCP transports: ${transports.join(', ')}`);
+    this.log.debug(`MCP plugin ready: ${this.config.name}@${this.config.version}`);
+    this.log.debug(`MCP path: ${path}`);
+    this.log.debug(`MCP transports: ${transports.join(', ')}`);
 
     if (transports.includes('stdio')) {
-      this.log.info('MCP stdio enabled: call serveMcpStdio(server) in your CLI entrypoint');
-      this.log.info('MCP stdio client config: { "command": "bun", "args": ["run", "src/mcp-stdio.ts"] }');
+      this.log.debug('MCP stdio enabled: call serveMcpStdio(server) in your CLI entrypoint');
+      this.log.debug('MCP stdio client config: { "command": "bun", "args": ["run", "src/mcp-stdio.ts"] }');
     }
   }
 

@@ -14,7 +14,7 @@ export default async function LoginPage() {
           <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Najm</p>
           <h1 className="mt-2 text-xl font-semibold text-foreground">Sign in</h1>
         </div>
-        <LoginForm />
+        <LoginForm googleEnabled={Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET)} />
         <p className="mt-4 text-center text-sm text-muted-foreground">
           No account?{' '}
           <Link href="/register" className="font-medium text-primary hover:underline">

@@ -1,6 +1,17 @@
 import type { NajmThemeConfig } from "./types";
 
 export type NajmDensity = "compact" | "default" | "comfortable";
+/** Tailwind's mobile-first viewport breakpoints, plus the default value. */
+export type NajmResponsiveBreakpoint = "base" | "sm" | "md" | "lg" | "xl" | "2xl";
+
+/**
+ * A scalar value for every viewport, or mobile-first breakpoint overrides.
+ * For example: `{ base: 164, lg: 200, xl: 240 }`.
+ */
+export type NajmResponsiveValue<T> =
+  | T
+  | Partial<Record<NajmResponsiveBreakpoint, T>>;
+
 export type NajmComponentRadius =
   | "inherit"
   | "none"
@@ -34,6 +45,12 @@ export interface NajmComponentStyleConfig {
   showSectionLabels?: boolean;
   /** Sidebar-only: render separator lines between nav item sections. */
   showSectionSeparators?: boolean;
+  /** Sidebar-only: expanded width in px (default 240). Supports responsive overrides. */
+  expandedWidth?: NajmResponsiveValue<number>;
+  /** Sidebar-only: collapsed width in px (default 64). Supports responsive overrides. */
+  collapsedWidth?: NajmResponsiveValue<number>;
+  /** Sidebar-only: mobile drawer width in px. Defaults to the expanded width. */
+  mobileWidth?: NajmResponsiveValue<number>;
   defaultVariant?: string;
   defaultSize?: string;
   density?: NajmDensity;

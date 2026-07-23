@@ -1,5 +1,6 @@
 import {
   authSchema,
+  oauthAccountsTable,
   permissionsTable,
   rolePermissionsTable,
   rolesTable,
@@ -33,6 +34,7 @@ export {
   chatSessionsTable,
   orderItemsTable,
   ordersTable,
+  oauthAccountsTable,
   permissionsTable,
   productsTable,
   rolePermissionsTable,

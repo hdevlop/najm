@@ -6,6 +6,7 @@ import { NajmThemeProvider } from "../src/theme/provider";
 import { NajmDesignProvider } from "../src/theme/design-provider";
 import { NCard } from "../src/components/Card/Card";
 import { TextInput } from "../src/components/inputs/TextInput";
+import { TextAreaInput } from "../src/components/inputs/TextAreaInput";
 import { NSidebar } from "../src/components/sidebar/NSidebar";
 import { BaseInput } from "../src/components/inputs/BaseInput";
 import { Button } from "../src/components/Button/Button";
@@ -65,6 +66,20 @@ describe("appearance.borderWidth", () => {
     const wrapper = container.querySelector("[data-bordered]") as HTMLElement;
     expect(wrapper.getAttribute("data-bordered")).toBe("false");
     expect(wrapper.className).toContain("border-0");
+  });
+
+  test("TextAreaInput gives the textarea its own row-based minimum height", () => {
+    const { container } = render(
+      <TextAreaInput value="First line\nSecond line" onChange={() => {}} rows={3} />
+    );
+
+    const wrapper = container.querySelector("[data-bordered]") as HTMLElement;
+    const textarea = container.querySelector("textarea") as HTMLTextAreaElement;
+
+    expect(wrapper.style.minHeight).toBe("");
+    expect(textarea.getAttribute("rows")).toBe("3");
+    expect(textarea.style.minHeight).toBe("4.5rem");
+    expect(textarea.className).not.toContain("h-full");
   });
 
   test("NSidebar desktop uses najm-border-r with border-sidebar-border", () => {

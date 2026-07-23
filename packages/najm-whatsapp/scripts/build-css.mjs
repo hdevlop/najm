@@ -29,6 +29,19 @@ const prefixPlugin = () => ({
 
 prefixPlugin.postcss = true;
 
+// Ship precompiled Tailwind v4 output in a form that Tailwind v3 consumers
+// will not try to interpret as source-layer directives.
+const flattenLayersPlugin = () => ({
+  postcssPlugin: 'flatten-precompiled-layers',
+  AtRule(rule) {
+    if (rule.name !== 'layer') return;
+    if (rule.nodes) rule.replaceWith(...rule.nodes);
+    else rule.remove();
+  },
+});
+
+flattenLayersPlugin.postcss = true;
+
 async function build() {
   const input = path.join(rootDir, 'src', 'studio', 'styles', 'index.css');
   const output = path.join(rootDir, 'dist', 'studio', 'styles.css');
@@ -37,6 +50,7 @@ async function build() {
   const result = await postcss([
     tailwindPostcss(),
     prefixPlugin(),
+    flattenLayersPlugin(),
   ]).process(css, { from: input, to: output });
 
   fs.mkdirSync(path.dirname(output), { recursive: true });

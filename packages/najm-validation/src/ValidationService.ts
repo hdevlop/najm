@@ -30,7 +30,7 @@ export class ValidationService {
     this.validationCount = 0;
 
     if (this.config?.enabled === false) {
-      this.log.info('Validation plugin disabled');
+      this.log.debug('Validation plugin disabled');
       return;
     }
 
@@ -66,7 +66,7 @@ export class ValidationService {
 
   async onReady(): Promise<void> {
     if (this.validationCount > 0) {
-      this.log.info(`Validation: ${this.validationCount} route(s) configured`);
+      this.log.debug(`Validation: ${this.validationCount} route(s) configured`);
     }
   }
 

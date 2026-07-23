@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { afterEach, describe, expect, test } from 'bun:test';
 import {
   Controller,
+  Container,
   Get,
   INJECTION_TYPES,
   Meta,
@@ -69,6 +70,60 @@ function setValidation(
 describe('core review plan regressions', () => {
   afterEach(() => {
     delete process.env.NAJM_DEBUG;
+  });
+
+  test('keeps injections isolated when distinct constructors share a name', () => {
+    const FirstController = class SharedName {};
+    const SecondController = class SharedName {};
+    const container = new Container();
+
+    container.setInjection({
+      type: INJECTION_TYPES.MIDDLEWARE,
+      target: FirstController,
+      marker: 'first-only',
+    });
+    container.setInjection({
+      type: INJECTION_TYPES.MIDDLEWARE,
+      target: SecondController,
+      marker: 'second-only',
+    });
+
+    expect(FirstController.name).toBe(SecondController.name);
+    expect(container.getInjectionsFor<any>(INJECTION_TYPES.MIDDLEWARE, FirstController))
+      .toEqual([expect.objectContaining({ target: FirstController, marker: 'first-only' })]);
+    expect(container.getInjectionsFor<any>(INJECTION_TYPES.MIDDLEWARE, SecondController))
+      .toEqual([expect.objectContaining({ target: SecondController, marker: 'second-only' })]);
+  });
+
+  test('does not run diagnostics for a default global server', async () => {
+    const originalNodeEnv = process.env.NODE_ENV;
+    const originalLogFormat = process.env.LOG_FORMAT;
+    process.env.NODE_ENV = 'production';
+    delete process.env.LOG_FORMAT;
+
+    const originalLog = console.log;
+    const logs: string[] = [];
+    console.log = (...messages: unknown[]) => {
+      logs.push(messages.map(String).join(' '));
+    };
+
+    try {
+      const server = new Server();
+      await server.init();
+      await server.stop();
+    } finally {
+      console.log = originalLog;
+      process.env.NODE_ENV = originalNodeEnv;
+      if (originalLogFormat !== undefined) process.env.LOG_FORMAT = originalLogFormat;
+    }
+
+    const messages = logs.map((line) => JSON.parse(line).message as string);
+    expect(messages).toEqual([
+      'Initializing server...',
+      expect.stringMatching(/^Server initialized in \d+ms$/),
+      'Server stopped gracefully',
+    ]);
+    expect(messages).not.toContain('Boot diagnostics');
   });
 
   test('validates string plugin dependencies after all plugins are registered', async () => {

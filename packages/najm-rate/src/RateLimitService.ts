@@ -138,12 +138,12 @@ export class RateLimitService {
   async onReady(): Promise<void> {
     const storeType = this.cache.type;
     if (this.globalEnabled) {
-      this.log.info(
+      this.log.debug(
         `Global rate limit: ${this.config.defaultLimit}/${this.config.defaultWindow ?? DEFAULT_WINDOW} (${storeType})`
       );
     }
     if (this.routeCount > 0) {
-      this.log.info(`Route rate limits: ${this.routeCount} route(s)`);
+      this.log.debug(`Route rate limits: ${this.routeCount} route(s)`);
     }
   }
 

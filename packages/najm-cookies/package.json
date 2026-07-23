@@ -1,6 +1,6 @@
 {
   "name": "najm-cookies",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "description": "Cookie handling plugin for Najm API framework",
   "type": "module",

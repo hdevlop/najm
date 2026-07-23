@@ -1,6 +1,6 @@
 {
   "name": "najm-cors",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "description": "Optional CORS plugin for Najm framework with global, controller-level, and route-level configuration",
   "type": "module",
   "files": [

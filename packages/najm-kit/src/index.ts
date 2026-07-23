@@ -15,6 +15,8 @@ export type {
   NajmVariantStyle,
   NajmSlotStyle,
   NajmDensity,
+  NajmResponsiveBreakpoint,
+  NajmResponsiveValue,
   NajmComponentRadius,
   NajmTypographyConfig,
   NajmLayoutConfig,
@@ -106,8 +108,8 @@ export { NAvatar } from "./components/Avatar";
 export type { NAvatarProps, NAvatarClassNames, AvatarShape as NAvatarShape } from "./components/Avatar";
 
 // Card
-export { NCard, AsyncCard, NAsyncCard, NCardAction, NCardFooter, NSectionInfo, NSection, NSectionWithInfo, NSectionHeader, truncateByCharacters, NStatCard } from "./components/Card";
-export type { CardProps as NCardProps, CardClassNames as NCardClassNames, NAsyncCardProps, NAsyncCardClassNames, NSectionInfoProps, NSectionProps, NSectionWithInfoProps, NSectionWithInfoItem, NSectionHeaderProps, NSectionHeaderTitleProps, NSectionHeaderSubtitleProps, NSectionHeaderContentProps, NSectionHeaderActionsProps, NStatCardProps, NStatCardClassNames, NStatCardVariant } from "./components/Card";
+export { NCard, AsyncCard, NAsyncCard, NCardAction, NCardFooter, NCardMedia, NCardSection, NCardInfo, NSectionInfo, NSection, NSectionWithInfo, NSectionHeader, truncateByCharacters, NStatCard } from "./components/Card";
+export type { CardProps as NCardProps, CardClassNames as NCardClassNames, NAsyncCardProps, NAsyncCardClassNames, NCardMediaProps, NCardMediaVariant, NCardMediaPlacement, NCardMediaSize, NCardMediaAspect, NCardSectionProps, NCardInfoProps, NCardDensity, NCardSectionSurface, NSectionInfoProps, NSectionProps, NSectionWithInfoProps, NSectionWithInfoItem, NSectionHeaderProps, NSectionHeaderTitleProps, NSectionHeaderSubtitleProps, NSectionHeaderContentProps, NSectionHeaderActionsProps, NStatCardProps, NStatCardClassNames, NStatCardVariant } from "./components/Card";
 
 // Data Display
 export { NDetailCard, NDetailItem, NDetailList, NViewToggle, NFilterBar, NRowActions, NViewBody, NContextMenu, NBulkActionsBar, useContextMenu, useStorageContextMenu } from "./components/data-display";
@@ -168,8 +170,8 @@ export type {
 } from "./components/sidebar";
 
 // Layout
-export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageLayout, NPageHeader, NPageHeaderActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet } from "./components/layout";
+export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageLayout, NPageHeader, NPageHeaderActions, NPageHeaderCompactActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet, NGrid, NGridItem } from "./components/layout";
 export type { SidebarProps, SidebarItemProps, LinkComponentType,   NavItem,
   NavItemGroup,
   NAppShellClassNames,
-  SidebarWidths, UserMenuAction, NAppShellUser, NAppShellAction, NAppShellProps, NAppCommandItem, NCommandPaletteProps, NPageLayoutProps, NPageHeaderProps } from "./components/layout";
+  SidebarWidth, SidebarWidths, UserMenuAction, NAppShellUser, NAppShellAction, NAppShellProps, NAppCommandItem, NCommandPaletteProps, NPageLayoutProps, NPageHeaderBreakpoint, NPageHeaderProps, NGridProps, NGridItemProps, NGridCols, NGridSpan } from "./components/layout";

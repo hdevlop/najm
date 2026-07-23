@@ -50,6 +50,20 @@ export const usersTable = sqliteTable('users', {
   roleIdx: index('users_role_id_idx').on(table.roleId),
 }));
 
+/** External identity-provider accounts linked to Najm users. */
+export const oauthAccountsTable = sqliteTable('oauth_accounts', {
+  ...baseFields(10),
+  userId: text('user_id').notNull().references(() => usersTable.id, { onDelete: 'cascade' }),
+  provider: text('provider').notNull(),
+  providerAccountId: text('provider_account_id').notNull(),
+}, (table) => ({
+  providerAccountUnique: uniqueIndex('oauth_accounts_provider_account_unique')
+    .on(table.provider, table.providerAccountId),
+  userProviderUnique: uniqueIndex('oauth_accounts_user_provider_unique')
+    .on(table.userId, table.provider),
+  userIdIdx: index('oauth_accounts_user_id_idx').on(table.userId),
+}));
+
 /**
  * Permissions table - Defines granular permissions
  */
@@ -98,6 +112,7 @@ export const rolePermissionsTable = sqliteTable('role_permissions', {
 
 export const authSchema = {
   users: usersTable,
+  oauthAccounts: oauthAccountsTable,
   tokens: tokensTable,
   roles: rolesTable,
   permissions: permissionsTable,
@@ -110,6 +125,9 @@ export const authSchema = {
 
 export type User = typeof usersTable.$inferSelect;
 export type NewUser = typeof usersTable.$inferInsert;
+
+export type OAuthAccount = typeof oauthAccountsTable.$inferSelect;
+export type NewOAuthAccount = typeof oauthAccountsTable.$inferInsert;
 
 export type RoleEntity = typeof rolesTable.$inferSelect;
 export type NewRoleEntity = typeof rolesTable.$inferInsert;

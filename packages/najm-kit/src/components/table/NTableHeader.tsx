@@ -11,7 +11,8 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
-import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search, Filter } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import type { ViewMode } from "./store";
@@ -29,12 +30,12 @@ function SearchFilter({ placeholder }: { placeholder?: string }) {
   return <TextInput icon={Search} value={value} onChange={(v) => table.setGlobalFilter(v)} placeholder={placeholder ?? "Search…"} bordered={bordered} />;
 }
 
-function TextFilter({ name, placeholder }: { name: string; placeholder?: string }) {
+function TextFilter({ name, placeholder, icon }: { name: string; placeholder?: string; icon?: typeof Search }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
   const column = table?.getColumn?.(name);
   if (!column) return null;
-  return <TextInput value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value)} placeholder={placeholder} bordered={bordered} />;
+  return <TextInput icon={icon} value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value)} placeholder={placeholder} bordered={bordered} />;
 }
 
 function SelectFilter({ name, options, placeholder, inputType }: { name: string; options: any[]; placeholder?: string; inputType?: string }) {
@@ -48,10 +49,10 @@ function SelectFilter({ name, options, placeholder, inputType }: { name: string;
 }
 
 function defaultWrapperClass(filter: any) {
-  return filter.type === "search" ? "flex-1 min-w-[160px] max-w-sm" : "w-full sm:w-40 shrink-0";
+  return filter.type === "search" ? "flex-1 min-w-[160px] max-w-sm" : "w-full sm:w-40 xl:w-56 shrink-0";
 }
 
-function RenderFilter({ filter }: { filter: any }) {
+function RenderFilter({ filter, mobilePrimary = false }: { filter: any; mobilePrimary?: boolean }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
 
@@ -75,6 +76,7 @@ function RenderFilter({ filter }: { filter: any }) {
     if (filter.type === "text" || (!filter.type && typeof filter.value === "string")) {
       return (
         <TextInput
+          icon={mobilePrimary ? Search : undefined}
           value={filter.value ?? ""}
           onChange={filter.onChange}
           placeholder={filter.placeholder}
@@ -116,7 +118,7 @@ function RenderFilter({ filter }: { filter: any }) {
   }
 
   if (filter.type === "text") {
-    return <TextFilter name={filter.name} placeholder={filter.placeholder} />;
+    return <TextFilter name={filter.name} placeholder={filter.placeholder} icon={mobilePrimary ? Search : undefined} />;
   }
 
   if (!table) return null;
@@ -127,7 +129,7 @@ function TableFilters() {
   const filters = useTableStore.use.filters();
   if (!filters?.length) return null;
   return (
-    <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+    <div data-ntable-desktop-filters className="hidden flex-1 min-w-0 flex-wrap items-center gap-2 md:flex">
       {filters.map((filter: any) => (
         <div
           key={filter.name}
@@ -140,7 +142,7 @@ function TableFilters() {
   );
 }
 
-function TableAddButton() {
+function TableAddButton({ mobile = false }: { mobile?: boolean }) {
   const onAddClick = useTableStore.use.onAddClick();
   const showAddButton = useTableStore.use.showAddButton();
   const addButtonText = useTableStore.use.addButtonText();
@@ -149,11 +151,13 @@ function TableAddButton() {
   const bordered = useTableStore.use.bordered();
   if (!showAddButton) return null;
 
-  const btnStyle = {
-    backgroundColor: resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR),
-    color: resolveTableColor(headerTextColor, DEFAULT_TABLE_HEADER_TEXT_COLOR),
-  };
-  // Add button is filled — only show a border when consumer explicitly opts in.
+  const btnStyle = mobile
+    ? { color: resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR) }
+    : {
+        backgroundColor: resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR),
+        color: resolveTableColor(headerTextColor, DEFAULT_TABLE_HEADER_TEXT_COLOR),
+      };
+  // Desktop stays filled; mobile matches the compact input/filter controls.
   const borderedCls = bordered ? "border border-muted-foreground" : "";
 
   return (
@@ -163,11 +167,68 @@ function TableAddButton() {
       style={btnStyle}
       aria-label={addButtonText || "Create"}
       title={addButtonText || "Create"}
-      data-bordered={bordered ? "true" : undefined}
-      className={`h-10 w-10 shrink-0 cursor-pointer flex items-center justify-center rounded-lg transition-opacity hover:opacity-90 ${borderedCls}`}
+      data-bordered={bordered === false ? "false" : "true"}
+      className={cn(
+        "h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:opacity-90",
+        mobile
+          ? cn("flex bg-card md:hidden", bordered === false ? "shadow-sm" : "border border-input hover:border-primary/70")
+          : `hidden md:flex ${borderedCls}`,
+      )}
     >
       <Plus className="h-5 w-5" />
     </button>
+  );
+}
+
+function MobileFiltersMenu({ filters }: { filters: any[] }) {
+  const bordered = useTableStore.use.bordered();
+  if (!filters.length) return null;
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          aria-label="Filters"
+          title="Filters"
+          data-bordered={bordered === false ? "false" : "true"}
+          className={cn(
+            "flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-card text-primary transition-colors hover:border-primary/70",
+            bordered === false ? "shadow-sm" : "border border-input",
+          )}
+        >
+          <Filter className="h-5 w-5" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        align="end"
+        aria-label="Table filters"
+        className="w-[min(20rem,calc(100vw-2rem))] space-y-3 bg-card p-3"
+      >
+        {filters.map((filter: any) => (
+          <div key={filter.name} className="w-full">
+            <RenderFilter filter={filter} />
+          </div>
+        ))}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+function TableMobileToolbar() {
+  const filters = useTableStore.use.filters();
+  const firstFilter = filters?.[0];
+
+  return (
+    <div data-ntable-mobile-toolbar className="flex w-full min-w-0 items-center gap-2 md:hidden">
+      {firstFilter && (
+        <div data-ntable-mobile-primary-filter className="min-w-0 flex-1">
+          <RenderFilter filter={firstFilter} mobilePrimary />
+        </div>
+      )}
+      <MobileFiltersMenu filters={filters?.slice(1) ?? []} />
+      <TableAddButton mobile />
+    </div>
   );
 }
 
@@ -284,9 +345,9 @@ export function NTableHeader() {
     if (hideDataChrome) return null;
     const justify = headerSlot ? "justify-between" : "justify-end";
     return (
-      <div data-ntable-header className={cn("flex shrink-0 items-center gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
+      <div data-ntable-header className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
         {headerSlot && <div className="flex min-w-0 flex-1 items-center gap-2">{headerSlot}</div>}
-        {hasControls && <div className="flex gap-2 shrink-0"><TableSettingsMenu /><TableAddButton /></div>}
+        {hasControls && <div className="flex gap-2 shrink-0"><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
       </div>
     );
   }
@@ -299,11 +360,12 @@ export function NTableHeader() {
   const justify = (hasControls || headerSlot || hasToolbar) ? "justify-between" : "justify-start";
 
   return (
-    <div data-ntable-header className={cn("flex shrink-0 items-center gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
+    <div data-ntable-header className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
       <TableFilters />
+      <TableMobileToolbar />
       {headerSlot && <div className="ml-auto flex shrink-0 items-center gap-2">{headerSlot}</div>}
       <TableToolbarSlot />
-      {hasControls && <div className="flex gap-2 shrink-0"><TableSettingsMenu /><TableAddButton /></div>}
+      {hasControls && <div className="flex gap-2 shrink-0"><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
     </div>
   );
 }

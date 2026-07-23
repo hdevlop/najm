@@ -4,6 +4,7 @@
 
 import type { ValidationPluginConfig } from 'najm-validation';
 import type { RateLimitPluginConfig } from 'najm-rate';
+import type { EmailPluginConfig } from 'najm-email';
 
 /**
  * JWT configuration for token generation and verification
@@ -40,6 +41,53 @@ export interface SessionCookieConfig {
   secret?: string;
 }
 
+export type OAuthProvider = 'google';
+
+export interface GoogleOAuthConfig {
+  /** Google OAuth web client ID. Falls back to GOOGLE_CLIENT_ID. */
+  clientId?: string;
+  /** Google OAuth web client secret. Falls back to GOOGLE_CLIENT_SECRET. */
+  clientSecret?: string;
+  /**
+   * Absolute backend callback URL registered in Google Cloud. Falls back to
+   * GOOGLE_CALLBACK_URL, then `${frontendUrl}/api/auth/oauth/google/callback`.
+   */
+  callbackUrl?: string;
+  /** Frontend route that completes the Najm client session. */
+  frontendCallbackPath?: string;
+  /** Frontend route that receives stable OAuth errors. */
+  errorRedirectPath?: string;
+  /** Create a Najm user for a new Google identity (default: true). */
+  allowSignup?: boolean;
+  /** Link an existing user by verified email (default: false). */
+  autoLinkVerifiedEmail?: boolean;
+  /** Optional Google Workspace hosted-domain allowlist. */
+  allowedHostedDomains?: string[];
+}
+
+export interface OAuthConfig {
+  /**
+   * Enable Google with environment defaults (`google: true`), or override
+   * individual settings for split-origin deployments and policy changes.
+   */
+  google?: true | GoogleOAuthConfig;
+}
+
+export interface ResolvedGoogleOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  callbackUrl: string;
+  frontendCallbackPath: string;
+  errorRedirectPath: string;
+  allowSignup: boolean;
+  autoLinkVerifiedEmail: boolean;
+  allowedHostedDomains: string[];
+}
+
+export interface ResolvedOAuthConfig {
+  google?: ResolvedGoogleOAuthConfig;
+}
+
 /**
  * Complete auth plugin configuration (internal)
  */
@@ -68,6 +116,8 @@ export interface AuthConfig {
   bcryptRounds: number;
   /** Session cookie cache settings */
   session: SessionCookieConfig;
+  /** Resolved external identity-provider configuration. */
+  oauth?: ResolvedOAuthConfig;
 }
 
 /**
@@ -84,6 +134,8 @@ export interface AuthSchema {
   roles: any;
   permissions: any;
   rolePermissions: any;
+  /** Required when an OAuth provider is enabled. */
+  oauthAccounts?: any;
 }
 
 export type AuthPluginConfig = {
@@ -127,8 +179,12 @@ export type AuthPluginConfig = {
   validation?: ValidationPluginConfig;
   /** Optional config forwarded to rateLimit() dependency */
   rateLimit?: RateLimitPluginConfig;
+  /** Email transport used by password reset and verification flows. */
+  email?: EmailPluginConfig;
   /** AES-256-GCM key for reversible encryption (e.g. API keys). Falls back to NAJM_ENCRYPTION_KEY env var. */
   encryptionKey?: string;
+  /** External identity providers. */
+  oauth?: OAuthConfig;
 };
 
 /**

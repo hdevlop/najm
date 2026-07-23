@@ -67,7 +67,7 @@ export class RouterService {
 
    async onReady(): Promise<void> {
       this.translator = this.getTranslator();
-      this.log.info(`Router plugin ready: ${this.routeCount} route(s) registered`);
+      this.log.debug(`Router plugin ready: ${this.routeCount} route(s) registered`);
    }
 
    // ============================================================================

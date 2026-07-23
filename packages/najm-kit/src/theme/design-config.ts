@@ -25,6 +25,9 @@ const COMPONENT_KEYS = new Set([
   "card",
   "showSectionLabels",
   "showSectionSeparators",
+  "expandedWidth",
+  "collapsedWidth",
+  "mobileWidth",
   "defaultVariant",
   "defaultSize",
   "density",
@@ -41,6 +44,7 @@ const VARIANT_KEYS = new Set(["use", "className", "tokens"]);
 const COMPONENT_NAME_SET = new Set<string>(NAJM_COMPONENT_NAMES);
 const DENSITIES = new Set(["compact", "default", "comfortable"]);
 const SCALES = new Set(["compact", "default", "comfortable"]);
+const RESPONSIVE_BREAKPOINTS = new Set(["base", "sm", "md", "lg", "xl", "2xl"]);
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -69,6 +73,35 @@ function optionalBoolean(value: unknown, path: string): boolean | undefined {
     throw new TypeError(`${path} must be a boolean`);
   }
   return value;
+}
+
+function optionalNumber(value: unknown, path: string): number | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== "number") {
+    throw new TypeError(`${path} must be a number`);
+  }
+  return value;
+}
+
+function optionalResponsiveNumber(
+  value: unknown,
+  path: string,
+): NajmComponentStyleConfig["expandedWidth"] | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value === "number") return value;
+  if (!isRecord(value)) throw new TypeError(`${path} must be a number or breakpoint object`);
+
+  const unknown = Object.keys(value).find((key) => !RESPONSIVE_BREAKPOINTS.has(key));
+  if (unknown) throw new TypeError(`Unknown ${path} breakpoint: ${unknown}`);
+
+  const parsed: Record<string, number> = {};
+  for (const [breakpoint, width] of Object.entries(value)) {
+    if (typeof width !== "number") {
+      throw new TypeError(`${path}.${breakpoint} must be a number`);
+    }
+    parsed[breakpoint] = width;
+  }
+  return parsed;
 }
 
 function optionalEnum(
@@ -142,6 +175,9 @@ function parseComponentStyle(
   const card = optionalBoolean(value.card, `${path}.card`);
   const showSectionLabels = optionalBoolean(value.showSectionLabels, `${path}.showSectionLabels`);
   const showSectionSeparators = optionalBoolean(value.showSectionSeparators, `${path}.showSectionSeparators`);
+  const expandedWidth = optionalResponsiveNumber(value.expandedWidth, `${path}.expandedWidth`);
+  const collapsedWidth = optionalResponsiveNumber(value.collapsedWidth, `${path}.collapsedWidth`);
+  const mobileWidth = optionalResponsiveNumber(value.mobileWidth, `${path}.mobileWidth`);
   const defaultVariant = optionalString(value.defaultVariant, `${path}.defaultVariant`);
   const defaultSize = optionalString(value.defaultSize, `${path}.defaultSize`);
   const density = optionalEnum(value.density, DENSITIES, `${path}.density`);
@@ -153,6 +189,9 @@ function parseComponentStyle(
   if (card !== undefined) cfg.card = card;
   if (showSectionLabels !== undefined) cfg.showSectionLabels = showSectionLabels;
   if (showSectionSeparators !== undefined) cfg.showSectionSeparators = showSectionSeparators;
+  if (expandedWidth !== undefined) cfg.expandedWidth = expandedWidth;
+  if (collapsedWidth !== undefined) cfg.collapsedWidth = collapsedWidth;
+  if (mobileWidth !== undefined) cfg.mobileWidth = mobileWidth;
   if (defaultVariant !== undefined) cfg.defaultVariant = defaultVariant;
   if (defaultSize !== undefined) cfg.defaultSize = defaultSize;
   if (density !== undefined) cfg.density = density as NajmComponentStyleConfig["density"];

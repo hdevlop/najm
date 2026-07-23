@@ -14,6 +14,9 @@ export type {
   JwtPayload,
   TokenPair,
   AuthUser,
+  GoogleOAuthConfig,
+  OAuthConfig,
+  OAuthProvider,
 } from './types';
 
 // Configuration tokens
@@ -60,6 +63,7 @@ export {
   tokensTable,
   permissionsTable,
   rolePermissionsTable,
+  oauthAccountsTable,
 } from './schema';
 
 // PostgreSQL enum exports
@@ -81,6 +85,8 @@ export type {
   NewPermission,
   RolePermission,
   NewRolePermission,
+  OAuthAccount,
+  NewOAuthAccount,
 } from './schema';
 
 // Shared base schema utilities

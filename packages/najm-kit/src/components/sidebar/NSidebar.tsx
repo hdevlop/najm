@@ -1,4 +1,4 @@
-import { useMemo, useCallback, useRef, useState } from "react";
+import { useMemo, useCallback, useEffect, useRef, useState } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn";
@@ -9,7 +9,7 @@ import { NSidebarLogo } from "./NSidebarLogo";
 import { NSidebarContent } from "./NSidebarContent";
 import { NSidebarFooter } from "./NSidebarFooter";
 import { NSidebarMobile } from "./NSidebarMobile";
-import type { NavItem, NavItemGroup, SidebarProps } from "./types";
+import type { NavItem, NavItemGroup, SidebarProps, SidebarWidth } from "./types";
 
 export type { SidebarProps } from "./types";
 
@@ -26,6 +26,80 @@ function buildGroups(items: NavItem[]): NavItemGroup[] {
     }
   }
   return groups;
+}
+
+const autoCollapseQueries = {
+  sm: '(min-width: 640px) and (max-width: 767.98px)',
+  md: '(min-width: 768px) and (max-width: 1023.98px)',
+  lg: '(min-width: 1024px) and (max-width: 1279.98px)',
+  xl: '(min-width: 1280px) and (max-width: 1535.98px)',
+} as const;
+
+const responsiveBreakpointQueries = {
+  sm: "(min-width: 640px)",
+  md: "(min-width: 768px)",
+  lg: "(min-width: 1024px)",
+  xl: "(min-width: 1280px)",
+  "2xl": "(min-width: 1536px)",
+} as const;
+
+type SidebarResponsiveBreakpoint = "base" | keyof typeof responsiveBreakpointQueries;
+
+function useSidebarResponsiveBreakpoint(): SidebarResponsiveBreakpoint {
+  const [breakpoint, setBreakpoint] = useState<SidebarResponsiveBreakpoint>("base");
+
+  useEffect(() => {
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mediaQueries = Object.entries(responsiveBreakpointQueries).map(([name, query]) => ({
+      name: name as Exclude<SidebarResponsiveBreakpoint, "base">,
+      mediaQuery: window.matchMedia(query),
+    }));
+    const update = () => {
+      const active = [...mediaQueries].reverse().find(({ mediaQuery }) => mediaQuery.matches);
+      setBreakpoint(active?.name ?? "base");
+    };
+    update();
+    mediaQueries.forEach(({ mediaQuery }) => mediaQuery.addEventListener?.("change", update));
+    return () => mediaQueries.forEach(({ mediaQuery }) => mediaQuery.removeEventListener?.("change", update));
+  }, []);
+
+  return breakpoint;
+}
+
+function resolveSidebarWidth(
+  value: SidebarWidth | undefined,
+  breakpoint: SidebarResponsiveBreakpoint,
+  fallback: number | string,
+): number | string {
+  if (value === undefined) return fallback;
+  if (typeof value === "number" || typeof value === "string") return value;
+
+  const breakpoints: SidebarResponsiveBreakpoint[] = ["base", "sm", "md", "lg", "xl", "2xl"];
+  const activeIndex = breakpoints.indexOf(breakpoint);
+  for (let index = activeIndex; index >= 0; index -= 1) {
+    const width = value[breakpoints[index]];
+    if (width !== undefined) return width;
+  }
+  return fallback;
+}
+
+function useAutoCollapsed(breakpoint: keyof typeof autoCollapseQueries | undefined) {
+  const [matches, setMatches] = useState(false);
+
+  useEffect(() => {
+    if (!breakpoint || typeof window === 'undefined') {
+      setMatches(false);
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(autoCollapseQueries[breakpoint]);
+    const update = () => setMatches(mediaQuery.matches);
+    update();
+    mediaQuery.addEventListener?.('change', update);
+    return () => mediaQuery.removeEventListener?.('change', update);
+  }, [breakpoint]);
+
+  return matches;
 }
 
 export function NSidebar({
@@ -48,6 +122,7 @@ export function NSidebar({
   className,
   classNames,
   mobileBreakpoint = 'md',
+  autoCollapseAt,
   mobileOpen: mobileOpenProp,
   defaultMobileOpen = false,
   onMobileOpenChange,
@@ -57,7 +132,7 @@ export function NSidebar({
   collapseLabel = "Collapse",
   expandLabel = "Expand",
   hamburgerClassName,
-  showHamburgerButton = true,
+  showHamburgerButton = false,
   logoIcon,
   logoTitle,
   logoSubtitle,
@@ -74,6 +149,8 @@ export function NSidebar({
   const isControlled = mobileOpenProp !== undefined;
   const mobileOpen = isControlled ? mobileOpenProp : _mobileOpen;
   const collapsed = collapsedProp ?? _collapsed;
+  const autoCollapsed = useAutoCollapsed(autoCollapseAt);
+  const desktopCollapsed = collapsed || autoCollapsed;
   const setMobileOpen = (open: boolean) => {
     if (!isControlled) _setMobileOpen(open);
     onMobileOpenChange?.(open);
@@ -138,13 +215,26 @@ export function NSidebar({
     : mobileBreakpoint === 'lg' ? 'hidden lg:flex'
     : 'hidden md:flex';
 
-  const expandedWidth = widths?.expanded ?? 240;
-  const collapsedWidth = widths?.collapsed ?? 64;
-  const mobileWidth = widths?.mobile ?? expandedWidth;
+  const responsiveBreakpoint = useSidebarResponsiveBreakpoint();
+  const expandedWidth = resolveSidebarWidth(
+    widths?.expanded ?? recipe?.expandedWidth,
+    responsiveBreakpoint,
+    240,
+  );
+  const collapsedWidth = resolveSidebarWidth(
+    widths?.collapsed ?? recipe?.collapsedWidth,
+    responsiveBreakpoint,
+    64,
+  );
+  const mobileWidth = resolveSidebarWidth(
+    widths?.mobile ?? recipe?.mobileWidth,
+    responsiveBreakpoint,
+    expandedWidth,
+  );
   const railVar = typeof collapsedWidth === 'number' ? `${collapsedWidth}px` : collapsedWidth;
   const sidebarEdgeWidth = bordered === false ? '0px' : recipe?.borderWidth ?? 'var(--border-width, 1px)';
-  const showEdgeCollapse = showCollapseButton && collapseButtonPosition === 'edge';
-  const showRailCollapse = showCollapseButton && collapseButtonPosition === 'rail';
+  const showEdgeCollapse = showCollapseButton && collapseButtonPosition === 'edge' && !autoCollapsed;
+  const showRailCollapse = showCollapseButton && collapseButtonPosition === 'rail' && !autoCollapsed;
   const effectiveShowSectionLabels = showSectionLabels ?? recipe?.showSectionLabels ?? true;
   const effectiveShowSectionSeparators = showSectionSeparators ?? recipe?.showSectionSeparators ?? false;
   const contentSlot = recipe?.slots?.content;
@@ -152,10 +242,14 @@ export function NSidebar({
     ? { paddingTop: contentSlot.paddingTop }
     : undefined;
 
-  const defaultLogoContent = logoIcon || logoTitle || logoSubtitle
-    ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={collapsed} />
+  const desktopDefaultLogoContent = logoIcon || logoTitle || logoSubtitle
+    ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={desktopCollapsed} />
     : null;
-  const headerContent = logo ?? defaultLogoContent;
+  const mobileDefaultLogoContent = logoIcon || logoTitle || logoSubtitle
+    ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={false} />
+    : null;
+  const desktopHeaderContent = logo ?? desktopDefaultLogoContent;
+  const mobileHeaderContent = logo ?? mobileDefaultLogoContent;
 
   const contentProps = {
     groups,
@@ -163,7 +257,7 @@ export function NSidebar({
     isActive,
     onNavigate: handleNavigate,
     linkComponent,
-    collapsed,
+    collapsed: desktopCollapsed,
     showSectionLabels: effectiveShowSectionLabels,
     showSectionIcons,
     showSectionSeparators: effectiveShowSectionSeparators,
@@ -177,8 +271,8 @@ export function NSidebar({
     settingsLabel,
     onLogout,
     logoutLabel,
-    showCollapseButton: showCollapseButton && collapseButtonPosition === 'footer',
-    collapsed,
+    showCollapseButton: showCollapseButton && collapseButtonPosition === 'footer' && !autoCollapsed,
+    collapsed: desktopCollapsed,
     onToggleCollapsed: handleToggleCollapsed,
     collapseLabel,
     expandLabel,
@@ -187,7 +281,7 @@ export function NSidebar({
 
   const sidebarInner = (
     <>
-      {headerContent && <NSidebarHeader collapsed={collapsed} classNames={classNames}>{headerContent}</NSidebarHeader>}
+      {desktopHeaderContent && <NSidebarHeader collapsed={desktopCollapsed} classNames={classNames}>{desktopHeaderContent}</NSidebarHeader>}
       <NSidebarContent {...contentProps} />
       <NSidebarFooter {...footerProps} />
     </>
@@ -195,9 +289,9 @@ export function NSidebar({
 
   const mobileInner = (
     <>
-      {headerContent && <NSidebarHeader collapsed={collapsed} classNames={classNames}>{headerContent}</NSidebarHeader>}
-      <NSidebarContent {...contentProps} />
-      <NSidebarFooter {...footerProps} isMobile />
+      {mobileHeaderContent && <NSidebarHeader collapsed={false} classNames={classNames}>{mobileHeaderContent}</NSidebarHeader>}
+      <NSidebarContent {...contentProps} collapsed={false} />
+      <NSidebarFooter {...footerProps} collapsed={false} isMobile />
     </>
   );
 
@@ -220,15 +314,17 @@ export function NSidebar({
 
       <aside
         data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
+        data-collapsed={desktopCollapsed ? "true" : "false"}
+        data-auto-collapsed={autoCollapsed ? "true" : undefined}
         className={cn(
+          "relative z-10 flex flex-col h-full bg-sidebar text-sidebar-foreground transition-all duration-200 shrink-0",
           desktopClass,
-          "relative z-10 flex flex-col h-full bg-sidebar text-sidebar-foreground transition-all duration-200",
           sidebarBorderClasses(bordered, 'right'),
           classNames?.sidebar,
           className
         )}
         style={{
-          width: collapsed ? collapsedWidth : expandedWidth,
+          width: desktopCollapsed ? collapsedWidth : expandedWidth,
           ['--rail' as any]: railVar,
           ['--sidebar-edge-width' as any]: sidebarEdgeWidth,
           ...(bordered !== false && recipe?.borderWidth ? { borderRightWidth: recipe.borderWidth } : {}),
@@ -238,8 +334,8 @@ export function NSidebar({
         {showRailCollapse && (
           <button
             type="button"
-            aria-label={collapsed ? expandLabel : collapseLabel}
-            title={collapsed ? expandLabel : collapseLabel}
+            aria-label={desktopCollapsed ? expandLabel : collapseLabel}
+            title={desktopCollapsed ? expandLabel : collapseLabel}
             data-dragging={railDragging ? "true" : undefined}
             onPointerDown={handleRailPointerDown}
             onClick={handleRailClick}
@@ -259,7 +355,7 @@ export function NSidebar({
             title={collapsed ? expandLabel : collapseLabel}
             className="absolute right-0 top-7 z-20 flex size-6 -translate-y-1/2 translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
-            {collapsed
+            {desktopCollapsed
               ? <ChevronRight className="h-3.5 w-3.5" />
               : <ChevronLeft className="h-3.5 w-3.5" />}
           </button>

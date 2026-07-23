@@ -210,7 +210,7 @@ export class DatabaseService {
 
    async onReady(): Promise<void> {
       const count = this.container.getInjections('database').length;
-      this.log.info(`Database plugin ready: ${count} injection(s)`);
+      this.log.debug(`Database plugin ready: ${count} injection(s)`);
    }
 
    // ============================================================================

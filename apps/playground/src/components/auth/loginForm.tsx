@@ -9,7 +9,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { useLogin } from 'najm-auth/client/react';
+import { GoogleLoginButton, useLogin } from 'najm-auth/client/react';
 
 const schema = z.object({
   email: z.string().email('Enter a valid email'),
@@ -18,7 +18,7 @@ const schema = z.object({
 
 type Values = z.infer<typeof schema>;
 
-export function LoginForm() {
+export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }) {
   const router = useRouter();
 
   const { login, isLoading, error } = useLogin({
@@ -90,6 +90,21 @@ export function LoginForm() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? 'Signing in...' : 'Sign in'}
           </Button>
+
+          {googleEnabled ? (
+            <>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="h-px flex-1 bg-border" />
+                OR
+                <span className="h-px flex-1 bg-border" />
+              </div>
+              <GoogleLoginButton returnTo="/dashboard">
+                <Button type="button" variant="outline" className="w-full">
+                  Continue with Google
+                </Button>
+              </GoogleLoginButton>
+            </>
+          ) : null}
         </form>
       </Form>
     </div>

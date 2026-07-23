@@ -1,4 +1,5 @@
 import type { ReactNode, ComponentType, MouseEventHandler, CSSProperties } from "react";
+import type { NajmResponsiveValue } from "../../theme/design-types";
 
 export type LinkComponentType = ComponentType<{
   href: string;
@@ -36,10 +37,12 @@ export interface NAppShellClassNames {
   overlay?: string;
 }
 
+export type SidebarWidth = NajmResponsiveValue<number | string>;
+
 export interface SidebarWidths {
-  expanded?: number | string;
-  collapsed?: number | string;
-  mobile?: number | string;
+  expanded?: SidebarWidth;
+  collapsed?: SidebarWidth;
+  mobile?: SidebarWidth;
 }
 
 export interface SidebarProps {
@@ -71,6 +74,11 @@ export interface SidebarProps {
   className?: string;
   classNames?: NAppShellClassNames;
   mobileBreakpoint?: 'sm' | 'md' | 'lg';
+  /**
+   * Automatically use the collapsed desktop rail within one Tailwind
+   * breakpoint band. For example, `lg` collapses from 1024px through 1279px.
+   */
+  autoCollapseAt?: 'sm' | 'md' | 'lg' | 'xl';
   mobileOpen?: boolean;
   defaultMobileOpen?: boolean;
   onMobileOpenChange?: (open: boolean) => void;
@@ -80,6 +88,10 @@ export interface SidebarProps {
   collapseLabel?: string;
   expandLabel?: string;
   hamburgerClassName?: string;
+  /**
+   * Opts into the legacy fixed standalone trigger. Prefer controlling
+   * `mobileOpen` from an NPageHeader via its `onSidebarOpen` prop.
+   */
   showHamburgerButton?: boolean;
   logoIcon?: ComponentType<{ className?: string }> | ReactNode;
   logoTitle?: string;

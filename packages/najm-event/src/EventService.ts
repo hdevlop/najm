@@ -153,7 +153,7 @@ export class EventService {
 
    async onReady(): Promise<void> {
       const count = this.container.getInjections(INJECTION_TYPES.EVENT).length;
-      this.log.info(`Event plugin ready: ${count} handler(s) registered`);
+      this.log.debug(`Event plugin ready: ${count} handler(s) registered`);
    }
 
    // ============================================================================

@@ -84,4 +84,7 @@ export type {
   AuthUser,
   JwtPayload,
   TokenPair,
+  GoogleOAuthConfig,
+  OAuthConfig,
+  OAuthProvider,
 } from 'najm-auth';

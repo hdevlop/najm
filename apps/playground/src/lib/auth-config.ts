@@ -7,7 +7,7 @@ export const authConfig: DefineAuthConfig = {
   tabSync: true,
   loginRoute: '/login',
   afterLoginRoute: '/dashboard',
-  publicRoutes: ['/', '/login', '/register', '/forgot-password', '/reset-password'],
+  publicRoutes: ['/', '/login', '/register', '/forgot-password', '/reset-password', '/auth/oauth/callback'],
   protectedRoutes: ['/dashboard/:path*', '/account/:path*', '/admin/:path*'],
   roleRoutes: {
     '/admin/:path*': ['admin'],

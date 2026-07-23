@@ -36,6 +36,21 @@ const prefixPlugin = () => ({
 
 prefixPlugin.postcss = true;
 
+// The Studio is compiled with Tailwind v4 but can be consumed by Tailwind v3
+// applications. Tailwind v3 rejects precompiled `@layer` blocks unless the
+// same file also contains its source `@tailwind` directives, so ship the
+// already-generated rules without build-time layer wrappers.
+const flattenLayersPlugin = () => ({
+  postcssPlugin: 'flatten-precompiled-layers',
+  AtRule(rule) {
+    if (rule.name !== 'layer') return;
+    if (rule.nodes) rule.replaceWith(...rule.nodes);
+    else rule.remove();
+  },
+});
+
+flattenLayersPlugin.postcss = true;
+
 async function build() {
   const input = path.join(rootDir, 'src', 'studio', 'styles', 'index.css');
   const output = path.join(rootDir, 'dist', 'studio', 'styles.css');
@@ -44,6 +59,7 @@ async function build() {
   const result = await postcss([
     tailwindPostcss(),
     prefixPlugin(),
+    flattenLayersPlugin(),
   ]).process(css, { from: input, to: output });
 
   fs.mkdirSync(path.dirname(output), { recursive: true });

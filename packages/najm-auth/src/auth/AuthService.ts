@@ -12,6 +12,7 @@ import type { TokenPair, AuthUser, AuthConfig } from '../types';
 import type { RegisterDto, LoginDto } from '../users/UserDto';
 import { AUTH_CONFIG } from '../auth.tokens';
 import timestring from 'timestring';
+import { AuthSessionService } from './AuthSessionService';
 
 /**
  * Identity fields for creating a user behind a person record (parent, student,
@@ -43,6 +44,7 @@ export class AuthService {
     private cookieManager: CookieManager,
     private i18nService: I18nService,
     private emailService: EmailService,
+    private authSessionService?: AuthSessionService,
   ) { }
 
   private isLockoutActive(lockoutUntil?: string | null): boolean {
@@ -198,26 +200,13 @@ export class AuthService {
       await this.userService.resetFailedAttempts(user.id);
     }
 
-    // Opportunistic cleanup: prune this user's expired sessions on login so
-    // abandoned families (one row per login) don't accumulate.
-    await this.tokenService.deleteExpiredSessions();
-
-    const generated = await this.tokenService.generateTokens(user.id);
-    this.cookieManager.setRefreshToken(generated.refreshToken);
-    await this.userService.updateLastLogin(user.id);
     const { password: _, failedLoginAttempts: __, lockoutUntil: ___, ...sanitized } = user;
-
-    // Cache session in signed cookie for instant SSR reads.
-    const { roles, permissions, sessionVersion } = generated;
-    this.cookieManager.setSessionCookie({
-      user: { id: sanitized.id, email: sanitized.email, name: (sanitized as any).name, role: (sanitized as any).role, status: sanitized.status ?? undefined },
-      roles,
-      permissions,
-      sessionVersion,
-    });
-
-    const { userId: _userId, tokenFamily: _tokenFamily, roles: _roles, permissions: _permissions, sessionVersion: _sv, ...tokens } = generated;
-    return { ...tokens, user: sanitized };
+    this.authSessionService ??= new AuthSessionService(
+      this.tokenService,
+      this.userService,
+      this.cookieManager,
+    );
+    return this.authSessionService.establish(sanitized);
   }
 
   async refreshTokens(): Promise<TokenPair> {

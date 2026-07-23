@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "bun --watch src/server/main.ts",
     "dev:next": "next dev",
-    "build:next": "rimraf .next && next build",
+    "build:next": "bun scripts/build-next.ts",
     "start": "bun src/server/main.ts",
     "start:mcp:stdio": "bun src/server/mcp-stdio.ts",
     "start:next": "next start",

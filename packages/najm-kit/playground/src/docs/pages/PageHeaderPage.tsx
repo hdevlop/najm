@@ -1,14 +1,19 @@
 import React from 'react';
 import {
   Badge,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   NButton,
   NPageHeader,
   NPageHeaderActions,
+  NPageHeaderCompactActions,
   NPageHeaderFilters,
   SelectInput,
   TextInput,
 } from 'najm-kit';
-import { BarChart3, CalendarDays, Download, Filter, LayoutDashboard, Plus, Settings, Users } from 'lucide-react';
+import { BarChart3, CalendarDays, Download, Filter, LayoutDashboard, MoreHorizontal, Plus, Settings, Users } from 'lucide-react';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
 
@@ -106,7 +111,7 @@ export function PageHeaderPage() {
 
       <Example
         title="Search And Actions"
-        description="Add search and compact action buttons without changing the content area."
+        description="Pages can replace wide desktop actions with their own compact dropdown below the matching sidebar breakpoint. Omit NPageHeaderCompactActions to keep the normal actions at every size."
         previewHeight="h-[420px]"
         noPad
         center={false}
@@ -114,13 +119,26 @@ export function PageHeaderPage() {
   icon={Users}
   title="Students"
   subtitle="2,418 records"
+  mobileBreakpoint="lg"
   search={{ placeholder: 'Search students...' }}
 >
   <NPageHeaderActions>
     <NButton variant="outline"><Download size={16} /> Export</NButton>
     <NButton><Plus size={16} /> Add</NButton>
   </NPageHeaderActions>
-
+  <NPageHeaderCompactActions>
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <NButton variant="ghost" size="icon" aria-label="Student actions">
+          <MoreHorizontal size={18} />
+        </NButton>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem><Download size={16} /> Export</DropdownMenuItem>
+        <DropdownMenuItem><Plus size={16} /> Add student</DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  </NPageHeaderCompactActions>
 </NPageHeader>`}
       >
         <div className="flex h-full flex-col">
@@ -128,12 +146,26 @@ export function PageHeaderPage() {
             icon={Users}
             title="Students"
             subtitle="2,418 records"
+            mobileBreakpoint="lg"
             search={{ placeholder: 'Search students...', value: query, onChange: (event) => setQuery(event.target.value) }}
           >
             <NPageHeaderActions>
               <NButton variant="outline"><Download size={16} /> Export</NButton>
               <NButton><Plus size={16} /> Add</NButton>
             </NPageHeaderActions>
+            <NPageHeaderCompactActions>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <NButton variant="ghost" size="icon" aria-label="Student actions">
+                    <MoreHorizontal size={18} />
+                  </NButton>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem><Download size={16} /> Export</DropdownMenuItem>
+                  <DropdownMenuItem><Plus size={16} /> Add student</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </NPageHeaderCompactActions>
           </NPageHeader>
           <div className="border-b border-border px-4 py-2 text-xs text-muted-foreground">
             {query ? `Filtered by "${query}"` : 'Showing all student workspaces'}

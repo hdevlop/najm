@@ -152,9 +152,9 @@ export class CookieService {
 
    async onReady(): Promise<void> {
       const injections = this.container.getInjections('cookies');
-      this.log.info(`Cookie plugin ready: ${injections.length} injection(s)`);
+      this.log.debug(`Cookie plugin ready: ${injections.length} injection(s)`);
       if (this.prefix) {
-         this.log.info(`Using cookie prefix: ${this.prefix}`);
+         this.log.debug(`Using cookie prefix: ${this.prefix}`);
       }
    }
 

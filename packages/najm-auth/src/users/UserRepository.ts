@@ -79,6 +79,21 @@ export class UserRepository {
     return existingUser;
   }
 
+  async getByEmailInsensitive(email: string): Promise<(User & { role?: string | null }) | undefined> {
+    const [existingUser] = await this.db
+      .select({
+        ...this.q.userSelection(),
+        password: this.users.password,
+        failedLoginAttempts: this.users.failedLoginAttempts,
+        lockoutUntil: this.users.lockoutUntil,
+      })
+      .from(this.users)
+      .leftJoin(this.roles, eq(this.users.roleId, this.roles.id))
+      .where(sql`lower(${this.users.email}) = ${email.trim().toLowerCase()}`)
+      .limit(1);
+    return existingUser;
+  }
+
   async create(data: NewUser): Promise<User> {
     const [newUser] = await this.db.insert(this.users).values(data).returning();
     return newUser;

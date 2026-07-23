@@ -27,11 +27,21 @@ import { whatsapp } from 'najm-whatsapp';
  * - email() - Password reset email flows
  */
 
-export const authConfig = () => auth({
-  dialect: 'sqlite',
-  defaultRole: 'user', // Auto-assign 'user' role to new registrations (admin can update later)
-  encryptionKey: process.env.NAJM_ENCRYPTION_KEY || 'bmFqbS1wbGF5Z3JvdW5kLWRldi1rZXktMzItYnl0ZXM=',
-});
+export const authConfig = () => {
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3000';
+  const googleEnabled = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
+
+  return auth({
+    dialect: 'sqlite',
+    defaultRole: 'user', // Auto-assign 'user' role to new registrations (admin can update later)
+    frontendUrl,
+    // The playground is self-contained and must build without delivery secrets.
+    // Production applications should configure their transport explicitly.
+    email: { provider: { provider: 'memory' } },
+    encryptionKey: process.env.NAJM_ENCRYPTION_KEY || 'bmFqbS1wbGF5Z3JvdW5kLWRldi1rZXktMzItYnl0ZXM=',
+    oauth: googleEnabled ? { google: true } : undefined,
+  });
+};
 
 
 export const validationConfig = () => validation();

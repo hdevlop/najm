@@ -1,6 +1,6 @@
 {
   "name": "najm-storage",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "license": "MIT",
   "description": "File storage plugin for najm framework — local filesystem and database backends",
   "type": "module",
@@ -102,6 +102,7 @@
     "@types/react-dom": "^19",
     "drizzle-orm": "^0.45.1",
     "happy-dom": "^17.6.3",
+    "najm-mcp": "workspace:*",
     "postcss": "^8.5.1",
     "rimraf": "^6.0.1",
     "tailwindcss": "^4",

@@ -1,7 +1,14 @@
-import { handle } from 'najm-api';
-import { server } from '@/server';
+// The Najm server owns database, cache, and external-integration setup. It is
+// a request-time API surface, not a statically generated Next.js route.
+export const dynamic = 'force-dynamic';
 
-const adapt = handle(server);
+const adapt = async (request: Request): Promise<Response> => {
+  const [{ handle }, { server }] = await Promise.all([
+    import('najm-api'),
+    import('@/server'),
+  ]);
+  return handle(server)(request);
+};
 
 export const GET = adapt;
 export const POST = adapt;

@@ -13,6 +13,7 @@ Production-ready authentication and authorization library for the Najm framework
 - ✅ Type-safe decorators with TypeScript
 - ✅ Rate limiting on auth endpoints
 - ✅ Internationalization (i18n) for all messages
+- ✅ Google OpenID Connect sign-in with PKCE and explicit account linking
 
 ---
 
@@ -90,6 +91,11 @@ const server = new Server()
 JWT_ACCESS_SECRET=<32-character-minimum-secret>
 JWT_REFRESH_SECRET=<32-character-minimum-secret>
 FRONTEND_URL=https://app.example.com
+# Optional Google sign-in
+GOOGLE_CLIENT_ID=<google-web-client-id>
+GOOGLE_CLIENT_SECRET=<google-web-client-secret>
+# Optional for a split frontend/API deployment. Otherwise FRONTEND_URL is used.
+GOOGLE_CALLBACK_URL=https://app.example.com/api/auth/oauth/google/callback
 ```
 
 > ⚠️ **Security:** Generate secrets with `openssl rand -base64 32`
@@ -128,6 +134,20 @@ auth({
   // Frontend
   frontendUrl?: string                     // Password reset link base URL
 
+  // Optional Google OpenID Connect
+  oauth?: {
+    google?: true | {
+      clientId?: string                    // Or GOOGLE_CLIENT_ID
+      clientSecret?: string                // Or GOOGLE_CLIENT_SECRET
+      callbackUrl?: string                 // Or GOOGLE_CALLBACK_URL; otherwise frontendUrl + /api/auth/oauth/google/callback
+      frontendCallbackPath?: string        // Default: /auth/oauth/callback
+      errorRedirectPath?: string           // Default: /login
+      allowSignup?: boolean                // Default: true
+      autoLinkVerifiedEmail?: boolean      // Default: false
+      allowedHostedDomains?: string[]      // Validates the Google hd claim
+    }
+  }
+
   // Dependencies (forwarded to plugins)
   validation?: ValidationPluginConfig
   rateLimit?: RateLimitPluginConfig
@@ -151,6 +171,59 @@ All routes are prefixed with `/auth` and auto-registered by the plugin.
 | `GET` | `/auth/me` | Get current user profile | ✅ Required |
 | `POST` | `/auth/forgot-password` | Request password reset | None |
 | `POST` | `/auth/reset-password` | Confirm password reset | None |
+| `GET` | `/auth/oauth/google/start` | Start Google sign-in | None |
+| `GET` | `/auth/oauth/google/callback` | Verify Google callback and create Najm session | None |
+| `POST` | `/auth/oauth/google/link` | Link Google to the current user | ✅ Required |
+
+### Google Sign-In
+
+Google sign-in uses the server-side OpenID Connect authorization-code flow.
+Najm creates state, nonce, and PKCE values, verifies Google's signed ID token,
+then issues the same Najm JWT, refresh token, and session cookie as password
+login. Google tokens are discarded and are never stored.
+
+```ts
+auth({
+  dialect: 'pg',
+  frontendUrl: 'https://app.example.com',
+  oauth: { google: true },
+})
+```
+
+With `google: true`, credentials come from `GOOGLE_CLIENT_ID` and
+`GOOGLE_CLIENT_SECRET`; the callback defaults to
+`${FRONTEND_URL}/api/auth/oauth/google/callback`. Register that value exactly
+as an authorized redirect URI in Google Cloud. Set `GOOGLE_CALLBACK_URL` or
+`google: { callbackUrl: '...' }` when the API runs on a different origin.
+Production callback URLs must use HTTPS; HTTP is accepted only for localhost.
+
+Mount the browser completion route configured by `frontendCallbackPath`:
+
+```tsx
+'use client';
+
+import { OAuthCallback } from 'najm-auth/client/react';
+
+export default function OAuthCallbackPage() {
+  return <OAuthCallback fallback={<p>Finishing sign-in...</p>} />;
+}
+```
+
+Then use the headless button anywhere below `AuthProvider`:
+
+```tsx
+import { GoogleLoginButton } from 'najm-auth/client/react';
+
+<GoogleLoginButton returnTo="/dashboard">
+  <button type="button">Continue with Google</button>
+</GoogleLoginButton>
+```
+
+Google accounts are keyed by Google's stable `sub` claim. If an existing Najm
+user has the same email but is not linked, sign-in fails with
+`oauth_account_link_required` by default. After password login, call
+`client.linkOAuthAccount('google')` to prove control of both accounts. Setting
+`autoLinkVerifiedEmail: true` opts into verified-email linking.
 
 ### Admin Routes (all require `@isAdmin()`)
 
@@ -420,7 +493,20 @@ role_permissions
 ├── permissionId (string, FK → permissions.id)
 ├── createdAt (timestamp)
 └── updatedAt (timestamp)
+
+oauth_accounts
+├── id (string, primary key)
+├── userId (string, FK → users.id, cascade delete)
+├── provider (string; `google` in this release)
+├── providerAccountId (Google `sub`)
+├── unique(provider, providerAccountId)
+└── unique(userId, provider)
 ```
+
+Existing databases must generate and run a migration after upgrading so the
+new `oauth_accounts` table exists. Custom `AuthSchema` objects may omit
+`oauthAccounts` while OAuth is disabled, but Google configuration fails fast
+unless the custom schema supplies it.
 
 ### ID Strategy
 

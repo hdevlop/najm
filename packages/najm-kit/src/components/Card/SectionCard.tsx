@@ -19,6 +19,145 @@ export function truncateByCharacters(
 
 // ─── NSectionInfo ────────────────────────────────────────────────────────────
 
+export type NCardDensity = "default" | "compact" | "responsive";
+export type NCardSectionSurface = "soft" | "plain" | "responsive";
+
+const CardDensityContext = React.createContext<NCardDensity>("default");
+
+export interface NCardInfoProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "children"> {
+  icon?: LucideIcon;
+  label?: React.ReactNode;
+  value: React.ReactNode;
+  density?: NCardDensity;
+  maxChars?: number;
+  iconClassName?: string;
+  labelClassName?: string;
+  valueClassName?: string;
+}
+
+export function NCardInfo({
+  icon: Icon,
+  label,
+  value,
+  density,
+  maxChars = 30,
+  iconClassName,
+  labelClassName,
+  valueClassName,
+  className,
+  ...props
+}: NCardInfoProps) {
+  const inheritedDensity = React.useContext(CardDensityContext);
+  const resolvedDensity = density ?? inheritedDensity;
+  const isTruncated = typeof value === "string" && value.length > maxChars;
+  const displayValue = isTruncated ? truncateByCharacters(value, maxChars) : value;
+
+  const valueNode = (
+    <span
+      data-slot="card-info-value"
+      className={cn("min-w-0 truncate text-foreground", isTruncated && "cursor-help", valueClassName)}
+    >
+      {displayValue}
+    </span>
+  );
+
+  return (
+    <div
+      data-slot="card-info"
+      data-density={resolvedDensity}
+      className={cn(
+        "flex min-w-0 items-center",
+        resolvedDensity === "default" && "gap-2 text-sm",
+        resolvedDensity === "compact" && "gap-1.5 text-xs",
+        resolvedDensity === "responsive" && "gap-1.5 text-xs sm:gap-2 sm:text-sm",
+        className,
+      )}
+      {...props}
+    >
+      {Icon ? (
+        <Icon
+          aria-hidden="true"
+          data-slot="card-info-icon"
+          className={cn(
+            "shrink-0 text-muted-foreground",
+            resolvedDensity === "default" && "size-4",
+            resolvedDensity === "compact" && "size-3.5",
+            resolvedDensity === "responsive" && "size-3.5 sm:size-4",
+            iconClassName,
+          )}
+        />
+      ) : null}
+      {label ? (
+        <span
+          data-slot="card-info-label"
+          className={cn("shrink-0 text-muted-foreground", labelClassName)}
+        >
+          {label}:
+        </span>
+      ) : null}
+      {isTruncated ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{valueNode}</TooltipTrigger>
+          <TooltipContent>
+            <p className="max-w-xs">{value}</p>
+          </TooltipContent>
+        </Tooltip>
+      ) : (
+        valueNode
+      )}
+    </div>
+  );
+}
+
+export interface NCardSectionProps extends Omit<React.HTMLAttributes<HTMLDivElement>, "title"> {
+  icon?: LucideIcon;
+  title?: React.ReactNode;
+  density?: NCardDensity;
+  surface?: NCardSectionSurface;
+  iconClassName?: string;
+  titleClassName?: string;
+}
+
+export function NCardSection({
+  icon: Icon,
+  title,
+  density = "responsive",
+  surface = "responsive",
+  iconClassName,
+  titleClassName,
+  children,
+  className,
+  ...props
+}: NCardSectionProps) {
+  return (
+    <CardDensityContext.Provider value={density}>
+      <div
+        data-slot="card-section"
+        data-density={density}
+        data-surface={surface}
+        className={cn(
+          density === "default" && "space-y-2",
+          density === "compact" && "space-y-1",
+          density === "responsive" && "space-y-1 sm:space-y-2",
+          surface === "soft" && "rounded-lg bg-muted/50 p-3",
+          surface === "plain" && "bg-transparent p-0",
+          surface === "responsive" && "bg-transparent p-0 sm:rounded-lg sm:bg-muted/50 sm:p-3",
+          className,
+        )}
+        {...props}
+      >
+        {Icon || title ? (
+          <div className="mb-2 flex items-center gap-2">
+            {Icon ? <Icon aria-hidden="true" className={cn("size-4 text-muted-foreground", iconClassName)} /> : null}
+            {title ? <div className={cn("text-sm font-medium text-foreground", titleClassName)}>{title}</div> : null}
+          </div>
+        ) : null}
+        {children}
+      </div>
+    </CardDensityContext.Provider>
+  );
+}
+
 export interface NSectionInfoProps {
   icon?: LucideIcon;
   label: string;

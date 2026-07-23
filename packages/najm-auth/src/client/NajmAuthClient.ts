@@ -17,6 +17,8 @@ import type {
   TokenPair,
   SyncPayload,
   TabSyncMessage,
+  OAuthProvider,
+  OAuthLoginOptions,
 } from './types';
 import { AuthError } from './types';
 
@@ -110,6 +112,50 @@ export class NajmAuthClient {
       { body: data, skipAuth: true },
     );
     return res.data;
+  }
+
+  getOAuthLoginUrl(provider: OAuthProvider, options: OAuthLoginOptions = {}): string {
+    const baseURL = this.config.baseURL.replace(/\/$/, '');
+    const authPrefix = this.prefix.startsWith('/') ? this.prefix : `/${this.prefix}`;
+    const raw = `${baseURL}${authPrefix}/oauth/${provider}/start`;
+    const absolute = /^[a-z][a-z\d+.-]*:\/\//i.test(raw);
+    const url = new URL(raw, absolute ? undefined : 'https://najm.invalid');
+    if (options.returnTo) {
+      url.searchParams.set('returnTo', this.validateReturnTo(options.returnTo));
+    }
+    return absolute ? url.toString() : `${url.pathname}${url.search}`;
+  }
+
+  loginWithOAuth(provider: OAuthProvider, options?: OAuthLoginOptions): void {
+    if (typeof window === 'undefined') {
+      throw new Error('OAuth login requires a browser environment');
+    }
+    window.location.assign(this.getOAuthLoginUrl(provider, options));
+  }
+
+  loginWithGoogle(options?: OAuthLoginOptions): void {
+    this.loginWithOAuth('google', options);
+  }
+
+  async linkOAuthAccount(provider: OAuthProvider, options: OAuthLoginOptions = {}): Promise<void> {
+    const query = options.returnTo
+      ? `?${new URLSearchParams({ returnTo: this.validateReturnTo(options.returnTo) })}`
+      : '';
+    const res = await this.api.post<ServerResponse<{ authorizationUrl: string }>>(
+      `${this.prefix}/oauth/${provider}/link${query}`,
+    );
+    if (!res.data?.authorizationUrl) throw new Error('OAuth provider did not return an authorization URL');
+    if (typeof window === 'undefined') throw new Error('OAuth linking requires a browser environment');
+    window.location.assign(res.data.authorizationUrl);
+  }
+
+  async completeOAuthLogin(): Promise<AuthUser> {
+    await this.refresh();
+    const user = await this.fetchUser();
+    if (!user) throw new Error('OAuth session could not be completed');
+    this.tabSync?.broadcastSync(this.getSyncPayload());
+    this.emit('login', user);
+    return user;
   }
 
   async logout(): Promise<void> {
@@ -460,6 +506,19 @@ export class NajmAuthClient {
     if (event !== 'stateChange') {
       this.eventListeners.get('stateChange')?.forEach((h) => h(this.state));
     }
+  }
+
+  private validateReturnTo(value: string): string {
+    const candidate = value.trim();
+    if (!candidate.startsWith('/') || candidate.startsWith('//') || candidate.includes('\\')) {
+      throw new Error('returnTo must be a same-origin path');
+    }
+    const base = new URL('https://najm.invalid');
+    const parsed = new URL(candidate, base);
+    if (parsed.origin !== base.origin || parsed.username || parsed.password) {
+      throw new Error('returnTo must be a same-origin path');
+    }
+    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
   }
 }
 

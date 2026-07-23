@@ -21,7 +21,7 @@ export interface NStatCardClassNames {
 
 interface BaseProps {
   icon: NIconSource;
-  label: string;
+  label?: string;
   onClick?: () => void;
   bordered?: boolean;
   className?: string;
@@ -115,27 +115,27 @@ function DefaultCard({
       onClick={onClick}
       bordered={bordered}
       className={cn(
-        "group p-4 transition-colors",
+        "group p-2 lg:p-3 xl:p-4 2xl:p-5 transition-colors",
         onClick && "cursor-pointer hover:border-border/60 hover:bg-accent/40",
         className,
       )}
       classNames={{
         root: classNames?.root,
-        content: "flex-row items-center gap-4",
+        content: "flex-row items-center gap-2 lg:gap-3 xl:gap-3 2xl:gap-4",
       }}
     >
       <div
         className={cn(
-          "flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20",
+          "flex h-8 w-8 lg:h-9 lg:w-9 2xl:h-10 2xl:w-10 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary transition-colors group-hover:bg-primary/20",
           classNames?.icon,
         )}
       >
-        <NIcon icon={icon} className="w-7 h-7" />
+        <NIcon icon={icon} className="w-4 h-4 lg:w-5 lg:h-5 2xl:w-6 2xl:h-6" />
       </div>
 
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className="flex min-w-0 flex-1 flex-col gap-0 2xl:gap-1">
         <div className="flex items-center justify-between gap-2">
-          <p className={cn("truncate text-xs text-muted-foreground", classNames?.label)}>{label}</p>
+          {label && <p className={cn("truncate text-xs text-muted-foreground", classNames?.label)}>{label}</p>}
           {change && (
             <span
               className={cn(
@@ -150,7 +150,7 @@ function DefaultCard({
             </span>
           )}
         </div>
-        <p className={cn("text-xl font-semibold leading-none text-foreground", classNames?.value)}>
+        <p className={cn("text-sm lg:text-base xl:text-base 2xl:text-xl font-semibold leading-none text-foreground", classNames?.value)}>
           {value}
         </p>
         {subtext && (
@@ -240,13 +240,13 @@ function CompactCard({ icon, label, value, unit, iconColor, onClick, bordered, c
       onClick={onClick}
       bordered={bordered}
       className={cn(
-        "group px-3 py-2.5 transition-colors",
+        "group p-2 transition-colors",
         onClick && "cursor-pointer",
         className,
       )}
       classNames={{
         root: classNames?.root,
-        content: "flex-row items-center gap-2.5",
+        content: "flex-row items-center gap-2",
       }}
     >
       <div
@@ -259,9 +259,11 @@ function CompactCard({ icon, label, value, unit, iconColor, onClick, bordered, c
       </div>
 
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+        {label && (
         <p className={cn("truncate text-[11px] leading-none text-muted-foreground", classNames?.label)}>
           {label}
         </p>
+        )}
         <p className={cn("truncate text-base font-semibold leading-tight text-foreground", classNames?.value)}>
           {value}{unit ? ` ${unit}` : ""}
         </p>

@@ -1,10 +1,22 @@
 import { describe, test, expect } from "bun:test";
 import { readFileSync, existsSync } from "node:fs";
 import { resolve } from "node:path";
+import tailwindcss from "@tailwindcss/postcss";
+import postcss from "postcss";
 
 const packageRoot = resolve(__dirname, "..", "..");
 const themeCssPath = resolve(packageRoot, "src", "theme.css");
 const distThemeCssPath = resolve(packageRoot, "dist", "theme.css");
+
+test("compiled rounded utilities preserve runtime radius variables", async () => {
+  const result = await postcss([tailwindcss()]).process(
+    '@import "tailwindcss";\n@import "../../src/theme.css";\n@source inline("rounded-md rounded-xl");',
+    { from: resolve(packageRoot, "test", "theme", "radius-fixture.css") },
+  );
+
+  expect(result.css).toMatch(/\.rounded-md\s*\{[^}]*border-radius:\s*var\(--radius-md\)/);
+  expect(result.css).toMatch(/\.rounded-xl\s*\{[^}]*border-radius:\s*var\(--radius-xl\)/);
+});
 
 describe("theme.css — source-level checks", () => {
   test("theme.css exists at src/theme.css", () => {
@@ -78,8 +90,15 @@ describe("theme.css — source-level checks", () => {
     }
   });
 
-  test("@theme inline maps radius scale to var(--radius)", () => {
+  test("radius tokens stay outside @theme inline so runtime scales remain overridable", () => {
     const src = readFileSync(themeCssPath, "utf-8");
+    const inlineTheme = src.match(/@theme inline\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+    const runtimeTheme = src.match(/@theme\s*\{([\s\S]*?)\n\}/)?.[1] ?? "";
+
+    expect(inlineTheme).not.toContain("--radius-md:");
+    expect(inlineTheme).not.toContain("--radius-xl:");
+    expect(runtimeTheme).toContain("--radius-md: calc(var(--radius) - 2px)");
+    expect(runtimeTheme).toContain("--radius-xl: calc(var(--radius) + 4px)");
     expect(src).toMatch(/--radius-sm:\s*calc\(var\(--radius\)\s*-\s*4px\)/);
     expect(src).toMatch(/--radius-md:\s*calc\(var\(--radius\)\s*-\s*2px\)/);
     expect(src).toMatch(/--radius-lg:\s*var\(--radius\)/);
@@ -143,6 +162,15 @@ describe("theme.css — source-level checks", () => {
     expect(src).toMatch(/\[data-najm-design-vars\]\s*:where\([^}]*h1,[^}]*h6,[^}]*\[data-slot="card-title"\][^)]*\)\s*\{[^}]*font-family:\s*var\(--font-heading/);
     expect(src).toMatch(/\[data-najm-design-vars\]\s*:where\(code,\s*kbd,\s*pre,\s*samp\)\s*\{[^}]*font-family:\s*var\(--font-mono/);
   });
+
+  test("browser autofill keeps the themed input surface", () => {
+    const src = readFileSync(themeCssPath, "utf-8");
+    expect(src).toContain("input:-webkit-autofill");
+    expect(src).toContain("input:autofill");
+    expect(src).toMatch(/input:autofill\s*\{[^}]*-webkit-text-fill-color:\s*var\(--foreground\)/);
+    expect(src).toMatch(/input:autofill\s*\{[^}]*border-radius:\s*0/);
+    expect(src).toMatch(/input:autofill\s*\{[^}]*box-shadow:\s*0 0 0 1000px var\(--card\) inset/);
+  });
 });
 
 describe("dist/theme.css — published artifact", () => {
@@ -179,5 +207,14 @@ describe("dist/theme.css — published artifact", () => {
     expect(dist).toMatch(/\[data-najm-design-vars\]\s*\{[^}]*font-family:\s*var\(--font-sans/);
     expect(dist).toMatch(/\[data-najm-design-vars\]\s*\{[^}]*--text-sm:\s*calc\(var\(--font-size-base/);
     expect(dist).toMatch(/\[data-najm-design-vars\]\s*:where\([^}]*h1,[^}]*h6,[^}]*\[data-slot="card-title"\][^)]*\)\s*\{[^}]*font-family:\s*var\(--font-heading/);
+  });
+
+  test("dist/theme.css includes themed browser autofill styles", () => {
+    const dist = readFileSync(distThemeCssPath, "utf-8");
+    expect(dist).toContain("input:-webkit-autofill");
+    expect(dist).toContain("input:autofill");
+    expect(dist).toMatch(/input:autofill\s*\{[^}]*-webkit-text-fill-color:\s*var\(--foreground\)/);
+    expect(dist).toMatch(/input:autofill\s*\{[^}]*border-radius:\s*0/);
+    expect(dist).toMatch(/input:autofill\s*\{[^}]*box-shadow:\s*0 0 0 1000px var\(--card\) inset/);
   });
 });

@@ -1,5 +1,5 @@
 import { Service } from 'najm-core';
-import { GuardParams, User } from "najm-core";
+import { GuardParams, Role as RequestRole } from "najm-core";
 import { composeGuards, createGuard } from "najm-guard";
 import { isAuth } from "../auth/AuthGuard";
 import { ROLES, ROLE_GROUPS, type RoleInput } from "./constants";
@@ -8,7 +8,7 @@ import { ROLES, ROLE_GROUPS, type RoleInput } from "./constants";
 
 @Service()
 export class RoleGuard {
-  canActivate(@GuardParams() allowedRoles: RoleInput, @User('role') userRole: string) {
+  canActivate(@GuardParams() allowedRoles: RoleInput, @RequestRole() userRole: string) {
     if (!userRole) return false;
 
     const requiredRoles = Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles];

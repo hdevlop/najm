@@ -103,6 +103,10 @@ export class UserService {
     return await this.userRepository.getByEmail(email);
   }
 
+  async findByEmailInsensitive(email: string): Promise<(User & { role?: string | null }) | undefined> {
+    return await this.userRepository.getByEmailInsensitive(email);
+  }
+
   async getAuthRecordById(id: string): Promise<User | undefined> {
     return await this.userRepository.getRawById(id);
   }

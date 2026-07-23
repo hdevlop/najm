@@ -1,7 +1,7 @@
 import type { ReactNode, ComponentType } from "react";
-import type { LinkComponentType, NavItem, NAppShellClassNames, SidebarProps, SidebarWidths } from "../sidebar/types";
+import type { LinkComponentType, NavItem, NAppShellClassNames, SidebarProps, SidebarWidth, SidebarWidths } from "../sidebar/types";
 
-export type { LinkComponentType, NavItem, NAppShellClassNames, SidebarWidths };
+export type { LinkComponentType, NavItem, NAppShellClassNames, SidebarWidth, SidebarWidths };
 
 export interface UserMenuAction {
   id: string;

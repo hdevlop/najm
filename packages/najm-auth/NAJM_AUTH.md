@@ -690,6 +690,45 @@ Response; client stores new access token; all tabs sync via BroadcastChannel
 
 ## Common Patterns & Gotchas
 
+### Google OpenID Connect
+
+`auth({ oauth: { google: true } })` enables three routes under
+`/auth/oauth/google`: public start, public callback, and authenticated link.
+It reads credentials from `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`, and
+uses `GOOGLE_CALLBACK_URL` when the default
+`${FRONTEND_URL}/api/auth/oauth/google/callback` is not the API callback URL.
+The start route stores an AES-GCM-encrypted, HTTP-only, ten-minute attempt
+cookie containing state, nonce, PKCE verifier, intent, and safe return path.
+The callback consumes that cookie, exchanges the code server-side, and verifies
+the Google ID token with `jose` against Google's JWKS.
+
+Identity resolution is deliberately separate from users:
+
+```text
+Google ID token `sub`
+        |
+        v
+oauth_accounts(provider, provider_account_id) -- user_id --> users
+```
+
+The `(provider, providerAccountId)` and `(userId, provider)` pairs are unique.
+Google email is required to be verified but is not the durable identity key.
+Existing-email accounts require explicit linking by default; applications can
+opt into `autoLinkVerifiedEmail`.
+
+Google-only signup preserves the required password schema by generating and
+immediately hashing an unguessable password that is never returned or logged.
+The existing reset-password flow can later turn that user into a hybrid
+password-plus-Google account.
+
+After resolving the user, `AuthSessionService` issues the standard Najm token
+family and cookies for both password and Google login. Provider access/refresh
+tokens are not stored.
+
+Built-in PostgreSQL and SQLite schemas now include `oauthAccounts`. Existing
+databases must generate and apply the corresponding Drizzle migration. A
+custom auth schema may omit the table only while OAuth remains disabled.
+
 - **Always register `database()` before `auth()`** — plugin declares `.requires('database')`; missing dep throws.
 - **Use `@Policy(Token) + @Can*()` over hard-coded permission strings** — single source of truth per resource, prevents drift between controller and permission table.
 - **Use `@Owned(Token)` on the repository** — gives automatic row-level scoping without leaking role checks into services.
@@ -713,6 +752,9 @@ Response; client stores new access token; all tabs sync via BroadcastChannel
 | [packages/najm-auth/src/AuthPlugin.ts](packages/najm-auth/src/AuthPlugin.ts) | Plugin factory, dependency registration, config merging, schema selection |
 | [packages/najm-auth/src/auth/AuthController.ts](packages/najm-auth/src/auth/AuthController.ts) | HTTP endpoints, rate limits, validation |
 | [packages/najm-auth/src/auth/AuthService.ts](packages/najm-auth/src/auth/AuthService.ts) | Login / logout / refresh / me / password flows |
+| [packages/najm-auth/src/auth/AuthSessionService.ts](packages/najm-auth/src/auth/AuthSessionService.ts) | Shared password/Google session issuance |
+| [packages/najm-auth/src/oauth/OAuthService.ts](packages/najm-auth/src/oauth/OAuthService.ts) | Google redirect, callback, and linking orchestration |
+| [packages/najm-auth/src/oauth/OAuthAccountService.ts](packages/najm-auth/src/oauth/OAuthAccountService.ts) | Provider identity resolution and safe account linking |
 | [packages/najm-auth/src/auth/AuthResolver.ts](packages/najm-auth/src/auth/AuthResolver.ts) | Global middleware that populates ALS on every request |
 | [packages/najm-auth/src/auth/AuthGuard.ts](packages/najm-auth/src/auth/AuthGuard.ts) | `@isAuth()` |
 | [packages/najm-auth/src/auth/CookieManager.ts](packages/najm-auth/src/auth/CookieManager.ts) | Refresh + session cookie read/write/clear |

@@ -23,6 +23,8 @@ export { useLogout } from './useLogout';
 export { useForgotPassword } from './useForgotPassword';
 export { useResetPassword } from './useResetPassword';
 export { useChangePassword } from './useChangePassword';
+export { useGoogleLogin } from './useGoogleLogin';
+export { useOAuthCallback } from './useOAuthCallback';
 
 // Event hooks
 export { useAuthEvent } from './useAuthEvent';
@@ -54,3 +56,5 @@ export { PermissionList } from './PermissionList';
 export { SignOutButton } from './SignOutButton';
 export { LoginButton } from './LoginButton';
 export { RedirectToLogin } from './RedirectToLogin';
+export { GoogleLoginButton } from './GoogleLoginButton';
+export { OAuthCallback } from './OAuthCallback';

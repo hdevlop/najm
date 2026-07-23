@@ -25,4 +25,6 @@ export type {
   RequestOptions,
   SyncPayload,
   TabSyncMessage,
+  OAuthProvider,
+  OAuthLoginOptions,
 } from './types';

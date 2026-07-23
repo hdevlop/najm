@@ -28,6 +28,7 @@ export default defineConfig({
   external: [
     'diject', 'najm-core', 'najm-params', 'najm-guard', 'najm-cache',
     'hono', 'reflect-metadata', 'ioredis',
+    'jose',
     'react', 'react/jsx-runtime', 'next', 'next/server', 'next/headers', 'next/navigation',
   ],
   esbuildOptions(options) {

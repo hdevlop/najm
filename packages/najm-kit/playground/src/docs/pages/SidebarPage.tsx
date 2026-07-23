@@ -151,7 +151,7 @@ function SidebarSettingsSheet({
   );
 }
 
-function PagePanel({ active }: { active: string }) {
+function PagePanel({ active, onSidebarOpen }: { active: string; onSidebarOpen: () => void }) {
   const title = active.replace(/-/g, ' ');
 
   return (
@@ -161,7 +161,8 @@ function PagePanel({ active }: { active: string }) {
         icon={LayoutDashboard}
         title={title}
         subtitle="Sidebar controls the active workspace view."
-        headerClassName="pl-5"
+        mobileBreakpoint="lg"
+        onSidebarOpen={onSidebarOpen}
       >
         <NPageHeaderActions>
           <NButton size="sm" bordered>
@@ -214,6 +215,7 @@ function FullSidebarDemo() {
   const [collapsedWidth, setCollapsedWidth] = React.useState(64);
   const [mobileWidth, setMobileWidth] = React.useState(280);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
+  const [mobileOpen, setMobileOpen] = React.useState(false);
 
   return (
     <div className="flex h-full overflow-hidden bg-background">
@@ -224,6 +226,11 @@ function FullSidebarDemo() {
         navItems={sidebarItems}
         activePath={active}
         onNavigate={setActive}
+        mobileBreakpoint="lg"
+        autoCollapseAt="lg"
+        mobileOpen={mobileOpen}
+        onMobileOpenChange={setMobileOpen}
+        showHamburgerButton={false}
         widths={{ expanded: expandedWidth, collapsed: collapsedWidth, mobile: mobileWidth }}
         showCollapseButton
         collapseButtonPosition="edge"
@@ -231,7 +238,7 @@ function FullSidebarDemo() {
         onSettings={() => setSettingsOpen(true)}
         onLogout={() => {}}
       />
-      <PagePanel active={active} />
+      <PagePanel active={active} onSidebarOpen={() => setMobileOpen(true)} />
       <SidebarSettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
@@ -266,6 +273,7 @@ const [expandedWidth, setExpandedWidth] = React.useState(240);
 const [collapsedWidth, setCollapsedWidth] = React.useState(64);
 const [mobileWidth, setMobileWidth] = React.useState(280);
 const [settingsOpen, setSettingsOpen] = React.useState(false);
+const [mobileOpen, setMobileOpen] = React.useState(false);
 
 <div className="flex h-screen overflow-hidden bg-background">
   <NSidebar
@@ -275,6 +283,11 @@ const [settingsOpen, setSettingsOpen] = React.useState(false);
     navItems={navItems}
     activePath={active}
     onNavigate={setActive}
+    mobileBreakpoint="lg"
+    autoCollapseAt="lg"
+    mobileOpen={mobileOpen}
+    onMobileOpenChange={setMobileOpen}
+    showHamburgerButton={false}
     widths={{ expanded: expandedWidth, collapsed: collapsedWidth, mobile: mobileWidth }}
     showCollapseButton
     collapseButtonPosition="edge"
@@ -284,7 +297,13 @@ const [settingsOpen, setSettingsOpen] = React.useState(false);
   />
 
   <main className="min-w-0 flex-1 bg-background p-3">
-    <NPageHeader bordered icon={LayoutDashboard} title="Dashboard" />
+    <NPageHeader
+      bordered
+      icon={LayoutDashboard}
+      title="Dashboard"
+      mobileBreakpoint="lg"
+      onSidebarOpen={() => setMobileOpen(true)}
+    />
     <section className="mt-3 grid gap-3">
       <NCard>Stats</NCard>
       <NCard>Rows</NCard>

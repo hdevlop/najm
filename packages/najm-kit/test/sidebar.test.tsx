@@ -1,6 +1,6 @@
 import { describe, test, expect, mock } from "bun:test";
 import React from "react";
-import { render, act, fireEvent } from "@testing-library/react";
+import { render, act, fireEvent, waitFor } from "@testing-library/react";
 import { NSidebar } from "../src/components/sidebar/NSidebar";
 import { NSidebarItem } from "../src/components/sidebar/NSidebarItem";
 import type { NavItem } from "../src/components/sidebar/types";
@@ -123,12 +123,41 @@ describe("Sidebar", () => {
     expect(mobile.className).toContain("text-sidebar-foreground");
   });
 
+  test.each([
+    ["sm", "sm:flex", "sm:hidden"],
+    ["md", "md:flex", "md:hidden"],
+    ["lg", "lg:flex", "lg:hidden"],
+  ] as const)(
+    "keeps the desktop sidebar hidden below the %s breakpoint",
+    (mobileBreakpoint, desktopVisibleClass, mobileHiddenClass) => {
+      const { container } = render(
+        <NSidebar
+          navItems={navItems}
+          mobileBreakpoint={mobileBreakpoint}
+          mobileOpen
+        />
+      );
+      const asides = Array.from(container.querySelectorAll("aside"));
+      const desktop = asides.find((aside) => aside.className.includes(desktopVisibleClass)) as HTMLElement;
+      const mobile = asides.find((aside) => aside.className.includes(mobileHiddenClass)) as HTMLElement;
+
+      expect(desktop.className.split(" ")).toContain("hidden");
+      expect(desktop.className).toContain(desktopVisibleClass);
+      expect(mobile.className).toContain(mobileHiddenClass);
+    }
+  );
+
   test("hamburger trigger uses sidebar surface tokens", () => {
-    const { container } = render(<NSidebar navItems={navItems} mobileOpen />);
+    const { container } = render(<NSidebar navItems={navItems} mobileOpen showHamburgerButton />);
     const hamburger = container.querySelector("button[aria-label='Open sidebar']") as HTMLButtonElement;
     expect(hamburger).toBeTruthy();
     expect(hamburger.className).toContain("bg-sidebar");
     expect(hamburger.className).toContain("border-sidebar-border");
+  });
+
+  test("does not render the legacy floating hamburger by default", () => {
+    const { container } = render(<NSidebar navItems={navItems} />);
+    expect(container.querySelector("button[aria-label='Open sidebar']")).toBeNull();
   });
 
   test("active item uses sidebar-primary background", () => {
@@ -267,5 +296,80 @@ describe("Sidebar", () => {
     const asides = Array.from(container.querySelectorAll("aside"));
     const mobile = asides.find((a) => a.className.includes("md:hidden")) as HTMLElement;
     expect(mobile.style.width).toBe("300px");
+  });
+
+  test("resolves responsive widths at the active breakpoint", async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(min-width: 1024px)",
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    })) as typeof window.matchMedia;
+
+    try {
+      const { container } = render(
+        <NSidebar
+          navItems={navItems}
+          widths={{
+            expanded: { base: 164, lg: 200 },
+            collapsed: { base: 64, lg: 72 },
+            mobile: { base: 288, lg: 320 },
+          }}
+          mobileOpen
+        />,
+      );
+      const asides = Array.from(container.querySelectorAll("aside"));
+      const desktop = asides.find((aside) => aside.className.includes("md:flex")) as HTMLElement;
+      const mobile = asides.find((aside) => aside.className.includes("md:hidden")) as HTMLElement;
+
+      await waitFor(() => expect(desktop.style.width).toBe("200px"));
+      expect(mobile.style.width).toBe("320px");
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test("automatically uses the collapsed rail in the selected breakpoint band", async () => {
+    const originalMatchMedia = window.matchMedia;
+    const queries: string[] = [];
+    window.matchMedia = ((query: string) => {
+      queries.push(query);
+      return {
+        matches: true,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        dispatchEvent: () => true,
+      };
+    }) as typeof window.matchMedia;
+
+    try {
+      const { container } = render(
+        <NSidebar
+          navItems={navItems}
+          mobileBreakpoint="lg"
+          autoCollapseAt="lg"
+          widths={{ expanded: 280, collapsed: 72 }}
+        />
+      );
+      const asides = Array.from(container.querySelectorAll("aside"));
+      const desktop = asides.find((aside) => aside.className.includes("lg:flex")) as HTMLElement;
+      const mobile = asides.find((aside) => aside.className.includes("lg:hidden")) as HTMLElement;
+
+      await waitFor(() => expect(desktop.getAttribute("data-auto-collapsed")).toBe("true"));
+      expect(queries).toContain("(min-width: 1024px) and (max-width: 1279.98px)");
+      expect(desktop.style.width).toBe("72px");
+      expect(mobile.style.width).toBe("280px");
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
   });
 });

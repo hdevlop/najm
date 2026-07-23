@@ -488,6 +488,52 @@ function LogoutButton() {
 }
 ```
 
+### Google sign-in
+
+The framework client exposes provider-generic methods plus a Google convenience
+method:
+
+```ts
+auth.client.getOAuthLoginUrl('google', { returnTo: '/dashboard' });
+auth.client.loginWithGoogle({ returnTo: '/dashboard' });
+await auth.client.linkOAuthAccount('google', { returnTo: '/account' });
+```
+
+For React, use the headless button with your own visual component:
+
+```tsx
+import { GoogleLoginButton } from 'najm-auth/client/react';
+
+<GoogleLoginButton returnTo="/dashboard">
+  <button type="button">Continue with Google</button>
+</GoogleLoginButton>
+```
+
+The backend callback redirects to the configured frontend callback path. Mount
+`OAuthCallback` there so the client rotates the HTTP-only refresh cookie into a
+new in-memory access token and fetches the user:
+
+```tsx
+'use client';
+
+import { OAuthCallback } from 'najm-auth/client/react';
+
+export default function OAuthCallbackPage() {
+  return (
+    <OAuthCallback
+      fallback={<p>Finishing sign-in...</p>}
+      errorFallback={({ error }) => <p>{error.message}</p>}
+    />
+  );
+}
+```
+
+`useGoogleLogin()` exposes `loginWithGoogle`, `linkGoogle`, `isRedirecting`,
+and `error`. `useOAuthCallback()` exposes lower-level completion control.
+
+Only same-origin `returnTo` paths are accepted. No Najm or Google token is
+placed in the callback query string.
+
 ### `useRegister(options?)`
 
 ```tsx
@@ -941,8 +987,10 @@ export { AuthError } from 'najm-auth/client';
 export { AuthProvider } from 'najm-auth/client/react';
 export { useAuth, useUser, useSession } from 'najm-auth/client/react';
 export { useLogin, useLogout, useRegister } from 'najm-auth/client/react';
+export { useGoogleLogin, useOAuthCallback } from 'najm-auth/client/react';
 export { usePermissions } from 'najm-auth/client/react';
 export { Can, Protected } from 'najm-auth/client/react';
+export { GoogleLoginButton, OAuthCallback } from 'najm-auth/client/react';
 
 // najm-auth/client/server
 export { defineAuth, type DefineAuthConfig, type AuthKit } from 'najm-auth/client/server';

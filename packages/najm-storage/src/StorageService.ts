@@ -84,7 +84,7 @@ export class StorageService {
       const dialect = this.config.dialect ?? detectDialect(db);
       const schema = this.config.schema ?? schemaForDialect(dialect);
 
-      this.log.info(`Storage: using ${dialect} schema for database "${dbName}"`);
+      this.log.debug(`Storage: using ${dialect} schema for database "${dbName}"`);
       this.provider = new DbStorageProvider(db, schema, dialect);
     } else {
       const basePath = this.config.basePath ?? 'storage';
@@ -106,7 +106,7 @@ export class StorageService {
         }
       } catch (err: any) {
         if (err?.message?.includes('already exists')) {
-          this.log.info(`Storage: bucket "${config.name}" already exists`);
+          this.log.debug(`Storage: bucket "${config.name}" already exists`);
         } else {
           this.log.error(`Storage: failed to create bucket "${config.name}"`, err);
         }
@@ -128,7 +128,7 @@ export class StorageService {
   }
 
   async onReady(): Promise<void> {
-    this.log.info(`Storage plugin ready: provider=${this.config.provider}`);
+    this.log.debug(`Storage plugin ready: provider=${this.config.provider}`);
   }
 
   // ============================================================================

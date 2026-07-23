@@ -1,10 +1,13 @@
-import { Container, DI, Inject, Meta, Service, type Token } from 'diject';
+import { Container, DI, Inject, Injectable, Meta, type Token } from 'diject';
 import { LoggerService } from '../logging/LoggerService';
 import { INJECTION_TYPES } from '../scanner';
 import type { MiddlewareInjection, RouteEntry } from '../router/types';
 import { BootService } from './BootService';
 
-@Service()
+// Unlike ordinary framework services, diagnostics must not register themselves
+// in diject's global container as a decorator side effect. Server.initialize()
+// adds this service explicitly only when diagnostics are enabled.
+@Injectable()
 @Meta({ layer: 'core', order: 1000 })
 export class BootDiagnostics {
    @DI() private container!: Container;

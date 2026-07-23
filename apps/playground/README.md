@@ -61,6 +61,12 @@ JWT_REFRESH_EXPIRES_IN=7d
 
 CORS_ORIGIN=http://localhost:5173
 EMAIL_PROVIDER=console
+
+# Optional Google sign-in (enables automatically when both are present)
+GOOGLE_CLIENT_ID=<google-web-client-id>
+GOOGLE_CLIENT_SECRET=<google-web-client-secret>
+# Only needed when the API callback is not FRONTEND_URL/api/auth/oauth/google/callback
+GOOGLE_CALLBACK_URL=https://app.example.com/api/auth/oauth/google/callback
 ```
 
 Notes:
@@ -68,6 +74,7 @@ Notes:
 - `DATABASE_URL` is the SQLite file path used by Drizzle.
 - `PORT` can be a string; Najm now parses it internally in `server.listen(...)`.
 - `EMAIL_PROVIDER=console` is useful for local auth/password-reset flows.
+- Google login is enabled when both Google credential variables are set.
 
 ## MCP support (HTTP + stdio)
 

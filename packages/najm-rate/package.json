@@ -1,6 +1,6 @@
 {
   "name": "najm-rate",
-  "version": "2.0.1",
+  "version": "2.0.2",
   "license": "MIT",
   "description": "Rate limiting plugin for Najm framework",
   "type": "module",

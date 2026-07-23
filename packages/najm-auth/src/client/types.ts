@@ -88,6 +88,13 @@ export interface AuthClientConfig {
   timeout?: number;
 }
 
+export type OAuthProvider = 'google';
+
+export interface OAuthLoginOptions {
+  /** Same-origin frontend path after OAuth completes. */
+  returnTo?: string;
+}
+
 /**
  * Auth event types
  */
