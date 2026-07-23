@@ -691,6 +691,28 @@ throw new HttpError(403, 'Insufficient permissions for this action');
 - `verifyAlways` forces that authoritative check on every protected request;
   the default bounds cached role/status staleness to `session.maxAge`.
 
+### Next.js 16 Reverse-Proxy Recovery
+
+When a self-hosted Next.js proxy cannot safely call its own public
+reverse-proxy origin while handling that same request, configure the exact
+loopback recovery endpoint:
+
+```env
+NAJM_AUTH_INTERNAL_URL=http://127.0.0.1:3000/api/auth/session/recover
+```
+
+`defineAuth()` reads this environment variable automatically. An explicit
+`internalRecoveryURL` option takes precedence. The internal URL must use HTTP
+or HTTPS, contain no URL credentials, and resolve to `localhost`, `127.0.0.1`,
+or `::1`; Najm never guesses a loopback endpoint. Relative and exact
+same-origin `recoveryURL` values remain supported.
+
+The recovery request forwards only the configured refresh cookie, requires
+`X-Najm-Session-Recovery: 1`, never rotates the refresh token, HMAC-verifies
+the returned session cookie, and fails closed. `onRecoveryFailure` receives
+only a structured reason and bounded, sanitized fetch-error metadata; callback
+errors cannot change the authentication result.
+
 ### Password Reset Tokens
 
 ⚠️ **Current behavior:** Reset tokens use JWT expiry (default 1h) for single-use validation. To add database-backed single-use tokens:
@@ -755,6 +777,7 @@ Test files include:
 - ✅ Store secrets in environment variables (never in code)
 - ✅ Use Redis for token blacklist/session-version revocation in production and distributed systems
 - ✅ Trust forwarded IP headers only behind a known proxy; otherwise provide a custom rate-limit key generator
+- ✅ Login/register rate keys hash normalized email or international-phone identifiers; passwords and request bodies never appear in cache keys
 - ✅ Enable rate limiting on all auth routes
 - ✅ Log authentication events for audit trails
 - ✅ Test ownership scoping rules with multi-user scenarios

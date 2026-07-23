@@ -107,9 +107,16 @@ export const server = new Server()
 
 [AuthService.loginUser()](packages/najm-auth/src/auth/AuthService.ts) flow:
 
-1. `@Validate(loginDto)` checks email/password shape.
-2. `@RateLimit` — 5 attempts / 15m, bucketed per `ip:email` composite key (prevents shared-IP DoS).
-3. Fetch user; if lockout expired, auto-reset `failedLoginAttempts`.
+1. `@Validate(loginDto)` accepts `{ identifier, password }`, where identifier
+   is an email or international phone number. The legacy `{ email, password }`
+   payload remains supported.
+2. `@RateLimit` — 5 attempts / 15m, bucketed by IP plus SHA-256 of the
+   normalized identity. Different users behind one NAT do not share a bucket,
+   while email case/whitespace and phone formatting cannot create bypass
+   buckets. Passwords and request bodies never appear in the cache key.
+3. Resolve normalized email case-insensitively or normalized E.164 phone, then
+   fetch the auth record; if lockout expired, auto-reset
+   `failedLoginAttempts`.
 4. If still locked → `423 Locked`.
 5. Native `Bun.password.verify` (bcryptjs fallback on Node) compares against the stored hash or a lazily generated configured-cost dummy hash, preventing timing-based email enumeration.
 6. On failure: `incrementFailedAttempts`; at `maxAttempts` → `setLockout(now + duration)`.
@@ -222,6 +229,21 @@ and exact same-origin absolute URLs are accepted. Credentials, protocol
 downgrades, different hostnames or ports, and hostname/username lookalikes are
 rejected. Only the configured refresh cookie is forwarded; the complete
 incoming `Cookie` header is never copied.
+
+For a self-hosted Next.js 16 process behind Caddy, Nginx, or another reverse
+proxy, the public origin may be unsafe or unreachable from proxy middleware
+during the same request. Configure an explicit loopback transport:
+
+```env
+NAJM_AUTH_INTERNAL_URL=http://127.0.0.1:3000/api/auth/session/recover
+```
+
+`defineAuth()` reads this value implicitly. `internalRecoveryURL` in code takes
+precedence over the environment. Najm accepts only explicit HTTP(S) loopback
+URLs with no credentials, never guesses an endpoint, and keeps relative or
+exact same-origin `recoveryURL` behavior unchanged. Failed recovery is
+fail-closed; `onRecoveryFailure` receives a safe reason without cookie,
+Authorization, token, signature, session payload, endpoint, or secret data.
 
 ### `GET /auth/me`
 
@@ -790,6 +812,9 @@ custom auth schema may omit the table only while OAuth remains disabled.
 - Keep `recoveryURL` relative or exact same-origin. Absolute URLs are accepted
   only when scheme, hostname, and port exactly match the incoming request
   origin; URL credentials and cross-origin recovery are rejected before fetch.
+- When a same-process reverse proxy cannot call its public origin, set
+  `NAJM_AUTH_INTERNAL_URL` to the exact loopback recovery URL. Do not point it
+  at a private-LAN or public hostname.
 - `verifyAlways` is not a compatibility no-op: enable it only when every
   protected navigation should pay for authoritative refresh-family/user checks.
 - **Sessions are multi-device** — `tokens.tokenFamily` is unique (one row per login session) and refresh writes upsert by family. A second login creates a new family without disturbing the first; refresh rotation, logout, and stale-token-reuse revocation are all scoped to a single family. Password change/reset revoke *all* of a user's sessions.
@@ -797,7 +822,7 @@ custom auth schema may omit the table only while OAuth remains disabled.
 - **Bumping session version** (`invalidateUserAccessTokens`) is the nuclear option — kills all active sessions for a user in one cache write. Use on password change / reset / account takeover.
 - **Use Redis for production revocation** — memory cache revocation state is process-local and disappears on restart.
 - **Grace window on refresh** (120s) is deliberate — shorter breaks concurrent requests, longer widens replay window.
-- **Rate-limit keys matter**: login/register hash the normalized email before it becomes part of the key; `cookieFingerprint` for refresh/me gives per-session fairness. Trust forwarded IP headers only behind a known proxy or provide custom rate-limit config.
+- **Rate-limit keys matter**: login/register hash the normalized email or international-phone identifier before it becomes part of the key; `cookieFingerprint` for refresh/me gives per-session fairness. Trust forwarded IP headers only behind a known proxy or provide custom rate-limit config.
 
 ## Key Files
 

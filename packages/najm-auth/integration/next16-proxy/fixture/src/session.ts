@@ -1,21 +1,23 @@
-const SESSION_SECRET = process.env.RUNTIME_SESSION_SECRET!;
-
-export async function signedSession() {
+export async function signedSession(
+  role: 'admin' | 'sponsor' = 'admin',
+  issuedAt = Date.now(),
+) {
+  const sessionSecret = process.env.RUNTIME_SESSION_SECRET!;
   const payload = JSON.stringify({
     user: {
-      id: 'integration-admin',
-      email: 'admin@example.test',
-      role: 'admin',
+      id: `integration-${role}`,
+      email: `${role}@example.test`,
+      role,
     },
-    roles: ['admin'],
-    permissions: ['admin:read'],
+    roles: [role],
+    permissions: [`${role}:read`],
     sessionVersion: 0,
-    iat: Date.now(),
+    iat: issuedAt,
   });
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',
-    encoder.encode(SESSION_SECRET),
+    encoder.encode(sessionSecret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign'],

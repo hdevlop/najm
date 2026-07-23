@@ -8,6 +8,7 @@ import { Validate } from 'najm-validation';
 import { RateLimit } from 'najm-rate';
 import type { Context } from 'hono';
 import { createHash } from 'node:crypto';
+import { normalizeAuthIdentifier } from './authIdentity';
 import {
   registerDto,
   inviteUserDto,
@@ -38,19 +39,20 @@ const cookieFingerprint = () => (ctx: Context): string => {
 };
 
 /**
- * Composite key: IP + request body email field.
+ * Composite key: IP + hashed normalized login/registration identity.
  * Buckets rate limits per IP+credential combo so different users
  * on the same IP (e.g. localhost, NAT) don't share a single bucket.
  */
-const ipAndEmail = async (ctx: Context): Promise<string> => {
+export const authIdentityRateLimitKey = async (ctx: Context): Promise<string> => {
   const ip = ctx.req.header('x-forwarded-for')?.split(',')[0]?.trim()
     ?? ctx.req.header('x-real-ip')
     ?? 'unknown';
   try {
     const body = await ctx.req.json();
-    if (body?.email && typeof body.email === 'string') {
-      const normalizedEmail = body.email.trim().toLowerCase();
-      if (normalizedEmail) return `${ip}:${hashKeyPart(normalizedEmail)}`;
+    const identity = body?.identifier ?? body?.email;
+    const normalizedIdentity = normalizeAuthIdentifier(identity);
+    if (normalizedIdentity) {
+      return `${ip}:${hashKeyPart(normalizedIdentity)}`;
     }
   } catch {
     // Body not available or not JSON — fall back to IP only
@@ -63,7 +65,7 @@ export class AuthController {
   constructor(private authService: AuthService) { }
 
   @Post('/register')
-  @RateLimit({ limit: 5, window: '15m', key: ipAndEmail })
+  @RateLimit({ limit: 5, window: '15m', key: authIdentityRateLimitKey })
   @Validate(registerDto)
   @ResMsg('auth.success.register')
   async registerUser(@Body() body: RegisterDto) {
@@ -71,7 +73,7 @@ export class AuthController {
   }
 
   @Post('/login')
-  @RateLimit({ limit: 5, window: '15m', key: ipAndEmail, message: 'Too many login attempts. Please try again later.' })
+  @RateLimit({ limit: 5, window: '15m', key: authIdentityRateLimitKey, message: 'Too many login attempts. Please try again later.' })
   @Validate(loginDto)
   @ResMsg('auth.success.login')
   async loginUser(@Body() body: LoginDto) {
@@ -138,7 +140,7 @@ export class AuthController {
   }
 
   @Post('/forgot-password')
-  @RateLimit({ limit: 3, window: '15m', key: ipAndEmail, message: 'Too many password reset requests. Please try again later.' })
+  @RateLimit({ limit: 3, window: '15m', key: authIdentityRateLimitKey, message: 'Too many password reset requests. Please try again later.' })
   @Validate(resetPasswordDto)
   @ResMsg('auth.success.passwordResetSent')
   async forgotPassword(@Body() body: ResetPasswordDto) {

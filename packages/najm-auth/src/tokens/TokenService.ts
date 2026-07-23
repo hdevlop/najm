@@ -68,7 +68,7 @@ export class TokenService {
     if (authorization?.startsWith('Bearer ')) {
       return authorization.split(' ')[1];
     }
-    Err(this.t('errors.tokenMissing'));
+    Err(this.t('errors.tokenMissing'), 401);
   }
 
   /**
@@ -81,7 +81,7 @@ export class TokenService {
     try {
       payload = jwt.verify(token, this.config.jwt.accessSecret) as JwtPayload;
     } catch {
-      Err(this.t('errors.tokenVerificationFailed'));
+      Err(this.t('errors.tokenVerificationFailed'), 401);
     }
 
     const sessionKey = this.sessionVersionKey(payload.userId);
@@ -99,16 +99,16 @@ export class TokenService {
     const valueByKey = new Map(keys.map((key, i) => [key, values[i]]));
 
     if (blacklistKey && valueByKey.get(blacklistKey) != null) {
-      Err(this.t('errors.tokenRevoked'));
+      Err(this.t('errors.tokenRevoked'), 401);
     }
     if (familyKey && valueByKey.get(familyKey) != null) {
-      Err(this.t('errors.tokenRevoked'));
+      Err(this.t('errors.tokenRevoked'), 401);
     }
 
     const activeSessionVersion = this.parseSessionVersion(valueByKey.get(sessionKey) ?? null);
     const tokenSessionVersion = payload.sessionVersion ?? 0;
     if (tokenSessionVersion !== activeSessionVersion) {
-      Err(this.t('errors.tokenRevoked'));
+      Err(this.t('errors.tokenRevoked'), 401);
     }
 
     return payload;
@@ -119,16 +119,16 @@ export class TokenService {
     try {
       decoded = jwt.verify(token, this.config.jwt.refreshSecret) as JwtPayload & { type?: string };
     } catch {
-      Err(this.t('errors.tokenVerificationFailed'));
+      Err(this.t('errors.tokenVerificationFailed'), 401);
     }
     if (decoded.type && decoded.type !== 'refresh') {
-      Err(this.t('errors.tokenVerificationFailed'));
+      Err(this.t('errors.tokenVerificationFailed'), 401);
     }
     // Pre-multi-session refresh tokens carry no family — reject so the user
     // re-authenticates into the family-aware model (see MULTI_SESSION_PLAN.md
     // migration notes).
     if (!decoded.tokenFamily) {
-      Err(this.t('errors.tokenVerificationFailed'));
+      Err(this.t('errors.tokenVerificationFailed'), 401);
     }
     return { userId: decoded.userId, tokenFamily: decoded.tokenFamily };
   }
@@ -152,13 +152,13 @@ export class TokenService {
   }> {
     const refreshToken = this.cookieManager.getRefreshToken();
     if (!refreshToken) {
-      Err(this.t('errors.refreshTokenMissing'));
+      Err(this.t('errors.refreshTokenMissing'), 401);
     }
     const { userId, tokenFamily } = this.verifyRefreshToken(refreshToken);
 
     const stored = await this.tokenRepository.getByFamily(tokenFamily);
     if (!stored || stored.userId !== userId) {
-      Err(this.t('errors.refreshTokenInvalid'));
+      Err(this.t('errors.refreshTokenInvalid'), 401);
     }
 
     const presentedHash = this.hashToken(refreshToken);
@@ -178,7 +178,7 @@ export class TokenService {
       return { userId, tokenFamily };
     }
 
-    Err(this.t('errors.refreshTokenInvalid'));
+    Err(this.t('errors.refreshTokenInvalid'), 401);
   }
 
   async resolveUserFromCookie(): Promise<string> {
@@ -408,14 +408,14 @@ export class TokenService {
   async refreshTokens() {
     const refreshToken = this.cookieManager.getRefreshToken();
     if (!refreshToken) {
-      Err(this.t('errors.refreshTokenMissing'));
+      Err(this.t('errors.refreshTokenMissing'), 401);
     }
 
     const { userId, tokenFamily } = this.verifyRefreshToken(refreshToken);
     const stored = await this.tokenRepository.getByFamily(tokenFamily);
 
     if (!stored || stored.userId !== userId) {
-      Err(this.t('errors.refreshTokenInvalid'));
+      Err(this.t('errors.refreshTokenInvalid'), 401);
     }
 
     const presentedHash = this.hashToken(refreshToken);
@@ -439,21 +439,21 @@ export class TokenService {
       if (!claimed?.length) {
         // Lost the race: a concurrent request already claimed the grace slot
         // and rotated. Do not revoke — the winner's session is legitimate.
-        Err(this.t('errors.refreshTokenInvalid'));
+        Err(this.t('errors.refreshTokenInvalid'), 401);
       }
       return this.generateTokens(userId, tokenFamily);
     }
 
     // Reuse outside the grace window: revoke only this suspect family.
     await this.revokeSuspectRefreshFamily(userId, tokenFamily);
-    Err(this.t('errors.refreshTokenInvalid'));
+    Err(this.t('errors.refreshTokenInvalid'), 401);
   }
 
   private async requireActiveRefreshUser(userId: string, tokenFamily: string) {
     const user = await this.tokenRepository.getUser(userId);
     if (!user || user.status !== 'active') {
       await this.revokeFamily(tokenFamily);
-      Err(this.t('errors.refreshTokenInvalid'));
+      Err(this.t('errors.refreshTokenInvalid'), 401);
     }
     return user;
   }
@@ -493,7 +493,7 @@ export class TokenService {
     const userId = await this.resolveUserFromCookie();
     const user = await this.getUserById(userId);
     if (!user) {
-      Err(this.t('errors.refreshTokenInvalid'));
+      Err(this.t('errors.refreshTokenInvalid'), 401);
     }
     return user;
   }

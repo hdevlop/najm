@@ -4,6 +4,7 @@ import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
 import { PERMISSIONS, ROLE, USER } from 'najm-guard';
 import { getRateLimitOptions } from 'najm-rate';
+import { Err } from 'najm-core';
 import { AuthController } from '../src/auth/AuthController';
 import { AuthService } from '../src/auth/AuthService';
 import { AuthResolver } from '../src/auth/AuthResolver';
@@ -100,7 +101,19 @@ describe('auth security regressions', () => {
       header: (name: string, value: string) => responseHeaders.set(name, value),
     } as any;
 
-    await expect(controller.recoverSession(undefined, context)).rejects.toThrow();
+    let rejected: unknown;
+    try {
+      await controller.recoverSession(undefined, context);
+    } catch (error) {
+      rejected = error;
+    }
+    const rejectedResponse = Err.handle(rejected);
+    expect(rejectedResponse.status).toBe(400);
+    await expect(rejectedResponse.json()).resolves.toEqual({
+      code: 'HTTP_400',
+      message: 'Invalid session recovery request',
+      status: 400,
+    });
     await expect(controller.recoverSession('1', context)).resolves.toEqual({ recovered: true });
     expect(responseHeaders).toEqual(new Map([
       ['Cache-Control', 'private, no-store'],

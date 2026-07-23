@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { requestSessionRecovery } from '../src/client/sessionRecovery';
+import {
+  requestSessionRecovery,
+  resolveInternalRecoveryURL,
+  type SessionRecoveryFailure,
+} from '../src/client/sessionRecovery';
 
 const SESSION_SECRET = 'recovery-security-secret-recovery-security-secret';
 const REFRESH_TOKEN = 'refresh-token-secret-value';
@@ -52,6 +56,22 @@ describe('server-side session recovery endpoint security', () => {
       allowLoopbackEndpoint: true,
     })).resolves.toMatchObject({ status: 'recovered' });
     expect(calls[0]?.url).toBe(endpoint);
+  });
+
+  test('explicit internal recovery config takes precedence over the environment', () => {
+    const original = process.env.NAJM_AUTH_INTERNAL_URL;
+    try {
+      process.env.NAJM_AUTH_INTERNAL_URL = 'http://127.0.0.1:3001/from-env';
+      expect(resolveInternalRecoveryURL('http://127.0.0.1:3002/explicit')).toBe(
+        'http://127.0.0.1:3002/explicit',
+      );
+      expect(resolveInternalRecoveryURL()).toBe(
+        'http://127.0.0.1:3001/from-env',
+      );
+    } finally {
+      if (original === undefined) delete process.env.NAJM_AUTH_INTERNAL_URL;
+      else process.env.NAJM_AUTH_INTERNAL_URL = original;
+    }
   });
 
   test.each([
@@ -110,6 +130,40 @@ describe('server-side session recovery endpoint security', () => {
     expect(fetchCalls).toBe(0);
   });
 
+  test.each([
+    [
+      'invalid-cookie-name',
+      { refreshCookieName: 'refresh token' },
+      { status: 'unavailable' },
+    ],
+    [
+      'invalid-refresh-cookie',
+      { refreshCookieValue: 'secret value' },
+      { status: 'invalid' },
+    ],
+    [
+      'invalid-endpoint',
+      { endpoint: 'https://attacker.example/recover' },
+      { status: 'unavailable' },
+    ],
+  ] as const)('reports the %s reason without input material', async (
+    reason,
+    overrides,
+    expectedResult,
+  ) => {
+    const failures: SessionRecoveryFailure[] = [];
+    const result = await recover('/api/auth/session/recover', {
+      ...overrides,
+      onFailure: (failure) => failures.push(failure),
+    });
+
+    expect(result).toEqual(expectedResult);
+    expect(failures).toEqual([{ reason }]);
+    const serialized = JSON.stringify(failures);
+    expect(serialized).not.toContain(REFRESH_TOKEN);
+    expect(serialized).not.toContain('attacker.example');
+  });
+
   test('does not log a rejected endpoint or refresh token', async () => {
     const output: string[] = [];
     console.log = (...values: unknown[]) => output.push(values.join(' '));
@@ -151,6 +205,42 @@ describe('server-side session recovery endpoint security', () => {
     const serialized = JSON.stringify(failures);
     expect(serialized).not.toContain(REFRESH_TOKEN);
     expect(serialized).not.toContain('kafil.example');
+  });
+
+  test('sanitizes and bounds diagnostic error text without credential material', async () => {
+    const failures: SessionRecoveryFailure[] = [];
+    const jwt = 'eyJhbGciOiJIUzI1NiJ9.payload.signature';
+    globalThis.fetch = (async () => {
+      throw Object.assign(
+        new Error(
+          `Authorization: Bearer ${jwt}\r\nCookie: refreshToken=${REFRESH_TOKEN} `
+          + `${SESSION_SECRET} https://kafil.example/${'x'.repeat(400)}`,
+        ),
+        {
+          code: `COOKIE=${REFRESH_TOKEN}`,
+          cause: new Error(`session=${SESSION_SECRET}\u0000${jwt}`),
+        },
+      );
+    }) as typeof fetch;
+
+    await recover('/api/auth/session/recover', {
+      onFailure: (failure) => failures.push(failure),
+    });
+
+    const serialized = JSON.stringify(failures);
+    expect(serialized).not.toContain(REFRESH_TOKEN);
+    expect(serialized).not.toContain(SESSION_SECRET);
+    expect(serialized).not.toContain(jwt);
+    expect(serialized).not.toContain('kafil.example');
+    for (const text of [
+      failures[0]?.error?.message,
+      failures[0]?.error?.code,
+      failures[0]?.error?.cause?.message,
+    ]) {
+      expect(text).not.toMatch(/[\u0000-\u001F\u007F]/);
+    }
+    expect(failures[0]?.error?.message.length).toBeLessThanOrEqual(300);
+    expect(failures[0]?.error?.cause?.message.length).toBeLessThanOrEqual(300);
   });
 
   test.each([
@@ -218,6 +308,35 @@ describe('server-side session recovery endpoint security', () => {
     }]);
   });
 
+  test('reports a valid-HMAC payload failure without exposing the payload', async () => {
+    const failures: SessionRecoveryFailure[] = [];
+    const invalidClaims = {
+      user: { id: 'sensitive-user-id', email: 'secret@example.test' },
+      roles: 'admin',
+      permissions: [],
+      sessionVersion: 0,
+      iat: Date.now(),
+    };
+    globalThis.fetch = (async () => {
+      const session = await signedValue(JSON.stringify(invalidClaims));
+      return new Response(null, {
+        headers: {
+          'Set-Cookie': `najm.session=${encodeURIComponent(session)}; Path=/`,
+        },
+      });
+    }) as typeof fetch;
+
+    await recover('/api/auth/session/recover', {
+      onFailure: (failure) => failures.push(failure),
+    });
+    expect(failures).toEqual([{
+      reason: 'session-cookie-payload',
+      httpStatus: 200,
+    }]);
+    expect(JSON.stringify(failures)).not.toContain('sensitive-user-id');
+    expect(JSON.stringify(failures)).not.toContain('secret@example.test');
+  });
+
   test('ignores errors thrown by the diagnostic hook', async () => {
     globalThis.fetch = (async () => new Response(null, { status: 503 })) as typeof fetch;
     await expect(recover('/api/auth/session/recover', {
@@ -270,6 +389,10 @@ async function signedSession(): Promise<string> {
     sessionVersion: 0,
     iat: Date.now(),
   });
+  return signedValue(payload);
+}
+
+async function signedValue(payload: string): Promise<string> {
   const encoder = new TextEncoder();
   const key = await crypto.subtle.importKey(
     'raw',

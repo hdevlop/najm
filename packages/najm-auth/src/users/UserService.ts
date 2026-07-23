@@ -107,6 +107,10 @@ export class UserService {
     return await this.userRepository.getByEmailInsensitive(email);
   }
 
+  async findByPhone(phone: string) {
+    return await this.userRepository.findByPhone(phone);
+  }
+
   async getAuthRecordById(id: string): Promise<User | undefined> {
     return await this.userRepository.getRawById(id);
   }

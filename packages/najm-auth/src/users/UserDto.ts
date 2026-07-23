@@ -56,10 +56,20 @@ export const userIdParam = z.object({
   id: z.string().min(1, 'User ID is required'),
 });
 
-export const loginDto = z.object({
-  email: emailField,
-  password: passwordField,
-});
+const identifierField = z.string().trim().min(1).max(254);
+
+// `email` remains supported for existing consumers. New consumers may submit
+// `identifier` with either an email address or an international phone number.
+export const loginDto = z.union([
+  z.object({
+    identifier: identifierField,
+    password: passwordField,
+  }),
+  z.object({
+    email: emailField,
+    password: passwordField,
+  }),
+]);
 
 export const changePasswordDto = z.object({
   currentPassword: passwordField,

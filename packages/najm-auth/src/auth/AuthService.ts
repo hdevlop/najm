@@ -13,6 +13,7 @@ import type { RegisterDto, LoginDto } from '../users/UserDto';
 import { AUTH_CONFIG } from '../auth.tokens';
 import timestring from 'timestring';
 import { AuthSessionService } from './AuthSessionService';
+import { isEmailIdentifier, normalizeAuthIdentifier } from './authIdentity';
 
 /**
  * Identity fields for creating a user behind a person record (parent, student,
@@ -159,10 +160,20 @@ export class AuthService {
   }
 
   async loginUser(body: LoginDto): Promise<TokenPair & { user: SanitizedUser }> {
-    const { email, password } = body;
-    // Note: @Validate(loginDto) decorator ensures email/password are valid
-
-    const user = await this.userService.findByEmail(email);
+    const password = body.password;
+    const rawIdentifier = 'identifier' in body ? body.identifier : body.email;
+    const identifier = normalizeAuthIdentifier(rawIdentifier);
+    // Note: @Validate(loginDto) ensures an identifier/email and password are
+    // present. The service repeats safe normalization for direct callers.
+    let user;
+    if (identifier && isEmailIdentifier(identifier)) {
+      user = await this.userService.findByEmailInsensitive(identifier);
+    } else if (identifier) {
+      const phoneUser = await this.userService.findByPhone(identifier);
+      user = phoneUser
+        ? await this.userService.findByEmail(phoneUser.email)
+        : undefined;
+    }
 
     if (user?.lockoutUntil && !this.isLockoutActive(user.lockoutUntil)) {
       await this.userService.resetFailedAttempts(user.id);
@@ -185,11 +196,11 @@ export class AuthService {
           Err(this.t('errors.accountLocked'), 423);
         }
       }
-      Err(this.t('errors.invalidCredentials'));
+      Err(this.t('errors.invalidCredentials'), 401);
     }
 
     if (user.status !== 'active') {
-      Err(this.t('errors.accountInactive'));
+      Err(this.t('errors.accountInactive'), 403);
     }
 
     if (this.config.requireVerifiedEmail && !user.emailVerified) {
@@ -350,12 +361,12 @@ export class AuthService {
   async changePassword(userId: string, currentPassword: string, newPassword: string) {
     const user = await this.userService.getAuthRecordById(userId);
     if (!user?.password) {
-      Err(this.t('errors.invalidCredentials'));
+      Err(this.t('errors.invalidCredentials'), 401);
     }
 
     const isValid = await this.userValidator.comparePassword(currentPassword, user.password);
     if (!isValid) {
-      Err(this.t('errors.invalidCredentials'));
+      Err(this.t('errors.invalidCredentials'), 401);
     }
 
     this.userValidator.validatePasswordStrength(newPassword);

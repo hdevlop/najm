@@ -110,7 +110,12 @@ export async function requestSessionRecovery(
   } catch (error) {
     reportFailure(options, {
       reason: 'fetch-error',
-      error: safeErrorDetails(error),
+      error: safeErrorDetails(error, [
+        options.refreshCookieValue,
+        options.sessionSecret,
+        endpoint,
+        options.requestOrigin,
+      ]),
     });
     return { status: 'unavailable' };
   }
@@ -260,34 +265,52 @@ function reportFailure(
   }
 }
 
-function safeErrorDetails(value: unknown): SessionRecoveryErrorDetails {
+function safeErrorDetails(
+  value: unknown,
+  sensitiveValues: string[],
+): SessionRecoveryErrorDetails {
   const error = isRecord(value) ? value : {};
   const details: SessionRecoveryErrorDetails = {
-    name: safeText(error.name, 'Error'),
-    message: safeText(error.message, 'Session recovery fetch failed'),
+    name: safeText(error.name, 'Error', sensitiveValues),
+    message: safeText(error.message, 'Session recovery fetch failed', sensitiveValues),
   };
-  const code = safeOptionalText(error.code);
+  const code = safeOptionalText(error.code, sensitiveValues);
   if (code) details.code = code;
 
   if (isRecord(error.cause)) {
-    const causeCode = safeOptionalText(error.cause.code);
+    const causeCode = safeOptionalText(error.cause.code, sensitiveValues);
     details.cause = {
-      name: safeText(error.cause.name, 'Error'),
-      message: safeText(error.cause.message, 'Session recovery fetch failed'),
+      name: safeText(error.cause.name, 'Error', sensitiveValues),
+      message: safeText(error.cause.message, 'Session recovery fetch failed', sensitiveValues),
       ...(causeCode ? { code: causeCode } : {}),
     };
   }
   return details;
 }
 
-function safeText(value: unknown, fallback: string): string {
+function safeText(
+  value: unknown,
+  fallback: string,
+  sensitiveValues: string[],
+): string {
   if (typeof value !== 'string' || !value) return fallback;
-  return value.replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, 300);
+  let safe = value
+    .replace(/[\u0000-\u001F\u007F]/g, ' ')
+    .replace(/\b(authorization|cookie)\s*[:=]\s*[^\s,;]+/gi, '$1=[redacted]')
+    .replace(/\bBearer\s+[^\s,;]+/gi, 'Bearer [redacted]')
+    .replace(/\beyJ[A-Za-z0-9_-]*\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[redacted]');
+  for (const sensitive of sensitiveValues) {
+    if (sensitive) safe = safe.split(sensitive).join('[redacted]');
+  }
+  return safe.slice(0, 300);
 }
 
-function safeOptionalText(value: unknown): string | undefined {
+function safeOptionalText(
+  value: unknown,
+  sensitiveValues: string[],
+): string | undefined {
   if (typeof value !== 'string' && typeof value !== 'number') return undefined;
-  return safeText(String(value), '');
+  return safeText(String(value), '', sensitiveValues);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
