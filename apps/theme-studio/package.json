@@ -1,0 +1,52 @@
+{
+  "name": "najm-theme-studio",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "next dev -H 127.0.0.1 -p 4110",
+    "build": "rimraf .next && next build",
+    "start": "next start -H 127.0.0.1 -p 4110",
+    "preview": "next start -H 127.0.0.1 -p 4110",
+    "dev:server": "bun --watch src/server/main.ts",
+    "start:server": "bun src/server/main.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:reset": "bun src/server/database/reset.ts",
+    "db:seed": "bun src/server/database/seed.ts",
+    "db:reset-seed": "bun src/server/database/reset.ts && bun src/server/database/seed.ts",
+    "clean": "rimraf .next dist theme-studio.db drizzle"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5",
+    "better-sqlite3": "^12.6.0",
+    "drizzle-orm": "^0.38.0",
+    "lucide-react": "^0.474",
+    "najm-api": "workspace:*",
+    "najm-core": "workspace:*",
+    "najm-cors": "workspace:*",
+    "najm-database": "workspace:*",
+    "najm-kit": "workspace:*",
+    "najm-validation": "workspace:*",
+    "next": "^15.3.0",
+    "react": "^19",
+    "react-dom": "^19",
+    "react-hook-form": "^7",
+    "recharts": "^2",
+    "reflect-metadata": "^0.2.2",
+    "sonner": "^2.0.7",
+    "zod": "^4"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-kit": "^0.30.0",
+    "postcss": "^8",
+    "rimraf": "^6",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

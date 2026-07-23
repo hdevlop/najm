@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "inputs": [
+    {
+      "id": "killPort",
+      "type": "promptString",
+      "description": "Port number to free",
+      "default": "3000"
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Ports: Kill dev-tool ports",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}\\.vscode\\scripts\\kill-all-ports.ps1\" -Force",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "ports",
+        "order": 1
+      }
+    },
+    {
+      "name": "Ports: Kill process on port",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "powershell -NoProfile -ExecutionPolicy Bypass -File \"${workspaceFolder}\\.vscode\\scripts\\kill-port.ps1\" -Port ${input:killPort}",
+      "cwd": "${workspaceFolder}",
+      "presentation": {
+        "group": "ports",
+        "order": 2
+      }
+    }
+  ]
+}

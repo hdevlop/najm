@@ -1,0 +1,54 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Ports: Kill dev-tool ports",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\.vscode\\scripts\\kill-all-ports.ps1",
+        "-Force"
+      ],
+      "detail": "Immediately stop listening ports owned by bun/node/vite-style dev processes in this VS Code session.",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Ports: Kill process on port",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}\\.vscode\\scripts\\kill-port.ps1",
+        "-Port",
+        "${input:killPort}"
+      ],
+      "detail": "Prompt for a port number and stop matching bun/node/vite-style dev processes on it.",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "killPort",
+      "type": "promptString",
+      "description": "Port number to free",
+      "default": "3000"
+    }
+  ]
+}

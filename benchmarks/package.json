@@ -1,0 +1,25 @@
+{
+  "name": "@najm/benchmarks",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Reproducible performance benchmarks for the najm framework (not published).",
+  "scripts": {
+    "bench": "bun http.bench.ts",
+    "bench:hotpath": "bun hotpath.bench.ts",
+    "bench:frameworks": "bun frameworks.bench.ts"
+  },
+  "dependencies": {
+    "hono": "^4.12.0",
+    "najm-core": "workspace:*",
+    "reflect-metadata": "^0.2.2"
+  },
+  "devDependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-fastify": "^11.0.0",
+    "elysia": "^1.2.0",
+    "fastify": "^5.2.0",
+    "rxjs": "^7.8.1"
+  }
+}

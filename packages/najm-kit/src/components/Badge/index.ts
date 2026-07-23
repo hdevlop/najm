@@ -1,0 +1,16 @@
+export {
+  Badge,
+  NBadge,
+  badgeColorVariants,
+  badgeVariants,
+  type BadgeColor,
+  type BadgeDisplayLook,
+  type BadgeIcon,
+  type BadgeLook,
+  type BadgeProps,
+  type BadgeShape,
+  type BadgeSize,
+  type BadgeVariant,
+  type NBadgeLook,
+  type NBadgeProps,
+} from "./Badge";

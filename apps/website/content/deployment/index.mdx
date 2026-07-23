@@ -1,0 +1,104 @@
+---
+title: Deployment
+description: Run Najm APIs on Bun, Node.js, Next.js, and Docker
+order: 10
+---
+
+Najm apps are plain TypeScript servers on top of Hono. Build the app, load your
+modules, and run the same `Server` entrypoint in Bun or Node.js.
+
+## Bun
+
+Use Bun for the default runtime path.
+
+```bash
+bun install
+bun run build
+bun src/index.ts
+```
+
+```typescript
+import 'reflect-metadata';
+import { Server } from 'najm-api';
+import * as modules from './modules';
+
+await new Server()
+  .base(process.env.BASE_PATH ?? '/api')
+  .load(modules)
+  .listen(Number(process.env.PORT ?? 3000));
+```
+
+## Node.js
+
+Install `@hono/node-server` when running under Node.js. Najm uses the Node
+listener automatically through the core server adapter.
+
+```bash
+npm install @hono/node-server
+npm run build
+node dist/index.js
+```
+
+Run the smoke test from this repository before publishing a Node support claim:
+
+```bash
+bun run test:node-runtime
+```
+
+## Next.js
+
+For bundled environments, export module objects and load them with `.load()`.
+Avoid filesystem scanning in server bundles.
+
+```typescript
+import { Server } from 'najm-api';
+import * as modules from '@/server/modules';
+
+export const server = new Server()
+  .base('/api')
+  .load(modules);
+
+export const GET = (request: Request) => server.fetch(request);
+export const POST = (request: Request) => server.fetch(request);
+```
+
+Externalize native or server-only dependencies in `next.config.ts` when your
+app uses them, such as database drivers, WhatsApp adapters, image libraries, or
+`reflect-metadata`.
+
+## Docker
+
+Start from a small Bun image and keep build output plus production
+dependencies.
+
+```dockerfile
+FROM oven/bun:1 AS install
+WORKDIR /app
+COPY package.json bun.lock ./
+COPY packages ./packages
+COPY apps/api ./apps/api
+RUN bun install --frozen-lockfile
+RUN bun run build
+
+FROM oven/bun:1-slim AS runtime
+WORKDIR /app
+ENV NODE_ENV=production
+COPY --from=install /app .
+EXPOSE 3000
+CMD ["bun", "apps/api/src/index.ts"]
+```
+
+## Environment Variables
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `PORT` | HTTP port for `server.listen()` | `3000` |
+| `BASE_PATH` | API prefix passed to `server.base()` | `/api` |
+| `NODE_ENV` | Runtime mode for logging and error redaction | `development` |
+| `LOG_FORMAT` | Logger output format | JSON in production |
+| `NO_COLOR` | Disable colored logs | unset |
+| `ROUTER_AUTO_WRAP` | Auto-wrap route responses | unset |
+| `NAJM_DEBUG` | Enable boot diagnostics outside production | unset |
+
+Plugin-specific environment variables should live next to the plugin setup in
+your app config so production defaults are visible during review.

@@ -1,0 +1,846 @@
+---
+title: Input Validation
+description: Schema-based validation with Zod for type-safe, automatic data validation with detailed error messages
+---
+
+The Validation Plugin provides comprehensive, schema-based data validation using Zod. It automatically validates request data before it reaches your controller, ensuring type safety and data integrity.
+
+## Overview
+
+Add validation to your routes with a single decorator:
+
+```typescript
+import { Controller, Post, Get } from 'najm-router';
+import { Body, Params, Query } from 'najm-params';
+import { Validate } from 'najm-validation';
+import { z } from 'zod';
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  age: z.number().int().positive().optional(),
+});
+
+@Controller('/users')
+class UserController {
+  @Post('/')
+  @Validate(createUserSchema)  // Validates body automatically
+  async createUser(@Body() data: z.infer<typeof createUserSchema>) {
+    // data is fully validated and typed
+    return this.userService.create(data);
+  }
+}
+```
+
+## Key Features
+
+- **Single decorator** - `@Validate()` handles all validation needs
+- **Smart defaults** - Pass schema directly for body validation (most common)
+- **Type-safe** - Full TypeScript inference from Zod schemas
+- **Multiple targets** - Validate body, params, query, and headers
+- **Automatic execution** - Runs as middleware before controller
+- **Clear errors** - Detailed, formatted validation error messages
+- **Async support** - Database lookups and external validation
+- **Transformation** - Clean and normalize data during validation
+
+## Plugin Setup
+
+```typescript
+import { Server } from 'najm-core';
+import { validation } from 'najm-validation';
+
+const server = new Server()
+  .use(validation({
+    stripUnknown: true,        // Strip unknown fields by default
+    errorStatus: 422,          // Custom error status
+  }))
+  .load(UserController);
+
+await server.listen(3000);
+```
+
+## Schema Definition
+
+### Basic Schemas
+
+Define validation rules with Zod:
+
+```typescript
+import { z } from 'zod';
+
+// Simple schema
+const userSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(50),
+  age: z.number().int().positive().optional(),
+});
+
+// Type inference
+type User = z.infer<typeof userSchema>;
+// { email: string; name: string; age?: number }
+```
+
+### Common Validation Patterns
+
+**String validation:**
+```typescript
+const stringValidation = z.object({
+  // Basic
+  name: z.string(),
+
+  // Length
+  username: z.string().min(3).max(20),
+
+  // Format
+  email: z.string().email(),
+  url: z.string().url(),
+  uuid: z.string().uuid(),
+
+  // Pattern
+  code: z.string().regex(/^[A-Z]{3}-\d{4}$/),
+
+  // Transform
+  trimmed: z.string().trim(),
+  lowercase: z.string().toLowerCase(),
+
+  // Custom validation
+  custom: z.string().refine(
+    (val) => val.startsWith('prefix-'),
+    { message: 'Must start with prefix-' }
+  ),
+});
+```
+
+**Number validation:**
+```typescript
+const numberValidation = z.object({
+  // Basic
+  count: z.number(),
+
+  // Range
+  age: z.number().int().min(0).max(120),
+  price: z.number().positive(),
+  discount: z.number().min(0).max(100),
+
+  // Precision
+  rating: z.number().multipleOf(0.5),
+
+  // Transform
+  rounded: z.number().transform(val => Math.round(val)),
+});
+```
+
+**Array validation:**
+```typescript
+const arrayValidation = z.object({
+  // Basic array
+  tags: z.array(z.string()),
+
+  // Length constraints
+  items: z.array(z.string()).min(1).max(10),
+
+  // Non-empty
+  required: z.array(z.string()).nonempty(),
+
+  // Nested objects
+  products: z.array(z.object({
+    id: z.string(),
+    quantity: z.number().int().positive(),
+  })),
+});
+```
+
+**Date validation:**
+```typescript
+const dateValidation = z.object({
+  // ISO string to Date
+  createdAt: z.string().datetime().transform(s => new Date(s)),
+
+  // Date object
+  birthDate: z.date(),
+
+  // Date range
+  eventDate: z.date().min(new Date('2024-01-01')),
+
+  // Custom date validation
+  futureDate: z.date().refine(
+    (date) => date > new Date(),
+    { message: 'Date must be in the future' }
+  ),
+});
+```
+
+**Enum validation:**
+```typescript
+// String enum
+const RoleEnum = z.enum(['admin', 'user', 'guest']);
+
+// Native TypeScript enum
+enum Status {
+  Active = 'active',
+  Inactive = 'inactive',
+  Pending = 'pending',
+}
+const statusSchema = z.nativeEnum(Status);
+
+// In schema
+const userSchema = z.object({
+  role: RoleEnum,
+  status: statusSchema,
+});
+```
+
+### Schema Composition
+
+**Extending schemas:**
+```typescript
+const baseUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string(),
+});
+
+const createUserSchema = baseUserSchema.extend({
+  password: z.string().min(8),
+  confirmPassword: z.string(),
+}).refine(
+  (data) => data.password === data.confirmPassword,
+  { message: 'Passwords must match', path: ['confirmPassword'] }
+);
+
+const updateUserSchema = baseUserSchema.partial().omit({ email: true });
+```
+
+**Merging schemas:**
+```typescript
+const addressSchema = z.object({
+  street: z.string(),
+  city: z.string(),
+});
+
+const contactSchema = z.object({
+  phone: z.string(),
+  email: z.string().email(),
+});
+
+const userWithContactSchema = z.object({
+  name: z.string(),
+}).merge(addressSchema).merge(contactSchema);
+```
+
+## Decorator Usage
+
+### Body Validation (Smart Default)
+
+The most common use case - just pass the schema:
+
+```typescript
+const createUserSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  name: z.string().min(2),
+});
+
+@Controller('/users')
+class UserController {
+  @Post('/')
+  @Validate(createUserSchema)  // Automatically validates body
+  async createUser(@Body() data: z.infer<typeof createUserSchema>) {
+    // data is validated and typed
+    return { created: true, email: data.email };
+  }
+}
+```
+
+### Multiple Targets
+
+Validate body, params, query, and headers together:
+
+```typescript
+const updateUserSchema = z.object({
+  name: z.string().min(2).optional(),
+  email: z.string().email().optional(),
+});
+
+const userIdSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const querySchema = z.object({
+  notify: z.coerce.boolean().default(false),
+});
+
+@Controller('/users')
+class UserController {
+  @Put('/:id')
+  @Validate({
+    body: updateUserSchema,
+    params: userIdSchema,
+    query: querySchema,
+  })
+  async updateUser(
+    @Params() params: z.infer<typeof userIdSchema>,
+    @Body() data: z.infer<typeof updateUserSchema>,
+    @Query() query: z.infer<typeof querySchema>
+  ) {
+    return this.userService.update(params.id, data, query.notify);
+  }
+}
+```
+
+### Query Parameters
+
+Validate and transform query parameters:
+
+```typescript
+const searchQuerySchema = z.object({
+  q: z.string().min(1),
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  sort: z.enum(['date', 'title', 'views']).default('date'),
+});
+
+@Controller('/search')
+class SearchController {
+  @Get('/')
+  @Validate({ query: searchQuerySchema })
+  async search(@Query() query: z.infer<typeof searchQuerySchema>) {
+    // query.page and query.limit are numbers
+    // query.sort is typed as 'date' | 'title' | 'views'
+    return this.searchService.find(query);
+  }
+}
+```
+
+### Path Parameters
+
+Validate route parameters:
+
+```typescript
+const userIdParamsSchema = z.object({
+  id: z.string().uuid(),
+});
+
+@Controller('/users')
+class UserController {
+  @Get('/:id')
+  @Validate({ params: userIdParamsSchema })
+  async getUser(@Params() params: z.infer<typeof userIdParamsSchema>) {
+    // params.id is validated as UUID
+    return this.userService.findById(params.id);
+  }
+}
+```
+
+### Headers Validation
+
+Validate request headers:
+
+```typescript
+const apiKeyHeaderSchema = z.object({
+  'x-api-key': z.string().length(32),
+  'x-api-version': z.string().regex(/^v\d+$/),
+}).transform(headers => ({
+  apiKey: headers['x-api-key'],
+  apiVersion: headers['x-api-version'],
+}));
+
+@Controller('/api/external')
+class ExternalApiController {
+  @Get('/data')
+  @Validate({ headers: apiKeyHeaderSchema })
+  async getData(@Headers() headers: z.infer<typeof apiKeyHeaderSchema>) {
+    return this.externalService.getData(headers.apiKey);
+  }
+}
+```
+
+### Custom Options
+
+Configure validation behavior per route:
+
+```typescript
+@Controller('/users')
+class UserController {
+  @Post('/')
+  @Validate({
+    body: createUserSchema,
+    stripUnknown: true,      // Remove unknown fields
+    errorStatus: 422,        // Custom error status
+  })
+  async createUser(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
+}
+```
+
+## Validation Execution
+
+### How It Works
+
+Validation runs as middleware before your controller:
+
+```
+1. Request arrives
+   ↓
+2. Validation middleware intercepts (order: 45)
+   ↓
+3. Extract data (body, params, query, headers)
+   ↓
+4. Parse with Zod schema
+   ├─ Success → Store validated data in ALS
+   └─ Failure → Throw ValidationError (400)
+   ↓
+5. Controller receives validated data via @Body(), @Params(), etc.
+```
+
+### Validated Data Storage
+
+Validated data is stored in AsyncLocalStorage (ALS) for access by parameter decorators:
+
+```typescript
+// After validation succeeds:
+container.set(VALIDATED_BODY, validatedData);
+container.set(VALIDATED_PARAMS, validatedParams);
+container.set(VALIDATED_QUERY, validatedQuery);
+container.set(VALIDATED_HEADERS, validatedHeaders);
+
+// Parameter decorators retrieve validated data:
+@Body() → container.get(VALIDATED_BODY) || rawBody
+@Params() → container.get(VALIDATED_PARAMS) || rawParams
+```
+
+## Error Handling
+
+### Default Error Format
+
+When validation fails, a detailed error response is returned:
+
+```json
+{
+  "error": "Validation failed for body",
+  "status": 400,
+  "details": [
+    {
+      "path": "email",
+      "message": "Invalid email",
+      "code": "invalid_string"
+    },
+    {
+      "path": "password",
+      "message": "String must contain at least 8 character(s)",
+      "code": "too_small"
+    }
+  ]
+}
+```
+
+### Custom Error Messages
+
+Provide custom messages in your schema:
+
+```typescript
+const userSchema = z.object({
+  email: z.string().email({
+    message: 'Please provide a valid email address'
+  }),
+  password: z.string().min(8, {
+    message: 'Password must be at least 8 characters long'
+  }),
+  age: z.number().int().positive({
+    message: 'Age must be a positive integer'
+  }),
+});
+```
+
+### Custom Error Formatter
+
+Override error formatting globally or per route:
+
+```typescript
+// Global formatter
+const server = new Server()
+  .use(validation({
+    errorFormatter: (error, target) => ({
+      success: false,
+      validationErrors: error.errors.map(e => ({
+        field: e.path.join('.'),
+        issue: e.message,
+      })),
+    }),
+  }));
+
+// Per-route formatter
+@Validate({
+  body: createUserSchema,
+  errorFormatter: (error, target) => ({
+    errors: error.flatten(),
+  }),
+})
+```
+
+## Real-World Examples
+
+### Complete CRUD with Validation
+
+```typescript
+import { z } from 'zod';
+import { Validate } from 'najm-validation';
+
+// Schemas
+const createUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(50),
+  role: z.enum(['admin', 'user', 'guest']).default('user'),
+});
+
+const updateUserSchema = createUserSchema.partial().omit({ email: true });
+
+const userIdSchema = z.object({
+  id: z.string().uuid(),
+});
+
+const querySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+  role: z.enum(['admin', 'user', 'guest']).optional(),
+});
+
+// Controller
+@Controller('/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  @Validate({ query: querySchema })
+  async getUsers(@Query() query: z.infer<typeof querySchema>) {
+    return this.userService.findAll(query);
+  }
+
+  @Get('/:id')
+  @Validate({ params: userIdSchema })
+  async getUser(@Params() params: z.infer<typeof userIdSchema>) {
+    return this.userService.findById(params.id);
+  }
+
+  @Post('/')
+  @Validate(createUserSchema)
+  async createUser(@Body() data: z.infer<typeof createUserSchema>) {
+    return this.userService.create(data);
+  }
+
+  @Put('/:id')
+  @Validate({
+    params: userIdSchema,
+    body: updateUserSchema,
+  })
+  async updateUser(
+    @Params() params: z.infer<typeof userIdSchema>,
+    @Body() data: z.infer<typeof updateUserSchema>
+  ) {
+    return this.userService.update(params.id, data);
+  }
+
+  @Delete('/:id')
+  @Validate({ params: userIdSchema })
+  async deleteUser(@Params() params: z.infer<typeof userIdSchema>) {
+    await this.userService.delete(params.id);
+    return null;
+  }
+}
+```
+
+### Async Validation
+
+Validate against database or external services:
+
+```typescript
+const uniqueEmailSchema = z.object({
+  email: z.string().email(),
+  name: z.string(),
+}).refine(
+  async (data) => {
+    const exists = await userRepository.findByEmail(data.email);
+    return !exists;
+  },
+  { message: 'Email already registered', path: ['email'] }
+);
+
+@Controller('/auth')
+class AuthController {
+  @Post('/register')
+  @Validate(uniqueEmailSchema)
+  async register(@Body() data: any) {
+    return this.authService.register(data);
+  }
+}
+```
+
+### Conditional Validation
+
+Different validation based on discriminator:
+
+```typescript
+const eventSchema = z.discriminatedUnion('type', [
+  z.object({
+    type: z.literal('online'),
+    url: z.string().url(),
+    platform: z.string(),
+  }),
+  z.object({
+    type: z.literal('in-person'),
+    address: z.string(),
+    city: z.string(),
+    country: z.string(),
+  }),
+]);
+
+@Controller('/events')
+class EventController {
+  @Post('/')
+  @Validate(eventSchema)
+  async createEvent(@Body() data: z.infer<typeof eventSchema>) {
+    if (data.type === 'online') {
+      // TypeScript knows data has url and platform
+      return this.eventService.createOnline(data.url, data.platform);
+    } else {
+      // TypeScript knows data has address, city, country
+      return this.eventService.createInPerson(data.address, data.city);
+    }
+  }
+}
+```
+
+### Transform and Sanitize
+
+Clean and normalize data during validation:
+
+```typescript
+const sanitizedInputSchema = z.object({
+  // Trim whitespace
+  name: z.string().trim(),
+
+  // Convert to lowercase
+  email: z.string().email().toLowerCase(),
+
+  // Parse and transform
+  tags: z.string().transform(str => str.split(',').map(t => t.trim())),
+
+  // Custom transform
+  price: z.number().transform(val => Math.round(val * 100) / 100),
+});
+
+@Controller('/products')
+class ProductController {
+  @Post('/')
+  @Validate(sanitizedInputSchema)
+  async createProduct(@Body() data: z.infer<typeof sanitizedInputSchema>) {
+    // data.email is lowercase
+    // data.tags is array
+    // data.price is rounded to 2 decimals
+    return this.productService.create(data);
+  }
+}
+```
+
+### Schema Organization <Badge variant="advanced">Advanced</Badge>
+
+Organize schemas by domain:
+
+```typescript
+// schemas/common.ts
+export const paginationSchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  limit: z.coerce.number().int().positive().max(100).default(10),
+});
+
+export const timestampSchema = z.object({
+  createdAt: z.string().datetime(),
+  updatedAt: z.string().datetime(),
+});
+
+// schemas/user.ts
+export const baseUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2).max(50),
+});
+
+export const createUserSchema = baseUserSchema.extend({
+  password: z.string().min(8),
+  confirmPassword: z.string(),
+}).refine(
+  (data) => data.password === data.confirmPassword,
+  { message: 'Passwords must match', path: ['confirmPassword'] }
+);
+
+export const updateUserSchema = baseUserSchema.partial();
+
+export const userResponseSchema = baseUserSchema.merge(timestampSchema).extend({
+  id: z.string().uuid(),
+});
+
+// Type exports
+export type CreateUserDto = z.infer<typeof createUserSchema>;
+export type UpdateUserDto = z.infer<typeof updateUserSchema>;
+export type UserResponse = z.infer<typeof userResponseSchema>;
+```
+
+### Partial Update Pattern <Badge variant="advanced">Advanced</Badge>
+
+Require at least one field for updates:
+
+```typescript
+const updateSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  content: z.string().min(10).optional(),
+  tags: z.array(z.string()).max(10).optional(),
+  published: z.boolean().optional(),
+}).refine(
+  (data) => Object.keys(data).length > 0,
+  { message: 'At least one field must be provided' }
+);
+
+@Controller('/posts')
+class PostController {
+  @Patch('/:id')
+  @Validate({
+    params: z.object({ id: z.string().uuid() }),
+    body: updateSchema,
+  })
+  async updatePost(
+    @Params() params: { id: string },
+    @Body() data: Partial<UpdatePostDto>
+  ) {
+    return this.postService.update(params.id, data);
+  }
+}
+```
+
+## Configuration
+
+### Plugin Options
+
+```typescript
+interface ValidationPluginConfig {
+  // Enable or disable validation globally (default: true)
+  enabled?: boolean;
+
+  // Strip unknown fields by default (default: false)
+  stripUnknown?: boolean;
+
+  // Default HTTP status code for validation errors (default: 400)
+  errorStatus?: number;
+
+  // Global error formatter
+  errorFormatter?: (error: ZodError, target: ValidationTarget) => any;
+}
+```
+
+### Per-Route Configuration
+
+Override global settings per route:
+
+```typescript
+@Validate({
+  body: schema,
+  stripUnknown: true,      // Override global setting
+  errorStatus: 422,        // Custom error status
+  errorFormatter: myFormatter,  // Custom formatter
+})
+```
+
+## Best Practices
+
+### 1. Use Smart Default for Body Validation
+
+**✓ Good: Direct schema for body**
+```typescript
+@Validate(createUserSchema)
+async createUser(@Body() data: CreateUserDto) {}
+```
+
+**✗ Avoid: Verbose config for simple body validation**
+```typescript
+@Validate({ body: createUserSchema })  // Unnecessary
+async createUser(@Body() data: CreateUserDto) {}
+```
+
+### 2. Define Schemas Outside Controllers
+
+**✓ Good: Reusable and maintainable**
+```typescript
+// schemas/user.ts
+export const createUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+});
+
+// controllers/UserController.ts
+@Validate(createUserSchema)
+async createUser(@Body() data: CreateUserDto) {}
+```
+
+**✗ Avoid: Inline schemas**
+```typescript
+@Validate(z.object({ email: z.string(), name: z.string() }))
+async createUser() {}
+```
+
+### 3. Use Type Inference
+
+**✓ Good: Type-safe with inference**
+```typescript
+const userSchema = z.object({
+  email: z.string().email(),
+  age: z.number().int(),
+});
+
+type User = z.infer<typeof userSchema>;
+
+async createUser(@Body() data: User) {}
+```
+
+**✗ Avoid: Manual type definitions**
+```typescript
+interface User {
+  email: string;
+  age: number;
+}
+// Schema and type can drift apart
+```
+
+### 4. Provide Clear Error Messages
+
+**✓ Good: Descriptive messages**
+```typescript
+const schema = z.object({
+  password: z.string().min(8, {
+    message: 'Password must be at least 8 characters long'
+  }),
+  email: z.string().email({
+    message: 'Please provide a valid email address'
+  }),
+});
+```
+
+### 5. Use Schema Composition
+
+**✓ Good: Reusable components**
+```typescript
+const baseSchema = z.object({
+  email: z.string().email(),
+  name: z.string(),
+});
+
+const createSchema = baseSchema.extend({
+  password: z.string().min(8),
+});
+
+const updateSchema = baseSchema.partial();
+```
+
+## Next Steps
+
+- [Params Plugin](/docs/routing/params) - Learn about parameter decorators
+- [Request/Response Handling](/docs/routing/request-response) - Understand request parsing
+- [Controllers & Routes](/docs/routing/controllers) - Master controller patterns
+- [Middleware](/docs/routing/middleware) - Add custom validation logic

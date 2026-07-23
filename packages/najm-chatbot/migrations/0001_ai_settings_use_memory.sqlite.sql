@@ -1,0 +1,1 @@
+ALTER TABLE ai_settings ADD COLUMN use_memory INTEGER NOT NULL DEFAULT 1;

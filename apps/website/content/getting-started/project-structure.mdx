@@ -1,0 +1,547 @@
+---
+title: Project Structure
+description: Learn how to organize your Najm application for maintainability and scalability.
+order: 3
+---
+
+This guide shows you how to organize a Najm application following best practices for maintainability and scalability.
+
+## Basic Structure
+
+Here's a recommended folder structure for a typical Najm application:
+
+```
+my-najm-app/
+├── src/
+│   ├── modules/              # Feature modules
+│   │   ├── users/
+│   │   │   ├── user.controller.ts
+│   │   │   ├── user.service.ts
+│   │   │   ├── user.repository.ts
+│   │   │   ├── user.dto.ts
+│   │   │   ├── user.schema.ts
+│   │   │   └── index.ts
+│   │   └── auth/
+│   │       ├── auth.controller.ts
+│   │       ├── auth.service.ts
+│   │       ├── auth.guard.ts
+│   │       └── index.ts
+│   ├── shared/               # Shared utilities
+│   │   ├── database/
+│   │   │   ├── schema.ts
+│   │   │   └── connection.ts
+│   │   ├── guards/
+│   │   │   └── auth.guard.ts
+│   │   ├── utils/
+│   │   │   └── helpers.ts
+│   │   └── types/
+│   │       └── index.ts
+│   ├── config/               # Configuration
+│   │   ├── database.ts
+│   │   ├── server.ts
+│   │   └── index.ts
+│   └── index.ts              # Application entry point
+├── test/                     # Test files
+│   ├── unit/
+│   └── integration/
+├── .env                      # Environment variables
+├── .env.example              # Example env file
+├── package.json
+├── tsconfig.json
+└── README.md
+```
+
+## Module Organization
+
+Each feature module should be self-contained with all its related files:
+
+### Module Pattern
+
+```typescript
+// src/modules/users/user.controller.ts
+import { Controller } from 'najm-di';
+import { Get, Post, Put, Delete } from 'najm-router';
+import { Params, Body } from 'najm-params';
+import { UserService } from './user.service';
+import { CreateUserDto, UpdateUserDto } from './user.dto';
+
+@Controller('/api/users')
+export class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  async findAll() {
+    return this.userService.findAll();
+  }
+
+  @Get('/:id')
+  async findOne(@Params('id') id: string) {
+    return this.userService.findById(id);
+  }
+
+  @Post('/')
+  async create(@Body() dto: CreateUserDto) {
+    return this.userService.create(dto);
+  }
+
+  @Put('/:id')
+  async update(
+    @Params('id') id: string,
+    @Body() dto: UpdateUserDto
+  ) {
+    return this.userService.update(id, dto);
+  }
+
+  @Delete('/:id')
+  async remove(@Params('id') id: string) {
+    return this.userService.remove(id);
+  }
+}
+```
+
+```typescript
+// src/modules/users/user.service.ts
+import { Service } from 'najm-di';
+import { UserRepository } from './user.repository';
+import { CreateUserDto, UpdateUserDto } from './user.dto';
+
+@Service()
+export class UserService {
+  constructor(private repo: UserRepository) {}
+
+  async findAll() {
+    return this.repo.findAll();
+  }
+
+  async findById(id: string) {
+    return this.repo.findById(id);
+  }
+
+  async create(dto: CreateUserDto) {
+    return this.repo.create(dto);
+  }
+
+  async update(id: string, dto: UpdateUserDto) {
+    return this.repo.update(id, dto);
+  }
+
+  async remove(id: string) {
+    return this.repo.delete(id);
+  }
+}
+```
+
+```typescript
+// src/modules/users/user.repository.ts
+import { Repository } from 'najm-di';
+import { DB } from 'najm-database';
+import type { Database } from 'drizzle-orm';
+
+@Repository('postgres')
+export class UserRepository {
+  @DB('postgres') db!: Database;
+
+  async findAll() {
+    return this.db.query.users.findMany();
+  }
+
+  async findById(id: string) {
+    return this.db.query.users.findFirst({
+      where: (users, { eq }) => eq(users.id, id)
+    });
+  }
+
+  async create(data: any) {
+    return this.db.insert(users).values(data).returning();
+  }
+
+  async update(id: string, data: any) {
+    return this.db.update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+  }
+
+  async delete(id: string) {
+    return this.db.delete(users)
+      .where(eq(users.id, id))
+      .returning();
+  }
+}
+```
+
+```typescript
+// src/modules/users/user.dto.ts
+export interface CreateUserDto {
+  name: string;
+  email: string;
+  password: string;
+}
+
+export interface UpdateUserDto {
+  name?: string;
+  email?: string;
+}
+```
+
+```typescript
+// src/modules/users/index.ts
+export * from './user.controller';
+export * from './user.service';
+export * from './user.repository';
+export * from './user.dto';
+export * from './user.schema';
+```
+
+## File Naming Conventions
+
+Follow these naming conventions for consistency:
+
+| File Type | Pattern | Example |
+|-----------|---------|---------|
+| Controllers | `*.controller.ts` | `user.controller.ts` |
+| Services | `*.service.ts` | `user.service.ts` |
+| Repositories | `*.repository.ts` | `user.repository.ts` |
+| DTOs | `*.dto.ts` | `user.dto.ts` |
+| Schemas | `*.schema.ts` | `user.schema.ts` |
+| Guards | `*.guard.ts` | `auth.guard.ts` |
+| Validators | `*.validator.ts` | `user.validator.ts` |
+| Types | `*.types.ts` | `user.types.ts` |
+
+## Layer Architecture
+
+Najm applications follow a layered architecture:
+
+```
+┌─────────────────────────────────────┐
+│         Controllers                 │  HTTP Layer
+│  (Request handling, validation)     │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│          Services                   │  Business Logic Layer
+│  (Business rules, orchestration)    │
+└──────────────┬──────────────────────┘
+               │
+┌──────────────▼──────────────────────┐
+│        Repositories                 │  Data Access Layer
+│  (Database operations)              │
+└─────────────────────────────────────┘
+```
+
+### Layer Responsibilities
+
+**Controllers:**
+- Handle HTTP requests and responses
+- Validate request data
+- Call service methods
+- Format responses
+- NO business logic
+- NO direct database access
+
+**Services:**
+- Implement business logic
+- Orchestrate multiple repositories
+- Handle transactions
+- Emit events
+- NO HTTP concerns
+- NO direct database queries (use repositories)
+
+**Repositories:**
+- Encapsulate database operations
+- Provide data access methods
+- Handle query building
+- NO business logic
+- NO HTTP concerns
+
+## Configuration Management
+
+### Environment Variables
+
+Create a `.env` file for environment-specific configuration:
+
+```bash
+# .env
+NODE_ENV=development
+PORT=3000
+
+# Database
+DATABASE_URL=postgresql://user:pass@localhost:5432/mydb
+
+# Authentication
+JWT_SECRET=your-secret-key
+JWT_EXPIRES_IN=1d
+
+# Third-party services
+SMTP_HOST=smtp.example.com
+SMTP_PORT=587
+```
+
+### Configuration Module
+
+```typescript
+// src/config/database.ts
+export const databaseConfig = {
+  url: process.env.DATABASE_URL!,
+  ssl: process.env.NODE_ENV === 'production',
+  poolSize: parseInt(process.env.DB_POOL_SIZE || '10'),
+};
+```
+
+```typescript
+// src/config/server.ts
+export const serverConfig = {
+  port: parseInt(process.env.PORT || '3000'),
+  env: process.env.NODE_ENV || 'development',
+  corsOrigin: process.env.CORS_ORIGIN || '*',
+};
+```
+
+## Entry Point
+
+Your `src/index.ts` should be minimal and clean:
+
+```typescript
+import 'reflect-metadata';
+import { Server } from 'najm-core';
+import { database } from 'najm-database';
+import { guards } from 'najm-guard';
+import { events } from 'najm-event';
+import { db } from './shared/database/connection';
+import { serverConfig } from './config';
+
+// Import modules
+import { UserController, UserService, UserRepository } from './modules/users';
+import { AuthController, AuthService, AuthGuard } from './modules/auth';
+
+const server = new Server()
+  .use(guards())
+  .use(database({ default: db }))
+  .use(events())
+  .load(
+    // Controllers
+    UserController,
+    AuthController,
+    // Services
+    UserService,
+    AuthService,
+    // Repositories
+    UserRepository,
+    // Guards
+    AuthGuard
+  )
+  .base('/api');
+
+await server.listen(serverConfig.port, () => {
+  console.log(`🚀 Server running on http://localhost:${serverConfig.port}`);
+});
+```
+
+## Shared Resources
+
+### Database Schema
+
+```typescript
+// src/shared/database/schema.ts
+import { pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  password: text('password').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+```
+
+### Shared Guards
+
+```typescript
+// src/shared/guards/auth.guard.ts
+import { Injectable } from 'najm-di';
+import { Headers } from 'najm-params';
+import { HttpError } from 'najm-core';
+
+@Injectable()
+export class AuthGuard {
+  async canActivate(@Headers('authorization') token: string) {
+    if (!token) {
+      throw new HttpError(401, 'Unauthorized');
+    }
+
+    // Verify token logic here
+    const user = await this.verifyToken(token);
+
+    return { user };
+  }
+
+  private async verifyToken(token: string) {
+    // JWT verification logic
+  }
+}
+```
+
+## Testing Structure
+
+Organize tests to mirror your source structure:
+
+```
+test/
+├── unit/
+│   ├── modules/
+│   │   ├── users/
+│   │   │   ├── user.service.test.ts
+│   │   │   └── user.repository.test.ts
+│   │   └── auth/
+│   │       └── auth.service.test.ts
+│   └── shared/
+│       └── utils/
+│           └── helpers.test.ts
+└── integration/
+    └── api/
+        ├── users.test.ts
+        └── auth.test.ts
+```
+
+## Best Practices
+
+### 1. Single Responsibility
+Each class should have one responsibility:
+- Controllers handle HTTP
+- Services handle business logic
+- Repositories handle data access
+
+### 2. Dependency Injection
+Always use constructor injection for dependencies:
+
+```typescript
+// Good ✅
+@Service()
+class UserService {
+  constructor(
+    private repo: UserRepository,
+    private emailService: EmailService
+  ) {}
+}
+
+// Bad ❌
+@Service()
+class UserService {
+  repo = new UserRepository();
+  emailService = new EmailService();
+}
+```
+
+### 3. Module Exports
+Use barrel exports (index.ts) for clean imports:
+
+```typescript
+// Good ✅
+import { UserController, UserService } from './modules/users';
+
+// Bad ❌
+import { UserController } from './modules/users/user.controller';
+import { UserService } from './modules/users/user.service';
+```
+
+### 4. Type Safety
+Always define types/interfaces for DTOs and responses:
+
+```typescript
+// Good ✅
+interface CreateUserDto {
+  name: string;
+  email: string;
+}
+
+@Post('/')
+create(@Body() dto: CreateUserDto) {
+  return this.service.create(dto);
+}
+
+// Bad ❌
+@Post('/')
+create(@Body() data: any) {
+  return this.service.create(data);
+}
+```
+
+### 5. Error Handling
+Use HttpError for consistent error responses:
+
+```typescript
+import { HttpError } from 'najm-core';
+
+async findById(id: string) {
+  const user = await this.repo.findById(id);
+  if (!user) {
+    throw new HttpError(404, 'User not found');
+  }
+  return user;
+}
+```
+
+## Scaling Your Application
+
+As your app grows, consider:
+
+### 1. Domain-Driven Design
+Group modules by business domain:
+
+```
+src/modules/
+├── user-management/
+│   ├── users/
+│   ├── roles/
+│   └── permissions/
+├── e-commerce/
+│   ├── products/
+│   ├── orders/
+│   └── payments/
+└── content/
+    ├── posts/
+    └── comments/
+```
+
+### 2. Shared Libraries
+Extract common functionality:
+
+```
+src/
+├── modules/
+├── shared/
+│   ├── database/
+│   ├── guards/
+│   ├── pipes/
+│   ├── decorators/
+│   └── utils/
+└── libs/
+    ├── email/
+    ├── storage/
+    └── cache/
+```
+
+### 3. Monorepo Structure
+For large applications, use a monorepo:
+
+```
+packages/
+├── api/              # Main API
+├── admin/            # Admin dashboard API
+├── shared/           # Shared types and utilities
+└── workers/          # Background job workers
+```
+
+## Next Steps
+
+Now that you understand project structure, you can:
+
+- [Build your first API](/docs/getting-started/first-api-tutorial) - Step-by-step tutorial
+- [Learn about DI](/docs/core/di) - Deep dive into dependency injection
+- [Explore plugins](/docs/plugins/router) - Add more features to your app
+- [Read module organization guide](/docs/guides/module-organization) - Advanced patterns
+
+---
+
+**Keep your code organized and your future self will thank you!** 📁

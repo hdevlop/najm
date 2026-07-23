@@ -1,0 +1,750 @@
+---
+title: Request/Response Handling
+description: Automatic request parsing and response formatting with support for JSON, forms, files, streams, and more
+---
+
+Najm provides automatic request parsing and response formatting with a focus on performance and developer experience. The system uses lazy parsing for requests and smart formatting for responses.
+
+## Request Parsing
+
+### Lazy Parsing Strategy
+
+Najm uses **lazy parsing** for optimal performance - data is parsed only when accessed:
+
+```typescript
+@Post('/users')
+async createUser(@Body() data: any) {
+  // Body is parsed only when @Body() decorator is used
+  return { created: true, data };
+}
+```
+
+**Benefits:**
+- No upfront parsing overhead
+- Parse only what's needed
+- Cached after first access
+- Reduces memory usage
+
+### HRequest Object
+
+The `HRequest` object provides access to all request data:
+
+```typescript
+interface HRequest {
+  // Immediate access (no parsing)
+  params: Record<string, string>;
+  query: Record<string, string>;
+  path: string;
+  method: string;
+  url: string;
+
+  // Lazy parsed (only when accessed)
+  body: unknown;
+  headers: Record<string, string>;
+  cookies: Record<string, string>;
+  files: Record<string, File | File[]>;
+  ip: string;
+
+  // Async methods
+  json<T = any>(): Promise<T>;
+  text(): Promise<string>;
+  arrayBuffer(): Promise<ArrayBuffer>;
+  blob(): Promise<Blob>;
+  formData(): Promise<FormData>;
+}
+```
+
+## Content Types
+
+### JSON (application/json)
+
+```typescript
+@Post('/users')
+async createUser(@Body() data: any) {
+  // Automatically parsed from JSON
+  return { created: true, email: data.email };
+}
+
+// Request body:
+// { "email": "alice@example.com", "name": "Alice" }
+```
+
+### Form Data (application/x-www-form-urlencoded)
+
+```typescript
+@Post('/login')
+async login(@Body() credentials: any) {
+  // Automatically parsed from form data
+  return { success: true, username: credentials.username };
+}
+
+// Request body: username=alice&password=secret123
+```
+
+**Smart Type Conversion:**
+```typescript
+// Form data strings are intelligently converted
+"true" → true
+"false" → false
+"123" → 123
+"123.45" → 123.45
+'{"key":"value"}' → { key: "value" }
+"[1,2,3]" → [1, 2, 3]
+"0123" → "0123" // Preserves leading zeros for IDs
+```
+
+### Multipart Form Data (multipart/form-data)
+
+```typescript
+@Post('/upload')
+async uploadFile(
+  @File('avatar') file: File,
+  @Body('name') name: string
+) {
+  return {
+    filename: file.name,
+    size: file.size,
+    type: file.type,
+    name
+  };
+}
+
+// Request:
+// Content-Type: multipart/form-data; boundary=----WebKitFormBoundary
+// ------WebKitFormBoundary
+// Content-Disposition: form-data; name="name"
+//
+// Alice
+// ------WebKitFormBoundary
+// Content-Disposition: form-data; name="avatar"; filename="profile.jpg"
+// Content-Type: image/jpeg
+//
+// [binary data]
+```
+
+### Plain Text (text/plain)
+
+```typescript
+@Post('/notes')
+async createNote(@TextBody() content: string) {
+  return { created: true, length: content.length };
+}
+
+// Request body: "This is a plain text note"
+```
+
+### Raw Binary Data
+
+```typescript
+@Post('/data')
+async processData(
+  @ArrayBufferBody() buffer: ArrayBuffer,
+  @BlobBody() blob: Blob
+) {
+  return { size: buffer.byteLength };
+}
+```
+
+## File Uploads
+
+### Single File Upload
+
+```typescript
+@Post('/avatar')
+async uploadAvatar(@File('avatar') file: File) {
+  const buffer = await file.arrayBuffer();
+  const saved = await storage.save(file.name, buffer);
+
+  return {
+    filename: file.name,
+    size: file.size,
+    type: file.type,
+    url: saved.url
+  };
+}
+```
+
+### Multiple Files (Same Field)
+
+```typescript
+@Post('/gallery')
+async uploadGallery(@File('photos') files: File[]) {
+  const uploaded = await Promise.all(
+    files.map(f => storage.save(f.name, f))
+  );
+
+  return {
+    count: files.length,
+    files: uploaded.map(u => u.url)
+  };
+}
+```
+
+### Multiple File Fields
+
+```typescript
+@Post('/documents')
+async uploadDocuments(
+  @File('resume') resume: File,
+  @File('cover_letter') coverLetter: File,
+  @File('portfolio') portfolio: File[]
+) {
+  return {
+    resume: resume.name,
+    coverLetter: coverLetter.name,
+    portfolio: portfolio.map(f => f.name)
+  };
+}
+```
+
+### File with Metadata
+
+```typescript
+@Post('/upload')
+async uploadWithMetadata(
+  @File('document') file: File,
+  @Body('title') title: string,
+  @Body('description') description: string,
+  @User('id') userId: string
+) {
+  const url = await storage.save(file.name, file);
+
+  return {
+    file: url,
+    title,
+    description,
+    uploadedBy: userId
+  };
+}
+```
+
+## Query Parameters
+
+### Basic Query Parameters
+
+```typescript
+@Get('/search')
+async search(
+  @Query('q') query: string,
+  @Query('page') page: string,
+  @Query('limit') limit: string
+) {
+  return {
+    query,
+    page: parseInt(page || '1'),
+    limit: parseInt(limit || '10')
+  };
+}
+
+// Request: GET /search?q=nodejs&page=2&limit=20
+```
+
+### All Query Parameters
+
+```typescript
+@Get('/search')
+async search(@Query() query: any) {
+  return {
+    filters: query.filter,
+    sort: query.sort,
+    page: parseInt(query.page || '1')
+  };
+}
+
+// Request: GET /search?filter=active&sort=date&page=2
+```
+
+### Multiple Values for Same Key
+
+```typescript
+@Get('/filter')
+async filter(@Queries('tag') tags: string[]) {
+  return { tags };
+}
+
+// Request: GET /filter?tag=node&tag=typescript&tag=api
+// tags = ['node', 'typescript', 'api']
+```
+
+## Headers
+
+### Specific Headers
+
+```typescript
+@Get('/api')
+async apiEndpoint(
+  @Headers('authorization') auth: string,
+  @Headers('content-type') contentType: string,
+  @Origin() origin: string,
+  @Referer() referer: string,
+  @Language() language: string
+) {
+  return {
+    authenticated: !!auth,
+    contentType,
+    origin,
+    referer,
+    language
+  };
+}
+```
+
+### All Headers
+
+```typescript
+@Get('/debug')
+async debugRequest(@Headers() headers: Record<string, string>) {
+  return { headers };
+}
+```
+
+### Header Type Conversion
+
+```typescript
+@Get('/file')
+async getFile(
+  @ContentType() contentType: string,
+  @ContentLength() contentLength: number  // Automatically converted to number
+) {
+  return { contentType, contentLength };
+}
+```
+
+## Client IP Detection
+
+The parser checks multiple headers to find the client IP:
+
+```typescript
+@Get('/info')
+async getClientInfo(@IP() ip: string) {
+  return { ip };
+}
+```
+
+**Checked headers (in order):**
+1. `x-forwarded-for` (most common proxy header)
+2. `x-real-ip` (Nginx)
+3. `cf-connecting-ip` (Cloudflare)
+4. `x-client-ip`
+5. `x-forwarded`
+6. `forwarded-for`
+7. `forwarded`
+
+## Response Formatting
+
+### Automatic Response Types
+
+The ResponseFormatter automatically handles different return types:
+
+| Return Type | Response | Status | Example |
+|-------------|----------|--------|---------|
+| `null` / `undefined` | No Content | 204 | `return null;` |
+| `string` (HTML) | HTML | 200 | `return '<h1>Hello</h1>';` |
+| `string` (plain) | Text | 200 | `return 'Hello';` |
+| `Response` | Pass-through | As-is | `return new Response()` |
+| `ReadableStream` | Stream | 200 | `return stream;` |
+| `{ redirect }` | Redirect | 302/3xx | `return { redirect: '/home' };` |
+| `{ status, ...data }` | JSON + Status | Custom | `return { status: 201, user };` |
+| Object/Array | JSON | 200 | `return { users: [] };` |
+| Other | Wrapped JSON | 200 | `return 42;` |
+
+### JSON Response
+
+```typescript
+@Get('/users')
+getUsers() {
+  return { users: [{ id: 1, name: 'Alice' }] };
+}
+
+// Response: 200 OK
+// Content-Type: application/json
+// { "users": [{ "id": 1, "name": "Alice" }] }
+```
+
+### Custom Status Code
+
+```typescript
+@Post('/users')
+createUser(@Body() data: any) {
+  return { status: 201, user: data };
+}
+
+// Response: 201 Created
+// { "status": 201, "user": {...} }
+```
+
+### HTML Response
+
+```typescript
+@Get('/home')
+getHome() {
+  return `
+    <html>
+      <head><title>Home</title></head>
+      <body>
+        <h1>Welcome</h1>
+      </body>
+    </html>
+  `;
+}
+
+// Response: 200 OK
+// Content-Type: text/html
+```
+
+### No Content Response
+
+```typescript
+@Delete('/users/:id')
+deleteUser(@Params('id') id: string) {
+  // Perform deletion
+  return null;
+}
+
+// Response: 204 No Content
+```
+
+### Redirect Response
+
+```typescript
+@Get('/old-path')
+redirect() {
+  return { redirect: '/new-path', status: 301 };
+}
+
+// Response: 301 Moved Permanently
+// Location: /new-path
+
+@Get('/login')
+redirectToAuth() {
+  return { redirect: '/auth' };  // Default 302
+}
+
+// Response: 302 Found
+// Location: /auth
+```
+
+### Stream Response
+
+```typescript
+@Get('/stream')
+streamData() {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue('chunk 1\n');
+      controller.enqueue('chunk 2\n');
+      controller.enqueue('chunk 3\n');
+      controller.close();
+    }
+  });
+}
+
+// Response: 200 OK (streaming)
+```
+
+### Server-Sent Events (SSE)
+
+```typescript
+@Get('/events')
+events(@Ctx() ctx: Context) {
+  const stream = new ReadableStream({
+    start(controller) {
+      const encoder = new TextEncoder();
+
+      const interval = setInterval(() => {
+        const data = `data: ${JSON.stringify({ time: Date.now() })}\n\n`;
+        controller.enqueue(encoder.encode(data));
+      }, 1000);
+
+      // Cleanup after 30 seconds
+      setTimeout(() => {
+        clearInterval(interval);
+        controller.close();
+      }, 30000);
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+    }
+  });
+}
+```
+
+### File Download
+
+```typescript
+@Get('/download/:filename')
+async downloadFile(@Params('filename') filename: string) {
+  const file = await storage.get(filename);
+
+  return new Response(file.buffer, {
+    headers: {
+      'Content-Type': file.mimeType,
+      'Content-Disposition': `attachment; filename="${filename}"`,
+      'Content-Length': String(file.size),
+    }
+  });
+}
+```
+
+## Response Wrapping
+
+### Auto-Wrap Mode (Default)
+
+When `autoWrap: true` (default), responses are automatically wrapped:
+
+```typescript
+@Get('/users')
+getUsers() {
+  return { id: 1, name: 'Alice' };
+}
+
+// Response:
+// {
+//   "status": "success",
+//   "data": { "id": 1, "name": "Alice" }
+// }
+```
+
+### Disable Auto-Wrap
+
+**Globally:**
+```typescript
+const server = new Server()
+  .use(router({ response: { autoWrap: false } }));
+```
+
+**Per controller:**
+```typescript
+@Controller('/api')
+@RawController()  // Skip wrapping for all routes
+class ApiController {
+  @Get('/status')
+  status() {
+    return { status: 'ok' };  // Returns as-is
+  }
+}
+```
+
+**Per route:**
+```typescript
+@Get('/health')
+@RawResponse()  // Skip wrapping for this route only
+health() {
+  return { status: 'ok' };  // Returns as-is
+}
+```
+
+### Custom Message
+
+```typescript
+@Post('/users')
+@ResMsg('User created successfully')
+createUser(@Body() data: any) {
+  return { user: data };
+}
+
+// Response:
+// {
+//   "status": "success",
+//   "data": { "user": {...} },
+//   "message": "User created successfully"
+// }
+```
+
+### Helper Functions
+
+```typescript
+import { ok, created, updated, deleted } from 'najm-router';
+
+@Get('/users')
+getUsers() {
+  return ok(users, 'Users retrieved');
+}
+
+@Post('/users')
+createUser(@Body() data: any) {
+  return created(user, 'User created');
+}
+
+@Put('/users/:id')
+updateUser() {
+  return updated(user, 'User updated');
+}
+
+@Delete('/users/:id')
+deleteUser() {
+  return deleted('User deleted');
+}
+```
+
+### Streaming Large Datasets <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Get('/export')
+async exportData() {
+  const stream = new ReadableStream({
+    async start(controller) {
+      const records = await db.users.findMany();
+
+      for (const record of records) {
+        controller.enqueue(
+          new TextEncoder().encode(JSON.stringify(record) + '\n')
+        );
+      }
+
+      controller.close();
+    }
+  });
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'application/x-ndjson',
+      'Content-Disposition': 'attachment; filename="export.ndjson"',
+    }
+  });
+}
+```
+
+### Conditional Response Format <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Get('/data')
+async getData(
+  @Headers('accept') accept: string,
+  @Query('format') format?: string
+) {
+  const data = await this.dataService.fetch();
+
+  const responseFormat = format || (accept.includes('text/csv') ? 'csv' : 'json');
+
+  if (responseFormat === 'csv') {
+    return new Response(this.convertToCSV(data), {
+      headers: { 'Content-Type': 'text/csv' }
+    });
+  }
+
+  return data;  // JSON
+}
+```
+
+### Content Negotiation <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Get('/user/:id')
+async getUser(
+  @Params('id') id: string,
+  @Headers('accept') accept: string
+) {
+  const user = await this.userService.findById(id);
+
+  if (accept.includes('application/xml')) {
+    return new Response(this.toXML(user), {
+      headers: { 'Content-Type': 'application/xml' }
+    });
+  }
+
+  if (accept.includes('text/html')) {
+    return this.renderUserHTML(user);
+  }
+
+  return user;  // Default to JSON
+}
+```
+
+## Best Practices
+
+### 1. Use Parameter Decorators
+
+**✓ Good: Explicit and type-safe**
+```typescript
+@Post('/users')
+createUser(@Body() data: CreateUserDto) {
+  return this.userService.create(data);
+}
+```
+
+**✗ Avoid: Direct access**
+```typescript
+@Post('/users')
+createUser(@Req() req: HRequest) {
+  const data = req.body;  // May be accessed before async parsing
+  return this.userService.create(data);
+}
+```
+
+### 2. Return Clean Data
+
+**✓ Good: Let formatter handle structure**
+```typescript
+@Get('/users')
+getUsers() {
+  return this.userService.findAll();
+}
+```
+
+**✗ Avoid: Manual response building**
+```typescript
+@Get('/users')
+getUsers(@Ctx() ctx: Context) {
+  const users = this.userService.findAll();
+  return ctx.json({ data: users });
+}
+```
+
+### 3. Use Appropriate Content Types
+
+```typescript
+// ✓ JSON for APIs
+@Get('/api/users')
+getUsers() {
+  return { users: [] };
+}
+
+// ✓ HTML for web pages
+@Get('/users')
+getUsersPage() {
+  return '<html>...</html>';
+}
+
+// ✓ Streams for large data
+@Get('/export')
+exportData() {
+  return new ReadableStream({...});
+}
+```
+
+### 4. Handle File Uploads Properly
+
+```typescript
+@Post('/upload')
+async uploadFile(
+  @File('document') file: File,
+  @Body('title') title: string
+) {
+  // ✓ Validate file type
+  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+  if (!allowedTypes.includes(file.type)) {
+    throw new HttpError(400, 'Invalid file type');
+  }
+
+  // ✓ Validate file size
+  const maxSize = 5 * 1024 * 1024; // 5MB
+  if (file.size > maxSize) {
+    throw new HttpError(400, 'File too large');
+  }
+
+  return this.uploadService.save(file, title);
+}
+```
+
+## Next Steps
+
+- [Params Plugin](/docs/routing/params) - Learn about all 40+ parameter decorators
+- [Validation](/docs/routing/validation) - Add input validation with Zod
+- [Controllers & Routes](/docs/routing/controllers) - Master controller patterns
+- [Middleware](/docs/routing/middleware) - Add request/response transformation

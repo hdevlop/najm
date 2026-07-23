@@ -1,0 +1,598 @@
+---
+title: Rate Limiting
+description: In-memory rate limiting to protect your API from abuse, brute-force attacks, and excessive usage
+---
+
+The Rate Limit Plugin provides in-memory rate limiting for HTTP endpoints to protect your API from abuse, brute-force attacks, and excessive usage. Features include per-route configuration, flexible time windows, automatic cleanup, and IP-based tracking.
+
+## Key Features
+
+- **In-Memory Storage** - Fast, no external dependencies
+- **Environment Variable Support** - Config via env vars or direct config
+- **Per-Route Configuration** - Flexible rate limiting with `@RateLimit` decorator
+- **Sliding Windows** - Accurate request tracking
+- **Automatic Cleanup** - Periodic removal of expired entries
+- **Custom Keys** - IP, user ID, API key, or custom logic
+- **Type-Safe** - Full TypeScript support
+- **Response Headers** - Standard rate limit headers included
+
+## Plugin Setup
+
+### Option 1: Direct Configuration (Recommended)
+
+```typescript
+import { Server } from 'najm-core';
+import { rateLimit } from 'najm-rate';
+
+const server = new Server()
+  .use(rateLimit({
+    enabled: true,
+    defaultLimit: 100,        // 100 requests
+    defaultWindow: '15m',     // per 15 minutes
+    cleanupInterval: 60000,   // cleanup every 60s
+    maxKeys: 10000,          // max 10k tracked IPs
+  }))
+  .listen(3000);
+```
+
+### Option 2: Environment Variables
+
+Set the following environment variables in your `.env` file:
+
+```bash
+# Rate limit configuration
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_DEFAULT_LIMIT=100
+RATE_LIMIT_DEFAULT_WINDOW=15m
+RATE_LIMIT_CLEANUP_INTERVAL=60000
+RATE_LIMIT_MAX_KEYS=10000
+```
+
+Then initialize the plugin without config:
+
+```typescript
+const server = new Server()
+  .use(rateLimit())  // Loads from env vars
+  .listen(3000);
+```
+
+### Option 3: Mixed Configuration
+
+Override specific values while using env vars as fallback:
+
+```typescript
+const server = new Server()
+  .use(rateLimit({
+    defaultLimit: 200,  // Override
+    // defaultWindow loaded from RATE_LIMIT_DEFAULT_WINDOW env var
+  }))
+  .listen(3000);
+```
+
+## Configuration Reference
+
+### Environment Variables
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `RATE_LIMIT_ENABLED` | boolean | `true` | Enable/disable rate limiting globally |
+| `RATE_LIMIT_DEFAULT_LIMIT` | number | `100` | Default max requests per window |
+| `RATE_LIMIT_DEFAULT_WINDOW` | string | `15m` | Default time window (10s, 15m, 1h, 1d) |
+| `RATE_LIMIT_CLEANUP_INTERVAL` | number | `60000` | Cleanup interval in milliseconds |
+| `RATE_LIMIT_MAX_KEYS` | number | `10000` | Maximum number of tracked keys (IPs) |
+
+### Configuration Interface
+
+```typescript
+interface RateLimitPluginConfig {
+  enabled?: boolean;              // Enable/disable globally
+  defaultLimit?: number;          // Default request limit
+  defaultWindow?: TimeWindow;     // Default time window
+  cleanupInterval?: number;       // Cleanup interval (ms)
+  maxKeys?: number;              // Max tracked keys
+}
+
+type TimeWindow =
+  | `${number}s`   // seconds (e.g., '10s', '30s')
+  | `${number}m`   // minutes (e.g., '15m', '60m')
+  | `${number}h`   // hours (e.g., '1h', '24h')
+  | `${number}d`;  // days (e.g., '1d', '7d')
+```
+
+## Using @RateLimit Decorator
+
+### Basic Usage
+
+```typescript
+import { RateLimit } from 'najm-rate';
+
+@Controller('/api')
+class ApiController {
+  // 100 requests per 15 minutes (default)
+  @Get('/data')
+  getData() {
+    return { data: [] };
+  }
+
+  // Custom: 10 requests per minute
+  @Post('/login')
+  @RateLimit({ limit: 10, window: '1m' })
+  async login(@Body() credentials: LoginDto) {
+    return this.authService.login(credentials);
+  }
+
+  // Custom: 5 requests per hour
+  @Post('/reset-password')
+  @RateLimit({ limit: 5, window: '1h' })
+  async resetPassword(@Body() data: ResetDto) {
+    return this.authService.resetPassword(data);
+  }
+
+  // Strict: 3 requests per 10 seconds
+  @Post('/verify-code')
+  @RateLimit({ limit: 3, window: '10s' })
+  async verifyCode(@Body() data: VerifyDto) {
+    return this.authService.verifyCode(data);
+  }
+}
+```
+
+### Decorator Options
+
+```typescript
+interface RateLimitOptions {
+  limit: number;        // Max requests allowed
+  window: TimeWindow;   // Time window
+  key?: string;         // Custom key (default: IP address)
+  message?: string;     // Custom error message
+  statusCode?: number;  // Custom HTTP status (default: 429)
+}
+```
+
+### Custom Rate Limit Key
+
+By default, rate limiting is per IP address. You can customize the key:
+
+```typescript
+@Controller('/api')
+class ApiController {
+  // Rate limit per user ID instead of IP
+  @Get('/user-data')
+  @RateLimit({ limit: 50, window: '1h', key: 'userId' })
+  async getUserData(@User() user: any) {
+    // Key will be user.id instead of IP
+    return this.userService.getData(user.id);
+  }
+
+  // Rate limit per API key
+  @Get('/external')
+  @RateLimit({ limit: 1000, window: '1d', key: 'apiKey' })
+  async externalApi(@Headers('x-api-key') apiKey: string) {
+    // Key will be the API key value
+    return this.externalService.getData();
+  }
+}
+```
+
+### Custom Error Messages
+
+```typescript
+@Post('/upload')
+@RateLimit({
+  limit: 10,
+  window: '1h',
+  message: 'Upload limit exceeded. Try again in an hour.',
+  statusCode: 429,
+})
+async uploadFile(@File('file') file: File) {
+  return this.fileService.upload(file);
+}
+```
+
+## Rate Limit Response
+
+### Success Response (Under Limit)
+
+```http
+HTTP/1.1 200 OK
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 87
+X-RateLimit-Reset: 1234567890
+
+{
+  "data": []
+}
+```
+
+### Rate Limited Response (Over Limit)
+
+```http
+HTTP/1.1 429 Too Many Requests
+X-RateLimit-Limit: 100
+X-RateLimit-Remaining: 0
+X-RateLimit-Reset: 1234567890
+Retry-After: 450
+
+{
+  "error": "Rate limit exceeded. Try again later.",
+  "statusCode": 429
+}
+```
+
+### Response Headers
+
+| Header | Description | Example |
+|--------|-------------|---------|
+| `X-RateLimit-Limit` | Max requests allowed in window | `100` |
+| `X-RateLimit-Remaining` | Remaining requests in window | `87` |
+| `X-RateLimit-Reset` | Unix timestamp when window resets | `1234567890` |
+| `Retry-After` | Seconds until rate limit resets | `450` |
+
+## Common Rate Limit Patterns
+
+### Authentication Endpoints (Strict)
+
+Protect against brute-force attacks:
+
+```typescript
+@Controller('/auth')
+class AuthController {
+  // Very strict: 5 attempts per 15 minutes
+  @Post('/login')
+  @RateLimit({ limit: 5, window: '15m' })
+  async login(@Body() credentials: LoginDto) {
+    return this.authService.login(credentials);
+  }
+
+  // Strict: 3 attempts per hour
+  @Post('/forgot-password')
+  @RateLimit({ limit: 3, window: '1h' })
+  async forgotPassword(@Body() data: ForgotPasswordDto) {
+    return this.authService.sendResetEmail(data.email);
+  }
+
+  // Very strict: 3 attempts per 10 minutes
+  @Post('/verify-2fa')
+  @RateLimit({ limit: 3, window: '10m' })
+  async verify2FA(@Body() data: Verify2FADto) {
+    return this.authService.verify2FA(data);
+  }
+}
+```
+
+### API Endpoints (Moderate)
+
+Balance between protection and usability:
+
+```typescript
+@Controller('/api')
+class ApiController {
+  // Moderate: 100 requests per 15 minutes
+  @Get('/users')
+  @RateLimit({ limit: 100, window: '15m' })
+  async getUsers() {
+    return this.userService.findAll();
+  }
+
+  // Moderate: 50 requests per hour
+  @Post('/users')
+  @RateLimit({ limit: 50, window: '1h' })
+  async createUser(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
+}
+```
+
+### File Upload Endpoints
+
+Prevent abuse of resource-intensive operations:
+
+```typescript
+@Controller('/files')
+class FileController {
+  // Strict: 10 uploads per hour
+  @Post('/upload')
+  @RateLimit({ limit: 10, window: '1h' })
+  async uploadFile(@File('file') file: File) {
+    return this.fileService.upload(file);
+  }
+
+  // Very strict: 5 large uploads per day
+  @Post('/upload-large')
+  @RateLimit({ limit: 5, window: '1d' })
+  async uploadLargeFile(@File('file') file: File) {
+    return this.fileService.uploadLarge(file);
+  }
+}
+```
+
+### External API Proxies
+
+Rate limit based on API key:
+
+```typescript
+@Controller('/proxy')
+class ProxyController {
+  // 1000 requests per day per API key
+  @Get('/external-api')
+  @RateLimit({
+    limit: 1000,
+    window: '1d',
+    key: 'apiKey',  // Use API key instead of IP
+  })
+  async proxyRequest(@Headers('x-api-key') apiKey: string) {
+    return this.proxyService.forward(apiKey);
+  }
+}
+```
+
+### User-Specific Limits
+
+Rate limit per authenticated user:
+
+```typescript
+@Controller('/user')
+class UserController {
+  // 50 requests per hour per user
+  @Get('/profile')
+  @RateLimit({
+    limit: 50,
+    window: '1h',
+    key: 'userId',  // Use user ID instead of IP
+  })
+  async getProfile(@User() user: any) {
+    return this.userService.getProfile(user.id);
+  }
+}
+```
+
+## How Rate Limiting Works
+
+### Request Flow
+
+```
+1. HTTP Request arrives
+   ↓
+2. Rate limit middleware checks limit
+   ↓
+3. Extract key (IP, userId, apiKey, etc.)
+   ↓
+4. Check current count for key
+   ↓
+5. Count < Limit?
+   ├─ YES → Increment count → Continue to handler
+   └─ NO  → Return 429 Too Many Requests
+```
+
+### Window Tracking
+
+Rate limits use **sliding windows** for accurate tracking:
+
+```typescript
+// Example: 10 requests per minute
+
+Time:    00:00  00:30  01:00  01:30  02:00
+Requests:  3      5      7      2      4
+Window:  [─────────────────]
+         [           ─────────────────]
+                    [─────────────────]
+```
+
+**Benefits:**
+- More accurate than fixed windows
+- Prevents burst attacks at window boundaries
+- Fair distribution of requests
+
+### Memory Management
+
+The service automatically cleans up expired entries:
+
+```typescript
+// Cleanup runs every 60 seconds (default)
+// Removes entries older than their time window
+setInterval(() => {
+  this.cleanupExpired();
+}, this.config.cleanupInterval);
+```
+
+**Key limiting:**
+- Max keys tracked: `maxKeys` (default: 10,000)
+- Oldest entries evicted when limit reached
+- Prevents memory exhaustion
+
+### Programmatic Rate Limiting <Badge variant="advanced">Advanced</Badge>
+
+Use `RateLimitService` directly in your code:
+
+```typescript
+import { RateLimitService } from 'najm-rate';
+
+@Service()
+class CustomService {
+  constructor(private rateLimitService: RateLimitService) {}
+
+  async processRequest(userId: string) {
+    const allowed = await this.rateLimitService.checkLimit({
+      key: `custom:${userId}`,
+      limit: 100,
+      window: '1h',
+    });
+
+    if (!allowed) {
+      throw new HttpError(429, 'Rate limit exceeded');
+    }
+
+    // Process request...
+  }
+}
+```
+
+### Conditional Rate Limiting <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Controller('/api')
+class ApiController {
+  constructor(private rateLimitService: RateLimitService) {}
+
+  @Get('/data')
+  async getData(@User() user: any, @Ctx() ctx: Context) {
+    // Apply stricter limits for free users
+    const limit = user.isPremium ? 1000 : 100;
+    const window = user.isPremium ? '1h' : '1h';
+
+    const allowed = await this.rateLimitService.checkLimit({
+      key: `user:${user.id}`,
+      limit,
+      window,
+    });
+
+    if (!allowed) {
+      throw new HttpError(429, 'Rate limit exceeded');
+    }
+
+    return this.dataService.getData();
+  }
+}
+```
+
+## Testing
+
+### Disable Rate Limiting in Tests
+
+```typescript
+import { test } from 'bun:test';
+import { Server } from 'najm-core';
+import { rateLimit } from 'najm-rate';
+
+test('should handle requests', async () => {
+  const server = new Server()
+    .use(rateLimit({ enabled: false }))  // Disable in tests
+    .load(ApiController);
+
+  await server.listen(3100);
+
+  // Make unlimited requests for testing
+  for (let i = 0; i < 1000; i++) {
+    const res = await fetch('http://localhost:3100/api/data');
+    expect(res.status).toBe(200);
+  }
+});
+```
+
+### Test Rate Limiting Behavior
+
+```typescript
+test('should rate limit requests', async () => {
+  const server = new Server()
+    .use(rateLimit({
+      enabled: true,
+      defaultLimit: 5,
+      defaultWindow: '1m',
+    }))
+    .load(ApiController);
+
+  await server.listen(3101);
+
+  // First 5 requests should succeed
+  for (let i = 0; i < 5; i++) {
+    const res = await fetch('http://localhost:3101/api/data');
+    expect(res.status).toBe(200);
+  }
+
+  // 6th request should be rate limited
+  const res = await fetch('http://localhost:3101/api/data');
+  expect(res.status).toBe(429);
+  expect(res.headers.get('X-RateLimit-Remaining')).toBe('0');
+});
+```
+
+## Best Practices
+
+### 1. Use Environment Variables
+
+```typescript
+// ✓ Good: Configure via env vars
+.use(rateLimit())
+
+// .env file
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_DEFAULT_LIMIT=100
+RATE_LIMIT_DEFAULT_WINDOW=15m
+```
+
+### 2. Set Stricter Limits on Sensitive Endpoints
+
+```typescript
+// ✓ Good: Strict limits on auth
+@Post('/login')
+@RateLimit({ limit: 5, window: '15m' })
+
+// ✓ Good: Moderate limits on API
+@Get('/users')
+@RateLimit({ limit: 100, window: '15m' })
+```
+
+### 3. Use Custom Keys for User-Specific Limits
+
+```typescript
+// ✓ Good: Per-user limits
+@RateLimit({ limit: 50, window: '1h', key: 'userId' })
+
+// ✗ Avoid: IP-only limits for authenticated endpoints
+@RateLimit({ limit: 50, window: '1h' })
+```
+
+### 4. Provide Helpful Error Messages
+
+```typescript
+// ✓ Good: Clear error message
+@RateLimit({
+  limit: 5,
+  window: '1h',
+  message: 'Too many password reset attempts. Try again in an hour.',
+})
+
+// ✗ Avoid: Generic error
+@RateLimit({ limit: 5, window: '1h' })
+```
+
+### 5. Monitor Rate Limit Headers
+
+```typescript
+// Client should check headers
+const res = await fetch('/api/data');
+const remaining = res.headers.get('X-RateLimit-Remaining');
+const reset = res.headers.get('X-RateLimit-Reset');
+
+if (parseInt(remaining) < 10) {
+  console.warn('Approaching rate limit!');
+}
+```
+
+## Debugging
+
+### Common Issues
+
+**Issue:** Rate limit not working
+- **Cause:** `enabled: false` or missing decorator
+- **Solution:** Verify config and ensure `@RateLimit()` is applied
+
+**Issue:** Too many 429 errors
+- **Cause:** Limit too strict for use case
+- **Solution:** Adjust `limit` and `window` values
+
+**Issue:** Memory usage growing
+- **Cause:** `cleanupInterval` too long or `maxKeys` too high
+- **Solution:** Lower `cleanupInterval` or `maxKeys`
+
+**Issue:** Rate limit not per-user
+- **Cause:** Using IP-based key (default)
+- **Solution:** Set `key: 'userId'` in decorator options
+
+## Next Steps
+
+- [Guards & Authorization](/docs/security/guards) - Implement route protection
+- [Authentication Patterns](/docs/security/authentication) - Learn authentication strategies
+- [CORS Configuration](/docs/security/cors) - Configure cross-origin requests
+- [Cookie Security](/docs/security/cookies) - Secure cookie management
+- [Security Overview](/docs/security) - Complete security guide

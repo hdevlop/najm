@@ -1,0 +1,621 @@
+---
+title: Router Plugin
+description: NestJS-style HTTP routing system built on Hono with automatic route registration and response formatting
+---
+
+The Router Plugin is the core of Najm's HTTP routing system. It scans controllers, registers routes, and handles the complete request-response lifecycle with automatic formatting and lazy parsing.
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Router Plugin                             │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                   │
+│  ┌──────────────┐      ┌──────────────┐      ┌──────────────┐  │
+│  │   Decorator  │─────▶│    Router    │─────▶│  Hono App    │  │
+│  │   Metadata   │      │   Service    │      │  Integration │  │
+│  └──────────────┘      └──────────────┘      └──────────────┘  │
+│         │                      │                                 │
+│         ▼                      ▼                                 │
+│  ┌──────────────┐      ┌──────────────┐                        │
+│  │   Request    │      │   Response   │                        │
+│  │   Parser     │      │  Formatter   │                        │
+│  └──────────────┘      └──────────────┘                        │
+│                                                                   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+## Core Components
+
+### 1. RouterService
+Main orchestrator that scans controllers and registers routes.
+
+### 2. Route Decorators
+Metadata-based route definitions: `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`
+
+### 3. RequestParser
+Lazy parsing of request data (body, headers, cookies, files)
+
+### 4. ResponseFormatter
+Automatic response formatting based on return type
+
+### 5. RouterPlugin
+Plugin factory for framework integration
+
+## How Routing Works
+
+### 1. Route Definition
+
+Controllers use decorators to define HTTP endpoints:
+
+```typescript
+import { Controller, Get, Post, Put, Delete } from 'najm-router';
+
+@Controller('/users')
+class UserController {
+  @Get('/')
+  getAllUsers() {
+    return { users: [] };
+  }
+
+  @Get('/:id')
+  getUserById(@Params('id') id: string) {
+    return { id };
+  }
+
+  @Post('/')
+  createUser(@Body() data: any) {
+    return { created: true };
+  }
+
+  @Put('/:id')
+  updateUser(@Params('id') id: string, @Body() data: any) {
+    return { updated: true };
+  }
+
+  @Delete('/:id')
+  deleteUser(@Params('id') id: string) {
+    return { deleted: true };
+  }
+}
+```
+
+### 2. How Decorators Work
+
+The `Route` function creates method decorators that store metadata:
+
+```typescript
+function Route(method: HttpMethod) {
+   return (path: string = '/'): MethodDecorator => {
+      return (target, methodName, descriptor) => {
+         MetaHelper.append(
+            ROUTES_META,
+            { path, method, methodName, handler: descriptor!.value },
+            target.constructor
+         );
+      };
+   };
+}
+```
+
+**What happens:**
+- Decorators append route metadata to the controller class
+- Metadata includes: HTTP method, path, handler function, method name
+- Multiple routes can be defined on the same controller
+
+### 3. Route Scanning Phase
+
+During application startup, `RouterService.scan()` discovers all routes:
+
+```typescript
+async scan(): Promise<void> {
+  this.scanner.scan(ScanType.CONTROLLER, {
+    onClass: (controller) => {
+      const routes = getRoutes(controller);
+      if (!routes?.length) return;
+
+      const prefixPath = getPath(controller) ?? '';
+
+      for (const route of routes) {
+        this.container.setInjection({
+          type: INJECTION_TYPES.ROUTE,
+          target: controller,
+          methodName: route.methodName,
+          method: route.method.toUpperCase(),
+          path: this.buildPath(basePath, prefixPath, route.path),
+          handler: route.handler,
+        });
+      }
+    }
+  });
+}
+```
+
+**Process:**
+1. Scanner finds all classes decorated with `@Controller`
+2. For each controller, extract route definitions using `getRoutes()`
+3. Build complete paths by combining: basePath + controller prefix + route path
+4. Register route injections in the DI container
+
+### 4. Route Registration Phase
+
+During activation, routes are registered with the Hono app:
+
+```typescript
+async activate(): Promise<void> {
+  const routes = this.container.getInjections<RouteEntry>(INJECTION_TYPES.ROUTE);
+
+  for (const route of routes) {
+    this.registerRoute(route);
+  }
+}
+
+private registerRoute(route: RouteEntry): void {
+  const middlewares = this.buildMiddlewareChain(route);
+  this.app[method](path, ...middlewares);
+}
+```
+
+**Middleware Chain:**
+```
+Request → Context Middleware → Route Middlewares → Controller Handler → Response
+```
+
+## Request Lifecycle
+
+### Complete Flow
+
+```
+1. HTTP Request arrives
+   ↓
+2. Context Middleware (sets up context)
+   ↓
+3. Route-specific Middlewares (auth, validation, etc.)
+   ↓
+4. RequestParser creates lazy HRequest object
+   ↓
+5. Controller Handler executes
+   ↓
+6. Method arguments resolved via DI
+   ↓
+7. Handler returns result
+   ↓
+8. ResponseFormatter formats result
+   ↓
+9. HTTP Response sent
+```
+
+### Request Parsing Strategy
+
+The router uses **lazy parsing** for optimal performance:
+
+```typescript
+public createRequest(): HRequest {
+  return {
+    // ✓ Immediate access (no parsing)
+    params: req.param(),
+    query: req.query(),
+    path: req.path,
+    method: req.method,
+
+    // ✓ Lazy parsed (only when accessed)
+    get body() { return self.getBody(); },
+    get headers() { return self.getHeaders(); },
+    get cookies() { return self.getCookies(); },
+    get files() { return self.getFiles(); },
+    get ip() { return self.getIP(); },
+  };
+}
+```
+
+**Benefits:**
+- No upfront parsing overhead
+- Parse only what's needed
+- Cached after first access
+- Warnings for async data (body, files)
+
+## Response Formatting
+
+The `ResponseFormatter` automatically handles different return types:
+
+### Return Type → Response Mapping
+
+| Return Type | Response Format | Example |
+|-------------|----------------|---------|
+| `null` / `undefined` | 204 No Content | `return null;` |
+| `string` (HTML) | HTML Response | `return '<h1>Hello</h1>';` |
+| `string` (plain) | Text Response | `return 'Hello World';` |
+| `Response` object | Pass-through | `return new Response('...')` |
+| `ReadableStream` | Stream Response | `return stream;` |
+| `{ redirect, status }` | Redirect | `return { redirect: '/home' };` |
+| `{ status, ...data }` | JSON + Status | `return { status: 201, user }` |
+| Any object | JSON | `return { users: [] };` |
+| Other | Wrapped JSON | `return 42;` → `{ status: 'success', data: 42 }` |
+
+### Examples
+
+```typescript
+// JSON response
+@Get('/users')
+getUsers() {
+  return { users: [{ id: 1, name: 'John' }] };
+}
+
+// Custom status
+@Post('/users')
+createUser() {
+  return { status: 201, user: { id: 2 } };
+}
+
+// HTML response
+@Get('/home')
+getHome() {
+  return '<html><body>Welcome</body></html>';
+}
+
+// Redirect
+@Get('/old-route')
+redirect() {
+  return { redirect: '/new-route', status: 301 };
+}
+
+// No content
+@Delete('/users/:id')
+deleteUser() {
+  return null; // 204 No Content
+}
+
+// Stream response
+@Get('/stream')
+streamData() {
+  return new ReadableStream({
+    start(controller) {
+      controller.enqueue('chunk1');
+      controller.close();
+    }
+  });
+}
+```
+
+## Response Wrapping
+
+The router provides multiple approaches for response wrapping:
+
+### 1. Auto-Wrap Mode (Default)
+
+When `autoWrap: true` (default), all responses are automatically wrapped:
+
+```typescript
+@Get('/users')
+getUsers() {
+  return { id: 1, name: 'John' };
+}
+
+// Response:
+// {
+//   "status": "success",
+//   "data": { "id": 1, "name": "John" }
+// }
+```
+
+### 2. Disable Auto-Wrap
+
+You can disable auto-wrapping globally or per-route:
+
+**Globally via config:**
+```typescript
+router({ response: { autoWrap: false } })
+```
+
+**Globally via environment:**
+```bash
+ROUTER_AUTO_WRAP=false
+```
+
+**Per-controller:**
+```typescript
+@Controller('/api')
+@RawController()  // Skip wrapping for all routes in this controller
+class ApiController {
+  @Get('/status')
+  status() {
+    return { status: 'ok' };  // Returns as-is
+  }
+}
+```
+
+**Per-route:**
+```typescript
+@Get('/health')
+@RawResponse()  // Skip wrapping for this route only
+health() {
+  return { status: 'ok' };  // Returns as-is
+}
+```
+
+### 3. Using @ResMsg Decorator
+
+Force wrapping with custom messages:
+
+```typescript
+@Get('/users')
+@ResMsg('Users retrieved successfully')
+getUsers() {
+  return users;
+}
+
+// Response:
+// {
+//   "status": "success",
+//   "data": [...],
+//   "message": "Users retrieved successfully"
+// }
+```
+
+**With i18n support:**
+```typescript
+@Post('/users')
+@ResMsg({ message: 'users.success.created', status: 201 })
+createUser() {
+  return user;
+}
+```
+
+### 4. Using Helper Functions
+
+Explicit wrapping with helper functions:
+
+```typescript
+import { ok, created, updated, deleted } from 'najm-router';
+
+@Get('/users')
+getUsers() {
+  return ok(users, 'Users retrieved');
+}
+
+@Post('/users')
+createUser() {
+  return created(user, 'User created');
+}
+```
+
+### Priority Order
+
+When determining whether to wrap responses:
+
+1. **@RawResponse() / @RawController()** → Never wrap
+2. **@ResMsg()** → Always wrap (if message present)
+3. **Config `autoWrap`** → Wrap if true
+4. **Environment `ROUTER_AUTO_WRAP`** → Wrap if true
+5. **Default** → Wrap (autoWrap defaults to true)
+
+## Configuration
+
+### Plugin Setup
+
+```typescript
+import { router } from 'najm-router';
+
+const server = new Server()
+  .use(router({
+    basePath: '/api/v1',  // Optional: prefix all routes
+    response: {
+      autoWrap: true,           // Auto-wrap responses
+      defaultStatus: 'success', // Default status text
+      includeTimestamp: false,  // Add timestamps
+    }
+  }))
+  .load(UserController);
+```
+
+### Configuration Options
+
+```typescript
+interface RouterPluginConfig {
+  basePath?: string;  // Base path prefix for all routes
+  app?: Hono;         // Optional: custom Hono instance
+
+  response?: {
+    /** Enable auto-wrapping for all responses */
+    autoWrap?: boolean;
+
+    /** Default status text */
+    defaultStatus?: string;
+
+    /** Include timestamp by default */
+    includeTimestamp?: boolean;
+  };
+}
+```
+
+### Environment Variables
+
+```bash
+# .env file
+ROUTER_AUTO_WRAP=false  # Disable auto-wrapping
+```
+
+**Priority:** Direct config > Environment variable > Default
+
+### Path Building
+
+Paths are built by combining:
+
+```typescript
+const finalPath = buildPath(
+  config.basePath,      // e.g., '/api/v1'
+  controllerPrefix,     // e.g., '/users'
+  routePath            // e.g., '/:id'
+);
+// Result: '/api/v1/users/:id'
+```
+
+**Path normalization:**
+- Removes duplicate slashes: `//users` → `/users`
+- Removes trailing slashes: `/users/` → `/users`
+- Handles root path: empty segments → `/`
+
+## Performance Optimizations
+
+### 1. Lazy Request Parsing
+Only parse request data when accessed:
+```typescript
+// ✗ Eager: Always parses body
+const body = await req.json();
+
+// ✓ Lazy: Only parses if accessed
+const body = req.body;  // Parsed on first access, cached
+```
+
+### 2. Middleware Caching
+Middleware chains are built once and cached:
+```typescript
+private middlewareCache = new Map<string, MiddlewareHandler[]>();
+```
+
+### 3. Smart Type Detection
+Avoids unnecessary JSON parsing:
+```typescript
+if (contentType.includes('application/json')) {
+  return this.context.req.json();  // Native JSON parsing
+}
+```
+
+### 4. Efficient Path Building
+Paths are normalized once during registration:
+```typescript
+const path = segments
+  .join('/')
+  .replace(/\/+/g, '/')      // Remove duplicate slashes
+  .replace(/(.+)\/$/, '$1'); // Remove trailing slash
+```
+
+## Best Practices
+
+### 1. Use Lazy Parsing
+Let the framework parse data only when needed:
+
+```typescript
+// ✓ Good: Uses decorator for explicit parsing
+@Post('/users')
+createUser(@Body() body: CreateUserDto) {
+  return this.userService.create(body);
+}
+
+// ✗ Avoid: Direct access without decorator
+@Post('/users')
+createUser(@Req() req: HRequest) {
+  const body = req.body;  // Warning: accessed before async parsing
+}
+```
+
+### 2. Return Clean Data
+Let the formatter handle response format:
+
+```typescript
+// ✓ Good: Simple return
+@Get('/users')
+getUsers() {
+  return this.userService.findAll();
+}
+
+// ✗ Avoid: Manual response building (unless needed)
+@Get('/users')
+getUsers(@Ctx() ctx: Context) {
+  const users = this.userService.findAll();
+  return ctx.json({ users });
+}
+```
+
+### 3. Use Type-Safe Returns
+Define return types for clarity:
+
+```typescript
+interface UserResponse {
+  id: number;
+  name: string;
+}
+
+@Get('/users/:id')
+async getUser(@Params('id') id: string): Promise<UserResponse> {
+  return this.userService.findById(id);
+}
+```
+
+### 4. Handle Errors Properly
+Throw framework errors for automatic handling:
+
+```typescript
+@Get('/users/:id')
+async getUser(@Params('id') id: string) {
+  const user = await this.userService.findById(id);
+  if (!user) {
+    throw new HttpError(404, 'User not found');
+  }
+  return user;
+}
+```
+
+## Debugging
+
+### Enable Debug Logging
+
+The router logs key lifecycle events:
+
+```typescript
+// During scan phase
+this.log.debug?.(`Scanned ${count} controller(s)`);
+
+// During activation
+this.log.debug?.(`Registered ${routes.length} route(s)`);
+
+// When ready
+this.log.info(`Router plugin ready: ${routeCount} route(s) registered`);
+```
+
+### Get Route Information
+
+```typescript
+// Get total route count
+const count = routerService.getRouteCount();
+
+// Clear middleware cache (for testing)
+routerService.clearCache();
+```
+
+### Common Issues
+
+**Issue:** "Body accessed before async parsing"
+- **Cause:** Accessing `req.body` without proper async parsing
+- **Solution:** Use `@Body()` decorator or await `parseAsync()`
+
+**Issue:** Routes not registering
+- **Cause:** Controller not scanned or missing `@Controller` decorator
+- **Solution:** Ensure controller is loaded with `.load()`
+
+**Issue:** Middleware not executing
+- **Cause:** Incorrect injection type or missing methodName
+- **Solution:** Verify injection definition and target
+
+## Summary
+
+The Router Plugin provides:
+
+✓ **Decorator-based routing** - Clean, declarative route definitions
+✓ **Lazy request parsing** - Parse only what you need
+✓ **Automatic response formatting** - Return any type, get proper HTTP response
+✓ **Middleware system** - Flexible, ordered middleware chains
+✓ **DI integration** - Full dependency injection support
+✓ **Performance optimized** - Caching, lazy evaluation, efficient path handling
+✓ **Type-safe** - Full TypeScript support throughout
+
+The system is designed to be intuitive for developers familiar with NestJS while providing the performance benefits of Hono.
+
+## Next Steps
+
+- [Controllers & Routes](/docs/routing/controllers) - Learn about controller patterns
+- [Request/Response Handling](/docs/routing/request-response) - Understand request/response lifecycle
+- [Params Plugin](/docs/routing/params) - Explore parameter decorators
+- [Validation](/docs/routing/validation) - Add input validation
+- [Middleware](/docs/routing/middleware) - Build custom middleware

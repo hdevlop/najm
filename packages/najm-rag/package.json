@@ -1,0 +1,86 @@
+{
+  "name": "najm-rag",
+  "version": "2.0.2",
+  "license": "MIT",
+  "description": "RAG engine for Najm framework — embeddings, vector search, and semantic tool routing",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./studio-contract": {
+      "types": "./dist/studio-contract.d.ts",
+      "import": "./dist/studio-contract.mjs",
+      "default": "./dist/studio-contract.mjs"
+    },
+    "./sqlite": {
+      "types": "./dist/schema/sqlite.d.ts",
+      "import": "./dist/schema/sqlite.mjs",
+      "default": "./dist/schema/sqlite.mjs"
+    },
+    "./pg": {
+      "types": "./dist/schema/pg.d.ts",
+      "import": "./dist/schema/pg.mjs",
+      "default": "./dist/schema/pg.mjs"
+    },
+    "./mysql": {
+      "types": "./dist/schema/mysql.d.ts",
+      "import": "./dist/schema/mysql.mjs",
+      "default": "./dist/schema/mysql.mjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "bun test",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
+    "prepack": "bun run clean && bun run build"
+  },
+  "dependencies": {
+    "najm-core": "workspace:*",
+    "pdf-parse": "^1.1.1"
+  },
+  "peerDependencies": {
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.0.0",
+    "najm-auth": "workspace:*",
+    "najm-database": "workspace:*",
+    "najm-guard": "workspace:*",
+    "najm-mcp": "workspace:*",
+    "najm-storage": "workspace:*",
+    "najm-validation": "workspace:*",
+    "reflect-metadata": "^0.2.0",
+    "sqlite-vec": "^0.1.9",
+    "zod": "^3.0.0 || ^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "najm-storage": {
+      "optional": true
+    },
+    "sqlite-vec": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pdf-parse": "^1.1.5",
+    "najm-auth": "workspace:*",
+    "najm-database": "workspace:*",
+    "najm-guard": "workspace:*",
+    "najm-mcp": "workspace:*",
+    "najm-storage": "workspace:*",
+    "najm-validation": "workspace:*",
+    "rimraf": "^6.0.1",
+    "sqlite-vec": "^0.1.9",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3"
+  }
+}

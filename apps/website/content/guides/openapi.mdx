@@ -1,0 +1,91 @@
+---
+title: OpenAPI
+description: Generate an OpenAPI 3.1 document from Najm routes and validation schemas
+order: 30
+---
+
+Najm can generate an OpenAPI 3.1 document from the routes registered by
+`@Controller`, `@Get`, `@Post`, `@Put`, `@Patch`, and `@Delete`. When
+`najm-validation` is used, `@Validate()` schemas are also reflected into path
+parameters, query parameters, headers, and JSON request bodies.
+
+## Generate a document
+
+Call `server.openapi()` after loading your modules. The server initializes on
+demand, so you do not need to call `listen()` first.
+
+```typescript
+import 'reflect-metadata';
+import { Server } from 'najm-api';
+import { validation } from 'najm-validation';
+import * as modules from './modules';
+
+const server = new Server()
+  .base('/api')
+  .use(validation())
+  .load(modules);
+
+const document = await server.openapi({
+  title: 'Store API',
+  version: '1.0.0',
+  servers: [{ url: 'https://api.example.com' }],
+  securitySchemes: {
+    bearerAuth: {
+      type: 'http',
+      scheme: 'bearer',
+      bearerFormat: 'JWT',
+    },
+  },
+  security: [{ bearerAuth: [] }],
+});
+
+await Bun.write('openapi.json', JSON.stringify(document, null, 2));
+```
+
+## Validation schemas
+
+Use `@Validate(schema)` for body validation or `@Validate({ params, query,
+headers, body })` when a route has multiple request inputs.
+
+```typescript
+import { Controller, Get, Post, Body, Params } from 'najm-api';
+import { Validate } from 'najm-validation';
+import { z } from 'zod';
+
+const productIdParam = z.object({
+  id: z.string().uuid(),
+});
+
+const createProductDto = z.object({
+  name: z.string().min(2),
+  price: z.number().positive(),
+});
+
+@Controller('/products')
+export class ProductController {
+  @Get('/:id')
+  @Validate({ params: productIdParam })
+  get(@Params('id') id: string) {
+    return { id };
+  }
+
+  @Post('/')
+  @Validate(createProductDto)
+  create(@Body() body: z.infer<typeof createProductDto>) {
+    return body;
+  }
+}
+```
+
+The generated document includes `/products/{id}` as an OpenAPI path, path
+parameters from `params`, and an `application/json` request body from the body
+schema.
+
+## Notes
+
+- OpenAPI generation is best-effort for Zod v3 and v4 schema metadata.
+- Route responses default to a generic JSON success response; add richer
+  response contracts in downstream tooling if your API needs exact response
+  schemas.
+- Security schemes are explicit options because guards can be custom and are
+  not always equivalent to one OpenAPI auth mechanism.

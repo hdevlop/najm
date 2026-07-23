@@ -1,0 +1,655 @@
+---
+title: DI Container Reference
+description: Complete reference for the dependency injection container API, metadata system, and advanced features
+order: 7
+---
+
+A modern TypeScript dependency injection container with decorator support, metadata indexing, AsyncLocalStorage context, lifecycle management, and request scoping. Built for enterprise applications requiring advanced DI features.
+
+## Quick Start
+
+```typescript
+import { Container, Service, Inject } from 'najm-di';
+
+@Service()
+class UserService {
+  getUser(id: string) {
+    return { id, name: 'Alice' };
+  }
+}
+
+@Service()
+class OrderService {
+  @Inject(UserService) private users!: UserService;
+
+  createOrder(userId: string) {
+    const user = this.users.getUser(userId);
+    return { orderId: '123', user };
+  }
+}
+
+// Get container instance
+const container = Container.getInstance();
+
+// Register services
+container.set(UserService);
+container.set(OrderService);
+
+// Bootstrap
+await container.boot([UserService, OrderService]);
+
+// Resolve
+const orderService = container.get(OrderService);
+const order = orderService.createOrder('user-1');
+```
+
+## Key Features
+
+- **Decorator-based DI** - `@Service()`, `@Controller()`, `@Repository()`, `@Inject()`
+- **Multiple scopes** - Singleton, Request, Transient
+- **Metadata system** - Query and organize dependencies by metadata
+- **Lifecycle hooks** - `onInit()`, `onBootComplete()`, `onDestroy()`
+- **AsyncLocalStorage** - Request context isolation
+- **Circular dependency detection** - Clear error messages
+- **Factory support** - Sync and async factories
+- **Custom injectors** - Extensible property injection
+
+## Container Instances
+
+### Global Singleton (Default)
+
+```typescript
+import { Container } from 'najm-di';
+
+const container = Container.getInstance();
+```
+
+### Isolated Instance (Testing)
+
+```typescript
+const testContainer = Container.create();
+```
+
+### Full Reset (Testing)
+
+```typescript
+await Container.reset();
+```
+
+### Check Instance Existence
+
+```typescript
+if (Container.hasInstance()) {
+  console.log('Container already initialized');
+}
+```
+
+## Registration
+
+### Class Registration
+
+```typescript
+import { Service, Controller, Repository } from 'najm-di';
+
+// Auto-detect from decorator
+container.set(UserService);
+
+// Override scope
+container.set(UserService, Scope.REQUEST);
+
+// With options
+container.set(UserService, {
+  scope: Scope.TRANSIENT,
+  deps: [UserRepository],
+});
+```
+
+### Named Token Registration
+
+```typescript
+// Simple value
+container.set('config', { port: 3000 });
+
+// Sync factory
+container.set('timestamp', () => Date.now());
+
+// Async factory
+container.set('asyncConfig', async () => {
+  const data = await loadConfig();
+  return data;
+});
+```
+
+### Scope Registration
+
+```typescript
+import { Scope } from 'najm-di';
+
+// Singleton (default) - single instance for app lifetime
+container.set(UserService, Scope.SINGLETON);
+
+// Request - new instance per HTTP request
+container.set(UserService, Scope.REQUEST);
+
+// Transient - new instance every injection
+container.set(UserService, Scope.TRANSIENT);
+```
+
+## Decorators
+
+### Class Decorators
+
+```typescript
+import { Service, Controller, Repository, Injectable } from 'najm-di';
+
+// Service (business logic)
+@Service()
+class UserService {}
+
+// Service with request scope
+@Service(Scope.REQUEST)
+class RequestService {}
+
+// Controller (HTTP endpoints)
+@Controller('/users')
+class UserController {}
+
+// Repository (data access)
+@Repository('postgres')
+class UserRepository {}
+
+// Generic injectable
+@Injectable()
+class CustomClass {}
+```
+
+### Property Injection
+
+```typescript
+import { Inject, DI } from 'najm-di';
+
+@Service()
+class OrderService {
+  // Inject by class
+  @Inject(UserService) private users!: UserService;
+
+  // Inject by named token
+  @Inject('config') private config!: any;
+
+  // Inject container itself
+  @DI() private container!: Container;
+
+  createOrder(userId: string) {
+    const user = this.users.getUser(userId);
+    return { orderId: '123', user };
+  }
+}
+```
+
+### Constructor Injection
+
+```typescript
+@Service()
+class OrderService {
+  constructor(
+    private userService: UserService,
+    private productService: ProductService
+  ) {}
+
+  createOrder(userId: string, productId: string) {
+    const user = this.userService.getUser(userId);
+    const product = this.productService.getProduct(productId);
+    return { user, product };
+  }
+}
+```
+
+## Resolution
+
+### Sync Resolution (Post-Boot)
+
+```typescript
+// Get singleton instance
+const service = container.get(UserService);
+
+// Get named token
+const config = container.get<Config>('config');
+
+// Get with type safety
+const service = container.get<UserService>(UserService);
+```
+
+**Requirements:**
+- Singletons must already exist (throws if not)
+- Request-scoped must be cached
+- Transient not supported (throws)
+
+### Async Resolution (Boot-Time)
+
+```typescript
+// Create singletons on first access
+const service = await container.resolve(UserService);
+
+// Handle async factories
+const config = await container.resolve('asyncConfig');
+
+// Supports all scopes
+const transient = await container.resolve(TransientService);
+```
+
+## Bootstrap
+
+### Boot All Singletons
+
+```typescript
+await container.boot();
+```
+
+### Boot Specific Services
+
+```typescript
+await container.boot([UserService, OrderService, ProductService]);
+```
+
+### Boot by Metadata
+
+```typescript
+// Boot core services first
+await container.bootBy({ layer: 'core' });
+
+// Then boot app services
+await container.bootBy({ layer: 'app' });
+```
+
+### Phased Boot
+
+```typescript
+await container.bootPhased('layer', ['core', 'domain', 'app']);
+```
+
+## Scopes
+
+### SINGLETON (Default)
+
+Single instance for app lifetime:
+
+```typescript
+@Service()  // Default: SINGLETON
+class UserService {
+  private cache = new Map();
+
+  getUser(id: string) {
+    if (!this.cache.has(id)) {
+      this.cache.set(id, fetchUser(id));
+    }
+    return this.cache.get(id);
+  }
+}
+```
+
+### REQUEST
+
+New instance per HTTP request (uses AsyncLocalStorage):
+
+```typescript
+@Service(Scope.REQUEST)
+class RequestContext {
+  userId?: string;
+  requestId?: string;
+
+  setUser(userId: string) {
+    this.userId = userId;
+  }
+
+  getUser() {
+    return this.userId;
+  }
+}
+```
+
+### TRANSIENT
+
+New instance every injection:
+
+```typescript
+@Service(Scope.TRANSIENT)
+class UniqueIdGenerator {
+  id = Math.random();
+
+  getId() {
+    return this.id;
+  }
+}
+```
+
+## Lifecycle Hooks
+
+### onInit()
+
+Called after instance creation and dependency injection:
+
+```typescript
+@Service()
+class DatabaseService {
+  private connection?: Connection;
+
+  async onInit() {
+    this.connection = await createConnection();
+    console.log('Database connected');
+  }
+}
+```
+
+### onBootComplete()
+
+Called after all services are booted:
+
+```typescript
+@Service()
+class RouterService {
+  async onBootComplete() {
+    console.log('All routes registered');
+    this.printRoutes();
+  }
+}
+```
+
+### onDestroy()
+
+Called during cleanup:
+
+```typescript
+@Service()
+class CacheService {
+  private cache = new Map();
+
+  async onDestroy() {
+    this.cache.clear();
+    console.log('Cache cleared');
+  }
+}
+```
+
+## Metadata System
+
+### Set Metadata
+
+```typescript
+import { Meta } from 'najm-di';
+
+@Service()
+@Meta({ layer: 'core', order: 1 })
+class BootService {}
+
+@Service()
+@Meta({ layer: 'domain', order: 2 })
+class UserService {}
+
+@Service()
+@Meta({ layer: 'app', order: 3 })
+class UserController {}
+```
+
+### Query by Metadata
+
+```typescript
+// Find by criteria
+const coreServices = container.find({ layer: 'core' });
+const highPriority = container.find({ priority: (p) => p > 5 });
+
+// Group by metadata field
+const byLayer = container.groupBy('layer');
+// { core: [...], domain: [...], app: [...] }
+
+// Get all tokens
+const allTokens = container.findAll();
+```
+
+### Default Metadata
+
+```typescript
+// Set defaults for all services
+container.setDefaults({ layer: 'app', priority: 0 });
+
+// Register service (gets default metadata)
+container.set(UserService);
+```
+
+## AsyncLocalStorage
+
+Access request-scoped data via ALS tokens:
+
+```typescript
+import { REQUEST_ID, CONTEXT } from 'najm-core';
+import { USER } from 'najm-guard';
+
+@Service()
+class MyService {
+  @DI() container!: Container;
+
+  doSomething() {
+    // Get request ID
+    const requestId = this.container.get(REQUEST_ID);
+
+    // Get Hono context
+    const context = this.container.get(CONTEXT);
+
+    // Get authenticated user
+    const user = this.container.get(USER);
+
+    console.log({ requestId, user });
+  }
+}
+```
+
+### Array Tokens <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+// Push to array
+container.push('plugins', pluginA, pluginB);
+container.push('middlewares', ...middlewares);
+
+// Filter array
+const active = container.filter('plugins', (p) => p.enabled);
+
+// Get array
+const all = container.get<Plugin[]>('plugins');
+```
+
+### Custom Injectors <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+container.use({
+  name: 'MyInjector',
+  global: true,
+  inject: (instance, ctor, registry, injections) => {
+    // Custom property injection logic
+    for (const injection of injections) {
+      instance[injection.propertyKey] = getValue(injection);
+    }
+  },
+});
+```
+
+### Injection Registry <Badge variant="advanced">Advanced</Badge>
+
+Framework extensions can register custom injections:
+
+```typescript
+const token = container.setInjection({
+  type: 'middleware',
+  target: UserController,
+  methodName: 'create',
+  handler: validateMiddleware,
+  order: 1,
+  scope: 'method',
+  metadata: { async: true },
+});
+
+// Retrieve later
+const middlewares = container.getInjections<MiddlewareInjection>('middleware');
+const specific = container.getInjectionsFor('middleware', UserController, 'create');
+```
+
+## Error Handling
+
+### Circular Dependency
+
+```typescript
+// A depends on B, B depends on A
+@Service()
+class ServiceA {
+  @Inject(ServiceB) b!: ServiceB;
+}
+
+@Service()
+class ServiceB {
+  @Inject(ServiceA) a!: ServiceA;
+}
+
+// Throws: DIError.circularDependency(['ServiceA', 'ServiceB', 'ServiceA'])
+```
+
+### Singleton Not Initialized
+
+```typescript
+// Using get() before boot
+const service = container.get(UserService);
+// Throws: DIError.singletonNotInit('UserService')
+```
+
+### Token Not Found
+
+```typescript
+const service = container.get('unknown');
+// Throws: DIError.tokenNotFound('unknown')
+```
+
+## Testing
+
+### Isolated Container
+
+```typescript
+import { test } from 'bun:test';
+import { Container } from 'najm-di';
+
+test('user service test', async () => {
+  const container = Container.create(); // Isolated instance
+
+  container.set(UserRepository);
+  container.set(UserService);
+
+  await container.boot([UserRepository, UserService]);
+
+  const service = container.get(UserService);
+  const user = service.getUser('123');
+
+  expect(user.id).toBe('123');
+});
+```
+
+### Mocking Dependencies
+
+```typescript
+test('order service with mock', async () => {
+  const container = Container.create();
+
+  // Mock repository
+  const mockRepo = {
+    getUser: () => ({ id: '123', name: 'Mock User' }),
+  };
+
+  container.set('UserRepository', mockRepo);
+  container.set(OrderService);
+
+  await container.boot([OrderService]);
+
+  const service = container.get(OrderService);
+  const order = service.createOrder('123');
+
+  expect(order.user.name).toBe('Mock User');
+});
+```
+
+## Best Practices
+
+### 1. Use Decorators for Registration
+
+**✓ Good: Declarative**
+```typescript
+@Service()
+class UserService {}
+
+container.set(UserService);
+```
+
+**✗ Avoid: Manual registration with factories**
+```typescript
+container.set(UserService, () => new UserService());
+```
+
+### 2. Choose Appropriate Scopes
+
+**✓ Good: Stateless services = Singleton**
+```typescript
+@Service()  // SINGLETON by default
+class CalculatorService {
+  add(a: number, b: number) {
+    return a + b;
+  }
+}
+```
+
+**✓ Good: Request data = Request scope**
+```typescript
+@Service(Scope.REQUEST)
+class RequestContext {
+  userId?: string;
+}
+```
+
+### 3. Use Constructor Injection
+
+**✓ Good: Constructor injection**
+```typescript
+@Service()
+class OrderService {
+  constructor(private userService: UserService) {}
+}
+```
+
+**✗ Avoid: Property injection when possible**
+```typescript
+@Service()
+class OrderService {
+  @Inject(UserService) private userService!: UserService;
+}
+```
+
+### 4. Avoid Circular Dependencies
+
+**✓ Good: One-way dependencies**
+```
+UserService → UserRepository → Database
+```
+
+**✗ Avoid: Circular**
+```
+ServiceA ⇄ ServiceB
+```
+
+## Summary
+
+The DI Container provides:
+
+✓ **Decorator-based DI** - Simple, declarative service registration
+✓ **Multiple scopes** - Singleton, Request, Transient
+✓ **Lifecycle hooks** - onInit, onBootComplete, onDestroy
+✓ **Metadata system** - Query and organize services
+✓ **AsyncLocalStorage** - Request context isolation
+✓ **Type safety** - Full TypeScript support
+✓ **Circular detection** - Clear error messages
+✓ **Factory support** - Sync and async factories
+✓ **Testing support** - Isolated containers, easy mocking
+
+The container is the foundation of Najm's architecture, enabling clean separation of concerns and testable code.

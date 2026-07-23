@@ -1,0 +1,41 @@
+{
+  "name": "najm-cors",
+  "version": "2.0.2",
+  "description": "Optional CORS plugin for Najm framework with global, controller-level, and route-level configuration",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "devDependencies": {
+    "najm-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "hono": "^4.0.0",
+    "najm-core": "workspace:*"
+  },
+  "keywords": [
+    "cors",
+    "najm",
+    "decorator",
+    "hono",
+    "api",
+    "framework"
+  ],
+  "author": "Hicham Jebara",
+  "license": "MIT"
+}

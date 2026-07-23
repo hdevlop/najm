@@ -1,0 +1,23 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+
+/**
+ * Standalone RAG Studio host. Add the app's API root as a connection
+ * (e.g. "/api" for this playground, or "https://other-app.com/api"), log in as
+ * super-admin, and operate on that app's RAG. Reference for hosting the tool.
+ */
+export default function RagStandalonePage() {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 text-slate-100">
+      <section className="max-w-2xl rounded-3xl border border-white/10 bg-white/[0.04] p-8 shadow-2xl">
+        <p className="text-sm font-medium uppercase tracking-[0.3em] text-violet-300">Standalone Tool</p>
+        <h1 className="mt-4 text-3xl font-semibold">RAG Studio runs from the standalone checkout</h1>
+        <p className="mt-4 text-base leading-7 text-slate-300">
+          Build or run the downloadable tool with <code className="rounded bg-white/10 px-1.5 py-0.5">bun run --cwd ../rag-studio build</code>
+          or <code className="rounded bg-white/10 px-1.5 py-0.5">bun run --cwd ../rag-studio dev</code>.
+        </p>
+      </section>
+    </main>
+  );
+}

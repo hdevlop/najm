@@ -1,0 +1,22 @@
+export { rag } from './plugin';
+export { ragStudio } from './studio/plugin';
+export type { RagStudioOptions } from './studio/plugin';
+export { RAG_STUDIO_OPTS } from './studio/tokens';
+export type { RagConfig, RagMergedConfig, RagDialect, RagEmbeddingConfig, RagToolRoutingConfig, RagKnowledgeConfig, RagSchema } from './config';
+export { RAG_CONFIG, RAG_SCHEMA, VECTOR_STRATEGY, RAG_TOOL_PROVIDER, RAG_OCR_PROVIDER } from './tokens';
+export type { RagToolProvider } from './provider';
+export * from './chatbotRag';
+export * from './toolIndex';
+export * from './toolRouter';
+export * from './embeddings';
+export * from './vectorStore';
+export * from './routingSettings';
+export * from './routingTests';
+export * from './knowledge';
+export * from './unmatched';
+// Studio API + assistant contract. The UI is distributed as the standalone RAG Studio app.
+export * from './studioContract/StudioAssistantDto';
+export * from './studioContract/StudioAssistantProvider';
+export * from './studioContract/viewToolMap';
+export { loadRagRoutingConfig } from './config/loadRoutingConfig';
+export * from './chatDebug';

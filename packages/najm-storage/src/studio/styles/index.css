@@ -1,0 +1,75 @@
+/*
+ * Storage Studio — Tailwind v4 source.
+ * The consumer compiles this with `@import "najm-kit/theme.css"` already
+ * pulling in the kit's @theme inline token map; the studio only needs to
+ * declare its custom utilities + animations. The build script (scripts/build-css.mjs)
+ * prefixes every selector with `.ss-studio` and rewrites `:root` → `.ss-studio`
+ * and `.dark` → `.ss-studio.dark, .ss-studio .dark` so mounting the studio
+ * never overrides the host page's tokens.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "najm-kit/theme.css";
+
+@theme {
+  --color-bg: var(--background);
+  --color-bg-elev-1: var(--card);
+  --color-bg-elev-2: var(--secondary);
+  --color-card-hover: var(--accent);
+  --color-surface: var(--popover);
+  --color-surface-hover: var(--accent);
+  --color-txt: var(--foreground);
+  --color-txt-muted: var(--muted-foreground);
+  --color-txt-primary: var(--foreground);
+  --color-txt-secondary: var(--muted-foreground);
+  --color-brand: var(--primary);
+  --color-brand-dim: var(--ring);
+  --color-status-red: oklch(0.6368 0.2078 25.326);
+  --color-status-green: oklch(0.696 0.17 162.48);
+  --color-status-yellow: oklch(0.769 0.188 70.08);
+
+  --animate-slide-in-right: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  --animate-fade-in: fade-in 0.2s ease-out;
+  --animate-scale-in: scale-in 0.15s ease-out;
+}
+
+@keyframes slide-in-right {
+  0% { transform: translateX(100%); }
+  100% { transform: translateX(0); }
+}
+
+@keyframes fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes scale-in {
+  0% { opacity: 0; transform: scale(0.95); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@layer base {
+  .ss-studio .ss-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.28) transparent;
+  }
+
+  .ss-studio .ss-scrollbar::-webkit-scrollbar {
+    width: 3px;
+    height: 3px;
+  }
+
+  .ss-studio .ss-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .ss-studio .ss-scrollbar::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.28);
+    border-radius: 999px;
+  }
+
+  .ss-studio .ss-scrollbar:hover::-webkit-scrollbar-thumb {
+    background: rgba(32, 215, 163, 0.42);
+  }
+}

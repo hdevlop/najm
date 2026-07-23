@@ -1,0 +1,56 @@
+{
+  "name": "najm-cli",
+  "version": "2.0.2",
+  "description": "CLI tool for najm framework - scaffolding, code generation, and project setup",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "bin": {
+    "najm": "./dist/index.js",
+    "najm-cli": "./dist/index.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "clean": "rimraf dist",
+    "build:lib": "bun build src/index.ts --outdir dist --format esm --target node --external najm-core --external najm-mcp --external najm-auth",
+    "build:types": "tsc --project tsconfig.json",
+    "build": "bun run clean && bun run build:types && bun run build:lib",
+    "dev": "bun --watch src/index.ts",
+    "test": "bun test",
+    "prepublishOnly": "bun run build"
+  },
+  "dependencies": {
+    "@clack/prompts": "^0.10.0",
+    "dotenv-pro": "^0.2.0",
+    "forji": "^1.0.5",
+    "picocolors": "^1.1.1",
+    "pm-ninja": "^1.1.3",
+    "strip-json-comments": "^5.0.3"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "najm-core": "workspace:*",
+    "najm-mcp": "workspace:*",
+    "rimraf": "^6.0.1",
+    "typescript": "^5.7.3"
+  },
+  "keywords": [
+    "cli",
+    "scaffolding",
+    "code-generation",
+    "najm",
+    "framework",
+    "typescript"
+  ],
+  "author": "Hicham Jebara",
+  "license": "MIT"
+}

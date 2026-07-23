@@ -1,0 +1,47 @@
+{
+  "name": "najm-core",
+  "version": "2.0.4",
+  "license": "MIT",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./*": {
+      "types": "./src/*.ts",
+      "import": "./src/*.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "diject": "^0.1.8",
+    "hono": "^4.7.2",
+    "reflect-metadata": "^0.2.2"
+  },
+  "peerDependencies": {
+    "@hono/node-server": "^1.19.9"
+  },
+  "peerDependenciesMeta": {
+    "@hono/node-server": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@hono/node-server": "^1.19.9",
+    "typescript": "^5.7.3",
+    "rimraf": "^6.0.1"
+  }
+}

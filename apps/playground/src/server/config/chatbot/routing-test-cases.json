@@ -1,0 +1,32 @@
+{
+  "cases": [
+    {
+      "query": "show me my last orders",
+      "locale": "en",
+      "expectTools": ["orders_get_my_orders"],
+      "mustInclude": ["orders_get_my_orders"],
+      "mustNotInclude": ["orders_create"]
+    },
+    {
+      "query": "list all products",
+      "locale": "en",
+      "expectTools": ["products_get_all"],
+      "mustInclude": ["products_get_all"],
+      "mustNotInclude": ["products_delete"]
+    },
+    {
+      "query": "sign up for an account",
+      "locale": "en",
+      "expectTools": ["auth_register"],
+      "mustInclude": ["auth_register"],
+      "mustNotInclude": ["auth_login"]
+    },
+    {
+      "query": "log in to my account",
+      "locale": "en",
+      "expectTools": ["auth_login"],
+      "mustInclude": ["auth_login"],
+      "mustNotInclude": ["auth_register"]
+    }
+  ]
+}

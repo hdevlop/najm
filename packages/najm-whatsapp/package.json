@@ -1,0 +1,96 @@
+{
+  "name": "najm-whatsapp",
+  "version": "2.0.2",
+  "license": "MIT",
+  "description": "WhatsApp plugin for Najm framework — Cloud API and Baileys engine support",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    },
+    "./sqlite": {
+      "types": "./dist/schema/sqlite.d.ts",
+      "import": "./dist/schema/sqlite.mjs",
+      "default": "./dist/schema/sqlite.mjs"
+    },
+    "./pg": {
+      "types": "./dist/schema/pg.d.ts",
+      "import": "./dist/schema/pg.mjs",
+      "default": "./dist/schema/pg.mjs"
+    },
+    "./mysql": {
+      "types": "./dist/schema/mysql.d.ts",
+      "import": "./dist/schema/mysql.mjs",
+      "default": "./dist/schema/mysql.mjs"
+    },
+    "./studio": {
+      "types": "./dist/studio/index.d.ts",
+      "import": "./dist/studio/index.mjs",
+      "default": "./dist/studio/index.mjs"
+    },
+    "./studio/styles.css": {
+      "import": "./dist/studio/styles.css",
+      "default": "./dist/studio/styles.css"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "bun scripts/build.ts",
+    "build:css": "node scripts/build-css.mjs",
+    "dev": "tsup --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "dependencies": {
+    "@hapi/boom": "^10.0.1",
+    "@tanstack/react-router": "^1.170.8",
+    "@whiskeysockets/baileys": "^6.7.0",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.468.0",
+    "najm-cache": "workspace:*",
+    "najm-core": "workspace:*",
+    "najm-database": "workspace:*",
+    "najm-event": "workspace:*",
+    "najm-kit": "workspace:*",
+    "qrcode.react": "^4.0.0",
+    "re2js": "^2.8.3",
+    "react-window": "^2.2.7",
+    "recharts": "^2.13.0",
+    "tailwind-merge": "^2.5.5"
+  },
+  "peerDependencies": {
+    "najm-auth": "workspace:*",
+    "najm-rate": "workspace:*",
+    "najm-validation": "workspace:*",
+    "hono": "^4.0.0",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "reflect-metadata": "^0.2.0",
+    "zod": "^3.0.0 || ^4.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22.10.0",
+    "@types/react": ">=18",
+    "@types/react-dom": ">=18",
+    "@types/react-window": "^2.0.0",
+    "class-variance-authority": "^0.7.1",
+    "najm-auth": "workspace:*",
+    "najm-rate": "workspace:*",
+    "najm-validation": "workspace:*",
+    "postcss": "^8.4.49",
+    "postcss-prefix-selector": "^2.1.0",
+    "rimraf": "^6.0.1",
+    "tailwindcss": "^4",
+    "tsup": "^8.5.1",
+    "typescript": "^5.7.3"
+  }
+}

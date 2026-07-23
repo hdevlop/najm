@@ -1,0 +1,52 @@
+import type { ReactNode } from "react";
+import type { UseFormReturn, FieldValues } from "react-hook-form";
+import type { FormVariant } from "../VariantContext";
+
+export interface StepConfig {
+  id: string;
+  title: string;
+  description?: string;
+  fields?: string[];
+  schema?: any;
+  render: (ctx: { form: UseFormReturn<any>; stepIndex: number }) => ReactNode;
+}
+
+export interface WizardClassNames {
+  root?: string;
+  header?: string;
+  step?: string;
+  footer?: string;
+  indicator?: string;
+  progressBar?: string;
+}
+
+export type WizardFooterDivider = boolean | "none" | "solid" | "dashed" | "dotted";
+
+export interface WizardFormProps {
+  steps: StepConfig[];
+  schema: any;
+  defaultValues?: Record<string, any>;
+  onSubmit: (data: any) => void | Promise<void>;
+  currentStep?: number;
+  onCurrentStepChange?: (step: number) => void;
+  onStepComplete?: (stepIndex: number, data: Record<string, any>) => void;
+  showHeader?: boolean;
+  showFooter?: boolean;
+  nextLabel?: string;
+  previousLabel?: string;
+  submitLabel?: string;
+  variant?: FormVariant;
+  bordered?: boolean;
+  className?: string;
+  classNames?: WizardClassNames;
+  footerSlot?: ReactNode;
+  footerDivider?: WizardFooterDivider;
+  footerDividerClassName?: string;
+  children?: ReactNode;
+}
+
+export interface StepMeta {
+  id: string;
+  number: number;
+  title: string;
+}

@@ -1,0 +1,408 @@
+---
+title: Security Overview
+description: Comprehensive security features and best practices for building secure Najm applications
+---
+
+Najm provides enterprise-grade security features to protect your applications from common vulnerabilities and attacks. The framework includes multiple layers of security controls that work together to create a robust defense-in-depth strategy.
+
+## Security Features
+
+### Authentication & Authorization
+
+Najm offers flexible authentication and authorization mechanisms:
+
+- **Guards System** - Decorator-based route protection with automatic token injection
+- **Multi-strategy Authentication** - Support for JWT, sessions, API keys, OAuth, and custom strategies
+- **Role-based Access Control (RBAC)** - Fine-grained permission management
+- **Resource-based Authorization** - Owner verification and multi-tenant support
+
+[Learn more about Guards & Authorization →](/docs/security/guards)
+
+[Learn more about Authentication Patterns →](/docs/security/authentication)
+
+### Request Protection
+
+Protect your API from abuse and attacks:
+
+- **Rate Limiting** - In-memory rate limiting to prevent brute-force and DDoS attacks
+- **CORS Configuration** - Three-level CORS management (global, controller, method)
+- **Cookie Security** - Signed cookies, HttpOnly, Secure, and SameSite protection
+- **Input Validation** - Zod-based schema validation with automatic sanitization
+
+[Learn more about Rate Limiting →](/docs/security/rate-limit)
+
+[Learn more about CORS →](/docs/security/cors)
+
+[Learn more about Cookies →](/docs/security/cookies)
+
+## Quick Start
+
+```typescript
+import { Server } from 'najm-core';
+import { guards } from 'najm-guard';
+import { rateLimit } from 'najm-rate';
+import { cors } from 'najm-cors';
+import { cookies } from 'najm-cookies';
+
+const server = new Server()
+  // Enable guards with path exclusion
+  .use(guards({
+    exclude: ['/health', '/api/public/**']
+  }))
+
+  // Protect against brute-force attacks
+  .use(rateLimit({
+    defaultLimit: 100,
+    defaultWindow: '15m'
+  }))
+
+  // Configure CORS
+  .use(cors({
+    origin: 'https://app.example.com',
+    credentials: true
+  }))
+
+  // Secure cookie management
+  .use(cookies({
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict'
+  }))
+
+  .load(UserController);
+
+await server.listen(3000);
+```
+
+## Security Architecture
+
+```
+HTTP Request
+    │
+    ▼
+┌─────────────────────────┐
+│  Rate Limiting          │
+│  - Protect from abuse   │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  CORS Middleware        │
+│  - Origin validation    │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Guards                 │
+│  - Authentication       │
+│  - Authorization        │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Input Validation       │
+│  - Schema validation    │
+└────────┬────────────────┘
+         │
+         ▼
+┌─────────────────────────┐
+│  Controller Handler     │
+│  - Business logic       │
+└────────┬────────────────┘
+         │
+         ▼
+    HTTP Response
+```
+
+## Security Best Practices
+
+### 1. Authentication
+
+```typescript
+// ✓ Good: Use strong JWT secrets
+auth({
+  jwt: {
+    accessSecret: process.env.JWT_ACCESS_SECRET!,  // 256-bit random string
+    refreshSecret: process.env.JWT_REFRESH_SECRET!
+  }
+})
+
+// ✗ Avoid: Weak or hardcoded secrets
+auth({
+  jwt: {
+    accessSecret: 'my-secret'  // Insecure!
+  }
+})
+```
+
+### 2. Password Handling
+
+```typescript
+// ✓ Good: Use bcrypt with proper cost factor
+import bcrypt from 'bcrypt';
+
+const hashedPassword = await bcrypt.hash(password, 10);
+
+// ✗ Avoid: Plain text or weak hashing
+const hashedPassword = btoa(password);  // Insecure!
+```
+
+### 3. Rate Limiting
+
+```typescript
+// ✓ Good: Strict limits on authentication endpoints
+@Post('/login')
+@RateLimit({ limit: 5, window: '15m' })
+async login(@Body() credentials: LoginDto) {
+  // Login logic
+}
+
+// ✗ Avoid: No rate limiting on auth endpoints
+@Post('/login')
+async login(@Body() credentials: LoginDto) {
+  // Vulnerable to brute-force!
+}
+```
+
+### 4. CORS Configuration
+
+```typescript
+// ✓ Good: Specific origins with credentials
+cors({
+  origin: ['https://app.example.com'],
+  credentials: true
+})
+
+// ✗ Avoid: Wildcard with credentials
+cors({
+  origin: '*',
+  credentials: true  // Doesn't work anyway!
+})
+```
+
+### 5. Cookie Security
+
+```typescript
+// ✓ Good: Secure settings for auth tokens
+cookies.setSecure('session', token);  // httpOnly + secure + sameSite=Strict
+
+// ✗ Avoid: Insecure settings
+cookies.set('session', token, {
+  httpOnly: false,  // Vulnerable to XSS
+  secure: false     // Can be intercepted
+});
+```
+
+## Common Vulnerabilities
+
+### OWASP Top 10 Protection
+
+| Vulnerability | Najm Protection | Documentation |
+|---------------|-----------------|---------------|
+| **A01: Broken Access Control** | Guards, RBAC, resource-based authorization | [Guards](/docs/security/guards) |
+| **A02: Cryptographic Failures** | Bcrypt password hashing, signed cookies | [Authentication](/docs/security/authentication) |
+| **A03: Injection** | Zod validation, parameterized queries | [Validation](/docs/routing/validation) |
+| **A04: Insecure Design** | Security by design, fail-closed guards | [Best Practices](#security-best-practices) |
+| **A05: Security Misconfiguration** | Secure defaults, environment validation | [CORS](/docs/security/cors), [Cookies](/docs/security/cookies) |
+| **A06: Vulnerable Components** | Regular dependency updates | [Installation](/docs/getting-started/installation) |
+| **A07: Authentication Failures** | Rate limiting, timing attack prevention | [Rate Limiting](/docs/security/rate-limit) |
+| **A08: Data Integrity Failures** | Signed cookies, HMAC validation | [Cookies](/docs/security/cookies) |
+| **A09: Logging Failures** | Built-in logger service | [Core Concepts](/docs/core/server) |
+| **A10: SSRF** | Input validation, URL validation | [Validation](/docs/routing/validation) |
+
+### Cross-Site Scripting (XSS)
+
+```typescript
+// ✓ Good: Use HttpOnly cookies for sensitive data
+cookies.set('session', token, {
+  httpOnly: true  // Prevents JavaScript access
+});
+
+// ✓ Good: Sanitize user input
+import { z } from 'zod';
+
+const schema = z.object({
+  name: z.string().max(100).trim(),
+  bio: z.string().max(500).trim()
+});
+```
+
+### Cross-Site Request Forgery (CSRF)
+
+```typescript
+// ✓ Good: Use SameSite cookies
+cookies.set('session', token, {
+  sameSite: 'Strict'  // Prevents CSRF
+});
+
+// ✓ Good: Verify origin header
+@Post('/sensitive-action')
+@Guards(csrfGuard)
+async performAction() {
+  // Protected against CSRF
+}
+```
+
+### SQL Injection
+
+```typescript
+// ✓ Good: Use parameterized queries (Drizzle ORM)
+const users = await db
+  .select()
+  .from(usersTable)
+  .where(eq(usersTable.id, userId));  // Safe: parameterized
+
+// ✗ Avoid: String concatenation
+const users = await db.execute(
+  `SELECT * FROM users WHERE id = ${userId}`  // Vulnerable!
+);
+```
+
+### Timing Attacks
+
+```typescript
+// ✓ Good: Constant-time comparison
+@Injectable()
+class AuthGuard {
+  async canActivate(@Headers('authorization') token: string) {
+    if (!token) return false;
+
+    // Verify token (constant-time)
+    const user = await this.authService.verify(token);
+    if (!user) return false;
+
+    return { user };
+  }
+}
+
+// ✗ Avoid: Early returns that leak timing
+async canActivate(@Headers('authorization') token: string) {
+  const user = await this.userService.findByToken(token);
+  if (!user) return false;  // Timing leak!
+
+  if (!user.isActive) return false;  // Another leak!
+
+  return true;
+}
+```
+
+## Security Checklist
+
+When deploying your Najm application, ensure you've completed this checklist:
+
+### Authentication & Authorization
+
+- [ ] Use strong, unique JWT secrets (minimum 256 bits)
+- [ ] Store secrets in environment variables, never in code
+- [ ] Hash passwords with bcrypt (cost factor 10+)
+- [ ] Implement proper token expiration
+- [ ] Use HttpOnly cookies for refresh tokens
+- [ ] Enable guards on all protected routes
+- [ ] Implement RBAC or permission-based authorization
+
+### Network Security
+
+- [ ] Enable HTTPS in production
+- [ ] Configure CORS properly for your domain
+- [ ] Set secure cookie options (Secure, HttpOnly, SameSite)
+- [ ] Implement rate limiting on all endpoints
+- [ ] Use strict rate limits on authentication endpoints
+
+### Input Validation
+
+- [ ] Validate all user input with Zod schemas
+- [ ] Sanitize user-provided data
+- [ ] Set maximum lengths for string inputs
+- [ ] Validate file uploads (type, size, content)
+
+### Data Protection
+
+- [ ] Use database transactions for multi-step operations
+- [ ] Implement proper error handling (don't leak sensitive info)
+- [ ] Enable logging and monitoring
+- [ ] Regularly backup sensitive data
+- [ ] Implement proper session management
+
+### Dependencies & Updates
+
+- [ ] Keep all dependencies updated
+- [ ] Audit dependencies for vulnerabilities
+- [ ] Use lock files (bun.lock, package-lock.json)
+- [ ] Review third-party packages before installation
+
+## Environment Variables
+
+Required security-related environment variables:
+
+```bash
+# JWT Secrets - Use cryptographically secure random strings
+JWT_ACCESS_SECRET=your-256-bit-access-secret
+JWT_REFRESH_SECRET=your-256-bit-refresh-secret
+
+# Cookie Secret
+COOKIE_SECRET=your-256-bit-cookie-secret
+
+# Rate Limiting
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_DEFAULT_LIMIT=100
+RATE_LIMIT_DEFAULT_WINDOW=15m
+
+# CORS
+CORS_ORIGIN=https://your-domain.com
+
+# Database (keep credentials secure)
+DATABASE_URL=postgres://user:password@host:5432/db
+
+# Frontend URL (for password reset emails)
+FRONTEND_URL=https://your-domain.com
+```
+
+### Generating Secure Secrets
+
+```bash
+# Generate a 256-bit random secret
+node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Or using OpenSSL
+openssl rand -hex 32
+```
+
+## Reporting Vulnerabilities
+
+If you discover a security vulnerability in Najm:
+
+1. **Do not** open a public GitHub issue
+2. Email security concerns to: security@najm.dev (or your email)
+3. Include:
+   - Description of the vulnerability
+   - Steps to reproduce
+   - Potential impact
+   - Any suggested fixes
+
+We take security seriously and will respond promptly to verified reports.
+
+## Security Resources
+
+### Najm Documentation
+
+- [Guards & Authorization](/docs/security/guards)
+- [Authentication Patterns](/docs/security/authentication)
+- [Rate Limiting](/docs/security/rate-limit)
+- [CORS Configuration](/docs/security/cors)
+- [Cookie Security](/docs/security/cookies)
+
+### External Resources
+
+- [OWASP Top 10](https://owasp.org/www-project-top-ten/)
+- [OWASP Authentication Cheatsheet](https://cheatsheetseries.owasp.org/cheatsheets/Authentication_Cheat_Sheet.html)
+- [OWASP Password Storage Cheatsheet](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html)
+- [JWT Best Practices](https://auth0.com/blog/a-look-at-the-latest-draft-for-jwt-bcp/)
+- [NIST Password Guidelines](https://pages.nist.gov/800-63-3/sp800-63b.html)
+
+## Next Steps
+
+- [Guards & Authorization](/docs/security/guards) - Implement route protection and authorization
+- [Authentication Patterns](/docs/security/authentication) - Learn authentication strategies
+- [Rate Limiting](/docs/security/rate-limit) - Protect against abuse
+- [CORS Configuration](/docs/security/cors) - Configure cross-origin requests
+- [Cookie Security](/docs/security/cookies) - Secure cookie management

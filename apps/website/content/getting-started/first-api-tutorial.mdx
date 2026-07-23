@@ -1,0 +1,717 @@
+---
+title: First API Tutorial
+description: Build a complete task management API with authentication, database, and validation.
+order: 4
+---
+
+In this tutorial, you'll build a **Task Management API** with:
+
+- ✅ RESTful CRUD operations
+- ✅ PostgreSQL database with Drizzle ORM
+- ✅ JWT authentication
+- ✅ Request validation
+- ✅ Authorization guards
+- ✅ Event-driven notifications
+
+## What You'll Build
+
+By the end of this tutorial, you'll have a fully functional API with these endpoints:
+
+```
+POST   /api/auth/register    # Create account
+POST   /api/auth/login       # Get JWT token
+GET    /api/tasks            # List all tasks (authenticated)
+POST   /api/tasks            # Create task (authenticated)
+GET    /api/tasks/:id        # Get task by ID (authenticated)
+PUT    /api/tasks/:id        # Update task (authenticated, owner only)
+DELETE /api/tasks/:id        # Delete task (authenticated, owner only)
+```
+
+## Prerequisites
+
+- Bun or Node.js 18+ installed
+- PostgreSQL database running
+- Basic TypeScript knowledge
+
+## Step 1: Create Project
+
+```bash
+mkdir task-api
+cd task-api
+bun init -y
+```
+
+## Step 2: Install Dependencies
+
+```bash
+# Core
+bun add najm-core najm-di hono reflect-metadata
+
+# Plugins
+bun add najm-database najm-guard najm-validation najm-event
+
+# Database
+bun add drizzle-orm postgres
+bun add -D drizzle-kit
+
+# Utilities
+bun add bcrypt jsonwebtoken zod
+bun add -D @types/bcrypt @types/jsonwebtoken
+```
+
+## Step 3: Configure TypeScript
+
+Create `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+## Step 4: Set Up Environment Variables
+
+Create `.env`:
+
+```bash
+DATABASE_URL=postgresql://user:password@localhost:5432/taskdb
+JWT_SECRET=your-super-secret-key-change-this
+JWT_EXPIRES_IN=7d
+PORT=3000
+```
+
+## Step 5: Create Database Schema
+
+Create `src/shared/database/schema.ts`:
+
+```typescript
+import { pgTable, text, timestamp, uuid, boolean } from 'drizzle-orm/pg-core';
+
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  name: text('name').notNull(),
+  email: text('email').notNull().unique(),
+  password: text('password').notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+});
+
+export const tasks = pgTable('tasks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  title: text('title').notNull(),
+  description: text('description'),
+  completed: boolean('completed').default(false),
+  userId: uuid('user_id').references(() => users.id).notNull(),
+  createdAt: timestamp('created_at').defaultNow(),
+  updatedAt: timestamp('updated_at').defaultNow(),
+});
+```
+
+Create `src/shared/database/connection.ts`:
+
+```typescript
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+import * as schema from './schema';
+
+const connectionString = process.env.DATABASE_URL!;
+const client = postgres(connectionString);
+
+export const db = drizzle(client, { schema });
+```
+
+Create `drizzle.config.ts` in project root:
+
+```typescript
+import type { Config } from 'drizzle-kit';
+
+export default {
+  schema: './src/shared/database/schema.ts',
+  out: './drizzle',
+  driver: 'pg',
+  dbCredentials: {
+    connectionString: process.env.DATABASE_URL!,
+  },
+} satisfies Config;
+```
+
+## Step 6: Run Migrations
+
+```bash
+# Generate migrations
+bunx drizzle-kit generate:pg
+
+# Run migrations
+bunx drizzle-kit push:pg
+```
+
+## Step 7: Create DTOs and Validators
+
+Create `src/modules/auth/auth.dto.ts`:
+
+```typescript
+import { z } from 'zod';
+
+export const registerSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+
+export const loginSchema = z.object({
+  email: z.string().email(),
+  password: z.string(),
+});
+
+export type RegisterDto = z.infer<typeof registerSchema>;
+export type LoginDto = z.infer<typeof loginSchema>;
+```
+
+Create `src/modules/tasks/task.dto.ts`:
+
+```typescript
+import { z } from 'zod';
+
+export const createTaskSchema = z.object({
+  title: z.string().min(1).max(200),
+  description: z.string().optional(),
+});
+
+export const updateTaskSchema = z.object({
+  title: z.string().min(1).max(200).optional(),
+  description: z.string().optional(),
+  completed: z.boolean().optional(),
+});
+
+export type CreateTaskDto = z.infer<typeof createTaskSchema>;
+export type UpdateTaskDto = z.infer<typeof updateTaskSchema>;
+```
+
+## Step 8: Create Auth Guard
+
+Create `src/modules/auth/auth.guard.ts`:
+
+```typescript
+import { Injectable, DI } from 'najm-di';
+import { Headers } from 'najm-params';
+import { HttpError } from 'najm-core';
+import { Container, USER } from 'najm-core';
+import jwt from 'jsonwebtoken';
+
+@Injectable()
+export class AuthGuard {
+  @DI() container!: Container;
+
+  async canActivate(@Headers('authorization') authHeader: string) {
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      throw new HttpError(401, 'Missing or invalid authorization header');
+    }
+
+    const token = authHeader.substring(7);
+
+    try {
+      const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
+        userId: string;
+        email: string;
+      };
+
+      // Store user in request context
+      this.container.set(USER, payload);
+
+      return payload;
+    } catch (error) {
+      throw new HttpError(401, 'Invalid or expired token');
+    }
+  }
+}
+```
+
+## Step 9: Create Auth Module
+
+Create `src/modules/auth/auth.service.ts`:
+
+```typescript
+import { Service } from 'najm-di';
+import { DB } from 'najm-database';
+import { HttpError } from 'najm-core';
+import type { Database } from 'drizzle-orm';
+import { users } from '../../shared/database/schema';
+import { eq } from 'drizzle-orm';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
+import type { RegisterDto, LoginDto } from './auth.dto';
+
+@Service()
+export class AuthService {
+  @DB('default') db!: Database;
+
+  async register(dto: RegisterDto) {
+    // Check if user exists
+    const existing = await this.db.query.users.findFirst({
+      where: eq(users.email, dto.email),
+    });
+
+    if (existing) {
+      throw new HttpError(400, 'Email already registered');
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(dto.password, 10);
+
+    // Create user
+    const [user] = await this.db
+      .insert(users)
+      .values({
+        name: dto.name,
+        email: dto.email,
+        password: hashedPassword,
+      })
+      .returning();
+
+    // Generate token
+    const token = this.generateToken(user.id, user.email);
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+      token,
+    };
+  }
+
+  async login(dto: LoginDto) {
+    // Find user
+    const user = await this.db.query.users.findFirst({
+      where: eq(users.email, dto.email),
+    });
+
+    if (!user) {
+      throw new HttpError(401, 'Invalid credentials');
+    }
+
+    // Verify password
+    const valid = await bcrypt.compare(dto.password, user.password);
+    if (!valid) {
+      throw new HttpError(401, 'Invalid credentials');
+    }
+
+    // Generate token
+    const token = this.generateToken(user.id, user.email);
+
+    return {
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+      },
+      token,
+    };
+  }
+
+  private generateToken(userId: string, email: string): string {
+    return jwt.sign(
+      { userId, email },
+      process.env.JWT_SECRET!,
+      { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    );
+  }
+}
+```
+
+Create `src/modules/auth/auth.controller.ts`:
+
+```typescript
+import { Controller } from 'najm-di';
+import { Post } from 'najm-router';
+import { Body } from 'najm-params';
+import { Validate } from 'najm-validation';
+import { AuthService } from './auth.service';
+import { registerSchema, loginSchema, RegisterDto, LoginDto } from './auth.dto';
+
+@Controller('/api/auth')
+export class AuthController {
+  constructor(private authService: AuthService) {}
+
+  @Post('/register')
+  @Validate(registerSchema)
+  async register(@Body() dto: RegisterDto) {
+    return this.authService.register(dto);
+  }
+
+  @Post('/login')
+  @Validate(loginSchema)
+  async login(@Body() dto: LoginDto) {
+    return this.authService.login(dto);
+  }
+}
+```
+
+## Step 10: Create Tasks Module
+
+Create `src/modules/tasks/task.service.ts`:
+
+```typescript
+import { Service, Events } from 'najm-di';
+import { DB } from 'najm-database';
+import { HttpError } from 'najm-core';
+import type { Database } from 'drizzle-orm';
+import { tasks } from '../../shared/database/schema';
+import { eq, and } from 'drizzle-orm';
+import type { CreateTaskDto, UpdateTaskDto } from './task.dto';
+
+@Service()
+export class TaskService {
+  @DB('default') db!: Database;
+  @Events() events!: { emit: (event: string, data: any) => void };
+
+  async findAllByUser(userId: string) {
+    return this.db.query.tasks.findMany({
+      where: eq(tasks.userId, userId),
+      orderBy: (tasks, { desc }) => [desc(tasks.createdAt)],
+    });
+  }
+
+  async findById(id: string, userId: string) {
+    const task = await this.db.query.tasks.findFirst({
+      where: and(eq(tasks.id, id), eq(tasks.userId, userId)),
+    });
+
+    if (!task) {
+      throw new HttpError(404, 'Task not found');
+    }
+
+    return task;
+  }
+
+  async create(dto: CreateTaskDto, userId: string) {
+    const [task] = await this.db
+      .insert(tasks)
+      .values({
+        ...dto,
+        userId,
+      })
+      .returning();
+
+    this.events.emit('task.created', { taskId: task.id, userId });
+
+    return task;
+  }
+
+  async update(id: string, dto: UpdateTaskDto, userId: string) {
+    // Verify ownership
+    await this.findById(id, userId);
+
+    const [updated] = await this.db
+      .update(tasks)
+      .set({
+        ...dto,
+        updatedAt: new Date(),
+      })
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)))
+      .returning();
+
+    this.events.emit('task.updated', { taskId: id, userId });
+
+    return updated;
+  }
+
+  async delete(id: string, userId: string) {
+    // Verify ownership
+    await this.findById(id, userId);
+
+    await this.db
+      .delete(tasks)
+      .where(and(eq(tasks.id, id), eq(tasks.userId, userId)));
+
+    this.events.emit('task.deleted', { taskId: id, userId });
+
+    return { message: 'Task deleted successfully' };
+  }
+}
+```
+
+Create `src/modules/tasks/task.controller.ts`:
+
+```typescript
+import { Controller } from 'najm-di';
+import { Get, Post, Put, Delete } from 'najm-router';
+import { Params, Body, User } from 'najm-params';
+import { Guards } from 'najm-guard';
+import { Validate } from 'najm-validation';
+import { AuthGuard } from '../auth/auth.guard';
+import { TaskService } from './task.service';
+import { createTaskSchema, updateTaskSchema, CreateTaskDto, UpdateTaskDto } from './task.dto';
+
+@Controller('/api/tasks')
+@Guards(AuthGuard)
+export class TaskController {
+  constructor(private taskService: TaskService) {}
+
+  @Get('/')
+  async findAll(@User() user: { userId: string }) {
+    return this.taskService.findAllByUser(user.userId);
+  }
+
+  @Get('/:id')
+  async findOne(
+    @Params('id') id: string,
+    @User() user: { userId: string }
+  ) {
+    return this.taskService.findById(id, user.userId);
+  }
+
+  @Post('/')
+  @Validate(createTaskSchema)
+  async create(
+    @Body() dto: CreateTaskDto,
+    @User() user: { userId: string }
+  ) {
+    return this.taskService.create(dto, user.userId);
+  }
+
+  @Put('/:id')
+  @Validate(updateTaskSchema)
+  async update(
+    @Params('id') id: string,
+    @Body() dto: UpdateTaskDto,
+    @User() user: { userId: string }
+  ) {
+    return this.taskService.update(id, dto, user.userId);
+  }
+
+  @Delete('/:id')
+  async delete(
+    @Params('id') id: string,
+    @User() user: { userId: string }
+  ) {
+    return this.taskService.delete(id, user.userId);
+  }
+}
+```
+
+## Step 11: Add Event Listener (Optional)
+
+Create `src/modules/tasks/task.listener.ts`:
+
+```typescript
+import { Service } from 'najm-di';
+import { On } from 'najm-event';
+
+@Service()
+export class TaskEventListener {
+  @On('task.created')
+  async onTaskCreated({ taskId, userId }: { taskId: string; userId: string }) {
+    console.log(`📝 Task ${taskId} created by user ${userId}`);
+    // Add email notification, logging, etc.
+  }
+
+  @On('task.updated')
+  async onTaskUpdated({ taskId, userId }: { taskId: string; userId: string }) {
+    console.log(`✏️ Task ${taskId} updated by user ${userId}`);
+  }
+
+  @On('task.deleted')
+  async onTaskDeleted({ taskId, userId }: { taskId: string; userId: string }) {
+    console.log(`🗑️ Task ${taskId} deleted by user ${userId}`);
+  }
+}
+```
+
+## Step 12: Create Server Entry Point
+
+Create `src/index.ts`:
+
+```typescript
+import 'reflect-metadata';
+import { Server } from 'najm-core';
+import { database } from 'najm-database';
+import { guards } from 'najm-guard';
+import { validation } from 'najm-validation';
+import { events } from 'najm-event';
+import { db } from './shared/database/connection';
+
+// Auth module
+import { AuthController } from './modules/auth/auth.controller';
+import { AuthService } from './modules/auth/auth.service';
+import { AuthGuard } from './modules/auth/auth.guard';
+
+// Tasks module
+import { TaskController } from './modules/tasks/task.controller';
+import { TaskService } from './modules/tasks/task.service';
+import { TaskEventListener } from './modules/tasks/task.listener';
+
+const server = new Server()
+  .use(database({ default: db }))
+  .use(guards())
+  .use(validation())
+  .use(events())
+  .load(
+    // Auth
+    AuthController,
+    AuthService,
+    AuthGuard,
+    // Tasks
+    TaskController,
+    TaskService,
+    TaskEventListener
+  );
+
+const port = parseInt(process.env.PORT || '3000');
+
+await server.listen(port, () => {
+  console.log(`🚀 Task API running on http://localhost:${port}`);
+  console.log(`📚 Endpoints:`);
+  console.log(`   POST   /api/auth/register`);
+  console.log(`   POST   /api/auth/login`);
+  console.log(`   GET    /api/tasks`);
+  console.log(`   POST   /api/tasks`);
+  console.log(`   GET    /api/tasks/:id`);
+  console.log(`   PUT    /api/tasks/:id`);
+  console.log(`   DELETE /api/tasks/:id`);
+});
+```
+
+## Step 13: Add Package Scripts
+
+Update `package.json`:
+
+```json
+{
+  "name": "task-api",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "tsc",
+    "start": "bun src/index.ts",
+    "db:generate": "drizzle-kit generate:pg",
+    "db:push": "drizzle-kit push:pg",
+    "db:studio": "drizzle-kit studio"
+  }
+}
+```
+
+## Step 14: Run Your API
+
+```bash
+bun run dev
+```
+
+## Step 15: Test Your API
+
+### 1. Register a User
+
+```bash
+curl -X POST http://localhost:3000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "John Doe",
+    "email": "john@example.com",
+    "password": "password123"
+  }'
+```
+
+Response:
+```json
+{
+  "user": {
+    "id": "...",
+    "name": "John Doe",
+    "email": "john@example.com"
+  },
+  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+### 2. Login
+
+```bash
+curl -X POST http://localhost:3000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "password123"
+  }'
+```
+
+### 3. Create a Task (Use token from login)
+
+```bash
+TOKEN="your-jwt-token-here"
+
+curl -X POST http://localhost:3000/api/tasks \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "title": "Build Najm API",
+    "description": "Complete the task management tutorial"
+  }'
+```
+
+### 4. List Tasks
+
+```bash
+curl http://localhost:3000/api/tasks \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 5. Update Task
+
+```bash
+curl -X PUT http://localhost:3000/api/tasks/{task-id} \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer $TOKEN" \
+  -d '{
+    "completed": true
+  }'
+```
+
+### 6. Delete Task
+
+```bash
+curl -X DELETE http://localhost:3000/api/tasks/{task-id} \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+## What You Learned
+
+Congratulations! You've built a complete API with:
+
+✅ **Database Integration** - PostgreSQL with Drizzle ORM
+✅ **Authentication** - JWT-based auth with bcrypt password hashing
+✅ **Authorization** - Route guards and ownership checks
+✅ **Validation** - Request validation with Zod schemas
+✅ **Events** - Event-driven architecture for notifications
+✅ **Layered Architecture** - Controllers, Services, proper separation
+
+## Next Steps
+
+Now that you've built your first API, explore:
+
+- **[Add CORS](/docs/plugins/cors)** - Enable cross-origin requests
+- **[Add Rate Limiting](/docs/plugins/rate-limit)** - Protect against abuse
+- **[Add i18n](/docs/plugins/i18n)** - Multi-language support
+- **[Testing](/docs/testing/unit)** - Write tests for your API
+- **[Deployment](/docs/deployment/bun)** - Deploy to production
+
+## Full Code Repository
+
+The complete source code for this tutorial is available on GitHub:
+[github.com/anthropics/najm-api/examples/task-api](https://github.com/anthropics/najm-api/tree/main/examples/task-api)
+
+---
+
+**You're now ready to build production-ready APIs with Najm!** 🎉

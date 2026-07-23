@@ -1,0 +1,731 @@
+---
+title: Middleware System
+description: Flexible middleware chains with three registration methods, ordered execution, and full dependency injection support
+---
+
+The Middleware system provides flexible request/response processing with three powerful registration methods. Add cross-cutting concerns like logging, authentication, rate limiting, and more with full dependency injection support.
+
+## Overview
+
+Najm offers three ways to register middleware, each suited for different use cases:
+
+```typescript
+// Method 1: Class decorator with DI support
+@Middleware({ order: 10 })
+class LoggerMiddleware {
+  @Inject(LoggerService) private logger!: LoggerService;
+
+  async use(ctx: Context, next: Next) {
+    const start = Date.now();
+    await next();
+    this.logger.info(`${ctx.req.method} ${ctx.req.url} - ${Date.now() - start}ms`);
+  }
+}
+
+// Method 2: Property decorator for functional middleware
+@Service()
+class AppConfig {
+  @Use({ order: 20 })
+  cors = cors({ origin: '*' });
+}
+
+// Method 3: Config-based registration
+const server = new Server()
+  .use(middleware({
+    use: [cors(), logger(), rateLimiter()]
+  }));
+```
+
+## Key Features
+
+- **Three registration methods** - Class decorators, property decorators, or config array
+- **Ordered execution** - Control middleware execution order explicitly
+- **Path matching** - Apply middleware to specific routes only
+- **Full DI support** - Inject services into middleware classes
+- **Type-safe** - Full TypeScript support throughout
+- **Auto-registered** - Middleware plugin auto-registered by default
+
+## Plugin Setup
+
+The middleware plugin is auto-registered, but you can customize it:
+
+```typescript
+import { Server } from 'najm-core';
+import { middleware } from 'najm-middleware';
+
+const server = new Server()
+  .use(middleware({
+    debug: true,                    // Enable debug logging
+    requestIdHeader: 'x-request-id', // Header for request ID
+    exclude: ['/health', '/metrics'], // Paths to exclude
+    use: [cors(), logger()],        // Middleware array
+  }))
+  .load(AppController);
+
+await server.listen(3000);
+```
+
+## Registration Methods
+
+### Method 1: Class Decorator
+
+Full dependency injection support for complex middleware:
+
+```typescript
+import { Middleware } from 'najm-middleware';
+import { Inject } from 'najm-di';
+import { Context, Next } from 'hono';
+
+@Middleware({ order: 10, path: '/api/*' })
+class AuthMiddleware {
+  @Inject(AuthService) private authService!: AuthService;
+  @Log() logger!: ILogger;
+
+  async use(ctx: Context, next: Next) {
+    const token = ctx.req.header('authorization');
+
+    if (!token) {
+      return ctx.json({ error: 'Unauthorized' }, 401);
+    }
+
+    try {
+      const user = await this.authService.verify(token);
+      ctx.set('user', user);
+      await next();
+    } catch (error) {
+      this.logger.error('Auth failed:', error);
+      return ctx.json({ error: 'Invalid token' }, 401);
+    }
+  }
+}
+```
+
+**What happens internally:**
+1. `@Middleware()` marks class for DI container
+2. Metadata stored via `MetaHelper`
+3. Registered as singleton service
+4. `use()` method wrapped as middleware handler
+5. Instance resolved at request time for proper DI
+
+### Method 2: Property Decorator
+
+Simple functional middleware declared as properties:
+
+```typescript
+import { Service } from 'najm-di';
+import { Use } from 'najm-middleware';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+
+@Service()
+class AppConfig {
+  @Use({ order: 10 })
+  cors = cors({
+    origin: ['https://example.com'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  });
+
+  @Use({ order: 20, path: '/api/*' })
+  rateLimiter = rateLimiter({ max: 100, window: 60 });
+
+  @Use({ order: 30 })
+  logger = logger();
+}
+```
+
+**What happens internally:**
+1. `@Use()` appends metadata to class
+2. During scan phase, property values extracted
+3. Registered in container with specified order
+4. Applied to Hono app during activate phase
+
+### Method 3: Config Array
+
+Pass middleware directly in plugin configuration:
+
+```typescript
+import { Server } from 'najm-core';
+import { middleware } from 'najm-middleware';
+import { cors } from 'hono/cors';
+import { logger } from 'hono/logger';
+
+const server = new Server()
+  .use(middleware({
+    use: [
+      cors({ origin: '*' }),
+      logger(),
+      rateLimiter({ max: 100 }),
+    ]
+  }))
+  .load(AppController);
+```
+
+**Registration order:** 60, 61, 62... (based on array index)
+
+## Execution Order
+
+### Order Ranges
+
+Middleware executes in order from lowest to highest:
+
+| Range | Type | Description |
+|-------|------|-------------|
+| 1-9 | Core | Framework middleware (context-storage, request-context) |
+| 10-59 | User | `@Middleware()` and `@Use()` decorators |
+| 60-99 | Config | Config `use` array |
+| 100+ | Default | Decorators without explicit order |
+
+### Recommended Order Values
+
+| Order | Use Case |
+|-------|----------|
+| 10-20 | Authentication, Security headers |
+| 20-30 | CORS, Body parsing |
+| 30-50 | Logging, Metrics, Validation |
+| 50-59 | Rate limiting, Caching |
+
+**Example execution:**
+
+```typescript
+// Request arrives
+
+// 1. Core middleware (order: 1-2)
+context-storage → request-context
+
+// 2. User middleware (order: 10-59)
+@Middleware({ order: 10 }) LoggerMiddleware
+@Use({ order: 20 }) cors
+@Use({ order: 30 }) rateLimiter
+
+// 3. Config middleware (order: 60+)
+middleware({ use: [compression()] })
+
+// 4. Controller executes
+UserController.getUser()
+
+// Stack unwinds (middleware continues)
+```
+
+## Path Matching
+
+Apply middleware to specific routes:
+
+```typescript
+// All routes (default)
+@Middleware({ path: '*' })
+class GlobalMiddleware {}
+
+// Prefix match
+@Middleware({ path: '/api/*' })
+class ApiMiddleware {}
+
+// Exact match
+@Middleware({ path: '/health' })
+class HealthMiddleware {}
+
+// Multiple paths with @Use()
+@Service()
+class Config {
+  @Use({ order: 20, path: '/admin/*' })
+  adminAuth = adminAuthMiddleware();
+
+  @Use({ order: 20, path: '/api/*' })
+  apiAuth = apiAuthMiddleware();
+}
+```
+
+### Path Exclusion
+
+Exclude specific paths from middleware:
+
+```typescript
+const server = new Server()
+  .use(middleware({
+    exclude: ['/health', '/metrics', '/favicon.ico']
+  }));
+```
+
+## Real-World Examples
+
+### API Logger
+
+```typescript
+@Middleware({ order: 10 })
+export class ApiLoggerMiddleware {
+  @Inject(LoggerService) private logger!: LoggerService;
+
+  async use(ctx: Context, next: Next) {
+    const start = Date.now();
+    const { method, url } = ctx.req;
+
+    this.logger.info(`→ ${method} ${url}`);
+
+    try {
+      await next();
+      const duration = Date.now() - start;
+      this.logger.info(`← ${method} ${url} ${ctx.res.status} ${duration}ms`);
+    } catch (error) {
+      const duration = Date.now() - start;
+      this.logger.error(`✗ ${method} ${url} ${duration}ms`, error);
+      throw error;
+    }
+  }
+}
+```
+
+### JWT Authentication
+
+```typescript
+@Middleware({ order: 20, path: '/api/*' })
+export class JwtAuthMiddleware {
+  @Inject(JwtService) private jwt!: JwtService;
+
+  async use(ctx: Context, next: Next) {
+    const authHeader = ctx.req.header('authorization');
+
+    if (!authHeader?.startsWith('Bearer ')) {
+      return ctx.json({ error: 'Missing or invalid token' }, 401);
+    }
+
+    try {
+      const token = authHeader.substring(7);
+      const user = await this.jwt.verify(token);
+      ctx.set('user', user);
+      await next();
+    } catch {
+      return ctx.json({ error: 'Invalid or expired token' }, 401);
+    }
+  }
+}
+```
+
+### Rate Limiter
+
+```typescript
+@Middleware({ order: 30 })
+export class RateLimitMiddleware {
+  @Inject(RedisService) private redis!: RedisService;
+
+  private config = {
+    max: 100,        // 100 requests
+    window: 60,      // per 60 seconds
+  };
+
+  async use(ctx: Context, next: Next) {
+    const ip = ctx.req.header('x-forwarded-for') || 'unknown';
+    const key = `ratelimit:${ip}`;
+
+    const current = await this.redis.incr(key);
+
+    if (current === 1) {
+      await this.redis.expire(key, this.config.window);
+    }
+
+    if (current > this.config.max) {
+      const ttl = await this.redis.ttl(key);
+      ctx.header('Retry-After', String(ttl));
+      return ctx.json({ error: 'Rate limit exceeded' }, 429);
+    }
+
+    ctx.header('X-RateLimit-Remaining', String(this.config.max - current));
+    await next();
+  }
+}
+```
+
+### Error Handler
+
+```typescript
+@Middleware({ order: 50 })
+export class ErrorHandlerMiddleware {
+  @Inject(LoggerService) private logger!: LoggerService;
+
+  async use(ctx: Context, next: Next) {
+    try {
+      await next();
+    } catch (error: any) {
+      this.logger.error('Request failed:', error);
+
+      const status = error.status || 500;
+      const response: any = {
+        error: error.message || 'Internal Server Error',
+        status,
+      };
+
+      if (process.env.NODE_ENV === 'development') {
+        response.stack = error.stack;
+      }
+
+      return ctx.json(response, status);
+    }
+  }
+}
+```
+
+### Security Headers
+
+```typescript
+@Service()
+export class SecurityConfig {
+  @Use({ order: 15 })
+  cors = cors({
+    origin: ['https://example.com'],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE'],
+    credentials: true,
+  });
+
+  @Use({ order: 16 })
+  securityHeaders = async (ctx: Context, next: Next) => {
+    ctx.header('X-Content-Type-Options', 'nosniff');
+    ctx.header('X-Frame-Options', 'DENY');
+    ctx.header('X-XSS-Protection', '1; mode=block');
+    ctx.header('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    await next();
+  };
+}
+```
+
+### Request ID
+
+```typescript
+@Middleware({ order: 5 })
+export class RequestIdMiddleware {
+  async use(ctx: Context, next: Next) {
+    const requestId = ctx.req.header('x-request-id') || crypto.randomUUID();
+    ctx.header('x-request-id', requestId);
+    ctx.set('requestId', requestId);
+    await next();
+  }
+}
+```
+
+### Conditional Middleware <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Service()
+export class ProductionConfig {
+  @Use({ order: 20 })
+  get compressionMiddleware() {
+    if (process.env.NODE_ENV === 'production') {
+      return compress({ threshold: 1024 });
+    }
+    return async (_ctx: Context, next: Next) => next(); // No-op
+  }
+}
+```
+
+### Middleware Factory <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+function createCacheMiddleware(ttl: number) {
+  const cache = new Map<string, { data: any; expires: number }>();
+
+  return async (ctx: Context, next: Next) => {
+    if (ctx.req.method !== 'GET') return next();
+
+    const key = ctx.req.url;
+    const cached = cache.get(key);
+
+    if (cached && cached.expires > Date.now()) {
+      ctx.header('X-Cache', 'HIT');
+      return ctx.json(cached.data);
+    }
+
+    await next();
+
+    if (ctx.res.status === 200) {
+      const body = await ctx.res.json();
+      cache.set(key, { data: body, expires: Date.now() + ttl * 1000 });
+    }
+  };
+}
+
+@Service()
+export class CacheConfig {
+  @Use({ order: 40 })
+  shortCache = createCacheMiddleware(60);
+
+  @Use({ order: 41, path: '/api/static/*' })
+  longCache = createCacheMiddleware(3600);
+}
+```
+
+### Middleware Composition <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+function compose(...middlewares: MiddlewareHandler[]): MiddlewareHandler {
+  return async (ctx: Context, next: Next) => {
+    let index = -1;
+
+    async function dispatch(i: number): Promise<Response | void> {
+      if (i <= index) throw new Error('next() called multiple times');
+      index = i;
+      const mw = middlewares[i];
+      return mw ? mw(ctx, () => dispatch(i + 1)) : next();
+    }
+
+    return dispatch(0);
+  };
+}
+
+@Service()
+export class ComposedConfig {
+  @Use({ order: 30 })
+  apiMiddleware = compose(
+    jwtAuth(),
+    validateRequest(),
+    logRequest()
+  );
+}
+```
+
+### Resource Cleanup <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Middleware({ order: 45 })
+export class ResourceMiddleware {
+  async use(ctx: Context, next: Next) {
+    const resources: any[] = [];
+    ctx.set('allocate', (r: any) => {
+      resources.push(r);
+      return r;
+    });
+
+    try {
+      await next();
+    } finally {
+      for (const resource of resources) {
+        if (resource.close) await resource.close();
+      }
+    }
+  }
+}
+```
+
+### Conditional Pipeline <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+class MiddlewarePipeline {
+  private middlewares: Array<{
+    handler: MiddlewareHandler;
+    condition?: (ctx: Context) => boolean;
+  }> = [];
+
+  add(handler: MiddlewareHandler, condition?: (ctx: Context) => boolean) {
+    this.middlewares.push({ handler, condition });
+    return this;
+  }
+
+  build(): MiddlewareHandler {
+    return async (ctx: Context, next: Next) => {
+      let i = 0;
+      const dispatch = async (): Promise<Response | void> => {
+        while (i < this.middlewares.length) {
+          const { handler, condition } = this.middlewares[i++];
+          if (condition && !condition(ctx)) continue;
+          return handler(ctx, dispatch);
+        }
+        return next();
+      };
+      return dispatch();
+    };
+  }
+}
+
+@Service()
+export class PipelineConfig {
+  @Use({ order: 30 })
+  conditionalPipeline = new MiddlewarePipeline()
+    .add(authMiddleware(), (ctx) => !ctx.req.path.startsWith('/public'))
+    .add(rateLimitMiddleware(), (ctx) => ctx.req.method !== 'GET')
+    .build();
+}
+```
+
+## Core Middleware
+
+Najm automatically registers two core middleware:
+
+### Context Storage (Order: 1)
+
+Sets up Hono context storage for the request lifecycle.
+
+### Request Context (Order: 2)
+
+Creates request context with:
+- Request ID (from header or generated)
+- Request parser (lazy parsing)
+- HRequest object
+- AsyncLocalStorage setup
+
+```typescript
+private createRequestContextMiddleware(): MiddlewareHandler {
+  return async (context: Context, next: Next) => {
+    const requestId = context.req.header('x-request-id') || randomUUID();
+    const parser = new RequestParser(context);
+    const request = parser.createRequest();
+
+    return this.container.run(
+      { requestId, context, request, parser },
+      async () => {
+        try {
+          return await next();
+        } finally {
+          await this.container.cleanupReq();
+        }
+      }
+    );
+  };
+}
+```
+
+## Configuration
+
+### MiddlewareConfig Interface
+
+```typescript
+interface MiddlewareConfig {
+  debug?: boolean;           // Enable debug logging
+  requestIdHeader?: string;  // Header for request ID (default: 'x-request-id')
+  exclude?: string[];        // Paths to exclude from middleware
+  use?: MiddlewareHandler[]; // Middleware array (order: 60+)
+}
+```
+
+### Default Configuration
+
+```typescript
+const DEFAULT_CONFIG = {
+  debug: false,
+  requestIdHeader: 'x-request-id',
+  exclude: [],
+  use: [],
+};
+```
+
+## Best Practices
+
+### 1. Set Appropriate Order Values
+
+**✓ Good: Logical order**
+```typescript
+@Middleware({ order: 10 }) LoggerMiddleware     // Early logging
+@Middleware({ order: 20 }) AuthMiddleware       // Then auth
+@Middleware({ order: 30 }) ValidationMiddleware // Then validation
+```
+
+**✗ Avoid: Random order**
+```typescript
+@Middleware({ order: 50 }) LoggerMiddleware
+@Middleware({ order: 10 }) AuthMiddleware  // Auth before logging
+```
+
+### 2. Always Call next()
+
+**✓ Good: Proper flow control**
+```typescript
+async use(ctx: Context, next: Next) {
+  // Before logic
+  await next();
+  // After logic
+}
+```
+
+**✗ Avoid: Forgetting next()**
+```typescript
+async use(ctx: Context, next: Next) {
+  ctx.set('data', 'value');
+  // Missing await next() - request stops here
+}
+```
+
+### 3. Use Path Matching
+
+**✓ Good: Targeted middleware**
+```typescript
+@Middleware({ path: '/api/*' })  // Only for API routes
+class ApiAuthMiddleware {}
+```
+
+**✗ Avoid: Global when specific needed**
+```typescript
+@Middleware({ path: '*' })  // Runs on all routes including /health
+class ApiAuthMiddleware {}
+```
+
+### 4. Handle Errors Gracefully
+
+**✓ Good: Error handling**
+```typescript
+async use(ctx: Context, next: Next) {
+  try {
+    await next();
+  } catch (error) {
+    this.logger.error('Middleware error:', error);
+    throw error; // Re-throw or handle
+  }
+}
+```
+
+### 5. Clean Up Resources
+
+**✓ Good: Use finally**
+```typescript
+async use(ctx: Context, next: Next) {
+  const resource = await allocate();
+  try {
+    ctx.set('resource', resource);
+    await next();
+  } finally {
+    await resource.close();
+  }
+}
+```
+
+## Performance Tips
+
+1. **Order cheap checks first** - Rate limit before expensive auth
+2. **Use path matching** - Don't run auth on public routes
+3. **Cache middleware instances** - Resolved once, reused per request
+4. **Avoid blocking operations** - Use async/await properly
+5. **Clean up resources** - Use try/finally for cleanup
+
+## Request Execution Flow
+
+```
+Request: GET /api/users
+
+1. context-storage (order: 1)
+   └─> Setup Hono context
+
+2. request-context (order: 2)
+   └─> Generate requestId, create parser, store in DI
+
+3. LoggerMiddleware (order: 10)
+   └─> Log: "→ GET /api/users"
+   └─> await next()
+
+4. AuthMiddleware (order: 20)
+   └─> Verify token, set user
+   └─> await next()
+
+5. RateLimitMiddleware (order: 30)
+   └─> Check rate limit
+   └─> await next()
+
+6. Controller handler executes
+   └─> Return response
+
+(Stack unwinds)
+
+3. LoggerMiddleware continues
+   └─> Log: "← GET /api/users 200 45ms"
+```
+
+## Next Steps
+
+- [Params Plugin](/docs/routing/params) - Learn about parameter extraction
+- [Validation](/docs/routing/validation) - Add input validation
+- [Guards](/docs/plugins/guards) - Add route protection
+- [Request/Response](/docs/routing/request-response) - Understand the request lifecycle

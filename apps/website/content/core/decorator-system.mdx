@@ -1,0 +1,768 @@
+---
+title: Decorator System
+description: Comprehensive guide to Najm's 40+ decorators for classes, methods, properties, and parameters
+order: 3
+---
+
+Najm provides a comprehensive decorator system with **40+ decorators** across four categories: class decorators, method decorators, property decorators, and parameter decorators. This declarative approach enables clean, maintainable code.
+
+## Overview
+
+The decorator system is built on TypeScript's experimental decorators and `reflect-metadata`, providing:
+
+- **Class Decorators** - Define service types and HTTP controllers
+- **Method Decorators** - Configure HTTP routes, guards, transactions, and events
+- **Property Decorators** - Inject dependencies, databases, loggers, and utilities
+- **Parameter Decorators** - Extract request data with type safety
+
+## Class Decorators
+
+Class decorators define the role and scope of your classes in the application.
+
+### @Service()
+
+Marks a class as a business logic service (singleton by default).
+
+```typescript
+import { Service, Scope } from 'najm-di';
+
+// Singleton service (default)
+@Service()
+class UserService {
+  async createUser(data: CreateUserDto) {
+    // Business logic
+  }
+}
+
+// Request-scoped service
+@Service(Scope.REQUEST)
+class RequestContext {
+  userId?: string;
+  requestId?: string;
+}
+
+// Transient service
+@Service(Scope.TRANSIENT)
+class UniqueIdGenerator {
+  id = crypto.randomUUID();
+}
+```
+
+### @Controller()
+
+Marks a class as an HTTP controller with a route prefix.
+
+```typescript
+import { Controller } from 'najm-di';
+import { Get, Post } from 'najm-router';
+
+@Controller('/api/users')
+class UserController {
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  async list() {
+    return this.userService.findAll();
+  }
+
+  @Post('/')
+  async create(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
+}
+```
+
+**Base path:** `/api/users`
+**Routes:** `GET /api/users`, `POST /api/users`
+
+### @Repository()
+
+Marks a class as a data access layer component with database association.
+
+```typescript
+import { Repository } from 'najm-di';
+import { DB } from 'najm-database';
+
+@Repository('postgres')
+class UserRepository {
+  @DB('postgres') db: Database;
+
+  async findById(id: string) {
+    return this.db.query('SELECT * FROM users WHERE id = ?', [id]);
+  }
+
+  async create(data: any) {
+    return this.db.query('INSERT INTO users ...', [data]);
+  }
+}
+```
+
+### @Injectable()
+
+Generic decorator for any injectable class that doesn't fit other categories.
+
+```typescript
+import { Injectable } from 'najm-di';
+
+@Injectable()
+class CacheManager {
+  private cache = new Map();
+
+  set(key: string, value: any) {
+    this.cache.set(key, value);
+  }
+
+  get(key: string) {
+    return this.cache.get(key);
+  }
+}
+```
+
+## Method Decorators
+
+Method decorators configure HTTP routes, authorization, transactions, and event listeners.
+
+### HTTP Route Decorators
+
+Define HTTP endpoints with method decorators from `najm-router`:
+
+```typescript
+import { Get, Post, Put, Patch, Delete } from 'najm-router';
+
+@Controller('/api/posts')
+class PostController {
+  @Get('/')
+  async list() {
+    return this.postService.findAll();
+  }
+
+  @Get('/:id')
+  async show(@Params('id') id: string) {
+    return this.postService.findById(id);
+  }
+
+  @Post('/')
+  async create(@Body() data: CreatePostDto) {
+    return this.postService.create(data);
+  }
+
+  @Put('/:id')
+  async update(@Params('id') id: string, @Body() data: UpdatePostDto) {
+    return this.postService.update(id, data);
+  }
+
+  @Patch('/:id')
+  async patch(@Params('id') id: string, @Body() data: Partial<UpdatePostDto>) {
+    return this.postService.patch(id, data);
+  }
+
+  @Delete('/:id')
+  async remove(@Params('id') id: string) {
+    return this.postService.delete(id);
+  }
+}
+```
+
+**Available decorators:**
+- `@Get(path)` - GET requests
+- `@Post(path)` - POST requests
+- `@Put(path)` - PUT requests
+- `@Patch(path)` - PATCH requests
+- `@Delete(path)` - DELETE requests
+
+### @Guards()
+
+Apply authorization guards to routes (requires `najm-guard`).
+
+```typescript
+import { Guards } from 'najm-guard';
+
+// Function guard
+const authGuard = async (headers, cookie, context) => {
+  const token = headers('authorization');
+  if (!token) throw new HttpError(401, 'Unauthorized');
+  const user = await verifyToken(token);
+  return { userId: user.id };
+};
+
+// Class guard
+class RoleGuard {
+  constructor(private roles: string[]) {}
+
+  async canActivate(headers, cookie, context) {
+    // Check roles
+    return true;
+  }
+}
+
+@Controller('/admin')
+@Guards(authGuard)  // Apply to all routes
+class AdminController {
+  @Get('/users')
+  @Guards(new RoleGuard(['admin']))  // Additional guard for this route
+  async getUsers(@GuardParams() auth: { userId: string }) {
+    return this.userService.findAll();
+  }
+}
+```
+
+### @Transaction()
+
+Wrap method in database transaction with automatic commit/rollback (requires `najm-database`).
+
+```typescript
+import { Transaction } from 'najm-database';
+
+@Service()
+class OrderService {
+  @DB() db: Database;
+
+  @Transaction({ retries: 2 })
+  async createOrder(data: OrderData) {
+    // All db operations use same transaction
+    const order = await this.db.query('INSERT INTO orders ...', [data]);
+    await this.db.query('UPDATE inventory ...', [data.productId]);
+
+    // Auto-commits on success
+    // Auto-rolls back on error
+    // Retries on deadlock errors
+    return order;
+  }
+}
+```
+
+**Options:**
+- `retries` - Number of retry attempts on deadlock (default: 0)
+
+### @On()
+
+Register method as event listener (requires `najm-event`).
+
+```typescript
+import { On, Events } from 'najm-event';
+
+@Service()
+class EmailService {
+  @On('user.created')
+  async sendWelcomeEmail({ userId }: { userId: string }) {
+    const user = await this.userService.findById(userId);
+    await this.sendEmail(user.email, 'Welcome!');
+  }
+
+  @On('order.completed')
+  async sendOrderConfirmation({ orderId }: { orderId: string }) {
+    const order = await this.orderService.findById(orderId);
+    await this.sendEmail(order.userEmail, 'Order confirmed!');
+  }
+}
+```
+
+## Property Decorators
+
+Property decorators inject dependencies and utilities into your classes.
+
+### @Inject()
+
+Inject dependencies by class or named token.
+
+```typescript
+import { Inject } from 'najm-di';
+
+@Service()
+class NotificationService {
+  // Inject by class
+  @Inject() emailService: EmailService;
+  @Inject() smsService: SmsService;
+
+  // Inject by named token
+  @Inject('config') config: AppConfig;
+  @Inject('redis') redis: Redis;
+}
+```
+
+### @DI()
+
+Inject the DI container itself for dynamic resolution.
+
+```typescript
+import { DI } from 'najm-di';
+
+@Service()
+class DynamicService {
+  @DI() container: Container;
+
+  resolveService<T>(token: any): T {
+    return this.container.get<T>(token);
+  }
+}
+```
+
+### @DB()
+
+Inject database connection (requires `najm-database`).
+
+```typescript
+import { DB } from 'najm-database';
+
+@Repository('postgres')
+class UserRepository {
+  @DB('postgres') db: Database;
+  @DB('mongodb') mongo: MongoDatabase;
+
+  async findByIdSQL(id: string) {
+    return this.db.query('SELECT * FROM users WHERE id = ?', [id]);
+  }
+
+  async findByIdMongo(id: string) {
+    return this.mongo.collection('users').findOne({ _id: id });
+  }
+}
+```
+
+### @Log()
+
+Inject logger instance.
+
+```typescript
+import { Log } from 'najm-core';
+
+@Service()
+class UserService {
+  @Log() logger: ILogger;
+
+  async createUser(data: CreateUserDto) {
+    this.logger.info('Creating user', { email: data.email });
+    const user = await this.repo.create(data);
+    this.logger.info('User created', { id: user.id });
+    return user;
+  }
+}
+```
+
+### @Events()
+
+Inject event emitter methods (requires `najm-event`).
+
+```typescript
+import { Events } from 'najm-event';
+
+@Service()
+class UserService {
+  @Events() events: { emit, on, off };
+
+  async createUser(data: CreateUserDto) {
+    const user = await this.repo.create(data);
+
+    // Emit event
+    this.events.emit('user.created', { userId: user.id });
+
+    return user;
+  }
+}
+```
+
+### @I18n()
+
+Inject translation function with optional prefix (requires `najm-i18n`).
+
+```typescript
+import { I18n } from 'najm-i18n';
+
+@Service()
+class UserService {
+  @I18n('users') t: TFn;  // Translation function with 'users' prefix
+
+  async validateUser(data: CreateUserDto) {
+    if (!data.email) {
+      throw new Error(this.t('email_required'));  // users.email_required
+    }
+    if (!data.password) {
+      throw new Error(this.t('password_required'));  // users.password_required
+    }
+  }
+}
+```
+
+## Parameter Decorators
+
+Parameter decorators extract and transform request data. Najm provides **40+ parameter decorators** across multiple categories.
+
+### Body Decorators
+
+Extract request body in various formats:
+
+```typescript
+import { Body, JsonBody, TextBody, FormData, ArrayBufferBody, BlobBody } from 'najm-params';
+
+@Controller('/api')
+class UploadController {
+  @Post('/users')
+  async create(@Body() data: CreateUserDto) {
+    // Extracts entire body (auto-detects JSON/form)
+  }
+
+  @Post('/users')
+  async createField(@Body('email') email: string) {
+    // Extracts specific field from body
+  }
+
+  @Post('/json')
+  async handleJson(@JsonBody() data: any) {
+    // Force JSON parsing
+  }
+
+  @Post('/text')
+  async handleText(@TextBody() text: string) {
+    // Extract as plain text
+  }
+
+  @Post('/form')
+  async handleForm(@FormData() form: FormData) {
+    // Extract FormData
+  }
+
+  @Post('/binary')
+  async handleBinary(@ArrayBufferBody() buffer: ArrayBuffer) {
+    // Extract ArrayBuffer
+  }
+
+  @Post('/blob')
+  async handleBlob(@BlobBody() blob: Blob) {
+    // Extract Blob
+  }
+}
+```
+
+### URL/Route Decorators
+
+Extract URL parameters, query strings, and route information:
+
+```typescript
+import {
+  Params, Query, Queries, Path, Url, Method,
+  RoutePath, MatchedRoutes, RouteIndex
+} from 'najm-params';
+
+@Controller('/api/users')
+class UserController {
+  @Get('/:id')
+  async show(
+    @Params('id') id: string,           // Extract single param
+    @Params() params: Record<string, string>,  // Extract all params
+  ) {
+    return this.userService.findById(id);
+  }
+
+  @Get('/')
+  async list(
+    @Query('page') page: string,        // Extract single query param
+    @Query() query: Record<string, string>,    // Extract all query params
+    @Queries() queries: Record<string, string[]>,  // Extract query arrays
+  ) {
+    return this.userService.paginate(Number(page));
+  }
+
+  @Get('/info')
+  async getInfo(
+    @Path() path: string,               // Request path
+    @Url() url: string,                 // Full URL
+    @Method() method: string,           // HTTP method
+    @RoutePath() routePath: string,     // Matched route pattern
+    @MatchedRoutes() routes: any[],     // All matched routes
+    @RouteIndex() index: number,        // Route index
+  ) {
+    return { path, url, method, routePath };
+  }
+}
+```
+
+### Header Decorators
+
+Extract request headers:
+
+```typescript
+import {
+  Headers, ContentType, ContentLength,
+  Origin, Referer, Language, Encoding,
+  Connection, Upgrade, Protocol
+} from 'najm-params';
+
+@Controller('/api')
+class ApiController {
+  @Get('/check')
+  async checkHeaders(
+    @Headers('authorization') token: string,     // Single header
+    @Headers() headers: Record<string, string>,  // All headers
+    @ContentType() contentType: string,          // Content-Type header
+    @ContentLength() length: number,             // Content-Length header
+    @Origin() origin: string,                    // Origin header
+    @Referer() referer: string,                  // Referer header
+    @Language() lang: string,                    // Accept-Language
+    @Encoding() encoding: string,                // Accept-Encoding
+    @Connection() connection: string,            // Connection header
+    @Upgrade() upgrade: string,                  // Upgrade header
+    @Protocol() protocol: string,                // Protocol (http/https)
+  ) {
+    return { token, contentType, origin };
+  }
+}
+```
+
+### Context Decorators
+
+Access Hono context and request-related data:
+
+```typescript
+import {
+  Ctx, Req, Cookie, File, IP,
+  User, Owner, Info, Data, Filter, Valid,
+  GuardParams, Raw
+} from 'najm-params';
+
+@Controller('/api/posts')
+class PostController {
+  @Get('/')
+  async list(
+    @Ctx() context: Context,                 // Hono context
+    @Req() request: Request,                 // Raw Request object
+    @Cookie('session') session: string,      // Cookie value
+    @IP() ip: string,                        // Client IP
+  ) {
+    return this.postService.findAll();
+  }
+
+  @Post('/upload')
+  async upload(
+    @File() file: File,                      // Uploaded file
+  ) {
+    return this.storageService.upload(file);
+  }
+
+  @Get('/protected')
+  @Guards(authGuard)
+  async protected(
+    @User() user: any,                       // Authenticated user
+    @GuardParams() guardData: any,           // Data from guards
+  ) {
+    return { user };
+  }
+
+  @Get('/custom')
+  async custom(
+    @Owner() owner: any,                     // Custom owner data
+    @Info() info: any,                       // Custom info data
+    @Data() data: any,                       // Custom data
+    @Filter() filter: any,                   // Filter criteria
+    @Valid() valid: any,                     // Validation result
+    @Raw() raw: any,                         // Raw custom data
+  ) {
+    return { owner, info, data };
+  }
+}
+```
+
+## Complete Example
+
+Here's a complete example using multiple decorator types:
+
+```typescript
+import { Service, Controller, Repository, Inject, DI } from 'najm-di';
+import { Get, Post, Put, Delete } from 'najm-router';
+import { Guards } from 'najm-guard';
+import { Transaction, DB } from 'najm-database';
+import { Events, On } from 'najm-event';
+import { Log } from 'najm-core';
+import { Body, Params, Query, User, GuardParams } from 'najm-params';
+
+// Repository
+@Repository('postgres')
+class UserRepository {
+  @DB('postgres') db: Database;
+
+  async findById(id: string) {
+    return this.db.query('SELECT * FROM users WHERE id = ?', [id]);
+  }
+
+  async create(data: CreateUserDto) {
+    return this.db.query('INSERT INTO users ...', [data]);
+  }
+}
+
+// Service
+@Service()
+class UserService {
+  @Log() logger: ILogger;
+  @Events() events: { emit, on, off };
+
+  constructor(private repo: UserRepository) {}
+
+  @Transaction({ retries: 2 })
+  async createUser(data: CreateUserDto) {
+    this.logger.info('Creating user', { email: data.email });
+
+    const user = await this.repo.create(data);
+
+    this.events.emit('user.created', { userId: user.id });
+
+    this.logger.info('User created', { id: user.id });
+    return user;
+  }
+
+  @On('user.deleted')
+  async cleanup({ userId }: { userId: string }) {
+    this.logger.info('Cleaning up user', { userId });
+    await this.repo.softDelete(userId);
+  }
+}
+
+// Guard
+const authGuard = async (headers, cookie, context) => {
+  const token = headers('authorization');
+  if (!token) throw new HttpError(401, 'Unauthorized');
+  const user = await verifyToken(token);
+  return { userId: user.id };
+};
+
+// Controller
+@Controller('/api/users')
+@Guards(authGuard)
+class UserController {
+  @Log() logger: ILogger;
+
+  constructor(private userService: UserService) {}
+
+  @Get('/')
+  async list(
+    @Query('page') page: string,
+    @User() user: any,
+  ) {
+    this.logger.info('Listing users', { page, userId: user.id });
+    return this.userService.paginate(Number(page));
+  }
+
+  @Get('/:id')
+  async show(
+    @Params('id') id: string,
+    @GuardParams() auth: { userId: string },
+  ) {
+    return this.userService.findById(id);
+  }
+
+  @Post('/')
+  async create(@Body() data: CreateUserDto) {
+    return this.userService.createUser(data);
+  }
+
+  @Put('/:id')
+  async update(
+    @Params('id') id: string,
+    @Body() data: UpdateUserDto,
+  ) {
+    return this.userService.update(id, data);
+  }
+
+  @Delete('/:id')
+  async remove(@Params('id') id: string) {
+    return this.userService.delete(id);
+  }
+}
+```
+
+## Best Practices
+
+### 1. Use Appropriate Decorators
+
+**✓ Good: Use specific decorators**
+```typescript
+@Service()
+class UserService {}
+
+@Controller('/users')
+class UserController {}
+
+@Repository('postgres')
+class UserRepository {}
+```
+
+**✗ Avoid: Using @Injectable for everything**
+```typescript
+@Injectable()
+class UserService {}  // Use @Service() instead
+```
+
+### 2. Prefer Constructor Injection
+
+**✓ Good: Constructor injection**
+```typescript
+@Service()
+class OrderService {
+  constructor(
+    private userService: UserService,
+    private productService: ProductService,
+  ) {}
+}
+```
+
+**✗ Avoid: Property injection when possible**
+```typescript
+@Service()
+class OrderService {
+  @Inject() userService: UserService;
+  @Inject() productService: ProductService;
+}
+```
+
+### 3. Extract Only What You Need
+
+**✓ Good: Extract specific fields**
+```typescript
+@Post('/users')
+async create(
+  @Body('email') email: string,
+  @Body('name') name: string,
+) {
+  // Only extract what you need
+}
+```
+
+**✗ Avoid: Extracting entire body unnecessarily**
+```typescript
+@Post('/users')
+async create(@Body() body: any) {
+  const email = body.email;  // Extra step
+  const name = body.name;
+}
+```
+
+### 4. Use Scope Appropriately
+
+**✓ Good: Singleton for stateless services**
+```typescript
+@Service()  // Singleton by default
+class CalculatorService {
+  add(a: number, b: number) {
+    return a + b;
+  }
+}
+```
+
+**✓ Good: Request scope for request data**
+```typescript
+@Service(Scope.REQUEST)
+class RequestContext {
+  userId?: string;
+  requestId?: string;
+}
+```
+
+## Summary
+
+Najm's decorator system provides:
+
+✓ **40+ Decorators** - Comprehensive coverage for all use cases
+✓ **Type Safety** - Full TypeScript support with proper typing
+✓ **Declarative** - Clean, readable code without boilerplate
+✓ **Composable** - Mix and match decorators as needed
+✓ **Extensible** - Build custom decorators with metadata system
+
+The decorator system is the foundation of Najm's developer experience, enabling you to write clean, maintainable applications with minimal boilerplate.

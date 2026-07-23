@@ -1,0 +1,79 @@
+---
+title: Router Plugin
+description: Decorator-based HTTP routing built on Hono
+order: 1
+---
+
+The Router Plugin provides NestJS-style HTTP routing with automatic route registration, parameter resolution, and response formatting.
+
+## Quick Setup
+
+```typescript
+import { router } from 'najm-router';
+import { Server } from 'najm-core';
+
+const server = new Server()
+  .use(router());  // Auto-registered by default
+```
+
+## Route Decorators
+
+```typescript
+import { Controller, Get, Post, Put, Patch, Delete } from 'najm-router';
+import { Body, Params } from 'najm-params';
+
+@Controller('/api/users')
+class UserController {
+  @Get('/')
+  getAllUsers() {
+    return this.userService.findAll();
+  }
+
+  @Get('/:id')
+  getUser(@Params('id') id: string) {
+    return this.userService.findById(id);
+  }
+
+  @Post('/')
+  createUser(@Body() data: CreateUserDto) {
+    return this.userService.create(data);
+  }
+
+  @Put('/:id')
+  updateUser(@Params('id') id: string, @Body() data: UpdateUserDto) {
+    return this.userService.update(id, data);
+  }
+
+  @Patch('/:id')
+  patchUser(@Params('id') id: string, @Body() data: Partial<UpdateUserDto>) {
+    return this.userService.patch(id, data);
+  }
+
+  @Delete('/:id')
+  deleteUser(@Params('id') id: string) {
+    return this.userService.delete(id);
+  }
+}
+```
+
+## Key Features
+
+- **Automatic Route Registration** - Scans controllers and registers routes
+- **Request Lifecycle** - Middleware → Guards → Params → Handler → Response
+- **Response Formatting** - Automatic JSON, HTML, text, and stream handling
+- **Lazy Parsing** - Request bodies parsed on-demand
+- **Type-Safe** - Full TypeScript support with decorators
+
+## Complete Documentation
+
+For comprehensive documentation including:
+
+- **Router Architecture** - Internal routing system design
+- **Request/Response Lifecycle** - Complete request processing flow
+- **Response Formatting** - JSON, HTML, streaming, status codes
+- **Route Configuration** - Base paths, controller prefixes
+- **Performance Optimization** - Lazy parsing, caching
+- **Advanced Patterns** - Nested routes, dynamic routing
+- **Testing Routes** - Unit and integration testing
+
+**See:** [Routing > Router Plugin](/docs/routing/router)

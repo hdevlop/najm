@@ -1,0 +1,73 @@
+---
+title: Parameter System
+description: 40+ decorators for extracting request data into controller method parameters
+order: 5
+---
+
+The Parameter system provides 40+ decorators for extracting request data into controller method parameters with automatic parsing and caching.
+
+## Quick Setup
+
+```typescript
+import { params } from 'najm-params';
+import { Server } from 'najm-core';
+
+const server = new Server()
+  .use(params());  // Auto-registered by default
+```
+
+## Quick Example
+
+```typescript
+import { Body, Params, Query, Headers } from 'najm-params';
+
+@Controller('/products')
+class ProductController {
+  @Get('/:id')
+  getProduct(
+    @Params('id') id: string,
+    @Query('include') include?: string
+  ) {
+    return { id, include };
+  }
+
+  @Post()
+  createProduct(
+    @Body() data: CreateProductDto,
+    @Headers('authorization') auth: string
+  ) {
+    return { data, auth };
+  }
+}
+```
+
+## Decorator Categories
+
+**Body Decorators (7):**
+`@Body()`, `@JsonBody()`, `@TextBody()`, `@FormData()`, `@ArrayBufferBody()`, `@BlobBody()`, `@File()`
+
+**URL/Route Decorators (11):**
+`@Params()`, `@Query()`, `@Queries()`, `@Path()`, `@Url()`, `@Method()`, `@RoutePath()`, `@MatchedRoutes()`, `@RouteIndex()`
+
+**Header Decorators (11):**
+`@Headers()`, `@ContentType()`, `@ContentLength()`, `@Origin()`, `@Referer()`, `@Language()`, `@Encoding()`, `@Connection()`, `@Upgrade()`, `@Protocol()`
+
+**Context Decorators (6):**
+`@Ctx()`, `@Req()`, `@Cookie()`, `@IP()`, `@Raw()`, `@Valid()`
+
+**Guard Data Decorators (9):**
+`@User()`, `@Owner()`, `@Info()`, `@Data()`, `@Filter()`, `@GuardParams()`, `@Role()`, `@Permissions()`
+
+## Complete Documentation
+
+For comprehensive documentation including:
+
+- **All 40+ Decorators** - Complete reference with examples
+- **Performance Optimization** - Caching and lazy parsing
+- **Advanced Patterns** - Complex parameter resolution
+- **Type Safety** - TypeScript integration
+- **Best Practices** - Parameter design guidelines
+- **Guard Integration** - Using parameters with guards
+- **File Uploads** - Handling multipart/form-data
+
+**See:** [Routing > Parameter Decorators](/docs/routing/params)

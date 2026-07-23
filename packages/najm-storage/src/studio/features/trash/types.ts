@@ -1,0 +1,1 @@
+export type { FileInfo } from '../../explorer/types';

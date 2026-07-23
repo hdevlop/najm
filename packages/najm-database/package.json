@@ -1,0 +1,46 @@
+{
+  "name": "najm-database",
+  "version": "2.0.3",
+  "description": "Database and transaction handling plugin for Najm API framework",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.mjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "bun test",
+    "test:watch": "bun test --watch"
+  },
+  "peerDependencies": {
+    "najm-core": "workspace:*",
+    "reflect-metadata": "^0.2.0",
+    "drizzle-orm": ">=0.36.0",
+    "zod": "^3.0.0"
+  },
+  "devDependencies": {
+    "najm-core": "workspace:*",
+    "typescript": "^5.7.3",
+    "tsup": "^8.0.0"
+  },
+  "keywords": [
+    "database",
+    "transaction",
+    "najm",
+    "decorator",
+    "orm",
+    "api",
+    "framework"
+  ],
+  "author": "Hicham Jebara",
+  "license": "MIT"
+}

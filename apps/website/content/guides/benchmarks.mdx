@@ -1,0 +1,71 @@
+---
+title: Benchmarks
+description: Reproduce Najm performance numbers and read them honestly
+order: 40
+---
+
+Najm benchmark claims are backed by scripts in the repository. They compare
+route dispatch, parameter resolution, response formatting, cold start, memory,
+and framework throughput.
+
+## Run the benchmarks
+
+Build core first because the benchmark workspace imports the built package.
+
+```bash
+bun run build:core
+```
+
+Then run the focused benchmark you need.
+
+```bash
+bun run bench
+bun run bench:hotpath
+bun run bench:frameworks
+```
+
+The direct scripts accept longer durations and higher connection counts:
+
+```bash
+bun benchmarks/http.bench.ts --duration 10000 --connections 100
+bun benchmarks/hotpath.bench.ts --iterations 200000
+bun benchmarks/frameworks.bench.ts --duration 10000 --connections 100
+```
+
+## Latest local anchors
+
+The current launch anchors were measured on July 7, 2026 with Bun 1.3.14 on
+Windows x64 after the Tier 1 hot-path pass.
+
+| Scenario | Result |
+| --- | ---: |
+| `najm /plain` layer benchmark | 9.34 us/op |
+| `najm /users/:id` layer benchmark | 10.32 us/op |
+| Najm `/json` framework comparison | 24,768 req/s |
+| Najm `/users/:id` framework comparison | 23,211 req/s |
+| Najm cold start | 122 ms |
+| Najm RSS | 85.4 MB |
+
+In the same local comparison run, Najm was roughly Fastify-parity on the tiny
+routes, had lower RSS, and started faster than NestJS. Raw Hono remains the
+ceiling because Najm intentionally adds DI, decorators, parameter resolution,
+middleware, and response formatting.
+
+## Publishing numbers
+
+Use the benchmark README in `benchmarks/README.md` as the source of truth.
+Before publishing headline numbers, re-run the scripts on the release machine
+and cross-check HTTP throughput with an external client such as `autocannon`,
+`k6`, or `bombardier`.
+
+Always publish:
+
+- runtime and version
+- operating system and CPU
+- connections and duration
+- raw Hono baseline from the same run
+- p99 latency, not just request throughput
+
+Do not claim Najm beats raw routers. The honest claim is that Najm keeps the
+framework overhead small while providing the batteries: DI, decorators, guards,
+validation, plugins, and operational hooks.

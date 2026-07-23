@@ -1,0 +1,66 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "strict": false,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "declaration": true,
+    "declarationMap": true,
+    "outDir": "./dist",
+
+    "baseUrl": ".",
+    "paths": {
+      "najm-api": ["./packages/najm-api/src"],
+      "najm-api/*": ["./packages/najm-api/src/*"],
+      "najm-auth": ["./packages/najm-auth/src"],
+      "najm-cache": ["./packages/najm-cache/src"],
+      "najm-cli": ["./packages/najm-cli/src"],
+      "najm-cookies": ["./packages/najm-cookies/src"],
+      "najm-core": ["./packages/najm-core/src"],
+      "najm-cors": ["./packages/najm-cors/src"],
+      "najm-database": ["./packages/najm-database/src"],
+      "najm-email": ["./packages/najm-email/src"],
+      "najm-event": ["./packages/najm-event/src"],
+      "najm-guard": ["./packages/najm-guard/src"],
+      "najm-i18n": ["./packages/najm-i18n/src"],
+      "najm-mcp": ["./packages/najm-mcp/src"],
+      "najm-rag": ["./packages/najm-rag/src"],
+      "najm-rate": ["./packages/najm-rate/src"],
+      "najm-storage": ["./packages/najm-storage/src"],
+      "najm-validation": ["./packages/najm-validation/src"],
+      "najm-whatsapp": ["./packages/najm-whatsapp/src"],
+    }
+  },
+  "references": [
+    { "path": "./packages/najm-api" },
+    { "path": "./packages/najm-auth" },
+    { "path": "./packages/najm-cache" },
+    { "path": "./packages/najm-cli" },
+    { "path": "./packages/najm-cookies" },
+    { "path": "./packages/najm-core" },
+    { "path": "./packages/najm-cors" },
+    { "path": "./packages/najm-database" },
+    { "path": "./packages/najm-email" },
+    { "path": "./packages/najm-event" },
+    { "path": "./packages/najm-guard" },
+    { "path": "./packages/najm-i18n" },
+    { "path": "./packages/najm-mcp" },
+    { "path": "./packages/najm-rag" },
+    { "path": "./packages/najm-rate" },
+    { "path": "./packages/najm-validation" }
+  ],
+  "include": [
+    "src/**/*",
+    "tests/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

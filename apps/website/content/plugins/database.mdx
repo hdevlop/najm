@@ -1,0 +1,258 @@
+---
+title: Database
+description: Database integration and transaction management.
+order: 3
+---
+
+## Overview
+
+The database plugin provides seamless database integration with automatic transaction management, retries on deadlocks, and proper connection handling.
+
+## Installation
+
+```bash
+bun add najm-database
+```
+
+## Setup
+
+Register the database plugin with your database connection:
+
+```typescript
+import { Server } from 'najm-core';
+import { database } from 'najm-database';
+import { drizzle } from 'drizzle-orm/postgres-js';
+import postgres from 'postgres';
+
+const sql = postgres(process.env.DATABASE_URL);
+const db = drizzle(sql);
+
+const server = new Server()
+  .use(database({ default: db }))
+  .load(UserRepository);
+```
+
+## Multiple Databases
+
+Register multiple database connections:
+
+```typescript
+const server = new Server()
+  .use(database({
+    default: mainDb,
+    analytics: analyticsDb,
+    cache: redisDb,
+  }));
+```
+
+## Accessing Databases
+
+Use the `@DB` decorator to inject database connections:
+
+```typescript
+@Repository()
+class UserRepository {
+  @DB() db: Database; // Default connection
+
+  @DB('analytics') analytics: Database;
+
+  async findById(id: string) {
+    return this.db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+  }
+}
+```
+
+## Transactions
+
+### Basic Transaction
+
+Use the `@Transaction` decorator for automatic transaction handling:
+
+```typescript
+@Service()
+class OrderService {
+  @DB() db: Database;
+
+  @Transaction()
+  async createOrder(data: CreateOrderDto) {
+    // All operations use the same transaction
+    const order = await this.db.insert(orders).values(data);
+    await this.db.insert(orderItems).values(data.items);
+    await this.db.update(inventory).set(...);
+
+    return order;
+    // Auto-commits on success
+    // Auto-rollbacks on error
+  }
+}
+```
+
+### Transaction Options
+
+Configure transaction behavior:
+
+```typescript
+@Transaction({
+  retries: 3,        // Retry on deadlock
+  timeout: 30000,    // Transaction timeout
+  isolation: 'serializable',
+})
+async processPayment(data: PaymentDto) {
+  // Critical transaction with retries
+}
+```
+
+### Nested Transactions
+
+Inner `@Transaction` methods reuse the parent transaction:
+
+```typescript
+@Service()
+class OrderService {
+  constructor(
+    private paymentService: PaymentService,
+    private inventoryService: InventoryService,
+  ) {}
+
+  @Transaction()
+  async createOrder(data: CreateOrderDto) {
+    const order = await this.createOrderRecord(data);
+
+    // These use the same transaction
+    await this.paymentService.processPayment(order);
+    await this.inventoryService.reserveItems(order.items);
+
+    return order;
+  }
+}
+
+@Service()
+class PaymentService {
+  @Transaction() // Reuses parent transaction
+  async processPayment(order: Order) {
+    // Part of the same transaction
+  }
+}
+```
+
+### Manual Transactions
+
+For more control, access the transaction directly:
+
+```typescript
+@Service()
+class ComplexService {
+  @DB() db: Database;
+
+  async complexOperation() {
+    await this.db.transaction(async (tx) => {
+      // Manual transaction control
+      await tx.insert(table1).values(...);
+
+      if (someCondition) {
+        tx.rollback();
+        return;
+      }
+
+      await tx.insert(table2).values(...);
+    });
+  }
+}
+```
+
+## Deadlock Handling
+
+The `@Transaction` decorator automatically retries on deadlock errors:
+
+```typescript
+@Transaction({ retries: 3 })
+async transferFunds(from: string, to: string, amount: number) {
+  // If deadlock occurs (codes: 40P01, 1213, 40001),
+  // the transaction is retried up to 3 times
+  await this.db.update(accounts)
+    .set({ balance: sql`balance - ${amount}` })
+    .where(eq(accounts.id, from));
+
+  await this.db.update(accounts)
+    .set({ balance: sql`balance + ${amount}` })
+    .where(eq(accounts.id, to));
+}
+```
+
+## Repository Pattern
+
+Organize database access with repositories:
+
+```typescript
+@Repository()
+class UserRepository {
+  @DB() db: Database;
+
+  async findById(id: string) {
+    return this.db.query.users.findFirst({
+      where: eq(users.id, id),
+    });
+  }
+
+  async findByEmail(email: string) {
+    return this.db.query.users.findFirst({
+      where: eq(users.email, email),
+    });
+  }
+
+  async create(data: CreateUserDto) {
+    const [user] = await this.db
+      .insert(users)
+      .values(data)
+      .returning();
+    return user;
+  }
+
+  async update(id: string, data: Partial<User>) {
+    const [user] = await this.db
+      .update(users)
+      .set(data)
+      .where(eq(users.id, id))
+      .returning();
+    return user;
+  }
+
+  async delete(id: string) {
+    await this.db.delete(users).where(eq(users.id, id));
+  }
+}
+```
+
+## Query Logging
+
+Enable query logging for debugging:
+
+```typescript
+const server = new Server()
+  .use(database({
+    default: db,
+    logging: true,
+  }));
+```
+
+## Connection Health
+
+Check database connectivity:
+
+```typescript
+@Service()
+class HealthService {
+  @DB() db: Database;
+
+  async checkDatabase() {
+    try {
+      await this.db.execute(sql`SELECT 1`);
+      return { status: 'healthy' };
+    } catch (error) {
+      return { status: 'unhealthy', error: error.message };
+    }
+  }
+}
+```

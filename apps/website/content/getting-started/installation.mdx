@@ -1,0 +1,395 @@
+---
+title: Installation
+description: Complete guide to installing and setting up Najm in your project.
+order: 1
+---
+
+This guide will help you install and set up Najm for your project.
+
+## Prerequisites
+
+Before installing Najm, ensure you have the following:
+
+### Required
+
+- **Node.js 18.0.0 or higher** (for Node.js runtime)
+  ```bash
+  node --version  # Should be v18.0.0 or higher
+  ```
+
+- **Bun 1.0.0 or higher** (recommended for best performance)
+  ```bash
+  bun --version  # Should be 1.0.0 or higher
+  ```
+
+- **TypeScript 5.0.0 or higher**
+  ```bash
+  tsc --version  # Should be 5.0.0 or higher
+  ```
+
+### TypeScript Configuration
+
+Najm requires specific TypeScript compiler options to work with decorators:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true
+  }
+}
+```
+
+**Important:** Both `experimentalDecorators` and `emitDecoratorMetadata` are **required** for Najm's decorator system to work.
+
+## Installation Methods
+
+Najm is published as a collection of modular packages on npm. You can install only what you need.
+
+### Quick Start (All-in-One)
+
+For new projects, the fastest way to get started is using the CLI:
+
+```bash
+# Using npm
+npx najm-api create my-app
+
+# Using bun
+bunx najm-api create my-app
+
+# Using pnpm
+pnpm dlx najm-api create my-app
+```
+
+This creates a new project with all necessary dependencies and configuration.
+
+### Manual Installation
+
+#### Core Package (Required)
+
+Every Najm application needs the core package:
+
+```bash
+# Using npm
+npm install najm-core najm-di hono reflect-metadata
+
+# Using bun
+bun add najm-core najm-di hono reflect-metadata
+
+# Using pnpm
+pnpm add najm-core najm-di hono reflect-metadata
+```
+
+**Core dependencies:**
+- `najm-core` - Framework orchestration, server, boot system
+- `najm-di` - Dependency injection container and decorators
+- `hono` - Underlying HTTP framework (peer dependency)
+- `reflect-metadata` - Required for decorator metadata
+
+#### Default Plugins (Auto-registered)
+
+These plugins are automatically registered by the Server:
+
+- `najm-middleware` - Middleware management
+- `najm-params` - Parameter decorators (40+ decorators)
+- `najm-router` - HTTP routing
+
+You don't need to install these separately unless you want specific versions.
+
+#### Optional Plugins
+
+Install only the plugins you need for your application:
+
+```bash
+# Authentication & Authorization
+npm install najm-auth
+npm install najm-guard
+
+# Database & ORM
+npm install najm-database
+npm install drizzle-orm postgres  # For PostgreSQL
+npm install drizzle-orm mysql2     # For MySQL
+npm install drizzle-orm better-sqlite3  # For SQLite
+
+# Features
+npm install najm-event      # Event system
+npm install najm-cors       # CORS handling
+npm install najm-cookies    # Cookie management
+npm install najm-i18n       # Internationalization
+npm install najm-validation # Request validation
+npm install najm-rate       # Rate limiting
+npm install najm-email      # Email service
+
+# Development Tools
+npm install -D najm-cli     # Code generation CLI
+```
+
+### Package Selection Guide
+
+Choose packages based on your needs:
+
+| Use Case | Required Packages | Optional Packages |
+|----------|------------------|-------------------|
+| **Simple REST API** | `najm-core`, `najm-di`, `hono` | `najm-validation` |
+| **Authenticated API** | Above + `najm-auth` | `najm-cookies`, `najm-guard` |
+| **Full-Stack App** | Above + `najm-database` | `najm-event`, `najm-i18n`, `najm-email` |
+| **Microservice** | `najm-core`, `najm-di`, `hono` | `najm-cors`, `najm-rate` |
+
+## Project Setup
+
+### 1. Initialize TypeScript Configuration
+
+Create a `tsconfig.json` file in your project root:
+
+```json
+{
+  "compilerOptions": {
+    // Required for Najm
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+
+    // Recommended settings
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "lib": ["ES2022"],
+
+    // Type safety
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+
+    // Output
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
+}
+```
+
+### 2. Create Package.json Scripts
+
+Add convenient scripts to your `package.json`:
+
+```json
+{
+  "name": "my-najm-app",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun --watch src/index.ts",
+    "build": "tsc",
+    "start": "bun dist/index.js",
+    "dev:node": "tsx watch src/index.ts",
+    "start:node": "node dist/index.js"
+  },
+  "dependencies": {
+    "najm-core": "latest",
+    "najm-di": "latest",
+    "hono": "latest",
+    "reflect-metadata": "latest"
+  },
+  "devDependencies": {
+    "@types/node": "latest",
+    "typescript": "^5.0.0"
+  }
+}
+```
+
+### 3. Create Entry Point
+
+Create `src/index.ts`:
+
+```typescript
+import "reflect-metadata";
+import { Server } from "najm-core";
+import { Controller } from "najm-di";
+import { Get } from "najm-router";
+
+@Controller("/")
+class AppController {
+  @Get("/")
+  home() {
+    return { message: "Hello from Najm!" };
+  }
+}
+
+const server = new Server()
+  .load(AppController)
+  .listen(3000, () => {
+    console.log("Server running on http://localhost:3000");
+  });
+```
+
+**Important:** Always import `reflect-metadata` at the top of your entry file.
+
+### 4. Run Your Application
+
+```bash
+# Development (with auto-reload)
+bun run dev
+
+# Production
+bun run build
+bun run start
+```
+
+Visit `http://localhost:3000` to see your API running.
+
+## Verification
+
+Verify your installation is working correctly:
+
+```bash
+# Test the server
+curl http://localhost:3000
+
+# Expected output:
+# {"message":"Hello from Najm!"}
+```
+
+If you see the JSON response, congratulations! Najm is installed and working.
+
+## Platform-Specific Notes
+
+### Bun (Recommended)
+
+Najm is optimized for Bun runtime:
+
+```bash
+# Install Bun (if not already installed)
+curl -fsSL https://bun.sh/install | bash
+
+# Run with Bun
+bun src/index.ts
+```
+
+**Advantages:**
+- Faster startup and runtime
+- Built-in TypeScript support (no compilation needed)
+- Built-in watch mode
+- Smaller memory footprint
+
+### Node.js
+
+Najm works with Node.js 18+:
+
+```bash
+# Install tsx for development (TypeScript execution)
+npm install -D tsx
+
+# Development
+npx tsx watch src/index.ts
+
+# Production (compile first)
+npx tsc
+node dist/index.js
+```
+
+### Deno
+
+Deno support is experimental:
+
+```typescript
+import { Server } from "npm:najm-core";
+// ... rest of your code
+```
+
+## Common Installation Issues
+
+### Issue: "Cannot find module 'reflect-metadata'"
+
+**Solution:** Ensure `reflect-metadata` is imported at the top of your entry file:
+
+```typescript
+import "reflect-metadata"; // Must be first import
+import { Server } from "najm-core";
+```
+
+### Issue: "Experimental support for decorators is a feature..."
+
+**Solution:** Enable decorators in your `tsconfig.json`:
+
+```json
+{
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true
+  }
+}
+```
+
+### Issue: "Module not found: najm-router"
+
+**Solution:** The default plugins are auto-registered by `najm-core`. You don't need to install them separately. If you're using decorators like `@Get()`, `@Post()`, etc., they're exported from `najm-router` which is included with `najm-core`.
+
+### Issue: Peer dependency warnings
+
+**Solution:** Install the peer dependencies:
+
+```bash
+npm install hono reflect-metadata
+```
+
+### Issue: "Cannot use import statement outside a module"
+
+**Solution:** Add `"type": "module"` to your `package.json`:
+
+```json
+{
+  "type": "module"
+}
+```
+
+## Next Steps
+
+Now that Najm is installed, you can:
+
+1. **[Quick Start Guide](/docs/quick-start)** - Build your first API in 5 minutes
+2. **[Project Structure](/docs/project-structure)** - Organize your application
+3. **[CLI Commands](/docs/cli)** - Use code generation tools
+4. **[Core Concepts](/docs/core/server)** - Learn about the Server and DI system
+
+## Getting Help
+
+If you encounter issues:
+
+- **GitHub Issues:** [github.com/anthropics/najm-api/issues](https://github.com/anthropics/najm-api/issues)
+- **Documentation:** Check the docs for detailed guides
+- **Examples:** See working code samples in the repository
+
+## Version Compatibility
+
+| Najm Version | Node.js | Bun | TypeScript |
+|--------------|---------|-----|------------|
+| 1.x | 18.0+ | 1.0+ | 5.0+ |
+
+## Upgrading
+
+To upgrade to the latest version:
+
+```bash
+# Using npm
+npm update najm-core najm-di
+
+# Using bun
+bun update najm-core najm-di
+
+# Update all Najm packages
+npm update najm-*
+```
+
+Check the CHANGELOG for breaking changes between versions.
+
+---
+
+**Ready to build your first API?** Continue to the [Quick Start Guide](/docs/quick-start).

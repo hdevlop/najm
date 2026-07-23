@@ -1,0 +1,83 @@
+---
+title: Rate Limit Plugin
+description: In-memory rate limiting to protect your API from abuse
+order: 7
+---
+
+The Rate Limit Plugin provides in-memory rate limiting for HTTP endpoints to protect your API from abuse, brute-force attacks, and excessive usage.
+
+## Quick Setup
+
+```typescript
+import { rateLimit, RateLimit } from 'najm-rate';
+import { Server } from 'najm-core';
+
+// Setup plugin
+const server = new Server()
+  .use(rateLimit({
+    defaultLimit: 100,        // 100 requests
+    defaultWindow: '15m',     // per 15 minutes
+    cleanupInterval: 60000,   // cleanup every 60s
+    maxKeys: 10000,          // max 10k tracked IPs
+  }));
+```
+
+## Quick Example
+
+```typescript
+@Controller('/api')
+class ApiController {
+  // Default: 100 requests per 15 minutes
+  @Get('/data')
+  getData() {
+    return { data: [] };
+  }
+
+  // Custom: 10 requests per minute
+  @Post('/login')
+  @RateLimit({ limit: 10, window: '1m' })
+  async login(@Body() credentials: LoginDto) {
+    return this.authService.login(credentials);
+  }
+
+  // Strict: 5 requests per hour
+  @Post('/reset-password')
+  @RateLimit({ limit: 5, window: '1h' })
+  async resetPassword(@Body() data: ResetDto) {
+    return this.authService.resetPassword(data);
+  }
+}
+```
+
+## Key Features
+
+- **In-Memory Storage** - Fast, no external dependencies
+- **Environment Variable Support** - Configure via env vars or direct config
+- **Per-Route Configuration** - Use `@RateLimit()` decorator
+- **Sliding Windows** - Accurate request tracking
+- **Custom Keys** - IP, user ID, API key, or custom logic
+- **Response Headers** - `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `X-RateLimit-Reset`
+
+## Environment Variables
+
+```bash
+RATE_LIMIT_ENABLED=true
+RATE_LIMIT_DEFAULT_LIMIT=100
+RATE_LIMIT_DEFAULT_WINDOW=15m
+RATE_LIMIT_CLEANUP_INTERVAL=60000
+RATE_LIMIT_MAX_KEYS=10000
+```
+
+## Complete Documentation
+
+For comprehensive documentation including:
+
+- **Configuration Options** - Full environment variable and config reference
+- **Rate Limit Patterns** - Authentication, API, file upload, proxy patterns
+- **Custom Keys** - User-specific, API key-based rate limiting
+- **Response Headers** - Understanding rate limit responses
+- **Testing** - Unit testing rate-limited endpoints
+- **Best Practices** - Security and performance guidelines
+- **Advanced Examples** - Multi-tenant, custom key strategies
+
+**See:** [Security > Rate Limiting](/docs/security/rate-limit)

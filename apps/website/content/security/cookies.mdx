@@ -1,0 +1,638 @@
+---
+title: Cookie Security
+description: Robust cookie management with signed cookies, JSON cookies, scoped prefixes, and comprehensive security configurations
+---
+
+The Cookie Plugin provides a robust cookie management system with support for signed cookies, JSON cookies, scoped prefixes, and various security configurations. Built on top of Hono's cookie utilities with additional features for enterprise applications.
+
+## Key Features
+
+- **Secure by default** - HttpOnly, Secure, SameSite protection
+- **Signed cookies** - HMAC-SHA256 tamper protection
+- **JSON cookies** - Automatic serialization/deserialization
+- **Scoped accessors** - Namespace isolation with prefixes
+- **Convenience methods** - Session, persistent, secure helpers
+- **Type-safe** - Full TypeScript support
+- **DI integration** - Property and parameter decorators
+- **Hono compatible** - Built on battle-tested Hono cookie utilities
+
+## Plugin Setup
+
+```typescript
+import { cookies } from 'najm-cookies';
+
+const server = new Server()
+  .use(cookies({
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Strict',
+    path: '/',
+    prefix: 'app_'  // Optional: prefix all cookie names
+  }))
+  .load(UserController);
+```
+
+## Configuration Options
+
+```typescript
+interface CookiePluginConfig {
+  httpOnly?: boolean;       // Prevent client-side access (default: true)
+  secure?: boolean;         // HTTPS only (default: true in production)
+  sameSite?: 'Strict' | 'Lax' | 'None';  // CSRF protection (default: 'Lax')
+  path?: string;            // Cookie path (default: '/')
+  domain?: string;          // Cookie domain
+  maxAge?: number;          // Max age in seconds
+  expires?: Date;           // Expiration date
+  prefix?: string;          // Global prefix for all cookies
+}
+```
+
+## Basic Cookie Operations
+
+### Using @Cookies Decorator
+
+```typescript
+import { Cookies } from 'najm-cookies';
+
+@Controller('/api/auth')
+class AuthController {
+  @Cookies() private cookies!: CookieService;
+
+  @Post('/login')
+  login(@Body() credentials: LoginDto) {
+    // Set cookie
+    this.cookies.set('session', 'abc123', {
+      httpOnly: true,
+      maxAge: 3600  // 1 hour
+    });
+
+    return { success: true };
+  }
+
+  @Get('/profile')
+  getProfile() {
+    // Get cookie
+    const sessionId = this.cookies.get('session');
+
+    if (!sessionId) {
+      throw new HttpError(401, 'Unauthorized');
+    }
+
+    return { sessionId };
+  }
+
+  @Post('/logout')
+  logout() {
+    // Delete cookie
+    this.cookies.delete('session');
+    return { success: true };
+  }
+}
+```
+
+### Using @Cookie Parameter Decorator
+
+```typescript
+import { Cookie } from 'najm-cookies';
+
+@Controller('/api/users')
+class UserController {
+  @Get('/me')
+  getCurrentUser(@Cookie('session') sessionId: string) {
+    // sessionId extracted automatically from cookies
+    return { sessionId };
+  }
+
+  @Get('/preferences')
+  getPreferences(
+    @Cookie('theme') theme?: string,
+    @Cookie('lang') language?: string
+  ) {
+    return { theme, language };
+  }
+}
+```
+
+### Scoped Cookie Accessors <Badge variant="advanced">Advanced</Badge>
+
+Create scoped accessors with custom prefixes:
+
+```typescript
+@Controller('/api/auth')
+class AuthController {
+  @Cookies({ prefix: 'auth_' })
+  private authCookies!: CookieService;
+
+  @Cookies({ prefix: 'user_' })
+  private userCookies!: CookieService;
+
+  @Post('/login')
+  login() {
+    // Sets cookie as "auth_session"
+    this.authCookies.set('session', 'abc123');
+
+    // Sets cookie as "user_id"
+    this.userCookies.set('id', '42');
+  }
+
+  @Get('/check')
+  check() {
+    // Gets "auth_session"
+    const session = this.authCookies.get('session');
+
+    // Gets "user_id"
+    const userId = this.userCookies.get('id');
+
+    return { session, userId };
+  }
+}
+```
+
+### Signed Cookies <Badge variant="advanced">Advanced</Badge>
+
+Cryptographically sign cookies to prevent tampering:
+
+```typescript
+@Controller('/api/secure')
+class SecureController {
+  @Cookies({ secret: 'my-secret-key', signed: true })
+  private cookies!: CookieService;
+
+  @Post('/set-token')
+  setToken() {
+    // Sign cookie with HMAC-SHA256
+    this.cookies.setSigned('token', 'sensitive-data', 'my-secret-key');
+    return { success: true };
+  }
+
+  @Get('/verify-token')
+  verifyToken() {
+    // Returns value only if signature is valid
+    const token = this.cookies.getSigned('token', 'my-secret-key');
+
+    if (!token) {
+      throw new HttpError(401, 'Invalid or tampered cookie');
+    }
+
+    return { token };
+  }
+}
+```
+
+**How signing works:**
+```
+1. Cookie value: "abc123"
+2. Generate HMAC-SHA256: sign("abc123", secret) → "a1b2c3..."
+3. Store: "abc123.a1b2c3..."
+4. On retrieval: verify signature matches before returning value
+```
+
+### JSON Cookies <Badge variant="advanced">Advanced</Badge>
+
+Automatically serialize/deserialize objects:
+
+```typescript
+@Controller('/api/preferences')
+class PreferencesController {
+  @Cookies() private cookies!: CookieService;
+
+  @Post('/save')
+  savePreferences(@Body() prefs: UserPreferences) {
+    // Automatically JSON.stringify + encode
+    this.cookies.setJSON('user_prefs', {
+      theme: 'dark',
+      language: 'en',
+      notifications: true
+    });
+
+    return { success: true };
+  }
+
+  @Get('/load')
+  loadPreferences() {
+    // Automatically decode + JSON.parse
+    const prefs = this.cookies.getJSON<UserPreferences>('user_prefs');
+
+    return prefs ?? { theme: 'light', language: 'en' };
+  }
+}
+```
+
+### Convenience Methods <Badge variant="advanced">Advanced</Badge>
+
+#### Session Cookies
+
+Cookies that expire when browser closes:
+
+```typescript
+// Session cookie (no maxAge/expires)
+this.cookies.setSession('temp_data', 'value');
+```
+
+#### Persistent Cookies
+
+Long-lived cookies with configurable expiration:
+
+```typescript
+// Cookie expires after 30 days
+this.cookies.setPersistent('remember_me', 'true', 30);
+
+// Custom duration (7 days)
+this.cookies.setPersistent('user_id', '123', 7);
+```
+
+#### Secure Cookies
+
+Maximum security settings:
+
+```typescript
+// Sets httpOnly=true, secure=true, sameSite='Strict'
+this.cookies.setSecure('sensitive_token', 'value');
+```
+
+## API Reference
+
+### CookieService Methods
+
+#### Basic Operations
+
+```typescript
+// Get cookie value
+get(name: string): string | undefined
+
+// Set cookie with options
+set(name: string, value: string, options?: Partial<CookieOptions>): void
+
+// Delete cookie
+delete(name: string, options?: Partial<CookieOptions>): void
+
+// Check if cookie exists
+has(name: string): boolean
+
+// Get all cookies as object
+getAll(): Record<string, string>
+```
+
+#### Signed Cookies
+
+```typescript
+// Set signed cookie
+setSigned(name: string, value: string, secret: string, options?: Partial<CookieOptions>): void
+
+// Get signed cookie (returns undefined if signature invalid)
+getSigned(name: string, secret: string): string | undefined
+```
+
+#### JSON Cookies
+
+```typescript
+// Set JSON cookie
+setJSON(name: string, value: any, options?: Partial<CookieOptions>): void
+
+// Get JSON cookie (returns undefined if invalid JSON)
+getJSON<T = any>(name: string): T | undefined
+```
+
+#### Convenience Methods
+
+```typescript
+// Session cookie (expires when browser closes)
+setSession(name: string, value: string, options?: Partial<CookieOptions>): void
+
+// Persistent cookie (expires after N days)
+setPersistent(name: string, value: string, days?: number, options?: Partial<CookieOptions>): void
+
+// Secure cookie (httpOnly + secure + sameSite=Strict)
+setSecure(name: string, value: string, options?: Partial<CookieOptions>): void
+```
+
+#### Configuration
+
+```typescript
+// Update default options
+setDefaultOptions(options: Partial<CookieOptions>): void
+
+// Get current default options
+getDefaultOptions(): Readonly<CookieOptions>
+
+// Update prefix
+setPrefix(prefix: string): void
+
+// Get current prefix
+getPrefix(): string
+```
+
+## Security Best Practices
+
+### 1. Use Secure Cookies for Sensitive Data
+
+```typescript
+// ✓ Good: Secure settings for auth tokens
+this.cookies.setSecure('session_token', token);
+
+// ✗ Avoid: Insecure settings
+this.cookies.set('session_token', token, {
+  httpOnly: false,  // Vulnerable to XSS
+  secure: false,    // Can be intercepted
+  sameSite: 'None'  // CSRF risk
+});
+```
+
+### 2. Sign Critical Cookies
+
+```typescript
+// ✓ Good: Sign important cookies
+this.cookies.setSigned('user_id', userId, process.env.COOKIE_SECRET);
+
+// ✗ Avoid: Unsigned cookies for critical data
+this.cookies.set('user_id', userId);  // Can be tampered with
+```
+
+### 3. Set Appropriate Expiration
+
+```typescript
+// ✓ Good: Short-lived auth cookies
+this.cookies.set('session', token, {
+  maxAge: 3600  // 1 hour
+});
+
+// ✓ Good: Long-lived but non-sensitive
+this.cookies.setPersistent('theme', 'dark', 365);
+
+// ✗ Avoid: Long-lived sensitive cookies
+this.cookies.setPersistent('password', hash, 365);  // Never do this
+```
+
+### 4. Use HttpOnly for Session Tokens
+
+```typescript
+// ✓ Good: HttpOnly prevents XSS access
+this.cookies.set('session', token, {
+  httpOnly: true
+});
+
+// ✗ Avoid: Accessible to JavaScript
+this.cookies.set('session', token, {
+  httpOnly: false  // Can be stolen via XSS
+});
+```
+
+### 5. CSRF Protection with SameSite
+
+```typescript
+// ✓ Good: Strict for same-site only
+this.cookies.set('csrf_token', token, {
+  sameSite: 'Strict'
+});
+
+// ✓ Good: Lax for most cookies (default)
+this.cookies.set('session', token, {
+  sameSite: 'Lax'
+});
+
+// ⚠ Caution: None only if needed for cross-site
+this.cookies.set('tracking', id, {
+  sameSite: 'None',
+  secure: true  // Required with SameSite=None
+});
+```
+
+## Common Patterns
+
+### Authentication Flow
+
+```typescript
+@Controller('/api/auth')
+class AuthController {
+  @Cookies() private cookies!: CookieService;
+  @Inject(AuthService) private authService!: AuthService;
+
+  @Post('/login')
+  async login(@Body() credentials: LoginDto) {
+    const user = await this.authService.validateUser(credentials);
+
+    if (!user) {
+      throw new HttpError(401, 'Invalid credentials');
+    }
+
+    // Create session token
+    const sessionToken = await this.authService.createSession(user.id);
+
+    // Set secure, signed session cookie
+    this.cookies.setSigned('session', sessionToken, process.env.COOKIE_SECRET, {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Strict',
+      maxAge: 3600  // 1 hour
+    });
+
+    return { success: true, user };
+  }
+
+  @Get('/me')
+  async getCurrentUser(@Cookie('session') rawSession?: string) {
+    if (!rawSession) {
+      throw new HttpError(401, 'Not authenticated');
+    }
+
+    // Verify signed cookie
+    const session = this.cookies.getSigned('session', process.env.COOKIE_SECRET);
+
+    if (!session) {
+      throw new HttpError(401, 'Invalid session');
+    }
+
+    const user = await this.authService.getUserBySession(session);
+    return user;
+  }
+
+  @Post('/logout')
+  logout() {
+    this.cookies.delete('session');
+    return { success: true };
+  }
+}
+```
+
+### Multi-Tenant Cookie Management
+
+```typescript
+@Controller('/api/tenant')
+class TenantController {
+  @Cookies({ prefix: 'tenant_' })
+  private tenantCookies!: CookieService;
+
+  @Cookies({ prefix: 'user_' })
+  private userCookies!: CookieService;
+
+  @Post('/switch')
+  switchTenant(@Body('tenantId') tenantId: string) {
+    // Separate cookie namespaces
+    this.tenantCookies.set('id', tenantId);
+    this.tenantCookies.setJSON('config', {
+      name: 'Acme Corp',
+      features: ['billing', 'reports']
+    });
+
+    return { success: true };
+  }
+
+  @Get('/context')
+  getContext() {
+    return {
+      tenant: this.tenantCookies.getJSON('config'),
+      user: this.userCookies.getJSON('profile')
+    };
+  }
+}
+```
+
+### User Preferences
+
+```typescript
+@Controller('/api/preferences')
+class PreferencesController {
+  @Cookies() private cookies!: CookieService;
+
+  @Put('/update')
+  updatePreferences(@Body() prefs: UserPreferences) {
+    // Store preferences as JSON cookie (1 year expiration)
+    this.cookies.setJSON('user_prefs', prefs, {
+      maxAge: 365 * 24 * 60 * 60,
+      httpOnly: false  // Allow client-side access for UI
+    });
+
+    return { success: true };
+  }
+
+  @Get('/load')
+  loadPreferences() {
+    const defaultPrefs = {
+      theme: 'light',
+      language: 'en',
+      timezone: 'UTC'
+    };
+
+    return this.cookies.getJSON<UserPreferences>('user_prefs') ?? defaultPrefs;
+  }
+}
+```
+
+## Performance Considerations
+
+### 1. Cookie Prefixes
+
+Global prefix applied once during configuration:
+
+```typescript
+// Efficient: Prefix computed at initialization
+cookies({ prefix: 'app_' })
+
+// Per-request: Prefix concatenated per operation (minimal overhead)
+this.cookies.get('session')  // Fetches "app_session"
+```
+
+### 2. Scoped Accessors
+
+Created once during injection, reused per request:
+
+```typescript
+// Created once during DI resolution
+@Cookies({ prefix: 'auth_' })
+private authCookies!: CookieService;
+```
+
+### 3. Signed Cookie Overhead
+
+- Signing: ~0.1-0.3ms per operation (HMAC-SHA256)
+- Minimal overhead for security gain
+- Consider for sensitive cookies only
+
+## Debugging
+
+### Inspect Cookie State
+
+```typescript
+@Get('/debug/cookies')
+debugCookies() {
+  const allCookies = this.cookies.getAll();
+  const defaultOptions = this.cookies.getDefaultOptions();
+  const prefix = this.cookies.getPrefix();
+
+  return {
+    cookies: allCookies,
+    defaultOptions,
+    prefix
+  };
+}
+```
+
+## Common Errors
+
+**Context Not Available**
+```typescript
+Err.invalidOperation(
+  'Context not available. Ensure the request context middleware is configured.'
+);
+```
+- **Cause:** Cookie methods called outside request context
+- **Solution:** Ensure cookies plugin is registered and methods are called during request handling
+
+**Signed Cookie Warning**
+```typescript
+Warning: @Cookies() on Controller.property: signed=true requires a secret
+```
+- **Cause:** `signed: true` without providing a secret
+- **Solution:** Add `secret` option to decorator
+
+## Testing
+
+```typescript
+import { test } from 'bun:test';
+
+test('should set and get cookies', async () => {
+  @Controller('/test')
+  class TestController {
+    @Cookies() private cookies!: CookieService;
+
+    @Get('/set')
+    setCookie() {
+      this.cookies.set('test', 'value');
+      return { success: true };
+    }
+
+    @Get('/get')
+    getCookie() {
+      return { value: this.cookies.get('test') };
+    }
+  }
+
+  const server = new Server({ isolated: true })
+    .use(cookies())
+    .load(TestController);
+
+  await server.listen(3300);
+
+  // Set cookie
+  const res1 = await fetch('http://localhost:3300/test/set');
+  const setCookie = res1.headers.get('set-cookie');
+
+  // Get cookie
+  const res2 = await fetch('http://localhost:3300/test/get', {
+    headers: { 'Cookie': setCookie! }
+  });
+  const data = await res2.json();
+
+  expect(data.value).toBe('value');
+
+  await server.stop();
+});
+```
+
+## Next Steps
+
+- [Security Overview](/docs/security) - Complete security guide
+- [Guards & Authorization](/docs/security/guards) - Implement route protection
+- [Authentication Patterns](/docs/security/authentication) - Learn authentication strategies
+- [Rate Limiting](/docs/security/rate-limit) - Protect against abuse
+- [CORS Configuration](/docs/security/cors) - Configure cross-origin requests

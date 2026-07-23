@@ -1,0 +1,713 @@
+---
+title: Parameter Decorators
+description: Extract request data into controller parameters with 40+ powerful decorators for body, query, headers, and more
+---
+
+The Parameter system provides 40+ decorators for extracting request data into controller method parameters. These decorators enable clean, type-safe parameter injection with automatic parsing and caching.
+
+## Overview
+
+Parameter decorators allow you to declaratively extract data from HTTP requests:
+
+```typescript
+import { Controller, Get, Post } from 'najm-router';
+import { Body, Params, Query, Headers } from 'najm-params';
+
+@Controller('/products')
+class ProductController {
+  @Get('/:id')
+  getProduct(
+    @Params('id') id: string,
+    @Query('include') include?: string,
+    @Headers('authorization') auth?: string
+  ) {
+    return { id, include, authenticated: !!auth };
+  }
+
+  @Post('/')
+  createProduct(
+    @Body() data: CreateProductDto,
+    @Headers('content-type') contentType: string
+  ) {
+    return { created: true, data };
+  }
+}
+```
+
+## Key Features
+
+- **40+ decorators** - Cover all common request data sources
+- **Type-safe** - Full TypeScript support with proper typing
+- **Lazy evaluation** - Data parsed only when accessed
+- **Automatic caching** - Metadata parsed once, cached for performance
+- **Smart extraction** - Extract full objects or specific fields
+- **Guard integration** - Access data from guard return values
+
+## Decorator Categories
+
+### Body Decorators
+
+Extract data from request body with support for multiple content types.
+
+| Decorator | Description | Example |
+|-----------|-------------|---------|
+| `@Body()` | Full parsed body | `@Body() data: any` |
+| `@Body('field')` | Specific field from body | `@Body('name') name: string` |
+| `@JsonBody()` | JSON parsed body | `@JsonBody() data: any` |
+| `@TextBody()` | Raw text body | `@TextBody() text: string` |
+| `@FormData()` | Form data | `@FormData() form: FormData` |
+| `@ArrayBufferBody()` | ArrayBuffer body | `@ArrayBufferBody() buf: ArrayBuffer` |
+| `@BlobBody()` | Blob body | `@BlobBody() blob: Blob` |
+| `@File()` | Uploaded files | `@File('avatar') file: File` |
+
+**Examples:**
+
+```typescript
+// Full body object
+@Post('/users')
+createUser(@Body() data: CreateUserDto) {
+  return this.userService.create(data);
+}
+
+// Specific field
+@Post('/users')
+createUser(
+  @Body('email') email: string,
+  @Body('name') name: string
+) {
+  return { email, name };
+}
+
+// File upload
+@Post('/upload')
+uploadFile(
+  @File('document') file: File,
+  @Body('title') title: string
+) {
+  return {
+    filename: file.name,
+    size: file.size,
+    title
+  };
+}
+
+// Multiple files
+@Post('/gallery')
+uploadPhotos(@File('photos') files: File[]) {
+  return { count: files.length };
+}
+```
+
+### URL/Route Decorators
+
+Extract data from URL paths and query strings.
+
+| Decorator | Description | Example |
+|-----------|-------------|---------|
+| `@Params()` | All path parameters | `@Params() params: any` |
+| `@Params('id')` | Specific path parameter | `@Params('id') id: string` |
+| `@Query()` | All query parameters | `@Query() query: any` |
+| `@Query('page')` | Specific query parameter | `@Query('page') page: string` |
+| `@Queries('tag')` | Multiple values for key | `@Queries('tag') tags: string[]` |
+| `@Path()` | Request path | `@Path() path: string` |
+| `@Url()` | Full URL | `@Url() url: string` |
+| `@Method()` | HTTP method | `@Method() method: string` |
+| `@RoutePath()` | Matched route pattern | `@RoutePath() route: string` |
+| `@MatchedRoutes()` | All matched routes | `@MatchedRoutes() routes: any[]` |
+| `@RouteIndex()` | Current route index | `@RouteIndex() index: number` |
+
+**Examples:**
+
+```typescript
+// Path parameters
+@Get('/:id')
+getUser(@Params('id') id: string) {
+  return this.userService.findById(id);
+}
+
+// All path parameters
+@Get('/:category/:slug')
+getPost(@Params() params: { category: string; slug: string }) {
+  return this.postService.findBySlug(params.category, params.slug);
+}
+
+// Query parameters
+@Get('/search')
+search(
+  @Query('q') query: string,
+  @Query('page') page: string = '1',
+  @Query('limit') limit: string = '10'
+) {
+  return this.searchService.find(query, parseInt(page), parseInt(limit));
+}
+
+// All query parameters
+@Get('/filter')
+filter(@Query() filters: Record<string, string>) {
+  return this.productService.filter(filters);
+}
+
+// Multiple values for same key
+@Get('/products')
+filterProducts(@Queries('category') categories: string[]) {
+  // GET /products?category=electronics&category=books
+  return this.productService.findByCategories(categories);
+}
+
+// Request metadata
+@Get('/debug')
+debug(
+  @Path() path: string,
+  @Method() method: string,
+  @Url() url: string
+) {
+  return { path, method, url };
+}
+```
+
+### Header Decorators
+
+Extract data from HTTP headers.
+
+| Decorator | Description | Example |
+|-----------|-------------|---------|
+| `@Headers()` | All headers | `@Headers() headers: any` |
+| `@Headers('auth')` | Specific header | `@Headers('authorization') auth: string` |
+| `@ContentType()` | Content-Type header | `@ContentType() ct: string` |
+| `@ContentLength()` | Content-Length (number) | `@ContentLength() len: number` |
+| `@Origin()` | Origin header | `@Origin() origin: string` |
+| `@Referer()` | Referer header | `@Referer() ref: string` |
+| `@Language()` | Accept-Language | `@Language() lang: string` |
+| `@Encoding()` | Accept-Encoding | `@Encoding() enc: string` |
+| `@Connection()` | Connection header | `@Connection() conn: string` |
+| `@Upgrade()` | Upgrade header | `@Upgrade() upgrade: string` |
+| `@Protocol()` | X-Forwarded-Proto | `@Protocol() proto: string` |
+
+**Examples:**
+
+```typescript
+// Authorization header
+@Get('/profile')
+getProfile(@Headers('authorization') token: string) {
+  const user = this.authService.verifyToken(token);
+  return { user };
+}
+
+// Content type
+@Post('/data')
+processData(
+  @Body() data: any,
+  @ContentType() contentType: string
+) {
+  return { contentType, dataLength: JSON.stringify(data).length };
+}
+
+// All headers
+@Get('/debug')
+debug(@Headers() headers: Record<string, string>) {
+  return { headers };
+}
+
+// Multiple header decorators
+@Get('/api')
+apiEndpoint(
+  @Origin() origin: string,
+  @Referer() referer: string,
+  @Language() language: string
+) {
+  return { origin, referer, language };
+}
+```
+
+### Context Decorators
+
+Access Hono context and request objects.
+
+| Decorator | Description | Example |
+|-----------|-------------|---------|
+| `@Ctx()` | Hono Context | `@Ctx() ctx: Context` |
+| `@Req()` | HRequest object | `@Req() req: HRequest` |
+| `@Cookie()` | All cookies | `@Cookie() cookies: any` |
+| `@Cookie('session')` | Specific cookie | `@Cookie('session') sess: string` |
+| `@IP()` | Client IP address | `@IP() ip: string` |
+| `@Raw()` | Raw Request object | `@Raw() raw: Request` |
+| `@Valid()` | Validation function | `@Valid() valid: ValidFunction` |
+
+**Examples:**
+
+```typescript
+// Hono context for advanced operations
+@Get('/custom')
+customResponse(@Ctx() ctx: Context) {
+  ctx.header('X-Custom-Header', 'value');
+  return ctx.json({ message: 'Custom response' });
+}
+
+// Cookies
+@Get('/profile')
+getProfile(@Cookie('session') sessionId: string) {
+  return this.sessionService.getUser(sessionId);
+}
+
+// All cookies
+@Get('/debug')
+debugCookies(@Cookie() cookies: Record<string, string>) {
+  return { cookies };
+}
+
+// Client IP
+@Get('/info')
+getClientInfo(@IP() ip: string) {
+  return { ip, location: this.geoService.lookup(ip) };
+}
+
+// Request object
+@Get('/raw')
+rawRequest(@Req() req: HRequest) {
+  return {
+    method: req.method,
+    path: req.path,
+    headers: req.headers
+  };
+}
+```
+
+### Guard Data Decorators
+
+Access data stored by guards (authentication, authorization).
+
+| Decorator | Description | Example |
+|-----------|-------------|---------|
+| `@User()` | Full user from guard | `@User() user: any` |
+| `@User('id')` | User property | `@User('id') userId: string` |
+| `@Owner()` | Owner data | `@Owner() owner: any` |
+| `@Info()` | Info data | `@Info() info: any` |
+| `@Data()` | Generic guard data | `@Data() data: any` |
+| `@Filter()` | Filter data | `@Filter() filter: any` |
+| `@GuardParams()` | Guard return value | `@GuardParams() params: any` |
+| `@Role()` | User role | `@Role() role: string` |
+| `@Permissions()` | User permissions | `@Permissions() perms: string[]` |
+
+**Examples:**
+
+```typescript
+// Full user object
+@Controller('/api')
+@Guards(AuthGuard)
+class ApiController {
+  @Get('/profile')
+  getProfile(@User() user: any) {
+    return { user };
+  }
+}
+
+// Specific user property
+@Get('/posts')
+getUserPosts(@User('id') userId: string) {
+  return this.postService.findByUser(userId);
+}
+
+// User role and permissions
+@Get('/admin')
+@Guards(AuthGuard, RoleGuard)
+adminDashboard(
+  @User('id') userId: string,
+  @Role() role: string,
+  @Permissions() permissions: string[]
+) {
+  return { userId, role, permissions };
+}
+
+// Guard return value
+@Get('/protected')
+@Guards(CustomGuard)
+protectedRoute(@GuardParams() guardData: { userId: string; scope: string }) {
+  return { guardData };
+}
+```
+
+## Usage Patterns
+
+### Extract Everything vs Specific Fields
+
+You can extract entire objects or specific fields:
+
+```typescript
+// Pattern 1: Extract everything
+@Get('/:id')
+getDetails(
+  @Params() params: any,      // All path params
+  @Query() query: any,        // All query params
+  @Headers() headers: any,    // All headers
+  @Body() body: any          // Entire body
+) {
+  return { params, query, headers, body };
+}
+
+// Pattern 2: Extract specific fields (recommended)
+@Get('/:id')
+getDetails(
+  @Params('id') id: string,
+  @Query('page') page: string,
+  @Headers('authorization') auth: string,
+  @Body('name') name: string
+) {
+  return { id, page, auth, name };
+}
+
+// Pattern 3: Mixed (flexible)
+@Post('/:id')
+update(
+  @Params('id') id: string,        // Specific param
+  @Body() body: any,                // Full body
+  @Headers('content-type') ct: string,
+  @Query() query: any               // All query params
+) {
+  return { id, body, contentType: ct, query };
+}
+```
+
+### Combining Multiple Sources
+
+Extract data from different sources in a single handler:
+
+```typescript
+@Post('/:userId/posts')
+createPost(
+  @Params('userId') userId: string,      // From path
+  @Body() postData: CreatePostDto,       // From body
+  @Query('draft') isDraft: string,       // From query
+  @Headers('x-request-id') requestId: string,  // From headers
+  @User('id') currentUserId: string,     // From guard
+  @IP() clientIp: string                 // From context
+) {
+  return this.postService.create({
+    userId,
+    postData,
+    isDraft: isDraft === 'true',
+    requestId,
+    currentUserId,
+    clientIp
+  });
+}
+```
+
+### Type Safety with Validation
+
+Combine with validation for full type safety:
+
+```typescript
+import { z } from 'zod';
+import { Validate } from 'najm-validation';
+
+const createUserSchema = z.object({
+  email: z.string().email(),
+  name: z.string().min(2),
+  age: z.number().int().positive().optional(),
+});
+
+const userIdSchema = z.object({
+  id: z.string().uuid(),
+});
+
+@Controller('/users')
+class UserController {
+  @Post('/')
+  @Validate(createUserSchema)
+  createUser(@Body() data: z.infer<typeof createUserSchema>) {
+    // data is fully typed and validated
+    return this.userService.create(data);
+  }
+
+  @Get('/:id')
+  @Validate({ params: userIdSchema })
+  getUser(@Params() params: z.infer<typeof userIdSchema>) {
+    // params.id is typed as string and validated as UUID
+    return this.userService.findById(params.id);
+  }
+}
+```
+
+### Optional Parameters with Defaults
+
+```typescript
+@Get('/search')
+search(
+  @Query('q') query: string,
+  @Query('page') page: string = '1',       // Default value
+  @Query('limit') limit: string = '10',    // Default value
+  @Query('sort') sort?: string             // Optional
+) {
+  return this.searchService.find({
+    query,
+    page: parseInt(page),
+    limit: parseInt(limit),
+    sort: sort || 'date'
+  });
+}
+```
+
+## How It Works
+
+### Architecture
+
+The parameter system uses a multi-stage process:
+
+```
+1. Decorator Application (Build time)
+   └─> MetaHelper stores parameter metadata
+
+2. Route Scanning (Startup)
+   └─> ParamService discovers decorated methods
+   └─> Registers parameter injections in container
+
+3. Request Processing (Runtime)
+   └─> ParamResolver extracts values from request
+   └─> Values injected into controller method
+```
+
+### Resolution Flow
+
+```typescript
+// Example request: GET /users/42?include=posts
+// Authorization: Bearer token123
+
+@Get('/:id')
+async getUser(
+  @Params('id') id: string,
+  @Query('include') include: string,
+  @Headers('authorization') auth: string
+) {
+  // Resolution steps:
+  // 1. ParamResolver reads parameter metadata
+  // 2. Extracts values:
+  //    - id: context.req.param()['id'] → "42"
+  //    - include: request.query['include'] → "posts"
+  //    - auth: request.headers['authorization'] → "Bearer token123"
+  // 3. Method called: getUser("42", "posts", "Bearer token123")
+}
+```
+
+### Performance Optimizations
+
+1. **Metadata caching** - Parameter metadata parsed once, cached in WeakMap
+2. **Lazy evaluation** - Request data parsed only when accessed
+3. **Fast path** - When all parameters decorated, uses optimized resolution
+4. **Token-based** - Uses ALS tokens for request-scoped data access
+
+**Performance metrics:**
+- First call: ~1-2ms (includes metadata parsing)
+- Cached calls: ~0.01ms (100-200x faster)
+
+### Custom Parameter Extraction <Badge variant="advanced">Advanced</Badge>
+
+Access the full request object for custom logic:
+
+```typescript
+@Get('/custom')
+customExtraction(@Req() req: HRequest) {
+  // Custom extraction logic
+  const customValue = req.headers['x-custom'] || 'default';
+  const queryParams = new URLSearchParams(req.url.split('?')[1]);
+
+  return {
+    customValue,
+    hasParam: queryParams.has('special')
+  };
+}
+```
+
+### Multiple File Fields <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Post('/documents')
+uploadDocuments(
+  @File('resume') resume: File,
+  @File('cover_letter') coverLetter: File,
+  @File('portfolio') portfolioFiles: File[],
+  @Body('applicantName') name: string
+) {
+  return {
+    resume: resume.name,
+    coverLetter: coverLetter.name,
+    portfolio: portfolioFiles.map(f => f.name),
+    applicant: name
+  };
+}
+```
+
+### Conditional Parameter Access <Badge variant="advanced">Advanced</Badge>
+
+```typescript
+@Get('/data')
+getData(
+  @Query('format') format: string = 'json',
+  @Headers('accept') accept: string,
+  @Body() body?: any
+) {
+  // Body is only parsed if provided
+  if (format === 'raw' && body) {
+    return { raw: body };
+  }
+
+  return { format, accept };
+}
+```
+
+## Best Practices
+
+### 1. Use Specific Field Decorators
+
+**✓ Good: Explicit field extraction**
+```typescript
+@Post('/users')
+createUser(
+  @Body('email') email: string,
+  @Body('name') name: string
+) {
+  return { email, name };
+}
+```
+
+**✗ Avoid: Extracting full object then accessing fields**
+```typescript
+@Post('/users')
+createUser(@Body() data: any) {
+  const email = data.email;
+  const name = data.name;
+  return { email, name };
+}
+```
+
+### 2. Combine with Validation
+
+**✓ Good: Type-safe with validation**
+```typescript
+@Post('/users')
+@Validate(createUserSchema)
+createUser(@Body() data: CreateUserDto) {
+  // data is validated and typed
+  return this.userService.create(data);
+}
+```
+
+**✗ Avoid: Manual validation**
+```typescript
+@Post('/users')
+createUser(@Body() data: any) {
+  if (!data.email) throw new Error('Email required');
+  if (!data.name) throw new Error('Name required');
+  return this.userService.create(data);
+}
+```
+
+### 3. Use Guard Decorators for Auth Data
+
+**✓ Good: Extract from guard**
+```typescript
+@Get('/profile')
+@Guards(AuthGuard)
+getProfile(@User('id') userId: string) {
+  return this.userService.findById(userId);
+}
+```
+
+**✗ Avoid: Manual extraction**
+```typescript
+@Get('/profile')
+getProfile(@Headers('authorization') token: string) {
+  const user = this.authService.verify(token);
+  const userId = user.id;
+  return this.userService.findById(userId);
+}
+```
+
+### 4. Keep Parameter Count Reasonable
+
+**✓ Good: 3-5 parameters**
+```typescript
+@Post('/posts')
+createPost(
+  @Body() data: CreatePostDto,
+  @User('id') userId: string,
+  @IP() ip: string
+) {
+  return this.postService.create(data, userId, ip);
+}
+```
+
+**✗ Avoid: Too many parameters**
+```typescript
+@Post('/posts')
+createPost(
+  @Body('title') title: string,
+  @Body('content') content: string,
+  @Body('category') category: string,
+  @Body('tags') tags: string[],
+  @User('id') userId: string,
+  @Query('draft') isDraft: string,
+  @IP() ip: string,
+  @Headers('user-agent') userAgent: string
+) {
+  // Too many parameters - use DTOs
+}
+```
+
+### 5. Use TypeScript Types
+
+```typescript
+// ✓ Define types for better IDE support
+interface CreatePostParams {
+  title: string;
+  content: string;
+  tags: string[];
+}
+
+@Post('/posts')
+createPost(@Body() data: CreatePostParams) {
+  // Full autocomplete and type checking
+  return this.postService.create(data);
+}
+```
+
+## Troubleshooting
+
+### Common Issues
+
+**Parameter is undefined:**
+```typescript
+// ✗ Wrong: Field doesn't exist in request
+@Post('/users')
+createUser(@Body('username') username: string) {
+  // If body only has 'name', not 'username'
+  console.log(username); // undefined
+}
+
+// ✓ Fix: Check field names match request data
+@Post('/users')
+createUser(@Body('name') name: string) {
+  console.log(name); // Works correctly
+}
+```
+
+**File upload not working:**
+```typescript
+// ✗ Wrong: Body decorator for files
+@Post('/upload')
+uploadFile(@Body('file') file: File) {
+  // Won't work - body doesn't contain files
+}
+
+// ✓ Fix: Use @File decorator
+@Post('/upload')
+uploadFile(@File('file') file: File) {
+  // Correctly extracts file from multipart
+}
+```
+
+## Next Steps
+
+- [Validation Plugin](/docs/routing/validation) - Validate parameter data with Zod
+- [Request/Response Handling](/docs/routing/request-response) - Understand the request lifecycle
+- [Guards](/docs/plugins/guards) - Protect routes and inject auth data
+- [Middleware](/docs/routing/middleware) - Transform requests before controllers
