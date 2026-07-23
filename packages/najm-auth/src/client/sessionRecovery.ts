@@ -1,15 +1,53 @@
 import {
-  verifySessionCookie,
+  verifySessionCookieDetailed,
   type SessionCookieClaims,
 } from './sessionCookie';
 
+export type SessionRecoveryFailureReason =
+  | 'invalid-cookie-name'
+  | 'invalid-refresh-cookie'
+  | 'invalid-endpoint'
+  | 'fetch-error'
+  | 'http-status'
+  | 'missing-set-cookie'
+  | 'session-cookie-parse'
+  | 'session-cookie-hmac'
+  | 'session-cookie-payload';
+
+export interface SessionRecoveryErrorDetails {
+  name: string;
+  message: string;
+  code?: string;
+  cause?: {
+    name: string;
+    message: string;
+    code?: string;
+  };
+}
+
+export interface SessionRecoveryFailure {
+  reason: SessionRecoveryFailureReason;
+  httpStatus?: number;
+  error?: SessionRecoveryErrorDetails;
+}
+
 export interface SessionRecoveryOptions {
+  /** Fully resolved or relative recovery endpoint. */
   endpoint: string;
+  /** Origin of the incoming request that supplied the refresh cookie. */
+  requestOrigin: string;
   refreshCookieName: string;
   refreshCookieValue: string;
   sessionCookieName: string;
   sessionSecret: string;
   sessionMaxAge?: number;
+  /** Allow an explicitly configured HTTP(S) loopback endpoint. */
+  allowLoopbackEndpoint?: boolean;
+  /**
+   * Receives structured, secret-free recovery failures. The hook is silent by
+   * default and exceptions thrown by it never affect authentication behavior.
+   */
+  onFailure?: (failure: SessionRecoveryFailure) => void;
 }
 
 export type SessionRecoveryResult =
@@ -24,6 +62,13 @@ export type SessionRecoveryResult =
       httpStatus?: number;
     };
 
+/** Resolve the optional loopback transport URL without importing Node APIs. */
+export function resolveInternalRecoveryURL(explicit?: string): string | undefined {
+  if (explicit !== undefined) return explicit || undefined;
+  if (typeof process === 'undefined') return undefined;
+  return process.env.NAJM_AUTH_INTERNAL_URL || undefined;
+}
+
 /**
  * Ask the auth server to validate a refresh session and reissue only the
  * short-lived signed session cookie. The refresh token is neither rotated nor
@@ -33,18 +78,26 @@ export async function requestSessionRecovery(
   options: SessionRecoveryOptions,
 ): Promise<SessionRecoveryResult> {
   if (!isCookieName(options.refreshCookieName) || !isCookieName(options.sessionCookieName)) {
+    reportFailure(options, { reason: 'invalid-cookie-name' });
     return { status: 'unavailable' };
   }
   if (!isCookieValue(options.refreshCookieValue)) {
+    reportFailure(options, { reason: 'invalid-refresh-cookie' });
     return { status: 'invalid' };
   }
-  if (!isSafeRecoveryEndpoint(options.endpoint)) {
+  const endpoint = sameOriginRecoveryEndpoint(
+    options.endpoint,
+    options.requestOrigin,
+    options.allowLoopbackEndpoint,
+  );
+  if (!endpoint) {
+    reportFailure(options, { reason: 'invalid-endpoint' });
     return { status: 'unavailable' };
   }
 
   let response: Response;
   try {
-    response = await fetch(options.endpoint, {
+    response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -54,12 +107,17 @@ export async function requestSessionRecovery(
       cache: 'no-store',
       redirect: 'manual',
     });
-  } catch {
+  } catch (error) {
+    reportFailure(options, {
+      reason: 'fetch-error',
+      error: safeErrorDetails(error),
+    });
     return { status: 'unavailable' };
   }
 
   if (!response.ok) {
     const status = response.status;
+    reportFailure(options, { reason: 'http-status', httpStatus: status });
     return {
       status: status === 400 || status === 401 || status === 403
         ? 'invalid'
@@ -69,22 +127,42 @@ export async function requestSessionRecovery(
   }
 
   const setCookie = response.headers.get('set-cookie');
-  if (!setCookie) return { status: 'unavailable', httpStatus: response.status };
-
-  const sessionCookieValue = readSetCookieValue(setCookie, options.sessionCookieName);
-  if (!sessionCookieValue) {
+  if (!setCookie) {
+    reportFailure(options, {
+      reason: 'missing-set-cookie',
+      httpStatus: response.status,
+    });
     return { status: 'unavailable', httpStatus: response.status };
   }
 
-  const claims = await verifySessionCookie(sessionCookieValue, {
+  const sessionCookieValue = readSetCookieValue(setCookie, options.sessionCookieName);
+  if (!sessionCookieValue) {
+    reportFailure(options, {
+      reason: 'session-cookie-parse',
+      httpStatus: response.status,
+    });
+    return { status: 'unavailable', httpStatus: response.status };
+  }
+
+  const verification = await verifySessionCookieDetailed(sessionCookieValue, {
     secret: options.sessionSecret,
     maxAgeSeconds: options.sessionMaxAge,
   });
-  if (!claims) return { status: 'unavailable', httpStatus: response.status };
+  if (verification.status === 'invalid') {
+    reportFailure(options, {
+      reason: verification.reason === 'hmac'
+        ? 'session-cookie-hmac'
+        : verification.reason === 'payload'
+          ? 'session-cookie-payload'
+          : 'session-cookie-parse',
+      httpStatus: response.status,
+    });
+    return { status: 'unavailable', httpStatus: response.status };
+  }
 
   return {
     status: 'recovered',
-    claims,
+    claims: verification.claims,
     setCookie,
     sessionCookieValue,
   };
@@ -128,20 +206,90 @@ function isCookieName(value: string): boolean {
 }
 
 function isCookieValue(value: string): boolean {
-  return value.length > 0 && !/[\r\n;]/.test(value);
+  // RFC 6265 cookie-octet: reject whitespace, controls, quotes, commas,
+  // semicolons, and backslashes before constructing the outbound header.
+  return value.length > 0
+    && /^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]+$/.test(value);
 }
 
-function isSafeRecoveryEndpoint(value: string): boolean {
+function sameOriginRecoveryEndpoint(
+  endpoint: string,
+  requestOrigin: string,
+  allowLoopback = false,
+): string | undefined {
   try {
-    const url = new URL(value);
-    if (url.username || url.password) return false;
-    if (url.protocol === 'https:') return true;
-    if (url.protocol !== 'http:') return false;
-    return url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname === '[::1]'
-      || url.hostname === '::1';
+    const trusted = new URL(requestOrigin);
+    if (
+      (trusted.protocol !== 'https:' && trusted.protocol !== 'http:')
+      || trusted.username
+      || trusted.password
+    ) {
+      return undefined;
+    }
+
+    const resolved = new URL(endpoint, trusted.origin);
+    if (resolved.username || resolved.password) return undefined;
+    if (
+      resolved.origin !== trusted.origin
+      && (!allowLoopback || !isLoopbackURL(resolved))
+    ) {
+      return undefined;
+    }
+    return resolved.toString();
   } catch {
-    return false;
+    return undefined;
   }
+}
+
+function isLoopbackURL(url: URL): boolean {
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return false;
+  return url.hostname === 'localhost'
+    || url.hostname === '127.0.0.1'
+    || url.hostname === '[::1]'
+    || url.hostname === '::1';
+}
+
+function reportFailure(
+  options: SessionRecoveryOptions,
+  failure: SessionRecoveryFailure,
+): void {
+  try {
+    options.onFailure?.(failure);
+  } catch {
+    // Diagnostics must never alter authentication behavior.
+  }
+}
+
+function safeErrorDetails(value: unknown): SessionRecoveryErrorDetails {
+  const error = isRecord(value) ? value : {};
+  const details: SessionRecoveryErrorDetails = {
+    name: safeText(error.name, 'Error'),
+    message: safeText(error.message, 'Session recovery fetch failed'),
+  };
+  const code = safeOptionalText(error.code);
+  if (code) details.code = code;
+
+  if (isRecord(error.cause)) {
+    const causeCode = safeOptionalText(error.cause.code);
+    details.cause = {
+      name: safeText(error.cause.name, 'Error'),
+      message: safeText(error.cause.message, 'Session recovery fetch failed'),
+      ...(causeCode ? { code: causeCode } : {}),
+    };
+  }
+  return details;
+}
+
+function safeText(value: unknown, fallback: string): string {
+  if (typeof value !== 'string' || !value) return fallback;
+  return value.replace(/[\u0000-\u001F\u007F]/g, ' ').slice(0, 300);
+}
+
+function safeOptionalText(value: unknown): string | undefined {
+  if (typeof value !== 'string' && typeof value !== 'number') return undefined;
+  return safeText(String(value), '');
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
 }

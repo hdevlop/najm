@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from 'najm-kit';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './previewUi';
 import { getFileColor } from '../../../lib/mime';
 import { cn } from '../../../lib/utils';
 import { useStudio } from '../../../providers';

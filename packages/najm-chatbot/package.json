@@ -72,11 +72,11 @@
     "najm-core": "workspace:*",
     "najm-cache": "workspace:*",
     "najm-event": "workspace:*",
-    "ai": "^4.0.0",
-    "@ai-sdk/anthropic": "^1.0.0",
-    "@ai-sdk/openai": "^1.0.0",
-    "@ai-sdk/google": "^1.0.0",
-    "@ai-sdk/react": "^1.2.12",
+    "ai": "^6.0.234",
+    "@ai-sdk/anthropic": "^3.0.100",
+    "@ai-sdk/openai": "^3.0.87",
+    "@ai-sdk/google": "^3.0.99",
+    "@ai-sdk/react": "^3.0.236",
     "highlight.js": "^11.11.1",
     "lucide-react": "^0.468.0",
     "react-markdown": "^9.0.1"
@@ -96,7 +96,7 @@
     "typescript": "^5.7.3"
   },
   "peerDependencies": {
-    "drizzle-orm": "^0.45.1",
+    "drizzle-orm": "^0.45.2",
     "najm-auth": "workspace:*",
     "najm-database": "workspace:*",
     "najm-guard": "workspace:*",

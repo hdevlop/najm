@@ -12,6 +12,9 @@ const snapshot = {
 };
 
 const packageDirs = await readdir(path.join(root, 'packages'), { withFileTypes: true });
+packageDirs.sort((left, right) => (
+  left.name < right.name ? -1 : left.name > right.name ? 1 : 0
+));
 
 for (const dirent of packageDirs) {
   if (!dirent.isDirectory()) continue;

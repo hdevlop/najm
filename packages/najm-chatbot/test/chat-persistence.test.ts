@@ -1,7 +1,7 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { TOOL_PROVIDER } from 'najm-mcp';
 import { ChatAgent } from '../src/agent/ChatAgent';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 import { simulateReadableStream } from 'ai';
 
 interface TraceEvent {

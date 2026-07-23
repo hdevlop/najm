@@ -1,5 +1,5 @@
-import type { LanguageModelV1 } from 'ai';
-import { anthropic, createAnthropic } from '@ai-sdk/anthropic';
+import type { LanguageModel } from 'ai';
+import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 
@@ -213,12 +213,14 @@ export const PROVIDER_OPTIONS = (Object.entries(PROVIDERS) as [LlmProvider, Prov
   ([value, meta]) => ({ value, label: meta.label }),
 );
 
-export function buildModel(settings: LlmSettings): LanguageModelV1 {
+export function buildModel(settings: LlmSettings): LanguageModel {
   const { provider, apiKey, baseUrl, model } = settings;
 
   switch (provider) {
-    case 'anthropic':
-      return anthropic(model as any, { ...(apiKey ? { apiKey } : {}) } as never);
+    case 'anthropic': {
+      const anthropic = createAnthropic({ apiKey: apiKey ?? '' });
+      return anthropic(model as any);
+    }
 
     case 'openai': {
       const openai = createOpenAI({ apiKey: apiKey ?? '', baseURL: baseUrl ?? undefined });

@@ -10,7 +10,9 @@ import {
 import {
   authEndpoint,
   replaceCookieValue,
+  resolveInternalRecoveryURL,
   requestSessionRecovery,
+  type SessionRecoveryFailure,
   type SessionRecoveryResult,
 } from '../sessionRecovery';
 
@@ -48,6 +50,14 @@ export interface AuthMiddlewareConfig {
    * Set to false to disable automatic recovery.
    */
   recoveryURL?: string | false;
+  /**
+   * Optional loopback-only endpoint for self-hosted apps whose public origin
+   * cannot be reached from the app container. Takes precedence over
+   * `recoveryURL` for the server-side recovery request.
+   */
+  internalRecoveryURL?: string;
+  /** Secret-free diagnostic hook for failed authoritative recovery attempts. */
+  onRecoveryFailure?: (failure: SessionRecoveryFailure) => void;
 }
 
 /**
@@ -84,7 +94,10 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
     sessionMaxAge,
     verifyAlways = false,
     recoveryURL,
+    internalRecoveryURL,
+    onRecoveryFailure,
   } = config;
+  const resolvedInternalRecoveryURL = resolveInternalRecoveryURL(internalRecoveryURL);
 
   return async function middleware(request: Request) {
     // Dynamic import for edge compatibility
@@ -138,20 +151,24 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
     // authentication by itself.
     if (!session || verifyAlways) {
       const refreshCookie = readCookieValue(cookie, cookieName);
-      if (!refreshCookie || recoveryURL === false) {
+      if (!refreshCookie || (recoveryURL === false && !resolvedInternalRecoveryURL)) {
         return redirectToLogin(returnPath, ['refresh', 'session']);
       }
 
-      const endpoint = recoveryURL
-        ? new URL(recoveryURL, request.url).toString()
-        : authEndpoint(apiBaseURL, authPrefix, '/session/recover', request.url);
+      const endpoint = resolvedInternalRecoveryURL
+        ?? (recoveryURL
+          ? new URL(recoveryURL, request.url).toString()
+          : authEndpoint(apiBaseURL, authPrefix, '/session/recover', request.url));
       recovery = await requestSessionRecovery({
         endpoint,
+        requestOrigin: url.origin,
+        allowLoopbackEndpoint: resolvedInternalRecoveryURL !== undefined,
         refreshCookieName: cookieName,
         refreshCookieValue: refreshCookie,
         sessionCookieName,
         sessionSecret: secret,
         sessionMaxAge,
+        onFailure: onRecoveryFailure,
       });
 
       if (recovery.status !== 'recovered') {

@@ -1,0 +1,10 @@
+{
+  "name": "najm-auth-next16-proxy-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "start": "next start"
+  }
+}

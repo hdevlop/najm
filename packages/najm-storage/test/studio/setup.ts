@@ -15,7 +15,12 @@ Object.assign(globalThis, {
   MutationObserver: window.MutationObserver,
 });
 
-// Clean up document body between tests to prevent DOM leaking
+const { cleanup } = await import('@testing-library/react');
+
+// Unmount React roots before clearing browser state so effects, providers, and
+// per-render stores cannot leak into the next test.
 afterEach(() => {
-  document.body.innerHTML = '';
+  cleanup();
+  window.localStorage.clear();
+  window.sessionStorage.clear();
 });

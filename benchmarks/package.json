@@ -10,7 +10,7 @@
     "bench:frameworks": "bun frameworks.bench.ts"
   },
   "dependencies": {
-    "hono": "^4.12.0",
+    "hono": "^4.12.31",
     "najm-core": "workspace:*",
     "reflect-metadata": "^0.2.2"
   },

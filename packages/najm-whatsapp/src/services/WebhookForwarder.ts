@@ -78,7 +78,8 @@ function expandMappedIpv4(ip: string): string | null {
 }
 
 function isPrivateIpv6(ip: string): boolean {
-  const lower = ip.toLowerCase().split('%')[0];
+  // URL.hostname may preserve IPv6 brackets depending on the runtime.
+  const lower = ip.toLowerCase().replace(/^\[|\]$/g, '').split('%')[0];
   if (lower === '::1' || lower === '::') return true;
   if (lower.startsWith('fe80:')) return true; // link-local
   if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique-local
@@ -110,7 +111,7 @@ export async function assertSafeUrl(rawUrl: string, security?: WebhookSecurityCo
     }
   }
   if (security?.allowPrivateNetworks) return { ok: true };
-  const hostname = url.hostname;
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
   // Literal IP?
   if (/^[\d.]+$/.test(hostname) && isPrivateIpv4(hostname)) {
     return { ok: false, reason: 'private_ip' };

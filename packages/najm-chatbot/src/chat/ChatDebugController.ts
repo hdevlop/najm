@@ -48,9 +48,10 @@ export class ChatDebugController {
 
     const input: ChatAgentDebugInput = {
       messages: messages.map((message, index) => ({
-        ...message,
         id: message.id ?? createDebugMessageId(index),
-      })) as ChatAgentDebugInput['messages'],
+        role: message.role,
+        parts: [{ type: 'text', text: message.content }],
+      })),
       sessionKey,
       channel: 'web',
       traceOptions: {

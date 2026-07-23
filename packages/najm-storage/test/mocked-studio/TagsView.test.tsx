@@ -46,7 +46,7 @@ mock.module('sonner', () => ({
   toast: { error: mock(() => {}), success: mock(() => {}), info: mock(() => {}) },
 }));
 
-mock.module('najm-kit', () => ({
+mock.module('../../src/studio/features/tags/components/tagsViewUi', () => ({
   NEmptyState: ({ title }: any) => <div data-testid="empty-state">{title}</div>,
   NTable: ({ data, columns, renderEmpty }: any) => {
     if (!data || data.length === 0) return renderEmpty?.() ?? <div>No data</div>;

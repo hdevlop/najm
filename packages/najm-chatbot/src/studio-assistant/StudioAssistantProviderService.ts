@@ -1,5 +1,5 @@
 import { plugin, Service } from 'najm-core';
-import { streamText, tool as aiTool } from 'ai';
+import { stepCountIs, streamText, tool as aiTool } from 'ai';
 import { McpBuilderService, McpRegistryService } from 'najm-mcp';
 import type { RegisteredTool } from 'najm-mcp';
 import {
@@ -132,7 +132,7 @@ export class StudioAssistantProviderService implements StudioAssistantProvider {
       system,
       messages: [{ role: 'user', content: input.message }],
       tools: Object.keys(aiTools).length ? aiTools : undefined,
-      maxSteps: 8,
+      stopWhen: stepCountIs(8),
     });
 
     return this.toStudioSse(result, input.sessionId ?? crypto.randomUUID());

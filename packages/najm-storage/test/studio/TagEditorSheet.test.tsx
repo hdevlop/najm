@@ -44,32 +44,6 @@ mock.module('sonner', () => ({
   toast: { error: mock(() => {}), success: mock(() => {}), info: mock(() => {}) },
 }));
 
-mock.module('najm-kit', () => ({
-  Dialog: ({ children, open, onOpenChange }: any) => {
-    if (!open) return null;
-    return (
-      <div data-testid="dialog">
-        <button data-testid="dialog-close" onClick={() => onOpenChange?.(false)}>Close</button>
-        {children}
-      </div>
-    );
-  },
-  DialogContent: ({ children }: any) => <div>{children}</div>,
-  DialogHeader: ({ children }: any) => <div>{children}</div>,
-  DialogTitle: ({ children }: any) => <div>{children}</div>,
-  DialogDescription: ({ children }: any) => <div>{children}</div>,
-  NSheet: ({ children, open, title, onOpenChange }: any) => {
-    if (!open) return null;
-    return (
-      <div data-testid="sheet">
-        <div>{title}</div>
-        <button data-testid="sheet-close" onClick={() => onOpenChange?.(false)}>Close</button>
-        {children}
-      </div>
-    );
-  },
-}));
-
 import { TagEditorSheet } from '../../src/studio/features/tags/components/TagEditorSheet';
 import { StorageStudioProvider } from '../../src/studio/providers';
 

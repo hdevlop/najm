@@ -1,5 +1,5 @@
-// The shared happy-dom preload defines a `window` that fake-indexeddb/auto
-// would attach to instead of globalThis, so assign the polyfill explicitly.
+// Client tests run without the studio DOM preload, so install IndexedDB on the
+// Bun global explicitly.
 import { indexedDB, IDBKeyRange } from 'fake-indexeddb';
 import { describe, test, expect, afterEach } from 'bun:test';
 

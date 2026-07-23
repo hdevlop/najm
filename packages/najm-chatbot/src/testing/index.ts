@@ -10,7 +10,7 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { aiSettingsTable, chatSessionsTable } from '../schema/sqlite';
 import { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } from 'najm-auth/sqlite';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from './MockLanguageModel';
 import { simulateReadableStream } from 'ai';
 
 export interface TestChatbotOptions {

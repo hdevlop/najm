@@ -10,3 +10,8 @@ export {
   withAuthMiddleware,
   type AuthMiddlewareConfig,
 } from './server/withAuthMiddleware';
+export type {
+  SessionRecoveryErrorDetails,
+  SessionRecoveryFailure,
+  SessionRecoveryFailureReason,
+} from './sessionRecovery';

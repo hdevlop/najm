@@ -2,7 +2,7 @@ import { describe, test, expect, mock } from 'bun:test';
 import { TOOL_PROVIDER, McpRegistryService, McpBuilderService } from 'najm-mcp';
 import { CHATBOT_CONTEXT_PROVIDER, CHATBOT_ROUTING_PREVIEW_PROVIDER } from '../../src/tokens';
 import { ChatAgent } from '../../src/agent/ChatAgent';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from '../../src/testing/MockLanguageModel';
 
 /**
  * Phase 5 (C6) — chatbot-side acceptance harness ONLY.
