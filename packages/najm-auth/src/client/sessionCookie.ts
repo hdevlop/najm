@@ -17,6 +17,21 @@ export interface VerifySessionCookieOptions {
   now?: number;
 }
 
+export type SessionCookieVerificationFailure =
+  | 'format'
+  | 'hmac'
+  | 'payload';
+
+export type SessionCookieVerificationResult =
+  | {
+      status: 'valid';
+      claims: SessionCookieClaims;
+    }
+  | {
+      status: 'invalid';
+      reason: SessionCookieVerificationFailure;
+    };
+
 const DEFAULT_SESSION_MAX_AGE_SECONDS = 300;
 const MAX_CLOCK_SKEW_MS = 30_000;
 const HMAC_SHA256_BASE64URL_LENGTH = 43;
@@ -81,24 +96,47 @@ export async function verifySessionCookie(
   rawCookieValue: string,
   options: VerifySessionCookieOptions,
 ): Promise<SessionCookieClaims | null> {
-  if (!rawCookieValue || !options.secret || !globalThis.crypto?.subtle) return null;
+  const result = await verifySessionCookieDetailed(rawCookieValue, options);
+  return result.status === 'valid' ? result.claims : null;
+}
+
+/**
+ * Verify a signed session while retaining a safe failure category for server
+ * diagnostics. The result never contains the cookie value, payload, signature,
+ * or secret.
+ */
+export async function verifySessionCookieDetailed(
+  rawCookieValue: string,
+  options: VerifySessionCookieOptions,
+): Promise<SessionCookieVerificationResult> {
+  if (!rawCookieValue || !options.secret || !globalThis.crypto?.subtle) {
+    return { status: 'invalid', reason: 'format' };
+  }
+
+  let sawSignedFormat = false;
+  let sawValidHmac = false;
 
   for (const signedValue of cookieValueCandidates(rawCookieValue)) {
     const lastDot = signedValue.lastIndexOf('.');
     if (lastDot <= 0 || lastDot === signedValue.length - 1) continue;
+    sawSignedFormat = true;
 
     const payload = signedValue.slice(0, lastDot);
     const signature = signedValue.slice(lastDot + 1);
     if (!await verifyHmac(payload, signature, options.secret)) continue;
+    sawValidHmac = true;
 
-    return parseSessionCookiePayload(
+    const claims = parseSessionCookiePayload(
       payload,
       options.maxAgeSeconds ?? DEFAULT_SESSION_MAX_AGE_SECONDS,
       options.now,
     );
+    if (claims) return { status: 'valid', claims };
   }
 
-  return null;
+  if (sawValidHmac) return { status: 'invalid', reason: 'payload' };
+  if (sawSignedFormat) return { status: 'invalid', reason: 'hmac' };
+  return { status: 'invalid', reason: 'format' };
 }
 
 /** Read a cookie value from a Cookie request header without trusting its data. */

@@ -42,6 +42,36 @@ describe('server-side session recovery endpoint security', () => {
   });
 
   test.each([
+    'http://localhost:3000/api/auth/session/recover',
+    'http://127.0.0.1:3000/api/auth/session/recover',
+    'http://[::1]:3000/api/auth/session/recover',
+  ])('allows an explicitly configured loopback recovery endpoint: %s', async (endpoint) => {
+    const calls = mockSuccessfulRecovery();
+
+    await expect(recover(endpoint, {
+      allowLoopbackEndpoint: true,
+    })).resolves.toMatchObject({ status: 'recovered' });
+    expect(calls[0]?.url).toBe(endpoint);
+  });
+
+  test.each([
+    'http://10.0.0.5:3000/api/auth/session/recover',
+    'http://192.168.1.5:3000/api/auth/session/recover',
+    'https://attacker.example/api/auth/session/recover',
+  ])('rejects a non-loopback internal recovery endpoint: %s', async (endpoint) => {
+    let fetchCalls = 0;
+    globalThis.fetch = (async () => {
+      fetchCalls += 1;
+      throw new Error('must not fetch an untrusted internal endpoint');
+    }) as typeof fetch;
+
+    await expect(recover(endpoint, {
+      allowLoopbackEndpoint: true,
+    })).resolves.toEqual({ status: 'unavailable' });
+    expect(fetchCalls).toBe(0);
+  });
+
+  test.each([
     ['different HTTPS hostname', 'https://attacker.example/recover'],
     ['different port', 'https://kafil.example:444/recover'],
     ['HTTPS-to-HTTP downgrade', 'http://kafil.example/recover'],
@@ -93,6 +123,108 @@ describe('server-side session recovery endpoint security', () => {
 
     expect(output.join('\n')).not.toContain(REFRESH_TOKEN);
     expect(output).toHaveLength(0);
+  });
+
+  test('reports a safe fetch exception without exposing cookies or endpoints', async () => {
+    const failures: unknown[] = [];
+    const cause = Object.assign(new Error('connection refused'), { code: 'ECONNREFUSED' });
+    globalThis.fetch = (async () => {
+      throw new TypeError('fetch failed', { cause });
+    }) as typeof fetch;
+
+    await expect(recover('/api/auth/session/recover', {
+      onFailure: (failure) => failures.push(failure),
+    })).resolves.toEqual({ status: 'unavailable' });
+
+    expect(failures).toEqual([{
+      reason: 'fetch-error',
+      error: {
+        name: 'TypeError',
+        message: 'fetch failed',
+        cause: {
+          name: 'Error',
+          message: 'connection refused',
+          code: 'ECONNREFUSED',
+        },
+      },
+    }]);
+    const serialized = JSON.stringify(failures);
+    expect(serialized).not.toContain(REFRESH_TOKEN);
+    expect(serialized).not.toContain('kafil.example');
+  });
+
+  test.each([
+    [
+      'HTTP status',
+      () => new Response(null, { status: 503 }),
+      { reason: 'http-status', httpStatus: 503 },
+      { status: 'unavailable', httpStatus: 503 },
+    ],
+    [
+      'missing Set-Cookie',
+      () => Response.json({ data: { recovered: true } }),
+      { reason: 'missing-set-cookie', httpStatus: 200 },
+      { status: 'unavailable', httpStatus: 200 },
+    ],
+    [
+      'Set-Cookie parsing failure',
+      () => new Response(null, {
+        headers: { 'Set-Cookie': 'different.cookie=value; Path=/' },
+      }),
+      { reason: 'session-cookie-parse', httpStatus: 200 },
+      { status: 'unavailable', httpStatus: 200 },
+    ],
+    [
+      'signed-cookie format failure',
+      () => new Response(null, {
+        headers: { 'Set-Cookie': 'najm.session=not-signed; Path=/' },
+      }),
+      { reason: 'session-cookie-parse', httpStatus: 200 },
+      { status: 'unavailable', httpStatus: 200 },
+    ],
+  ])('reports %s as a structured failure', async (
+    _label,
+    response,
+    expectedFailure,
+    expectedResult,
+  ) => {
+    const failures: unknown[] = [];
+    globalThis.fetch = (async () => response()) as typeof fetch;
+
+    await expect(recover('/api/auth/session/recover', {
+      onFailure: (failure) => failures.push(failure),
+    })).resolves.toEqual(expectedResult);
+    expect(failures).toEqual([expectedFailure]);
+  });
+
+  test('distinguishes an HMAC mismatch from Set-Cookie parsing', async () => {
+    const failures: unknown[] = [];
+    globalThis.fetch = (async () => {
+      const session = await signedSession();
+      return new Response(null, {
+        headers: {
+          'Set-Cookie': `najm.session=${encodeURIComponent(session)}; Path=/`,
+        },
+      });
+    }) as typeof fetch;
+
+    await expect(recover('/api/auth/session/recover', {
+      sessionSecret: 'different-secret-different-secret-different-secret',
+      onFailure: (failure) => failures.push(failure),
+    })).resolves.toEqual({ status: 'unavailable', httpStatus: 200 });
+    expect(failures).toEqual([{
+      reason: 'session-cookie-hmac',
+      httpStatus: 200,
+    }]);
+  });
+
+  test('ignores errors thrown by the diagnostic hook', async () => {
+    globalThis.fetch = (async () => new Response(null, { status: 503 })) as typeof fetch;
+    await expect(recover('/api/auth/session/recover', {
+      onFailure: () => {
+        throw new Error('diagnostic sink unavailable');
+      },
+    })).resolves.toEqual({ status: 'unavailable', httpStatus: 503 });
   });
 });
 

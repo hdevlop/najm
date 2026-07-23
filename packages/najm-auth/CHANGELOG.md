@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.0.7
+
+- fix(client): support an explicit loopback-only recovery endpoint for
+  self-hosted Next.js deployments that cannot hairpin through their public
+  reverse-proxy origin
+- feat(client): expose a secret-free recovery diagnostic hook with distinct
+  fetch, HTTP, Set-Cookie, parsing, HMAC, and payload failure categories
+- test(client): build and run a real Next.js 16 production proxy under Bun,
+  then verify login and protected navigation with `verifyAlways: true`
+
 ## 2.0.6
 
 - security(client): restrict server-side signed-session recovery to relative or

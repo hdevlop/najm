@@ -42,6 +42,7 @@ import type { ServerSession, GetSessionConfig } from './getSession';
 import { createAuthClient, type NajmAuthClient } from '../NajmAuthClient';
 import type { FetchClient } from '../FetchClient';
 import type { RetryConfig } from '../types';
+import type { SessionRecoveryFailure } from '../sessionRecovery';
 import { withAuthMiddleware } from './withAuthMiddleware';
 
 // ============================================================================
@@ -91,6 +92,8 @@ export interface DefineAuthConfig {
    * `${apiBaseURL}${authPrefix}/session/recover`; false disables recovery.
    */
   recoveryURL?: string | false;
+  /** Loopback-only recovery endpoint for self-hosted reverse-proxy setups. */
+  internalRecoveryURL?: string;
   /** Next.js middleware matcher (default: exclude _next, favicon, api) */
   matcher?: string[];
   /**
@@ -98,6 +101,8 @@ export interface DefineAuthConfig {
    * Recovery reissues the signed cookie without rotating refresh tokens.
    */
   verifyAlways?: boolean;
+  /** Secret-free diagnostic hook for failed server or proxy recovery. */
+  onRecoveryFailure?: (failure: SessionRecoveryFailure) => void;
 }
 
 // ============================================================================
@@ -149,8 +154,10 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     sessionSecret,
     sessionMaxAge,
     recoveryURL,
+    internalRecoveryURL,
     matcher = ['/((?!_next/static|_next/image|favicon.ico|api).*)'],
     verifyAlways = false,
+    onRecoveryFailure,
     refreshThreshold,
     tabSync,
     channelName,
@@ -167,6 +174,8 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     sessionSecret,
     sessionMaxAge,
     recoveryURL,
+    internalRecoveryURL,
+    onRecoveryFailure,
   };
 
   // ---------- Lazy browser client ----------
@@ -236,7 +245,9 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     sessionSecret,
     sessionMaxAge,
     recoveryURL,
+    internalRecoveryURL,
     verifyAlways,
+    onRecoveryFailure,
   });
 
   // ---------- protect ----------

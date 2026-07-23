@@ -121,6 +121,7 @@
     "test": "bun run test:seq",
     "test:parallel": "turbo run test",
     "test:auth": "turbo run test --filter=najm-auth",
+    "test:auth:next16": "bun run --cwd packages/najm-auth test:next16",
     "test:cache": "turbo run test --filter=najm-cache",
     "test:cookies": "turbo run test --filter=najm-cookies",
     "test:najm": "turbo run test --filter=najm-api",

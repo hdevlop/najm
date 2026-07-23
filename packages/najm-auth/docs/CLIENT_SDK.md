@@ -171,7 +171,9 @@ defineAuth({
   sessionSecret?: string           // for HMAC-signed session cookie; falls back to env
   sessionMaxAge?: number           // must match auth session.maxAge; default: 300
   recoveryURL?: string | false     // default: /api/auth/session/recover
+  internalRecoveryURL?: string     // optional loopback endpoint; or NAJM_AUTH_INTERNAL_URL
   verifyAlways?: boolean           // authoritative recovery on every protected request
+  onRecoveryFailure?: (failure: SessionRecoveryFailure) => void
   matcher?: string[]               // Next middleware matcher
 })
 ```
@@ -805,7 +807,9 @@ export const config = {
 | `sessionSecret` | `string?` | HMAC secret; falls back to `NAJM_SESSION_SECRET`, then `JWT_ACCESS_SECRET` |
 | `sessionMaxAge` | `number?` | Accepted signed-session age; must match server `session.maxAge` (default: `300`) |
 | `recoveryURL` | `string \| false?` | Relative or exact same-origin recovery endpoint; `false` disables automatic recovery |
+| `internalRecoveryURL` | `string?` | Explicit HTTP(S) loopback endpoint for self-hosted reverse-proxy deployments; falls back to `NAJM_AUTH_INTERNAL_URL`; only `localhost`, `127.0.0.1`, and `[::1]` are accepted |
 | `verifyAlways` | `boolean?` | Force authoritative refresh-session validation and session reissue on every protected request |
+| `onRecoveryFailure` | `(failure) => void?` | Secret-free diagnostic hook for fetch, HTTP, Set-Cookie, parsing, HMAC, and payload failures |
 | `verifyURL` | `string?` | Deprecated; session verification no longer uses a network endpoint |
 
 **Behavior:**
@@ -839,6 +843,26 @@ incoming request (scheme, hostname, and port). URL credentials, downgrades,
 cross-origin hosts, and lookalikes are rejected before `fetch()`. Recovery
 forwards only the configured refresh cookie, never the complete incoming
 `Cookie` header.
+
+For a self-hosted app behind Caddy, nginx, or another reverse proxy, use
+`internalRecoveryURL` when the container cannot reliably reach its own public
+origin:
+
+```ts
+defineAuth({
+  internalRecoveryURL: 'http://127.0.0.1:3000/api/auth/session/recover',
+  onRecoveryFailure(failure) {
+    logger.error({ failure }, 'Najm session recovery failed');
+  },
+});
+```
+
+The internal URL is accepted only when it uses HTTP(S) and an exact loopback
+hostname. Recovery still validates the returned session HMAC locally. The
+`NAJM_AUTH_INTERNAL_URL` environment variable provides the same opt-in without
+changing application code. The
+diagnostic object never includes URLs, cookie values, request headers, session
+payloads, signatures, or secrets; the hook is silent unless configured.
 
 ---
 

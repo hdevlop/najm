@@ -12,7 +12,9 @@ import type { AuthUser } from '../types';
 import { resolveSessionSecret, verifySessionCookie } from '../sessionCookie';
 import {
   authEndpoint,
+  resolveInternalRecoveryURL,
   requestSessionRecovery,
+  type SessionRecoveryFailure,
 } from '../sessionRecovery';
 
 export interface ServerSession {
@@ -48,12 +50,16 @@ export interface GetSessionConfig {
    * `${baseURL}${authPrefix}/session/recover`. Set to false to disable fallback.
    */
   recoveryURL?: string | false;
+  /** Loopback-only recovery endpoint for self-hosted reverse-proxy setups. */
+  internalRecoveryURL?: string;
   /**
    * Error handling mode:
    * - 'nullable' (default): returns null on any failure
    * - 'strict': throws typed errors for debugging
    */
   mode?: 'nullable' | 'strict';
+  /** Secret-free diagnostic hook for failed recovery attempts. */
+  onRecoveryFailure?: (failure: SessionRecoveryFailure) => void;
 }
 
 export class NoSessionError extends Error {
@@ -123,6 +129,7 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
   const baseURL = config.baseURL ?? defaultBaseURL();
   const prefix = config.authPrefix ?? '/auth';
   const strict = config.mode === 'strict';
+  const internalRecoveryURL = resolveInternalRecoveryURL(config.internalRecoveryURL);
 
   let sessionCookieValue: string | undefined;
   let refreshCookieValue: string | undefined;
@@ -161,7 +168,10 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
     if (strict) throw new AuthConfigError('Session cookie secret is not configured');
     return null;
   }
-  if (!refreshCookieValue || config.recoveryURL === false) {
+  if (
+    !refreshCookieValue
+    || (config.recoveryURL === false && !internalRecoveryURL)
+  ) {
     if (strict) throw new NoSessionError('No recoverable refresh session');
     return null;
   }
@@ -170,17 +180,20 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
     return null;
   }
 
-  const endpoint = config.recoveryURL
-    ? new URL(config.recoveryURL, requestOrigin).toString()
-    : authEndpoint(baseURL, prefix, '/session/recover', requestOrigin);
+  const endpoint = internalRecoveryURL
+    ?? (config.recoveryURL
+      ? new URL(config.recoveryURL, requestOrigin).toString()
+      : authEndpoint(baseURL, prefix, '/session/recover', requestOrigin));
   const recovery = await requestSessionRecovery({
     endpoint,
     requestOrigin,
+    allowLoopbackEndpoint: internalRecoveryURL !== undefined,
     refreshCookieName: cookieName,
     refreshCookieValue,
     sessionCookieName,
     sessionSecret: secret,
     sessionMaxAge: config.sessionMaxAge,
+    onFailure: config.onRecoveryFailure,
   });
 
   if (recovery.status === 'recovered') {

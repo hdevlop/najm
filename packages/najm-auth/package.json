@@ -1,6 +1,6 @@
 {
   "name": "najm-auth",
-  "version": "2.0.6",
+  "version": "2.0.7",
   "description": "Authentication and authorization library for najm framework",
   "type": "module",
   "files": [
@@ -48,6 +48,7 @@
   "scripts": {
     "build": "tsup",
     "test": "bun test",
+    "test:next16": "bun run build && bun integration/next16-proxy/run.ts",
     "test:watch": "bun test --watch",
     "start": "bun --watch src/main.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
@@ -70,6 +71,9 @@
     "drizzle-kit": "^0.31.10",
     "drizzle-orm": "^0.45.2",
     "happy-dom": "^20.11.1",
+    "next": "16.2.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
