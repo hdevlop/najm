@@ -1,6 +1,6 @@
 import { describe, test, expect, mock } from 'bun:test';
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react';
+import { render, fireEvent, waitFor } from '@testing-library/react';
 import { FileBrowser } from '../../src/studio/features/explorer/components/FileBrowser';
 import { StorageStudioProvider } from '../../src/studio/providers';
 import type { FileItem } from '../../src/studio/features/explorer/types';
@@ -48,7 +48,7 @@ describe('FileBrowser smoke test', () => {
     expect(container).toBeTruthy();
   });
 
-  test('renders table mode with column headers present', () => {
+  test('renders table mode with column headers present', async () => {
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
         <div style={{ height: 600 }}>
@@ -68,13 +68,15 @@ describe('FileBrowser smoke test', () => {
     );
 
     // Table mode should show the thead with Name header
-    const tableHeaders = container.querySelectorAll('th');
-    // Verify Name column is present (5 columns)
-    const nameHeader = Array.from(tableHeaders).find((h) => h.textContent === 'Name');
-    expect(nameHeader).toBeTruthy();
+    await waitFor(() => {
+      const tableHeaders = container.querySelectorAll('th');
+      // Verify Name column is present (5 columns)
+      const nameHeader = Array.from(tableHeaders).find((h) => h.textContent === 'Name');
+      expect(nameHeader).toBeTruthy();
+    });
   });
 
-  test('renders cards mode without table element', () => {
+  test('renders cards mode without table element', async () => {
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
         <div style={{ height: 600 }}>
@@ -94,7 +96,7 @@ describe('FileBrowser smoke test', () => {
     );
 
     // No table in cards mode
-    expect(container.querySelector('table')).toBeNull();
+    await waitFor(() => expect(container.querySelector('table')).toBeNull());
   });
 
   test('mode=table renders with table element present', () => {
@@ -121,7 +123,7 @@ describe('FileBrowser smoke test', () => {
     expect(table).toBeTruthy();
   });
 
-  test('mode=cards renders FileTile tiles with w-36 class', () => {
+  test('mode=cards renders FileTile tiles with w-36 class', async () => {
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
         <div style={{ height: 600 }}>
@@ -141,11 +143,13 @@ describe('FileBrowser smoke test', () => {
     );
 
     // Cards use w-36 class
-    const tiles = container.querySelectorAll('.w-36');
-    expect(tiles.length).toBe(3); // 2 files + 1 folder
+    await waitFor(() => {
+      const tiles = container.querySelectorAll('.w-36');
+      expect(tiles.length).toBe(3); // 2 files + 1 folder
+    });
   });
 
-  test('onNavigate fires when tile content is clicked (mode=cards)', () => {
+  test('onNavigate fires when tile content is clicked (mode=cards)', async () => {
     const onNavigate = mock();
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
@@ -166,8 +170,8 @@ describe('FileBrowser smoke test', () => {
     );
 
     // Find tile and click its name span
+    await waitFor(() => expect(container.querySelectorAll('.w-36').length).toBe(1));
     const tiles = container.querySelectorAll('.w-36');
-    expect(tiles.length).toBe(1);
     const nameSpan = tiles[0].querySelector('span');
     expect(nameSpan).toBeTruthy();
 
@@ -175,7 +179,7 @@ describe('FileBrowser smoke test', () => {
     expect(onNavigate).toHaveBeenCalledWith('/folder/file0.txt', false);
   });
 
-  test('onNavigate fires when folder tile is clicked (mode=cards)', () => {
+  test('onNavigate fires when folder tile is clicked (mode=cards)', async () => {
     const onNavigate = mock();
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
@@ -195,14 +199,14 @@ describe('FileBrowser smoke test', () => {
       </StorageStudioProvider>
     );
 
+    await waitFor(() => expect(container.querySelectorAll('.w-36').length).toBe(1));
     const tiles = container.querySelectorAll('.w-36');
-    expect(tiles.length).toBe(1);
     const nameSpan = tiles[0].querySelector('span');
     fireEvent.click(nameSpan!);
     expect(onNavigate).toHaveBeenCalledWith('/folder/afolder', true);
   });
 
-  test('mode=cards: tile click does not fire onSelectAll (checkbox click only)', () => {
+  test('mode=cards: tile click does not fire onSelectAll (checkbox click only)', async () => {
     const onSelectAll = mock();
     const onNavigate = mock();
     const { container } = render(
@@ -224,6 +228,7 @@ describe('FileBrowser smoke test', () => {
     );
 
     // Click the tile body (not checkbox)
+    await waitFor(() => expect(container.querySelectorAll('.w-36').length).toBe(1));
     const tiles = container.querySelectorAll('.w-36');
     const nameSpan = tiles[0].querySelector('span');
     fireEvent.click(nameSpan!);
@@ -326,7 +331,7 @@ describe('FileBrowser tag chips', () => {
     expect(onTagFilter).toHaveBeenCalledWith('tag-1');
   });
 
-  test('cards mode renders tag chips on file tiles', () => {
+  test('cards mode renders tag chips on file tiles', async () => {
     const files = makeTaggedFiles([[1, 2]]);
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
@@ -346,13 +351,13 @@ describe('FileBrowser tag chips', () => {
       </StorageStudioProvider>
     );
 
+    await waitFor(() => expect(container.querySelectorAll('.w-36 button.rounded').length).toBe(2));
     const cardTagBtns = container.querySelectorAll('.w-36 button.rounded');
-    expect(cardTagBtns.length).toBe(2);
     expect(cardTagBtns[0].textContent).toBe('tag-1');
     expect(cardTagBtns[1].textContent).toBe('tag-2');
   });
 
-  test('cards mode shows +N overflow when more than 2 tags', () => {
+  test('cards mode shows +N overflow when more than 2 tags', async () => {
     const files = makeTaggedFiles([[1, 2, 3]]);
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
@@ -372,12 +377,12 @@ describe('FileBrowser tag chips', () => {
       </StorageStudioProvider>
     );
 
+    await waitFor(() => expect(container.querySelector('.w-36 span.text-\\[9px\\].text-txt-muted')).toBeTruthy());
     const overflow = container.querySelector('.w-36 span.text-\\[9px\\].text-txt-muted');
-    expect(overflow).toBeTruthy();
     expect(overflow?.textContent).toBe('+1');
   });
 
-  test('cards mode does not render tag chips on folders', () => {
+  test('cards mode does not render tag chips on folders', async () => {
     const { container } = render(
       <StorageStudioProvider apiBase="/api/storage-studio" storageApiBase="/api">
         <div style={{ height: 600 }}>
@@ -396,13 +401,13 @@ describe('FileBrowser tag chips', () => {
       </StorageStudioProvider>
     );
 
+    await waitFor(() => expect(container.querySelectorAll('.w-36').length).toBe(1));
     const tiles = container.querySelectorAll('.w-36');
-    expect(tiles.length).toBe(1);
     const cardTagBtns = tiles[0].querySelectorAll('button.rounded');
     expect(cardTagBtns.length).toBe(0);
   });
 
-  test('cards mode tag chip click fires onTagFilter and stops propagation', () => {
+  test('cards mode tag chip click fires onTagFilter and stops propagation', async () => {
     const onTagFilter = mock();
     const onNavigate = mock();
     const files = makeTaggedFiles([[1]]);
@@ -425,8 +430,8 @@ describe('FileBrowser tag chips', () => {
       </StorageStudioProvider>
     );
 
+    await waitFor(() => expect(container.querySelector('.w-36 button.rounded')).toBeTruthy());
     const tagBtn = container.querySelector('.w-36 button.rounded');
-    expect(tagBtn).toBeTruthy();
     fireEvent.click(tagBtn!);
     expect(onTagFilter).toHaveBeenCalledWith('tag-1');
     expect(onNavigate).not.toHaveBeenCalled();
