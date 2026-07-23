@@ -2,7 +2,7 @@ import { describe, test, expect, mock } from 'bun:test';
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 
-mock.module('najm-kit', () => ({
+mock.module('../../src/studio/features/preview/components/previewUi', () => ({
   Dialog: ({ children, open, onOpenChange }: any) => {
     if (!open) return null;
     return (

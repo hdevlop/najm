@@ -13,7 +13,7 @@ import { Database } from 'bun:sqlite';
 import { aiSettingsTable } from '../../src/schema/sqlite';
 import { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } from 'najm-auth/sqlite';
 import { chatbotToolEmbeddingsTable, chatbotToolSemanticsTable } from 'najm-rag/sqlite';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from '../../src/testing/MockLanguageModel';
 import { simulateReadableStream } from 'ai';
 
 const JWT_SECRET = 'test-access-secret-that-is-at-least-32-chars!';

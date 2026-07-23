@@ -136,14 +136,14 @@
     "@types/react-dom": "^19",
     "@types/react-file-icon": "^1.0.5",
     "@uiw/react-codemirror": "^4.25.0",
-    "@vitejs/plugin-react": "^4",
-    "happy-dom": "^17",
-    "postcss": "^8",
+    "@vitejs/plugin-react": "^5.2.0",
+    "happy-dom": "^20.11.1",
+    "postcss": "^8.5.22",
     "react-hook-form": "^7",
     "rimraf": "^6",
     "tailwindcss": "^4",
     "tsup": "^8",
     "typescript": "^5",
-    "vite": "^6"
+    "vite": "^7.3.6"
   }
 }

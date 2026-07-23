@@ -6,7 +6,7 @@ import { auth } from 'najm-auth';
 import { mcp } from 'najm-mcp';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 import { chatbot } from '../src/ChatbotPlugin';
 import { AiSettingsService } from '../src/ai-settings/AiSettingsService';
 import { ChatAgent, getMessageText } from '../src/agent/ChatAgent';

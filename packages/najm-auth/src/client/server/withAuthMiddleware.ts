@@ -147,6 +147,7 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
         : authEndpoint(apiBaseURL, authPrefix, '/session/recover', request.url);
       recovery = await requestSessionRecovery({
         endpoint,
+        requestOrigin: url.origin,
         refreshCookieName: cookieName,
         refreshCookieValue: refreshCookie,
         sessionCookieName,

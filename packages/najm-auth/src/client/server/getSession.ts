@@ -24,7 +24,7 @@ export interface ServerSession {
 export interface GetSessionConfig {
   /**
    * Base URL for auth endpoints.
-   * Defaults to `${NEXT_PUBLIC_API_URL || http://localhost:${PORT||3000}}/api`.
+   * Defaults to `NEXT_PUBLIC_API_URL` or the same-origin `/api` path.
    */
   baseURL?: string;
   /** Auth route prefix appended to baseURL (default: '/auth'). */
@@ -83,10 +83,32 @@ export class AuthTransportError extends Error {
 function defaultBaseURL(): string {
   const explicit = typeof process !== 'undefined' ? process.env.NAJM_AUTH_BASE_URL : undefined;
   if (explicit) return explicit;
-  const origin = typeof process !== 'undefined'
-    ? (process.env.NEXT_PUBLIC_API_URL ?? `http://localhost:${process.env.PORT ?? 3000}`)
-    : 'http://localhost:3000';
-  return `${origin.replace(/\/$/, '')}/api`;
+  const publicUrl = typeof process !== 'undefined' ? process.env.NEXT_PUBLIC_API_URL : undefined;
+  return publicUrl || '/api';
+}
+
+function firstForwardedValue(value: string | null): string | undefined {
+  const first = value?.split(',')[0]?.trim();
+  return first || undefined;
+}
+
+function requestOriginFromHeaders(
+  headers: { get(name: string): string | null },
+): string | undefined {
+  const host = firstForwardedValue(headers.get('x-forwarded-host'))
+    ?? firstForwardedValue(headers.get('host'));
+  if (!host) return undefined;
+
+  const protocol = firstForwardedValue(headers.get('x-forwarded-proto')) ?? 'https';
+  if (protocol !== 'https' && protocol !== 'http') return undefined;
+
+  try {
+    const url = new URL(`${protocol}://${host}`);
+    if (url.username || url.password) return undefined;
+    return url.origin;
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -104,12 +126,16 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
 
   let sessionCookieValue: string | undefined;
   let refreshCookieValue: string | undefined;
+  let requestOrigin: string | undefined;
 
   try {
     const mod = await import('next/headers');
     const cookieStore = await mod.cookies();
     sessionCookieValue = cookieStore.get(sessionCookieName)?.value;
     refreshCookieValue = cookieStore.get(cookieName)?.value;
+    if (typeof mod.headers === 'function') {
+      requestOrigin = requestOriginFromHeaders(await mod.headers());
+    }
   } catch {
     if (strict) throw new AuthConfigError('Failed to read cookies from Next.js headers()');
     return null;
@@ -139,12 +165,17 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
     if (strict) throw new NoSessionError('No recoverable refresh session');
     return null;
   }
+  if (!requestOrigin) {
+    if (strict) throw new AuthConfigError('Incoming request origin is unavailable');
+    return null;
+  }
 
   const endpoint = config.recoveryURL
-    ? new URL(config.recoveryURL, baseURL).toString()
-    : authEndpoint(baseURL, prefix, '/session/recover');
+    ? new URL(config.recoveryURL, requestOrigin).toString()
+    : authEndpoint(baseURL, prefix, '/session/recover', requestOrigin);
   const recovery = await requestSessionRecovery({
     endpoint,
+    requestOrigin,
     refreshCookieName: cookieName,
     refreshCookieValue,
     sessionCookieName,

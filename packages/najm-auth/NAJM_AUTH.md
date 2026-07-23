@@ -216,6 +216,13 @@ and multiple tabs cannot race refresh rotation because recovery does not mutate
 valid refresh-token state. Disabled-user recovery may revoke that invalid
 family. Rotation and reuse detection remain exclusive to `POST /auth/refresh`.
 
+The server-side recovery client resolves the endpoint against the incoming
+request origin and compares exact URL origins before `fetch()`. Relative URLs
+and exact same-origin absolute URLs are accepted. Credentials, protocol
+downgrades, different hostnames or ports, and hostname/username lookalikes are
+rejected. Only the configured refresh cookie is forwarded; the complete
+incoming `Cookie` header is never copied.
+
 ### `GET /auth/me`
 
 [AuthService.getMe()](packages/najm-auth/src/auth/AuthService.ts#L172):
@@ -780,8 +787,9 @@ custom auth schema may omit the table only while OAuth remains disabled.
 - Keep `refreshCookiePath: '/'` when using automatic Next.js middleware
   recovery. Browser cookie-path rules otherwise hide the refresh cookie from
   protected page requests.
-- Treat an absolute `recoveryURL` as secret-bearing trusted configuration.
-  Remote recovery uses HTTPS; HTTP is accepted only for localhost development.
+- Keep `recoveryURL` relative or exact same-origin. Absolute URLs are accepted
+  only when scheme, hostname, and port exactly match the incoming request
+  origin; URL credentials and cross-origin recovery are rejected before fetch.
 - `verifyAlways` is not a compatibility no-op: enable it only when every
   protected navigation should pay for authoritative refresh-family/user checks.
 - **Sessions are multi-device** — `tokens.tokenFamily` is unique (one row per login session) and refresh writes upsert by family. A second login creates a new family without disturbing the first; refresh rotation, logout, and stale-token-reuse revocation are all scoped to a single family. Password change/reset revoke *all* of a user's sessions.

@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useChat } from '@ai-sdk/react';
-import type { UIMessage } from 'ai';
+import { DefaultChatTransport, type UIMessage } from 'ai';
 import { useAuth } from 'najm-auth/client/react';
 import { useAiSettings } from './useAiSettings';
 import { useToolStatus } from './useToolStatus';
@@ -34,6 +34,7 @@ export interface UseChatPanelReturn {
 
 export function useChatPanel(options: UseChatPanelOptions): UseChatPanelReturn {
   const [view, setView] = useState<ChatbotView>('chat');
+  const [input, setInput] = useState('');
   const settingsApi = useAiSettings({ settingsApiPath: options.settingsApiPath });
   const status = useToolStatus(settingsApi.settings, options.mcpApiPath);
   const { accessToken } = useAuth();
@@ -42,10 +43,14 @@ export function useChatPanel(options: UseChatPanelOptions): UseChatPanelReturn {
     accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined
   ), [accessToken]);
 
-  const chat = useChat({
+  const transport = useMemo(() => new DefaultChatTransport({
     api: options.apiPath,
     headers,
     body: options.sessionKey ? { sessionKey: options.sessionKey } : undefined,
+  }), [headers, options.apiPath, options.sessionKey]);
+
+  const chat = useChat({
+    transport,
     onError: () => undefined,
   });
 
@@ -55,14 +60,14 @@ export function useChatPanel(options: UseChatPanelOptions): UseChatPanelReturn {
   const submitText = useCallback((text: string) => {
     const value = text.trim();
     if (!value || isLoading) return;
-    chat.setInput('');
-    void chat.append({ role: 'user', content: value });
+    setInput('');
+    void chat.sendMessage({ text: value });
   }, [chat, isLoading]);
 
   const handleSubmit = useCallback((event?: { preventDefault?: () => void }) => {
     event?.preventDefault?.();
-    submitText(chat.input);
-  }, [chat.input, submitText]);
+    submitText(input);
+  }, [input, submitText]);
 
   const handleSuggestion = useCallback((text: string) => {
     submitText(text);
@@ -74,14 +79,14 @@ export function useChatPanel(options: UseChatPanelOptions): UseChatPanelReturn {
 
   return {
     view,
-    input: chat.input,
+    input,
     messages: chat.messages,
     isLoading,
     chatError,
     status,
     settingsRecord: settingsApi.settings,
     settingsApi,
-    setInput: chat.setInput,
+    setInput,
     setView,
     handleSubmit,
     handleSuggestion,

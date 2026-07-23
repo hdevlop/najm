@@ -2,7 +2,7 @@ import { describe, test, expect, mock } from 'bun:test';
 import { TOOL_PROVIDER, McpRegistryService, McpBuilderService } from 'najm-mcp';
 import { CHATBOT_ROUTING_PREVIEW_PROVIDER, CHATBOT_CONTEXT_PROVIDER } from '../src/tokens';
 import { ChatAgent } from '../src/agent/ChatAgent';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 
 function makeAgent(overrides: {
   routerResult?: { status: string; tools: any[]; error?: string };

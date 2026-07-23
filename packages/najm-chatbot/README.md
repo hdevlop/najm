@@ -409,7 +409,7 @@ Creates a fully wired test server with an in-memory SQLite database, fake auth, 
 
 ### `scriptedModel(input)`
 
-Creates a `MockLanguageModelV1` that returns canned text or simulates tool calls. Useful for unit-testing `ChatAgent` directly.
+Creates a scripted AI SDK v6 test model that returns canned text or simulates tool calls. Useful for unit-testing `ChatAgent` directly.
 
 ## Exported API
 

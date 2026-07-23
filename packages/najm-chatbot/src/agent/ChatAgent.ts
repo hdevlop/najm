@@ -1,5 +1,5 @@
 import { Service, Inject, Meta, DI, type Container } from 'najm-core';
-import { streamText, generateText, appendResponseMessages, StreamData } from 'ai';
+import { convertToModelMessages, generateText, stepCountIs, streamText } from 'ai';
 import type { UIMessage } from 'ai';
 import { calculateCost, type UsageCost } from './modelPricing';
 import { USER } from 'najm-guard';
@@ -143,9 +143,10 @@ async function settleWrites(writes: Promise<void>[]): Promise<void> {
 }
 
 export function getMessageText(message: UIMessage): string {
-  if (typeof message.content === 'string') return message.content;
-  if (Array.isArray(message.content as any)) {
-    return (message.content as any[])
+  const legacyContent = (message as any).content;
+  if (typeof legacyContent === 'string') return legacyContent;
+  if (Array.isArray(legacyContent)) {
+    return legacyContent
       .filter((p: any) => p?.type === 'text')
       .map((p: any) => p.text ?? '')
       .join('');
@@ -157,6 +158,50 @@ export function getMessageText(message: UIMessage): string {
       .join('');
   }
   return '';
+}
+
+function appendResponseMessages(messages: UIMessage[], responseMessages: any[]): UIMessage[] {
+  const assistantMessages = responseMessages
+    .filter((message) => message?.role === 'assistant')
+    .map((message, messageIndex) => {
+      const content = Array.isArray(message.content) ? message.content : [message.content];
+      const parts = content.flatMap((part: any) => {
+        if (typeof part === 'string') return [{ type: 'text', text: part }];
+        if (part?.type === 'text') return [{ type: 'text', text: part.text ?? '' }];
+        if (part?.type === 'tool-call') {
+          return [{
+            type: `tool-${part.toolName}`,
+            toolCallId: part.toolCallId,
+            state: 'input-available',
+            input: part.input,
+          }];
+        }
+        return [];
+      });
+
+      return {
+        id: `assistant-${Date.now()}-${messageIndex}`,
+        role: 'assistant',
+        parts,
+      } as UIMessage;
+    });
+
+  return [...messages, ...assistantMessages];
+}
+
+function normalizeUIMessages(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => {
+    if (Array.isArray((message as any).parts)) return message;
+    return {
+      id: message.id ?? `message-${Date.now()}-${Math.random().toString(36).slice(2)}`,
+      role: message.role,
+      parts: [{ type: 'text', text: getMessageText(message) }],
+    } as UIMessage;
+  });
+}
+
+async function toModelMessages(messages: UIMessage[]) {
+  return convertToModelMessages(normalizeUIMessages(messages));
 }
 
 function getMessageIdentity(message: UIMessage): string | null {
@@ -207,19 +252,14 @@ export class ChatAgent {
       settings,
     );
 
-    const data = new StreamData();
     const result = streamText({
       model: model!,
       system,
-      messages: promptMessages,
+      messages: await toModelMessages(promptMessages),
       tools: Object.keys(tools).length > 0 ? tools : undefined,
-      maxSteps: this.config.maxSteps ?? 10,
+      stopWhen: stepCountIs(this.config.maxSteps ?? 10),
       onFinish: async ({ response, steps, usage }) => {
         const userText = getLatestUserText(input.messages);
-        const cost = this.computeUsageCost(settings, usage);
-        if (cost) {
-          data.appendMessageAnnotation({ type: 'token-usage', ...cost });
-        }
 
         const writes: Promise<void>[] = [
           this.logChat(sessionKey, userText, routingStatus, routedToolNames, steps),
@@ -231,15 +271,15 @@ export class ChatAgent {
           }));
         }
 
-        try {
-          await settleWrites(writes);
-        } finally {
-          await data.close();
-        }
+        await settleWrites(writes);
       },
     });
 
-    return result.toDataStreamResponse({ data });
+    return result.toUIMessageStreamResponse({
+      messageMetadata: ({ part }) => part.type === 'finish'
+        ? this.computeUsageCost(settings, part.totalUsage) ?? undefined
+        : undefined,
+    });
   }
 
   async runOnce(input: ChatAgentInput): Promise<string> {
@@ -268,9 +308,9 @@ export class ChatAgent {
     const result = await generateText({
       model: model!,
       system,
-      messages: promptMessages,
+      messages: await toModelMessages(promptMessages),
       tools: Object.keys(tools).length > 0 ? tools : undefined,
-      maxSteps: this.config.maxSteps ?? 10,
+      stopWhen: stepCountIs(this.config.maxSteps ?? 10),
     });
 
     const userText = getLatestUserText(input.messages);
@@ -348,9 +388,9 @@ export class ChatAgent {
       result = await generateText({
         model: model,
         system,
-        messages: promptMessages,
+        messages: await toModelMessages(promptMessages),
         tools: Object.keys(tools).length > 0 ? tools : undefined,
-        maxSteps: this.config.maxSteps ?? 10,
+        stopWhen: stepCountIs(this.config.maxSteps ?? 10),
       });
     } catch (err) {
       return {
@@ -380,7 +420,7 @@ export class ChatAgent {
     const toolResultMap = new Map<string, any>();
     for (const step of result.steps) {
       for (const tr of step.toolResults ?? []) {
-        const id = tr?.toolCallId ?? tr?.id;
+        const id = tr?.toolCallId ?? (tr as any)?.id;
         if (id) toolResultMap.set(id, tr);
       }
     }
@@ -677,10 +717,7 @@ export class ChatAgent {
   ): Promise<void> {
     if (options.skip || !sessionKey) return;
 
-    const updatedMessages = appendResponseMessages({
-      messages: messages as any,
-      responseMessages,
-    }) as UIMessage[];
+    const updatedMessages = appendResponseMessages(messages, responseMessages);
 
     const isNewSession = messages.length === 0
       || (messages.every((m) => m.role !== 'user') === false && messages.filter((m) => m.role === 'user').length <= 1);

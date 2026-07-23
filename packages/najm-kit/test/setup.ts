@@ -1,8 +1,8 @@
-import { Window } from "happy-dom";
+import { GlobalWindow } from "happy-dom";
 import { cleanup } from "@testing-library/react";
 import { afterEach } from "bun:test";
 
-const win = new Window({ url: "http://localhost" });
+const win = new GlobalWindow({ url: "http://localhost" });
 
 // happy-dom never fires <img> load events, so Radix Avatar (which only renders
 // the <img> after `new window.Image()` fires `load`) would never show the image.
@@ -73,9 +73,7 @@ const globals: Record<string, any> = {
 };
 
 for (const [key, value] of Object.entries(globals)) {
-  if (!(key in globalThis)) {
-    (globalThis as any)[key] = value;
-  }
+  (globalThis as any)[key] = value;
 }
 
 afterEach(() => {

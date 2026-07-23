@@ -681,6 +681,9 @@ throw new HttpError(403, 'Insufficient permissions for this action');
   their session version.
 - Expired signed sessions recover through authoritative, non-rotating refresh
   validation; middleware verifies the reissued HMAC before using its claims.
+- Server-side recovery sends only the configured refresh cookie and accepts
+  relative or exact same-origin endpoints. URL credentials and any
+  scheme/hostname/port change are rejected before the network request.
 - `verifyAlways` forces that authoritative check on every protected request;
   the default bounds cached role/status staleness to `session.maxAge`.
 

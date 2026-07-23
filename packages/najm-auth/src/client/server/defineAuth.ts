@@ -160,7 +160,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
 
   // Shared session config
   const sessionConfig: GetSessionConfig = {
-    baseURL: undefined, // resolved at call time from env/defaults
+    baseURL: apiBaseURL,
     authPrefix,
     cookieName,
     sessionCookieName,

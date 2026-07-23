@@ -17,7 +17,7 @@ import { cache } from 'najm-cache';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { aiSettingsTable, chatSessionsTable, chatbotInteractionLogsTable } from '../src/schema/sqlite';
-import { MockLanguageModelV1 } from 'ai/test';
+import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 
 const schema = {
   aiSettings: aiSettingsTable,

@@ -4,7 +4,10 @@ import {
 } from './sessionCookie';
 
 export interface SessionRecoveryOptions {
+  /** Fully resolved or relative recovery endpoint. */
   endpoint: string;
+  /** Origin of the incoming request that supplied the refresh cookie. */
+  requestOrigin: string;
   refreshCookieName: string;
   refreshCookieValue: string;
   sessionCookieName: string;
@@ -38,13 +41,17 @@ export async function requestSessionRecovery(
   if (!isCookieValue(options.refreshCookieValue)) {
     return { status: 'invalid' };
   }
-  if (!isSafeRecoveryEndpoint(options.endpoint)) {
+  const endpoint = sameOriginRecoveryEndpoint(
+    options.endpoint,
+    options.requestOrigin,
+  );
+  if (!endpoint) {
     return { status: 'unavailable' };
   }
 
   let response: Response;
   try {
-    response = await fetch(options.endpoint, {
+    response = await fetch(endpoint, {
       method: 'POST',
       headers: {
         Accept: 'application/json',
@@ -128,20 +135,31 @@ function isCookieName(value: string): boolean {
 }
 
 function isCookieValue(value: string): boolean {
-  return value.length > 0 && !/[\r\n;]/.test(value);
+  // RFC 6265 cookie-octet: reject whitespace, controls, quotes, commas,
+  // semicolons, and backslashes before constructing the outbound header.
+  return value.length > 0
+    && /^[\x21\x23-\x2B\x2D-\x3A\x3C-\x5B\x5D-\x7E]+$/.test(value);
 }
 
-function isSafeRecoveryEndpoint(value: string): boolean {
+function sameOriginRecoveryEndpoint(
+  endpoint: string,
+  requestOrigin: string,
+): string | undefined {
   try {
-    const url = new URL(value);
-    if (url.username || url.password) return false;
-    if (url.protocol === 'https:') return true;
-    if (url.protocol !== 'http:') return false;
-    return url.hostname === 'localhost'
-      || url.hostname === '127.0.0.1'
-      || url.hostname === '[::1]'
-      || url.hostname === '::1';
+    const trusted = new URL(requestOrigin);
+    if (
+      (trusted.protocol !== 'https:' && trusted.protocol !== 'http:')
+      || trusted.username
+      || trusted.password
+    ) {
+      return undefined;
+    }
+
+    const resolved = new URL(endpoint, trusted.origin);
+    if (resolved.username || resolved.password) return undefined;
+    if (resolved.origin !== trusted.origin) return undefined;
+    return resolved.toString();
   } catch {
-    return false;
+    return undefined;
   }
 }

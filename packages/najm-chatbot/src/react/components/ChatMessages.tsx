@@ -39,7 +39,8 @@ export function getMessageText(message: UIMessage): string {
       .map((part) => (part as { text?: string }).text ?? '')
       .join('');
   }
-  return typeof message.content === 'string' ? message.content : '';
+  const legacyContent = (message as { content?: unknown }).content;
+  return typeof legacyContent === 'string' ? legacyContent : '';
 }
 
 function getToolParts(message: UIMessage) {
@@ -61,6 +62,11 @@ interface TokenUsageAnnotation {
 }
 
 function getTokenUsage(message: UIMessage): TokenUsageAnnotation | null {
+  const metadata = (message as { metadata?: unknown }).metadata;
+  if (metadata && typeof metadata === 'object' && 'totalTokens' in metadata) {
+    return { type: 'token-usage', ...metadata } as TokenUsageAnnotation;
+  }
+
   const annotations = (message as { annotations?: unknown[] }).annotations;
   if (!Array.isArray(annotations)) return null;
   for (const ann of annotations) {

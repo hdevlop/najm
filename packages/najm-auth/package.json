@@ -1,6 +1,6 @@
 {
   "name": "najm-auth",
-  "version": "2.0.5",
+  "version": "2.0.6",
   "description": "Authentication and authorization library for najm framework",
   "type": "module",
   "files": [
@@ -67,9 +67,9 @@
     "@testing-library/react": "^16.3.2",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/node": "^25.0.2",
-    "drizzle-kit": "^0.31.8",
-    "drizzle-orm": "^0.45.1",
-    "happy-dom": "^17.6.3",
+    "drizzle-kit": "^0.31.10",
+    "drizzle-orm": "^0.45.2",
+    "happy-dom": "^20.11.1",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },
@@ -93,8 +93,8 @@
     "zod": "^4.2.1"
   },
   "peerDependencies": {
-    "drizzle-orm": "^0.45.1",
-    "hono": "^4.0.0",
+    "drizzle-orm": "^0.45.2",
+    "hono": "^4.12.18",
     "react": ">=18",
     "next": ">=14"
   },

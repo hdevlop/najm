@@ -2,6 +2,10 @@ import { afterEach, beforeAll, describe, expect, mock, test } from 'bun:test';
 
 const SESSION_SECRET = 'server-session-secret-server-session-secret';
 const cookieValues = new Map<string, string>();
+const requestHeaders = new Headers({
+  host: 'localhost:3000',
+  'x-forwarded-proto': 'http',
+});
 
 mock.module('next/headers', () => ({
   cookies: async () => ({
@@ -11,6 +15,7 @@ mock.module('next/headers', () => ({
     },
     getAll: () => [...cookieValues].map(([name, value]) => ({ name, value })),
   }),
+  headers: async () => requestHeaders,
 }));
 
 let getSession: typeof import('../src/client/server/getSession').getSession;

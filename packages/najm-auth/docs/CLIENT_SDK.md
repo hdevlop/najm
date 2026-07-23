@@ -804,7 +804,7 @@ export const config = {
 | `sessionCookieName` | `string?` | Signed session cookie name (default: `'najm.session'`) |
 | `sessionSecret` | `string?` | HMAC secret; falls back to `NAJM_SESSION_SECRET`, then `JWT_ACCESS_SECRET` |
 | `sessionMaxAge` | `number?` | Accepted signed-session age; must match server `session.maxAge` (default: `300`) |
-| `recoveryURL` | `string \| false?` | Override recovery endpoint; `false` disables automatic recovery |
+| `recoveryURL` | `string \| false?` | Relative or exact same-origin recovery endpoint; `false` disables automatic recovery |
 | `verifyAlways` | `boolean?` | Force authoritative refresh-session validation and session reissue on every protected request |
 | `verifyURL` | `string?` | Deprecated; session verification no longer uses a network endpoint |
 
@@ -833,9 +833,12 @@ trading a database read for immediate status/role/session checks.
 The default middleware recovery requires the refresh cookie to be visible on
 protected page requests, so keep the auth plugin's default
 `refreshCookiePath: '/'`. A narrower path cannot be read by page middleware.
-Absolute recovery endpoints are trusted configuration because they receive the
-refresh cookie; remote endpoints must use HTTPS (HTTP is accepted only for
-localhost development).
+Recovery endpoints are secret-bearing configuration because they receive the
+refresh cookie. Absolute values are accepted only when their exact origin matches the
+incoming request (scheme, hostname, and port). URL credentials, downgrades,
+cross-origin hosts, and lookalikes are rejected before `fetch()`. Recovery
+forwards only the configured refresh cookie, never the complete incoming
+`Cookie` header.
 
 ---
 
