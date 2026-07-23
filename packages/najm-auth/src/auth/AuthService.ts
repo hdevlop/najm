@@ -228,6 +228,28 @@ export class AuthService {
     return tokens;
   }
 
+  /**
+   * Reissue the short-lived signed session snapshot from a fully validated
+   * refresh session. This path never creates or returns access/refresh tokens
+   * and never rotates the refresh family.
+   */
+  async recoverSession(): Promise<{ recovered: true }> {
+    const recovered = await this.tokenService.recoverSessionFromCookie();
+    this.cookieManager.setSessionCookie({
+      user: {
+        id: recovered.user.id,
+        email: recovered.user.email,
+        name: recovered.user.name,
+        role: recovered.user.role ?? undefined,
+        status: recovered.user.status ?? undefined,
+      },
+      roles: recovered.roles,
+      permissions: recovered.permissions,
+      sessionVersion: recovered.sessionVersion,
+    });
+    return { recovered: true };
+  }
+
   async logoutUser(userId: string, authorization?: string) {
     await this.tokenService.logout(userId, authorization);
     this.cookieManager.clearRefreshToken();

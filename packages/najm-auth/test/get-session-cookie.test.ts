@@ -39,7 +39,7 @@ describe('server getSession signed-cookie validation', () => {
     });
   });
 
-  test('does not let a refresh cookie bypass a tampered session cookie', async () => {
+  test('recovers a tampered session only through validated refresh recovery', async () => {
     const valid = await signedSession('admin');
     const separator = valid.lastIndexOf('.');
     const signature = valid.slice(separator + 1);
@@ -50,13 +50,63 @@ describe('server getSession signed-cookie validation', () => {
     );
     cookieValues.set('refreshToken', 'otherwise-valid-refresh');
 
+    const recovered = await signedSession('admin');
+    let recoveryRequest: { input: string | URL | Request; init?: RequestInit } | undefined;
+    globalThis.fetch = (async (input, init) => {
+      recoveryRequest = { input, init };
+      return new Response(JSON.stringify({ data: { recovered: true } }), {
+        status: 200,
+        headers: {
+          'Set-Cookie': `najm.session=${encodeURIComponent(recovered)}; Path=/; HttpOnly; Secure; SameSite=Lax`,
+        },
+      });
+    }) as typeof fetch;
+
+    await expect(getSession({ sessionSecret: SESSION_SECRET })).resolves.toMatchObject({
+      user: { id: 'user-admin', role: 'admin' },
+      roles: ['admin'],
+    });
+    expect(String(recoveryRequest?.input)).toBe('http://localhost:3000/api/auth/session/recover');
+    expect(recoveryRequest?.init?.method).toBe('POST');
+    expect(recoveryRequest?.init?.headers).toMatchObject({
+      Cookie: 'refreshToken=otherwise-valid-refresh',
+    });
+  });
+
+  test('invalid or revoked refresh session remains unauthenticated', async () => {
+    cookieValues.set('refreshToken', 'revoked-refresh');
+    globalThis.fetch = (async () => new Response(null, { status: 401 })) as unknown as typeof fetch;
+    await expect(getSession({ sessionSecret: SESSION_SECRET })).resolves.toBeNull();
+  });
+
+  test('strict mode distinguishes invalid sessions from recovery transport failures', async () => {
+    cookieValues.set('refreshToken', 'refresh');
+    globalThis.fetch = (async () => new Response(null, { status: 401 })) as unknown as typeof fetch;
+    await expect(getSession({
+      sessionSecret: SESSION_SECRET,
+      mode: 'strict',
+    })).rejects.toMatchObject({ code: 'NO_SESSION' });
+
+    globalThis.fetch = (async () => new Response(null, { status: 503 })) as unknown as typeof fetch;
+    await expect(getSession({
+      sessionSecret: SESSION_SECRET,
+      mode: 'strict',
+    })).rejects.toMatchObject({ code: 'AUTH_TRANSPORT_ERROR', status: 503 });
+  });
+
+  test('recovery never forwards refresh cookies to an insecure remote endpoint', async () => {
+    cookieValues.set('refreshToken', 'refresh');
     let fetchCalls = 0;
     globalThis.fetch = (async () => {
       fetchCalls += 1;
-      return Response.json({ data: { id: 'bypass', role: 'admin' } });
+      throw new Error('must not send');
     }) as unknown as typeof fetch;
 
-    await expect(getSession({ sessionSecret: SESSION_SECRET })).resolves.toBeNull();
+    await expect(getSession({
+      sessionSecret: SESSION_SECRET,
+      recoveryURL: 'http://auth.example.com/session/recover',
+      mode: 'strict',
+    })).rejects.toMatchObject({ code: 'AUTH_TRANSPORT_ERROR' });
     expect(fetchCalls).toBe(0);
   });
 });

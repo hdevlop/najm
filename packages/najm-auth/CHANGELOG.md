@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.0.5
+
+- fix(client): recover missing, expired, or tampered signed sessions through a
+  non-rotating `POST /auth/session/recover` validation path
+- fix(client): forward recovered signed sessions into the current Next.js RSC
+  request and browser response while preserving the five-minute staleness bound
+- fix(auth): reject recovery and refresh for inactive/deleted users without
+  weakening refresh-family reuse detection
+- fix(client): give `verifyAlways` authoritative, tested behavior instead of
+  silently ignoring it
+- test(auth): cover exact expiry boundaries, malformed claims, recovery,
+  concurrency, prefetch, role checks, and Edge-only Web Crypto
+
 ## 2.0.4
 
 - fix(client): verify the HMAC-signed `najm.session` cookie locally in Next.js

@@ -38,6 +38,7 @@
       "passwordReset": "Password has been reset successfully",
       "accountInviteSent": "Invitation sent successfully",
       "tokenRefreshed": "Token refreshed successfully",
+      "sessionRecovered": "Session recovered successfully",
       "oauthLogin": "Google sign-in successful",
       "oauthLinked": "Google account linked successfully"
     },

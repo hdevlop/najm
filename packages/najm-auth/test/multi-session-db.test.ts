@@ -71,6 +71,13 @@ function makeService() {
   (repo as any).schema = authSchema;
   // Session isolation does not depend on roles/permissions — stub the join.
   (repo as any).getRoleAndPermissions = async () => ({ roleName: null, permissions: [] });
+  (repo as any).getUser = async (id: string) => ({
+    id,
+    email: `${id}@example.com`,
+    status: 'active',
+    role: null,
+    permissions: [],
+  });
 
   const cookie = {
     value: undefined as string | undefined,

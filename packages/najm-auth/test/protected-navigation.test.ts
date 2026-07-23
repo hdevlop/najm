@@ -1,4 +1,4 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { withAuthMiddleware } from '../src/client/server/withAuthMiddleware';
 import {
   resolveSessionSecret,
@@ -8,6 +8,11 @@ import {
 
 const SESSION_SECRET = 'session-secret-session-secret-session-secret';
 const SESSION_COOKIE = 'najm.session';
+const originalFetch = globalThis.fetch;
+
+afterEach(() => {
+  globalThis.fetch = originalFetch;
+});
 
 function claims(role: string, iat = Date.now()): SessionCookieClaims {
   return {
@@ -66,6 +71,22 @@ function request(pathname: string, cookie?: string): Request {
   return new Request(`https://kafil.example${pathname}`, {
     headers: cookie ? { Cookie: cookie } : undefined,
   });
+}
+
+function mockRecovery(role = 'admin', status = 200) {
+  const calls: Array<{ url: string; init?: RequestInit }> = [];
+  globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+    calls.push({ url: String(input), init });
+    if (status !== 200) return new Response(null, { status });
+    const session = await signSession(claims(role));
+    return new Response(JSON.stringify({ data: { recovered: true } }), {
+      status: 200,
+      headers: {
+        'Set-Cookie': `${SESSION_COOKIE}=${encodeURIComponent(session)}; Path=/; HttpOnly; Secure; SameSite=Lax`,
+      },
+    });
+  }) as typeof fetch;
+  return calls;
 }
 
 function standardMiddleware(overrides: Parameters<typeof withAuthMiddleware>[0] = {}) {
@@ -133,24 +154,34 @@ describe('protected browser navigation', () => {
     expectLoginRedirect(response, '/dashboard');
   });
 
-  test('tampered signature is rejected', async () => {
+  test('tampered signature is never trusted and recovers only from refresh state', async () => {
     const session = await signSession(claims('admin'));
     const separator = session.lastIndexOf('.');
     const signature = session.slice(separator + 1);
     const replacement = signature[0] === 'A' ? 'B' : 'A';
     const tampered = `${session.slice(0, separator + 1)}${replacement}${signature.slice(1)}`;
 
+    const calls = mockRecovery('admin');
     const response = await standardMiddleware()(request('/operator', cookieHeader(tampered)));
-    expectLoginRedirect(response, '/operator');
+    expectAllowed(response);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.init?.headers).toMatchObject({
+      Cookie: 'refreshToken=valid-refresh-token',
+    });
   });
 
-  test('expired session is rejected', async () => {
+  test('expired session recovers from a valid refresh session', async () => {
     const session = await signSession(claims('admin', Date.now() - 301_000));
+    const calls = mockRecovery('admin');
     const response = await standardMiddleware()(request('/operator', cookieHeader(session)));
-    expectLoginRedirect(response, '/operator');
+    expectAllowed(response);
+    expect(calls).toHaveLength(1);
+    expect(response.headers.get('set-cookie')).toContain(`${SESSION_COOKIE}=`);
+    expect(response.headers.get('x-middleware-request-cookie')).toContain(`${SESSION_COOKIE}=`);
   });
 
   test('valid refresh cookie without a valid session cannot bypass protection', async () => {
+    mockRecovery('admin', 401);
     const response = await standardMiddleware()(
       request('/dashboard', 'refreshToken=still-valid'),
     );
@@ -166,24 +197,17 @@ describe('protected browser navigation', () => {
     expect(response.headers.get('set-cookie')).toBeNull();
   });
 
-  test('verifyAlways validates locally without relying on cookie-only /auth/me', async () => {
+  test('verifyAlways performs authoritative recovery without rotating tokens', async () => {
     const session = await signSession(claims('sponsor'));
-    const originalFetch = globalThis.fetch;
-    let fetchCalls = 0;
-    globalThis.fetch = (async () => {
-      fetchCalls += 1;
-      throw new Error('/auth/me must not be called');
-    }) as unknown as typeof fetch;
-
-    try {
-      const response = await standardMiddleware({ verifyAlways: true })(
-        request('/dashboard', cookieHeader(session)),
-      );
-      expectAllowed(response);
-      expect(fetchCalls).toBe(0);
-    } finally {
-      globalThis.fetch = originalFetch;
-    }
+    const calls = mockRecovery('sponsor');
+    const response = await standardMiddleware({ verifyAlways: true })(
+      request('/dashboard', cookieHeader(session)),
+    );
+    expectAllowed(response);
+    expect(calls).toHaveLength(1);
+    expect(calls[0]!.url).toBe('https://kafil.example/api/auth/session/recover');
+    expect(calls[0]!.init?.method).toBe('POST');
+    expect(calls[0]!.url).not.toContain('/refresh');
   });
 
   test('public routes remain unaffected by missing or invalid cookies', async () => {
@@ -202,6 +226,121 @@ describe('protected browser navigation', () => {
       roles: undefined,
     } as unknown as SessionCookieClaims);
     expect(await verifySessionCookie(malformed, { secret: SESSION_SECRET })).toBeNull();
+  });
+
+  test('future-issued and invalid typed claims are rejected', async () => {
+    const future = await signSession(claims('operator', Date.now() + 31_000));
+    expect(await verifySessionCookie(future, { secret: SESSION_SECRET })).toBeNull();
+
+    for (const patch of [
+      { sessionVersion: '0' },
+      { roles: ['operator', 1] },
+      { permissions: 'operator:read' },
+    ]) {
+      const malformed = await signSession({
+        ...claims('operator'),
+        ...patch,
+      } as unknown as SessionCookieClaims);
+      expect(await verifySessionCookie(malformed, { secret: SESSION_SECRET })).toBeNull();
+    }
+  });
+
+  test('session expiry boundary and custom max age are exact', async () => {
+    const now = 1_800_000_000_000;
+    const session = await signSession(claims('operator', now - 10_000));
+    expect(await verifySessionCookie(session, {
+      secret: SESSION_SECRET,
+      maxAgeSeconds: 11,
+      now,
+    })).not.toBeNull();
+    expect(await verifySessionCookie(session, {
+      secret: SESSION_SECRET,
+      maxAgeSeconds: 10,
+      now,
+    })).toBeNull();
+  });
+
+  test('custom sessionMaxAge controls recovery independently of access lifetime', async () => {
+    const session = await signSession(claims('admin', Date.now() - 2_000));
+    const calls = mockRecovery('admin');
+    const response = await standardMiddleware({ sessionMaxAge: 1 })(
+      request('/operator', cookieHeader(session)),
+    );
+    expectAllowed(response);
+    expect(calls).toHaveLength(1);
+  });
+
+  test('role and status changes are bounded by the signed-session staleness window', async () => {
+    const nearlyExpiredAdmin = await signSession(claims('admin', Date.now() - 299_000));
+    const calls = mockRecovery('operator');
+    expectAllowed(await standardMiddleware()(
+      request('/operator', cookieHeader(nearlyExpiredAdmin)),
+    ));
+    expect(calls).toHaveLength(0);
+
+    const expiredAdmin = await signSession(claims('admin', Date.now() - 301_000));
+    expectAllowed(await standardMiddleware()(
+      request('/operator', cookieHeader(expiredAdmin)),
+    ));
+    expect(calls).toHaveLength(1);
+
+    mockRecovery('operator', 401);
+    const disabled = await standardMiddleware()(
+      request('/operator', cookieHeader(expiredAdmin, 'disabled-family')),
+    );
+    expect(disabled.status).toBe(307);
+  });
+
+  test('missing session secret fails closed without destroying refresh state', async () => {
+    const originalSessionSecret = process.env.NAJM_SESSION_SECRET;
+    const originalAccessSecret = process.env.JWT_ACCESS_SECRET;
+    delete process.env.NAJM_SESSION_SECRET;
+    delete process.env.JWT_ACCESS_SECRET;
+    try {
+      const response = await standardMiddleware({ sessionSecret: '' })(
+        request('/dashboard', 'refreshToken=still-valid'),
+      );
+      expect(response.status).toBe(307);
+      const setCookie = response.headers.get('set-cookie') ?? '';
+      expect(setCookie).toContain(`${SESSION_COOKIE}=`);
+      expect(setCookie).not.toContain('refreshToken=');
+    } finally {
+      if (originalSessionSecret === undefined) delete process.env.NAJM_SESSION_SECRET;
+      else process.env.NAJM_SESSION_SECRET = originalSessionSecret;
+      if (originalAccessSecret === undefined) delete process.env.JWT_ACCESS_SECRET;
+      else process.env.JWT_ACCESS_SECRET = originalAccessSecret;
+    }
+  });
+
+  test('recovery failure preserves an internal return path with query only', async () => {
+    mockRecovery('admin', 401);
+    const response = await standardMiddleware()(
+      request('/dashboard/orders?filter=open', 'refreshToken=revoked'),
+    );
+    expect(response.headers.get('location')).toBe(
+      'https://kafil.example/login?from=%2Fdashboard%2Forders%3Ffilter%3Dopen',
+    );
+  });
+
+  test('speculative prefetch and concurrent navigation never call token refresh', async () => {
+    const calls = mockRecovery('admin');
+    const middleware = standardMiddleware();
+    const prefetch = new Request('https://kafil.example/operator', {
+      headers: {
+        Cookie: 'refreshToken=shared-refresh',
+        'Next-Router-Prefetch': '1',
+      },
+    });
+    const navigations = [
+      prefetch,
+      request('/operator/families', 'refreshToken=shared-refresh'),
+      request('/operator/settings', 'refreshToken=shared-refresh'),
+    ];
+    const responses = await Promise.all(navigations.map((value) => middleware(value)));
+    responses.forEach(expectAllowed);
+    expect(calls).toHaveLength(3);
+    expect(calls.every((call) => call.init?.method === 'POST')).toBe(true);
+    expect(calls.every((call) => call.url.endsWith('/session/recover'))).toBe(true);
   });
 
   test('session secret resolution preserves NAJM_SESSION_SECRET and JWT fallback', () => {
@@ -230,10 +369,13 @@ describe('protected browser navigation', () => {
     const middlewareSource = await Bun.file(
       new URL('../src/client/server/withAuthMiddleware.ts', import.meta.url),
     ).text();
+    const recoverySource = await Bun.file(
+      new URL('../src/client/sessionRecovery.ts', import.meta.url),
+    ).text();
     const edgeSource = await Bun.file(
       new URL('../src/client/edge.ts', import.meta.url),
     ).text();
-    const edgeFiles = `${verifierSource}\n${middlewareSource}\n${edgeSource}`;
+    const edgeFiles = `${verifierSource}\n${recoverySource}\n${middlewareSource}\n${edgeSource}`;
 
     expect(edgeFiles).not.toMatch(/(?:node:crypto|from\s+['"]crypto['"]|\bBuffer\b)/);
     expect(edgeFiles).toContain('globalThis.crypto.subtle');
@@ -255,7 +397,7 @@ describe('Kafil navigation regression', () => {
     expect(cookieJar.get(SESSION_COOKIE)).toBe(encodeURIComponent(refreshedSession));
 
     const browserCookies = [...cookieJar].map(([name, value]) => `${name}=${value}`).join('; ');
-    const middleware = standardMiddleware({ verifyAlways: true });
+    const middleware = standardMiddleware();
     for (const pathname of [
       '/dashboard',
       '/operator',

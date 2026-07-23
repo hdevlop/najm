@@ -134,7 +134,7 @@ import { useSession, useLogin } from 'najm-auth/client/react';
 |-------|------|--------------|-------|
 | `auth.client` | `NajmAuthClient` | **Client only** — pass to `<AuthProvider>` | Lazy getter; first read constructs the instance |
 | `auth.api` | `FetchClient` | Client **and** server | Cookie-forwarding, Bearer-injecting fetch wrapper |
-| `auth.getSession()` | `() => Promise<ServerSession \| null>` | Server | Reads signed session cookie, falls back to `/auth/me` |
+| `auth.getSession()` | `() => Promise<ServerSession \| null>` | Server | Reads signed session cookie, falls back to non-rotating session recovery |
 | `auth.requireSession()` | `() => Promise<ServerSession>` | Server | Redirects to `loginRoute` on missing/expired session |
 | `auth.middleware` | Next middleware fn | `middleware.ts` | Public/protected/role routing |
 | `auth.config` | `{ matcher: string[] }` | `middleware.ts` | Default matcher, overridable |
@@ -170,6 +170,8 @@ defineAuth({
   sessionCookieName?: string       // default: 'najm.session'
   sessionSecret?: string           // for HMAC-signed session cookie; falls back to env
   sessionMaxAge?: number           // must match auth session.maxAge; default: 300
+  recoveryURL?: string | false     // default: /api/auth/session/recover
+  verifyAlways?: boolean           // authoritative recovery on every protected request
   matcher?: string[]               // Next middleware matcher
 })
 ```
@@ -667,7 +669,15 @@ Next.js-specific unified surface. See [Next.js: Unified Setup](#nextjs-unified-s
 
 ### `getSession(options)` *(Next.js-aware)*
 
-Lower-level session resolver used by `defineAuth().getSession`. Reads the HMAC-signed session cookie (if present) for an instant result, otherwise falls back to fetching `/auth/me` with the refresh cookie. Throws `NoSessionError`, `AuthConfigError`, or `AuthTransportError` in strict mode.
+Lower-level session resolver used by `defineAuth().getSession`. It reads the
+HMAC-signed session cookie for an instant result, then falls back to
+`POST /auth/session/recover`. Recovery validates the refresh family and returns
+only a freshly signed session cookie; it does not rotate or return access or
+refresh tokens. The cookie is HMAC-verified before its claims are used. Throws
+`NoSessionError`, `AuthConfigError`, or `AuthTransportError` in strict mode.
+In a Server Component, recovered claims are available to the current render,
+but that render cannot persist response cookies; protected-route middleware
+persists the recovered cookie before the component runs.
 
 ```ts
 import { getSession, NoSessionError } from 'najm-auth/client/server';
@@ -789,23 +799,43 @@ export const config = {
 | `loginRoute` | `string?` | Redirect target for unauthenticated users (default: `'/login'`) |
 | `roleRoutes` | `Record<string, string[]>?` | Routes restricted to specific roles |
 | `cookieName` | `string?` | Refresh token cookie name (default: `'refreshToken'`) |
+| `apiBaseURL` | `string?` | API base used for recovery (default: `'/api'`) |
+| `authPrefix` | `string?` | Auth route prefix (default: `'/auth'`) |
 | `sessionCookieName` | `string?` | Signed session cookie name (default: `'najm.session'`) |
 | `sessionSecret` | `string?` | HMAC secret; falls back to `NAJM_SESSION_SECRET`, then `JWT_ACCESS_SECRET` |
 | `sessionMaxAge` | `number?` | Accepted signed-session age; must match server `session.maxAge` (default: `300`) |
-| `verifyAlways` | `boolean?` | Compatibility option; verification is always local and never calls `/auth/me` |
+| `recoveryURL` | `string \| false?` | Override recovery endpoint; `false` disables automatic recovery |
+| `verifyAlways` | `boolean?` | Force authoritative refresh-session validation and session reissue on every protected request |
 | `verifyURL` | `string?` | Deprecated; session verification no longer uses a network endpoint |
 
 **Behavior:**
 1. Skip public routes
 2. Read and HMAC-verify `najm.session` with Edge-compatible Web Crypto
-3. Reject missing, malformed, expired, or tampered sessions, clear auth cookies,
-   and redirect to login with a `?from=` parameter
-4. For role-restricted routes, check only the verified session role claims
-5. If role mismatch: return 403
+3. When the signed session is missing/invalid/expired, send only the HttpOnly
+   refresh cookie to `POST /auth/session/recover`
+4. Accept recovery only when the response carries a locally HMAC-verified
+   signed session; forward it into the current RSC request and browser response
+5. For role-restricted routes, check only verified session role claims
+6. If recovery is invalid/revoked, clear auth cookies and redirect to login;
+   transient recovery failures preserve the refresh cookie for retry
 
-A refresh cookie by itself never authorizes page navigation. Middleware does
-not refresh, rotate, or call `/auth/me`; token rotation remains the job of
-`POST /auth/refresh`.
+A refresh cookie by itself never authorizes navigation. The recovery endpoint
+validates the JWT, family row, current user status, role, permissions, and
+session version before signing claims. It never rotates or consumes the refresh
+token, so concurrent navigation, Link/RSC prefetch, and multiple tabs cannot
+race refresh rotation. `POST /auth/refresh` remains the only rotation path.
+
+`verifyAlways: false` (default) trusts a valid signed snapshot until
+`sessionMaxAge`; this is the documented maximum role/status staleness window.
+`verifyAlways: true` performs authoritative recovery on every protected request,
+trading a database read for immediate status/role/session checks.
+
+The default middleware recovery requires the refresh cookie to be visible on
+protected page requests, so keep the auth plugin's default
+`refreshCookiePath: '/'`. A narrower path cannot be read by page middleware.
+Absolute recovery endpoints are trusted configuration because they receive the
+refresh cookie; remote endpoints must use HTTPS (HTTP is accepted only for
+localhost development).
 
 ---
 

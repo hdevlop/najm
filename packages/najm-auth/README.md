@@ -167,6 +167,7 @@ All routes are prefixed with `/auth` and auto-registered by the plugin.
 | `POST` | `/auth/register` | Register new user | None |
 | `POST` | `/auth/login` | Login with email/password | None |
 | `POST` | `/auth/refresh` | Refresh access token (cookie) | None (uses refresh cookie) |
+| `POST` | `/auth/session/recover` | Reissue signed session without token rotation | Refresh cookie + recovery header |
 | `POST` | `/auth/logout` | Logout and revoke tokens | ✅ Required |
 | `GET` | `/auth/me` | Get current user profile | ✅ Required |
 | `POST` | `/auth/forgot-password` | Request password reset | None |
@@ -600,6 +601,7 @@ limits are active when `auth()` is registered.
 | `POST /auth/register` | 5 | 15 minutes | IP |
 | `POST /auth/login` | 5 | 15 minutes | IP |
 | `POST /auth/refresh` | 15 | 15 minutes | Cookie fingerprint |
+| `POST /auth/session/recover` | 120 | 1 minute | Cookie fingerprint |
 | `POST /auth/logout` | 10 | 15 minutes | User ID |
 | `GET /auth/me` | 30 | 1 minute | User ID |
 | `POST /auth/forgot-password` | 3 | 15 minutes | IP |
@@ -675,8 +677,12 @@ throw new HttpError(403, 'Insufficient permissions for this action');
 - Login uses a dummy password hash for missing users to reduce timing leaks.
 - Forgot-password responses avoid email enumeration.
 - Auth routes register `najm-rate` and ship route-level brute-force limits.
-- Session cookies are signed, short-lived, and checked against session version
-  invalidation.
+- Session cookies are signed and short-lived; server auth resolution checks
+  their session version.
+- Expired signed sessions recover through authoritative, non-rotating refresh
+  validation; middleware verifies the reissued HMAC before using its claims.
+- `verifyAlways` forces that authoritative check on every protected request;
+  the default bounds cached role/status staleness to `session.maxAge`.
 
 ### Password Reset Tokens
 

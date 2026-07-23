@@ -7,6 +7,12 @@ import {
   resolveSessionSecret,
   verifySessionCookie,
 } from '../sessionCookie';
+import {
+  authEndpoint,
+  replaceCookieValue,
+  requestSessionRecovery,
+  type SessionRecoveryResult,
+} from '../sessionRecovery';
 
 export interface AuthMiddlewareConfig {
   /** Routes that require authentication (glob patterns) */
@@ -19,6 +25,10 @@ export interface AuthMiddlewareConfig {
   roleRoutes?: Record<string, string[]>;
   /** Refresh token cookie name (default: 'refreshToken') */
   cookieName?: string;
+  /** API base URL used by session recovery (default: '/api'). */
+  apiBaseURL?: string;
+  /** Auth endpoint prefix used by session recovery (default: '/auth'). */
+  authPrefix?: string;
   /** Signed session cookie name (default: 'najm.session') */
   sessionCookieName?: string;
   /** @deprecated Session cookies are verified locally at the Edge. */
@@ -28,10 +38,16 @@ export interface AuthMiddlewareConfig {
   /** Must match the auth plugin's session.maxAge. Default: 300 seconds. */
   sessionMaxAge?: number;
   /**
-   * Retained for compatibility. Every protected route now verifies the signed
-   * session cookie locally, so enabling this never calls `/auth/me`.
+   * Force authoritative refresh-session validation on every protected request.
+   * This reissues the signed session cookie without rotating refresh tokens.
    */
   verifyAlways?: boolean;
+  /**
+   * Session-recovery endpoint. Relative values resolve against the request
+   * origin. Defaults to `${apiBaseURL}${authPrefix}/session/recover`.
+   * Set to false to disable automatic recovery.
+   */
+  recoveryURL?: string | false;
 }
 
 /**
@@ -61,23 +77,30 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
     loginRoute = '/login',
     roleRoutes = {},
     cookieName = 'refreshToken',
+    apiBaseURL = '/api',
+    authPrefix = '/auth',
     sessionCookieName = 'najm.session',
     sessionSecret,
     sessionMaxAge,
     verifyAlways = false,
+    recoveryURL,
   } = config;
-  void verifyAlways;
 
   return async function middleware(request: Request) {
     // Dynamic import for edge compatibility
     const { NextResponse } = await import('next/server');
 
-    const redirectToLogin = (pathname: string, clearCookies: boolean) => {
+    const redirectToLogin = (
+      returnPath: string,
+      clearCookies: Array<'refresh' | 'session'>,
+    ) => {
       const loginUrl = new URL(loginRoute, request.url);
-      loginUrl.searchParams.set('from', pathname);
+      loginUrl.searchParams.set('from', returnPath);
       const res = NextResponse.redirect(loginUrl);
-      if (clearCookies) {
+      if (clearCookies.includes('refresh')) {
         res.cookies.delete(cookieName);
+      }
+      if (clearCookies.includes('session')) {
         res.cookies.delete(sessionCookieName);
       }
       return res;
@@ -85,6 +108,7 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
 
     const url = new URL(request.url);
     const pathname = url.pathname;
+    const returnPath = `${url.pathname}${url.search}`;
 
     // Skip public routes
     if (matchesAny(pathname, publicRoutes)) {
@@ -95,26 +119,70 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
     const isProtected = protectedRoutes.length === 0 || matchesAny(pathname, protectedRoutes);
     if (!isProtected) return NextResponse.next();
 
-    // Refresh-cookie presence is never treated as authentication.
     const cookie = request.headers.get('cookie') ?? '';
     const sessionCookie = readCookieValue(cookie, sessionCookieName);
     const secret = resolveSessionSecret(sessionSecret);
-    if (!sessionCookie || !secret) {
-      return redirectToLogin(pathname, true);
+    if (!secret) {
+      return redirectToLogin(returnPath, ['session']);
     }
 
-    const session = await verifySessionCookie(sessionCookie, {
-      secret,
-      maxAgeSeconds: sessionMaxAge,
-    });
-    if (!session) {
-      return redirectToLogin(pathname, true);
+    let session = sessionCookie
+      ? await verifySessionCookie(sessionCookie, {
+          secret,
+          maxAgeSeconds: sessionMaxAge,
+        })
+      : null;
+    let recovery: SessionRecoveryResult | null = null;
+
+    // A refresh cookie is input to authoritative recovery, never proof of
+    // authentication by itself.
+    if (!session || verifyAlways) {
+      const refreshCookie = readCookieValue(cookie, cookieName);
+      if (!refreshCookie || recoveryURL === false) {
+        return redirectToLogin(returnPath, ['refresh', 'session']);
+      }
+
+      const endpoint = recoveryURL
+        ? new URL(recoveryURL, request.url).toString()
+        : authEndpoint(apiBaseURL, authPrefix, '/session/recover', request.url);
+      recovery = await requestSessionRecovery({
+        endpoint,
+        refreshCookieName: cookieName,
+        refreshCookieValue: refreshCookie,
+        sessionCookieName,
+        sessionSecret: secret,
+        sessionMaxAge,
+      });
+
+      if (recovery.status !== 'recovered') {
+        return redirectToLogin(
+          returnPath,
+          recovery.status === 'invalid' ? ['refresh', 'session'] : ['session'],
+        );
+      }
+      session = recovery.claims;
     }
 
-    // Role decisions are made only from the verified session claims.
     const requiredRoles = findMatchingRoles(pathname, roleRoutes);
     if (requiredRoles && !session.roles.some((role) => requiredRoles.includes(role))) {
-      return new NextResponse(null, { status: 403 });
+      const forbidden = new NextResponse(null, { status: 403 });
+      if (recovery?.status === 'recovered') {
+        forbidden.headers.append('Set-Cookie', recovery.setCookie);
+      }
+      return forbidden;
+    }
+
+    if (recovery?.status === 'recovered') {
+      // Make the recovered session visible to Server Components in this same
+      // request, and persist it in the browser for subsequent navigation.
+      const requestHeaders = new Headers(request.headers);
+      requestHeaders.set(
+        'cookie',
+        replaceCookieValue(cookie, sessionCookieName, recovery.sessionCookieValue),
+      );
+      const response = NextResponse.next({ request: { headers: requestHeaders } });
+      response.headers.append('Set-Cookie', recovery.setCookie);
+      return response;
     }
 
     return NextResponse.next();

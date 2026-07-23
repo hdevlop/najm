@@ -193,6 +193,29 @@ The cookie is written with the fresh refresh token every rotation, and the signe
 
 Rate limit: 15 / 15m, bucketed by `cookieFingerprint` (IP + SHA-256 of the request cookie header) so sessions behind the same NAT do not share one bucket. Hashing the complete cookie header avoids module-global cookie-name state when multiple servers use different refresh-cookie names.
 
+### Signed Session Recovery (`POST /auth/session/recover`)
+
+When the five-minute `najm.session` snapshot expires before the refresh
+session, Next.js middleware calls this endpoint with only the HttpOnly refresh
+cookie and `X-Najm-Session-Recovery: 1`.
+
+1. Verify the refresh JWT signature, expiry, type, and `tokenFamily`.
+2. Match its hash against the family's current token or bounded previous token
+   without claiming the rotation grace slot.
+3. Load the user directly from the database, reject missing/inactive users, and
+   load current role and permissions.
+4. Read the current session version and issue a new short-lived HMAC-signed
+   `najm.session` cookie.
+5. Return only `{ recovered: true }`; no access or refresh token is created,
+   rotated, consumed, or returned.
+
+Middleware HMAC-verifies the returned cookie before authorizing the route, adds
+it to the current request so Server Components see it immediately, and
+forwards `Set-Cookie` to the browser. Concurrent navigation, RSC/Link prefetch,
+and multiple tabs cannot race refresh rotation because recovery does not mutate
+valid refresh-token state. Disabled-user recovery may revoke that invalid
+family. Rotation and reuse detection remain exclusive to `POST /auth/refresh`.
+
 ### `GET /auth/me`
 
 [AuthService.getMe()](packages/najm-auth/src/auth/AuthService.ts#L172):
@@ -269,7 +292,9 @@ setSessionCookie(data: Omit<SessionCookieData, 'iat'>): void {
 
 - HMAC-signed so it's tamper-proof but readable without hitting the DB.
 - Contains `{user, roles, permissions, iat}`.
-- Short TTL (5 min) bounds staleness — role changes propagate on next login/refresh/me.
+- Short TTL (5 min) bounds staleness — role/status/permission changes propagate
+  on the next authoritative recovery (or immediately with client
+  `verifyAlways: true`).
 - Used by Next.js Server Components via `getServerSession()` for SSR header/nav rendering — zero DB round-trip on every page render.
 - Used first by `AuthResolver`; a valid cookie populates user, role, and permissions with zero DB/cache I/O.
 - Revocation and role changes can take up to the session-cookie TTL to reach a copied cookie. Logout/password flows clear the browser cookie immediately, and the short default TTL bounds external reuse.
@@ -292,6 +317,7 @@ From [AuthController.ts](packages/najm-auth/src/auth/AuthController.ts):
 | POST | `/auth/register` | — | 5 / 15m (ip+email) | Creates user, assigns `defaultRole` if configured. |
 | POST | `/auth/login` | — | 5 / 15m (ip+email) | Sets refresh + session cookies. |
 | POST | `/auth/refresh` | — | 15 / 15m (cookie fingerprint) | Rotation with 120s grace. |
+| POST | `/auth/session/recover` | Recovery header | 120 / 1m (cookie fingerprint) | Non-rotating signed-session recovery. |
 | POST | `/auth/logout` | `@isAuth()` | 10 / 15m (user) | Blacklist jti + revoke current family. |
 | POST | `/auth/change-password` | `@isAuth()` | — | Revokes **all** sessions. |
 | GET | `/auth/me` | — | 30 / 1m (cookie fingerprint) | Bearer → cookie fallback. |
@@ -583,12 +609,18 @@ The middleware reads the signed `najm.session` cookie (no DB, no API call — pu
 - Redirects authenticated users on `publicRoutes` like `/login` to `afterLoginRoute`.
 - Enforces `roleRoutes` (e.g. `/admin/*` requires `admin` role).
 
-Protected navigation is authorized only by a current HMAC-verified
-`najm.session` cookie. Verification uses Web Crypto in Edge middleware, checks
-the shared claim/expiration contract used by server `getSession()`, and never
-calls cookie-only `/auth/me`. Missing, malformed, expired, or tampered sessions
-are rejected and cleared. A refresh cookie alone is not authentication, and
-ordinary navigation never refreshes or rotates tokens.
+Protected navigation uses a current HMAC-verified `najm.session` cookie.
+Verification uses Web Crypto in Edge middleware and shares the claim/expiration
+contract used by server `getSession()`. When that snapshot is missing, expired,
+or tampered, middleware calls the non-rotating recovery endpoint and accepts
+only the newly HMAC-verified cookie. A refresh cookie alone is never
+authentication. Invalid/revoked recovery redirects to login; ordinary
+navigation never rotates or consumes refresh tokens.
+
+`verifyAlways: false` keeps the zero-I/O fast path and bounds stale role/status
+claims to `session.maxAge` (five minutes by default). `verifyAlways: true`
+forces authoritative recovery on every protected request for applications that
+need a smaller revocation window.
 
 **HTTP client** — [apps/playground/src/services/api/client.ts](apps/playground/src/services/api/client.ts):
 ```typescript
@@ -745,6 +777,13 @@ custom auth schema may omit the table only while OAuth remains disabled.
 - **Refresh endpoint is the only place that rotates** — `AuthResolver.resolveFromCookie()` is read-only to avoid races with concurrent requests.
 - **Resolver order is Bearer token → refresh cookie when an Authorization header is present; session cookie → refresh cookie otherwise** — a presented Bearer token always goes through full verification (blacklist + session version) and cannot be shadowed by a stale session cookie. Cookie-only requests get the zero-I/O session-cookie hot path. An invalid/expired/blacklisted Bearer token may still fall back to a valid refresh cookie because the refresh row is the durable session source of truth and logout/password flows revoke that row whenever access tokens are invalidated.
 - **Session cookie TTL should stay short** (5 min default) — it caches roles/permissions without checking DB or revocation cache; long TTL increases stale authz and copied-cookie revocation lag.
+- Keep `refreshCookiePath: '/'` when using automatic Next.js middleware
+  recovery. Browser cookie-path rules otherwise hide the refresh cookie from
+  protected page requests.
+- Treat an absolute `recoveryURL` as secret-bearing trusted configuration.
+  Remote recovery uses HTTPS; HTTP is accepted only for localhost development.
+- `verifyAlways` is not a compatibility no-op: enable it only when every
+  protected navigation should pay for authoritative refresh-family/user checks.
 - **Sessions are multi-device** — `tokens.tokenFamily` is unique (one row per login session) and refresh writes upsert by family. A second login creates a new family without disturbing the first; refresh rotation, logout, and stale-token-reuse revocation are all scoped to a single family. Password change/reset revoke *all* of a user's sessions.
 - **Prune abandoned sessions** — with one row per login, sessions a user never returns to would linger until expiry. Login prunes expired rows opportunistically; for users who never come back, call `authService.pruneExpiredSessions()` from a scheduled job (cron/queue) to reclaim them.
 - **Bumping session version** (`invalidateUserAccessTokens`) is the nuclear option — kills all active sessions for a user in one cache write. Use on password change / reset / account takeover.

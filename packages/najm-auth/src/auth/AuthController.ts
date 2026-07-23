@@ -1,6 +1,6 @@
-import { Controller } from 'najm-core';
+import { Controller, Err } from 'najm-core';
 import { Get, Post, ResMsg } from 'najm-core';
-import { Params, Body, User, Headers } from 'najm-core';
+import { Params, Body, User, Headers, Ctx } from 'najm-core';
 import { AuthService } from './AuthService';
 import { isAuth } from './AuthGuard';
 import { isAdmin } from '../roles/RoleGuards';
@@ -92,6 +92,21 @@ export class AuthController {
   @ResMsg('auth.success.tokenRefreshed')
   async refreshTokens() {
     return this.authService.refreshTokens();
+  }
+
+  @Post('/session/recover')
+  @RateLimit({ limit: 120, window: '1m', key: cookieFingerprint() })
+  @ResMsg('auth.success.sessionRecovered')
+  async recoverSession(
+    @Headers('x-najm-session-recovery') recoveryRequest: string | undefined,
+    @Ctx() ctx: Context,
+  ) {
+    if (recoveryRequest !== '1') {
+      Err('Invalid session recovery request', 400);
+    }
+    ctx.header('Cache-Control', 'private, no-store');
+    ctx.header('Vary', 'Cookie');
+    return this.authService.recoverSession();
   }
 
   @Post('/logout')

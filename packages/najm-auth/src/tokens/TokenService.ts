@@ -146,7 +146,10 @@ export class TokenService {
    * the active session. Reuse detection and revocation belong to the
    * rotation path only.
    */
-  async resolveUserFromCookie(): Promise<string> {
+  private async resolveRefreshSessionFromCookie(): Promise<{
+    userId: string;
+    tokenFamily: string;
+  }> {
     const refreshToken = this.cookieManager.getRefreshToken();
     if (!refreshToken) {
       Err(this.t('errors.refreshTokenMissing'));
@@ -161,7 +164,7 @@ export class TokenService {
     const presentedHash = this.hashToken(refreshToken);
 
     if (presentedHash === stored.token) {
-      return userId;
+      return { userId, tokenFamily };
     }
 
     const canRecover =
@@ -172,10 +175,34 @@ export class TokenService {
       !stored.previousUsedAt;
 
     if (canRecover) {
-      return userId;
+      return { userId, tokenFamily };
     }
 
     Err(this.t('errors.refreshTokenInvalid'));
+  }
+
+  async resolveUserFromCookie(): Promise<string> {
+    return (await this.resolveRefreshSessionFromCookie()).userId;
+  }
+
+  /**
+   * Resolve authoritative claims for signed-session recovery.
+   *
+   * This deliberately bypasses the 30-second user cache so status, role, and
+   * permission changes are reflected when the short session snapshot expires.
+   * It validates but never rotates or consumes the refresh token.
+   */
+  async recoverSessionFromCookie() {
+    const { userId, tokenFamily } = await this.resolveRefreshSessionFromCookie();
+    const user = await this.requireActiveRefreshUser(userId, tokenFamily);
+    const sessionVersion = await this.getUserSessionVersion(userId);
+
+    return {
+      user,
+      roles: user.role ? [user.role] : [],
+      permissions: Array.isArray(user.permissions) ? user.permissions : [],
+      sessionVersion,
+    };
   }
 
   // ============ USER RETRIEVAL (MAIN METHOD) ============
@@ -392,6 +419,7 @@ export class TokenService {
     }
 
     const presentedHash = this.hashToken(refreshToken);
+    await this.requireActiveRefreshUser(userId, tokenFamily);
 
     if (presentedHash === stored.token) {
       return this.generateTokens(userId, tokenFamily);
@@ -419,6 +447,15 @@ export class TokenService {
     // Reuse outside the grace window: revoke only this suspect family.
     await this.revokeSuspectRefreshFamily(userId, tokenFamily);
     Err(this.t('errors.refreshTokenInvalid'));
+  }
+
+  private async requireActiveRefreshUser(userId: string, tokenFamily: string) {
+    const user = await this.tokenRepository.getUser(userId);
+    if (!user || user.status !== 'active') {
+      await this.revokeFamily(tokenFamily);
+      Err(this.t('errors.refreshTokenInvalid'));
+    }
+    return user;
   }
 
   /** Revoke every refresh session for a user (password change/reset, logout-all). */

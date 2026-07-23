@@ -86,11 +86,16 @@ export interface DefineAuthConfig {
   sessionSecret?: string;
   /** Must match the auth plugin's session.maxAge. Default: 300 seconds. */
   sessionMaxAge?: number;
+  /**
+   * Session-recovery endpoint. Defaults to
+   * `${apiBaseURL}${authPrefix}/session/recover`; false disables recovery.
+   */
+  recoveryURL?: string | false;
   /** Next.js middleware matcher (default: exclude _next, favicon, api) */
   matcher?: string[];
   /**
-   * Retained for compatibility. Every protected route verifies the signed
-   * session cookie locally without an `/auth/me` request.
+   * Force authoritative refresh-session validation on every protected request.
+   * Recovery reissues the signed cookie without rotating refresh tokens.
    */
   verifyAlways?: boolean;
 }
@@ -109,7 +114,7 @@ export interface AuthKit {
   readonly client: NajmAuthClient;
   /** Shortcut for `client.api` — the underlying FetchClient with auth attached. */
   readonly api: FetchClient;
-  /** Resolve session — reads signed cookie first (instant), falls back to /auth/me */
+  /** Resolve session — signed-cookie first, then non-rotating recovery. */
   getSession: (opts?: Pick<GetSessionConfig, 'mode'>) => Promise<ServerSession | null>;
   /** Require session — throws if unauthenticated */
   requireSession: () => Promise<ServerSession>;
@@ -143,6 +148,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     sessionCookieName = 'najm.session',
     sessionSecret,
     sessionMaxAge,
+    recoveryURL,
     matcher = ['/((?!_next/static|_next/image|favicon.ico|api).*)'],
     verifyAlways = false,
     refreshThreshold,
@@ -160,6 +166,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     sessionCookieName,
     sessionSecret,
     sessionMaxAge,
+    recoveryURL,
   };
 
   // ---------- Lazy browser client ----------
@@ -223,9 +230,12 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     loginRoute,
     roleRoutes,
     cookieName,
+    apiBaseURL,
+    authPrefix,
     sessionCookieName,
     sessionSecret,
     sessionMaxAge,
+    recoveryURL,
     verifyAlways,
   });
 

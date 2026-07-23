@@ -41,6 +41,13 @@ function createTokenService(overrides: {
     revokeAllForUser: async () => undefined,
     revokeFamily: async () => undefined,
     getRoleAndPermissions: async () => ({ roleName: null, permissions: [] }),
+    getUser: async (id: string) => ({
+      id,
+      email: `${id}@example.com`,
+      status: 'active',
+      role: 'user',
+      permissions: [],
+    }),
     ...overrides.repo,
   };
   const cookie = {
@@ -78,6 +85,217 @@ describe('auth security regressions', () => {
       window: '15m',
       message: 'Too many password reset requests. Please try again later.',
     });
+    expect(getRateLimitOptions(AuthController, 'recoverSession')).toMatchObject({
+      limit: 120,
+      window: '1m',
+    });
+  });
+
+  test('recovery endpoint requires its non-browser marker and disables caching', async () => {
+    const responseHeaders = new Map<string, string>();
+    const controller = new AuthController({
+      recoverSession: async () => ({ recovered: true }),
+    } as any);
+    const context = {
+      header: (name: string, value: string) => responseHeaders.set(name, value),
+    } as any;
+
+    await expect(controller.recoverSession(undefined, context)).rejects.toThrow();
+    await expect(controller.recoverSession('1', context)).resolves.toEqual({ recovered: true });
+    expect(responseHeaders).toEqual(new Map([
+      ['Cache-Control', 'private, no-store'],
+      ['Vary', 'Cookie'],
+    ]));
+  });
+
+  test('session recovery validates refresh state without rotating or consuming it', async () => {
+    const refreshToken = jwt.sign(
+      { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
+      authConfig.jwt.refreshSecret,
+      { expiresIn: '7d' },
+    );
+    const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
+    let stores = 0;
+    let graceClaims = 0;
+    const { service } = createTokenService({
+      cookie: { getRefreshToken: () => refreshToken },
+      repo: {
+        getByFamily: async () => ({
+          userId: 'user-1',
+          token: presentedHash,
+          tokenFamily: 'family-1',
+          previousHash: null,
+          previousValidUntil: null,
+          previousUsedAt: null,
+        }),
+        getUser: async () => ({
+          id: 'user-1',
+          email: 'user@example.com',
+          status: 'active',
+          role: 'operator',
+          permissions: ['families:read'],
+        }),
+        storeRefreshToken: async () => { stores += 1; },
+        markPreviousUsed: async () => { graceClaims += 1; return []; },
+      },
+    });
+
+    await expect(service.recoverSessionFromCookie()).resolves.toMatchObject({
+      user: { id: 'user-1', status: 'active', role: 'operator' },
+      roles: ['operator'],
+      permissions: ['families:read'],
+      sessionVersion: 0,
+    });
+    expect(stores).toBe(0);
+    expect(graceClaims).toBe(0);
+  });
+
+  test('auth recovery writes only the signed session cookie and returns no tokens', async () => {
+    const sessionWrites: unknown[] = [];
+    let refreshWrites = 0;
+    const auth = new AuthService(
+      {
+        recoverSessionFromCookie: async () => ({
+          user: {
+            id: 'user-1',
+            email: 'user@example.com',
+            name: 'User',
+            status: 'active',
+            role: 'operator',
+          },
+          roles: ['operator'],
+          permissions: ['families:read'],
+          sessionVersion: 2,
+        }),
+      } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {
+        setSessionCookie: (value: unknown) => sessionWrites.push(value),
+        setRefreshToken: () => { refreshWrites += 1; },
+      } as any,
+      {} as any,
+      {} as any,
+    );
+
+    const result = await auth.recoverSession();
+    expect(result).toEqual({ recovered: true });
+    expect(result).not.toHaveProperty('accessToken');
+    expect(result).not.toHaveProperty('refreshToken');
+    expect(sessionWrites).toEqual([{
+      user: {
+        id: 'user-1',
+        email: 'user@example.com',
+        name: 'User',
+        role: 'operator',
+        status: 'active',
+      },
+      roles: ['operator'],
+      permissions: ['families:read'],
+      sessionVersion: 2,
+    }]);
+    expect(refreshWrites).toBe(0);
+  });
+
+  test('disabled users cannot recover or refresh and their family is revoked', async () => {
+    const refreshToken = jwt.sign(
+      { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
+      authConfig.jwt.refreshSecret,
+      { expiresIn: '7d' },
+    );
+    const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
+    const revoked: string[] = [];
+    const { service } = createTokenService({
+      cookie: { getRefreshToken: () => refreshToken },
+      repo: {
+        getByFamily: async () => ({
+          userId: 'user-1',
+          token: presentedHash,
+          tokenFamily: 'family-1',
+          previousHash: null,
+          previousValidUntil: null,
+          previousUsedAt: null,
+        }),
+        getUser: async () => ({
+          id: 'user-1',
+          email: 'user@example.com',
+          status: 'inactive',
+          role: 'operator',
+          permissions: [],
+        }),
+        revokeFamily: async (family: string) => { revoked.push(family); },
+      },
+    });
+
+    await expect(service.recoverSessionFromCookie()).rejects.toThrow();
+    await expect(service.refreshTokens()).rejects.toThrow();
+    expect(revoked).toEqual(['family-1', 'family-1']);
+  });
+
+  test('deleted users cannot recover a signed session', async () => {
+    const refreshToken = jwt.sign(
+      { userId: 'deleted-user', type: 'refresh', tokenFamily: 'deleted-family' },
+      authConfig.jwt.refreshSecret,
+      { expiresIn: '7d' },
+    );
+    const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
+    const revoked: string[] = [];
+    const { service } = createTokenService({
+      cookie: { getRefreshToken: () => refreshToken },
+      repo: {
+        getByFamily: async () => ({
+          userId: 'deleted-user',
+          token: presentedHash,
+          tokenFamily: 'deleted-family',
+          previousHash: null,
+          previousValidUntil: null,
+          previousUsedAt: null,
+        }),
+        getUser: async () => null,
+        revokeFamily: async (family: string) => { revoked.push(family); },
+      },
+    });
+
+    await expect(service.recoverSessionFromCookie()).rejects.toThrow();
+    expect(revoked).toEqual(['deleted-family']);
+  });
+
+  test('custom access and refresh lifetimes remain independent from session TTL', async () => {
+    let storedExpiry = '';
+    const { service } = createTokenService({
+      repo: {
+        getRoleAndPermissions: async () => ({
+          roleName: 'operator',
+          permissions: ['families:read'],
+        }),
+        storeRefreshToken: async (value: { expiresAt: string }) => {
+          storedExpiry = value.expiresAt;
+        },
+      },
+    });
+    (service as any).config = {
+      ...authConfig,
+      jwt: {
+        ...authConfig.jwt,
+        accessExpiresIn: '30s',
+        refreshExpiresIn: '2h',
+      },
+      session: { ...authConfig.session, maxAge: 90 },
+    };
+
+    const before = Date.now();
+    const tokens = await service.generateTokens('user-1');
+    const access = jwt.decode(tokens.accessToken) as { exp: number };
+    const refresh = jwt.decode(tokens.refreshToken) as { exp: number };
+    const after = Date.now();
+
+    expect(access.exp * 1000).toBeGreaterThanOrEqual(before + 29_000);
+    expect(access.exp * 1000).toBeLessThanOrEqual(after + 30_000);
+    expect(refresh.exp * 1000).toBeGreaterThanOrEqual(before + 7_199_000);
+    expect(refresh.exp * 1000).toBeLessThanOrEqual(after + 7_200_000);
+    expect(new Date(storedExpiry).getTime()).toBeGreaterThanOrEqual(before + 7_199_000);
+    expect((service as any).config.session.maxAge).toBe(90);
   });
 
   test('dummy login hash is lazy and uses configured bcrypt rounds', async () => {
