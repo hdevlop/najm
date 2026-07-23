@@ -54,7 +54,7 @@
   "scripts": {
     "build": "bun scripts/build.ts",
     "build:css": "node scripts/build-css.mjs",
-    "test": "bun test ./test/client ./test/folder-placeholder.test.ts ./test/preview.test.ts ./test/storage-dx.test.ts ./test/tags.test.ts && bun test --preload ./test/studio/setup.ts ./test/studio",
+    "test": "bun test ./test/client ./test/folder-placeholder.test.ts ./test/preview.test.ts ./test/storage-dx.test.ts ./test/tags.test.ts && bun test --preload ./test/studio/setup.ts ./test/studio && bun test --preload ./test/studio/setup.ts ./test/mocked-studio",
     "test:watch": "bun test --watch",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
