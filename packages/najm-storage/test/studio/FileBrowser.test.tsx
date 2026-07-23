@@ -67,12 +67,7 @@ describe('FileBrowser smoke test', () => {
       </StorageStudioProvider>
     );
 
-    // Wait for NTable to render
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    const _ = new Promise((r) => setTimeout(r, 10));
-
     // Table mode should show the thead with Name header
-    // We verify structure rather than full render since MutationObserver is not in happy-dom
     const tableHeaders = container.querySelectorAll('th');
     // Verify Name column is present (5 columns)
     const nameHeader = Array.from(tableHeaders).find((h) => h.textContent === 'Name');

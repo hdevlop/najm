@@ -1,14 +1,7 @@
-import { describe, test, expect, afterAll, beforeAll } from 'bun:test';
+import { describe, test, expect, afterAll } from 'bun:test';
 import { pgTable, text, integer } from 'drizzle-orm/pg-core';
 import { lt } from 'drizzle-orm';
 import { createClientDb, type ClientDb } from '../../src/client-db';
-
-// The shared happy-dom preload defines `window`, which makes PGlite's WASM
-// loader take its browser code path (fetching from window.location). Hide it
-// for this file so PGlite runs in Node/Bun mode, and restore it afterwards.
-const happyDomWindow = (globalThis as any).window;
-beforeAll(() => { delete (globalThis as any).window; });
-afterAll(() => { (globalThis as any).window = happyDomWindow; });
 
 const products = pgTable('products', {
   id: text('id').primaryKey(),
