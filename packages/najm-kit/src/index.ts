@@ -108,8 +108,8 @@ export { NAvatar } from "./components/Avatar";
 export type { NAvatarProps, NAvatarClassNames, AvatarShape as NAvatarShape } from "./components/Avatar";
 
 // Card
-export { NCard, AsyncCard, NAsyncCard, NCardAction, NCardFooter, NCardMedia, NCardSection, NCardInfo, NSectionInfo, NSection, NSectionWithInfo, NSectionHeader, truncateByCharacters, NStatCard } from "./components/Card";
-export type { CardProps as NCardProps, CardClassNames as NCardClassNames, NAsyncCardProps, NAsyncCardClassNames, NCardMediaProps, NCardMediaVariant, NCardMediaPlacement, NCardMediaSize, NCardMediaAspect, NCardSectionProps, NCardInfoProps, NCardDensity, NCardSectionSurface, NSectionInfoProps, NSectionProps, NSectionWithInfoProps, NSectionWithInfoItem, NSectionHeaderProps, NSectionHeaderTitleProps, NSectionHeaderSubtitleProps, NSectionHeaderContentProps, NSectionHeaderActionsProps, NStatCardProps, NStatCardClassNames, NStatCardVariant } from "./components/Card";
+export { NCard, AsyncCard, NAsyncCard, NCardAction, NCardFooter, NCardMedia, NCardSection, NCardInfo, NSectionInfo, NSection, NSectionWithInfo, NSectionHeader, truncateByCharacters, NStatCard, NDonutCard } from "./components/Card";
+export type { CardProps as NCardProps, CardClassNames as NCardClassNames, NAsyncCardProps, NAsyncCardClassNames, NCardMediaProps, NCardMediaVariant, NCardMediaPlacement, NCardMediaSize, NCardMediaAspect, NCardSectionProps, NCardInfoProps, NCardDensity, NCardSectionSurface, NSectionInfoProps, NSectionProps, NSectionWithInfoProps, NSectionWithInfoItem, NSectionHeaderProps, NSectionHeaderTitleProps, NSectionHeaderSubtitleProps, NSectionHeaderContentProps, NSectionHeaderActionsProps, NStatCardProps, NStatCardClassNames, NStatCardVariant, NDonutCardProps, NDonutCardClassNames, NDonutCardVariant, NDonutCardLegendMarker, NDonutCardItem } from "./components/Card";
 
 // Data Display
 export { NDetailCard, NDetailItem, NDetailList, NViewToggle, NFilterBar, NRowActions, NViewBody, NContextMenu, NBulkActionsBar, useContextMenu, useStorageContextMenu } from "./components/data-display";

@@ -127,6 +127,10 @@ describe("Root barrel import", () => {
     expect(najmUI.NStatCard).toBeDefined();
   });
 
+  test("exports NDonutCard component", () => {
+    expect(najmUI.NDonutCard).toBeDefined();
+  });
+
   test("exports card media and information components", () => {
     expect(najmUI.NCardMedia).toBeDefined();
     expect(najmUI.NCardSection).toBeDefined();

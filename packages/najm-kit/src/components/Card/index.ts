@@ -8,3 +8,6 @@ export type { NCardSectionProps, NCardInfoProps, NCardDensity, NCardSectionSurfa
 
 export { NStatCard } from "./StatCard";
 export type { NStatCardProps, NStatCardClassNames, NStatCardVariant } from "./StatCard";
+
+export { NDonutCard } from "./DonutCard";
+export type { NDonutCardProps, NDonutCardClassNames, NDonutCardVariant, NDonutCardLegendMarker, NDonutCardItem } from "./DonutCard";

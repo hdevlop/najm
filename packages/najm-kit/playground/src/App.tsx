@@ -27,6 +27,7 @@ import { TooltipPage } from './docs/pages/TooltipPage';
 import { DropdownPage } from './docs/pages/DropdownPage';
 import { TablePage } from './docs/pages/TablePage';
 import { StatCardPage } from './docs/pages/StatCardPage';
+import { DonutCardPage } from './docs/pages/DonutCardPage';
 import { SwapPage } from './docs/pages/SwapPage';
 import { TogglePage } from './docs/pages/TogglePage';
 import { ComingSoonPage } from './docs/pages/ComingSoonPage';
@@ -74,6 +75,7 @@ const pageRegistry: Record<string, () => React.ReactElement> = {
   tabs: () => <TabsPage />,
   separator: () => <ComingSoonPage name="Separator" />,
   'stat-card': () => <StatCardPage />,
+  'donut-card': () => <DonutCardPage />,
   'detail-card': () => <ComingSoonPage name="Detail Card" />,
   table: () => <TablePage />,
   'text-input': () => <InputsPage slug="text-input" />,
