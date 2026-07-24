@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  useResponsivePadding,
   type DialogPadding,
 } from "./Dialog";
 import { Button } from "../Button";
@@ -100,12 +101,12 @@ function parseDirectDialogSlots(children: React.ReactNode): ParsedDirectDialogSl
 }
 
 export const dialogVariants = cva(
-  "flex flex-col w-full max-w-[95vw] h-full max-h-screen",
+  "flex flex-col w-full max-w-full h-full max-h-screen",
   {
     variants: {
       variant: {
         default: "",
-        window: "rounded-sm",
+        window: "rounded-none lg:rounded-sm",
       },
       size: {
         sm: "lg:max-w-md",
@@ -233,10 +234,11 @@ function DialogChrome({
   contentRef,
   children,
 }: DialogChromeProps) {
+  const resolvedPadding = useResponsivePadding(padding);
   const noTitle = !title || title.trim() === "";
   const noDescription = !description || description.trim() === "";
   const noHeader = noTitle && noDescription;
-  const flush = padding === "none";
+  const flush = resolvedPadding === "none";
 
   return (
     <>
@@ -270,7 +272,7 @@ function DialogChrome({
         <DialogHeader
           className={cn(
             "flex-row items-center justify-between gap-3 border-b border-border bg-secondary text-left text-secondary-foreground",
-            windowHeaderSpacing[padding ?? "md"],
+            windowHeaderSpacing[resolvedPadding],
             headerClassName
           )}
         >

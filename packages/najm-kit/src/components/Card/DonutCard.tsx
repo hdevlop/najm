@@ -3,8 +3,10 @@ import { cn } from "../../lib/cn";
 import { NIcon, type NIconSource } from "../Icon";
 import { NCard, NCardFooter } from "./Card";
 
-export type NDonutCardVariant = "compact" | "compact-horizontal" | "default" | "horizontal";
+export type NDonutCardVariant = "compact" | "default";
+export type NDonutCardLayout = "vertical" | "horizontal";
 export type NDonutCardLegendMarker = "dot" | "icon" | "none";
+export type NDonutCardCenterOrientation = "column" | "row";
 
 export interface NDonutCardItem {
   id: string;
@@ -42,7 +44,9 @@ export interface NDonutCardProps {
   emptyLabel?: React.ReactNode;
   footer?: React.ReactNode;
   variant?: NDonutCardVariant;
+  layout?: NDonutCardLayout;
   legendMarker?: NDonutCardLegendMarker;
+  centerOrientation?: NDonutCardCenterOrientation;
   percentageFormatter?: (ratio: number) => React.ReactNode;
   className?: string;
   classNames?: NDonutCardClassNames;
@@ -50,9 +54,7 @@ export interface NDonutCardProps {
 
 const SIZE = {
   compact: { ring: 96, center: 72 },
-  "compact-horizontal": { ring: 96, center: 72 },
   default: { ring: 144, center: 112 },
-  horizontal: { ring: 128, center: 92 },
 } as const;
 
 function normalizeValue(v: number): number {
@@ -137,7 +139,9 @@ export function NDonutCard({
   emptyLabel,
   footer,
   variant = "default",
+  layout = "vertical",
   legendMarker = "dot",
+  centerOrientation = "column",
   percentageFormatter,
   className,
   classNames,
@@ -164,8 +168,9 @@ export function NDonutCard({
   const sz = SIZE[variant];
   const isTitleString = typeof title === "string";
   const accessibleLabel = isTitleString ? title : ariaLabel;
-  const isCompact = variant === "compact" || variant === "compact-horizontal";
-  const isHorizontal = variant === "horizontal" || variant === "compact-horizontal";
+  const isCompact = variant === "compact";
+  const isHorizontal = layout === "horizontal";
+  const isCenterRow = centerOrientation === "row";
 
   const ringStyle: React.CSSProperties = {
     width: sz.ring,
@@ -185,16 +190,17 @@ export function NDonutCard({
       iconColor={iconColor}
       bordered
       className={cn(className, classNames?.root)}
-      classNames={{ content: "@container p-0" }}
+      classNames={{ content: "p-0" }}
     >
       <div
         data-slot="donut-card"
         data-variant={variant}
+        data-layout={layout}
         role="group"
         aria-label={accessibleLabel}
         className={cn(
           isHorizontal
-            ? "grid grid-cols-1 justify-items-center gap-4 p-2 lg:p-3 xl:p-4 2xl:p-5 @min-[16rem]:grid-cols-[auto_minmax(0,1fr)] @min-[16rem]:items-center @min-[16rem]:justify-items-stretch @min-[16rem]:gap-5"
+            ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-5 p-2 lg:p-3 xl:p-4 2xl:p-5"
             : cn(
                 "flex flex-col items-center p-2 lg:p-3 xl:p-4 2xl:p-5",
                 isCompact ? "gap-2" : "gap-4",
@@ -225,9 +231,12 @@ export function NDonutCard({
             />
             <div
               data-slot="donut-center-content"
+              data-center-orientation={centerOrientation}
               className={cn(
-                "relative z-10 flex max-w-[88%] flex-col items-center justify-center px-1 text-center",
-                isCompact ? "gap-0" : "gap-0.5",
+                "relative z-10 flex max-w-[88%] items-center justify-center px-1 text-center",
+                isCenterRow
+                  ? "flex-row gap-1"
+                  : cn("flex-col", isCompact ? "gap-0" : "gap-0.5"),
               )}
             >
               {centerIcon ? (
@@ -238,7 +247,7 @@ export function NDonutCard({
                     data-slot="donut-center-value"
                     className={cn(
                       "font-bold tabular-nums text-foreground leading-none break-words",
-                      isCompact ? "text-xs" : isHorizontal ? "text-sm" : "text-base",
+                      isCompact ? "text-xs" : "text-base",
                     )}
                   >
                     {(centerValueFormatter ?? valueFormatter)(computedTotal)}
@@ -248,7 +257,13 @@ export function NDonutCard({
                       data-slot="donut-center-unit"
                       className={cn(
                         "font-semibold uppercase leading-none text-foreground",
-                        isCompact ? "mt-0.5 text-[8px]" : "mt-1 text-[9px]",
+                        isCenterRow
+                          ? isCompact
+                            ? "text-[8px]"
+                            : "text-[9px]"
+                          : isCompact
+                            ? "mt-0.5 text-[8px]"
+                            : "mt-1 text-[9px]",
                       )}
                     >
                       {centerUnit}
@@ -259,7 +274,13 @@ export function NDonutCard({
                       data-slot="donut-center-label"
                       className={cn(
                         "text-muted-foreground leading-tight break-words",
-                        isCompact ? "mt-0.5 text-[8px]" : "mt-0.5 text-[10px]",
+                        isCenterRow
+                          ? isCompact
+                            ? "text-[8px]"
+                            : "text-[10px]"
+                          : isCompact
+                            ? "mt-0.5 text-[8px]"
+                            : "mt-0.5 text-[10px]",
                       )}
                     >
                       {totalLabel}
@@ -285,7 +306,7 @@ export function NDonutCard({
           className={cn(
             "flex flex-col gap-1.5 w-full",
             isCompact && "gap-1",
-            isHorizontal && "min-w-0 flex-1 gap-2 pt-0.5 @min-[16rem]:pt-0",
+            isHorizontal && "min-w-0 flex-1 gap-2 pt-0.5",
             classNames?.legend,
           )}
         >

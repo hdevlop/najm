@@ -138,40 +138,47 @@ describe("NDonutCard", () => {
     );
     const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
     expect(card.getAttribute("data-variant")).toBe("default");
+    expect(card.getAttribute("data-layout")).toBe("vertical");
     const ring = container.querySelector("[data-slot='donut-ring']") as HTMLElement;
     const ringStyle = ring.getAttribute("style")!;
     expect(ringStyle).toContain("144px");
   });
 
-  test("horizontal variant exposes data-variant and correct sizes", () => {
+  test("horizontal layout keeps the selected default size", () => {
     const { container } = render(
       <NDonutCard
         title="Horizontal"
         items={items}
         valueFormatter={currency}
-        variant="horizontal"
+        variant="default"
+        layout="horizontal"
       />,
     );
     const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
-    expect(card.getAttribute("data-variant")).toBe("horizontal");
+    expect(card.getAttribute("data-variant")).toBe("default");
+    expect(card.getAttribute("data-layout")).toBe("horizontal");
     const ring = container.querySelector("[data-slot='donut-ring']") as HTMLElement;
     const ringStyle = ring.getAttribute("style")!;
-    expect(ringStyle).toContain("128px");
+    expect(ringStyle).toContain("144px");
   });
 
-  test("compact-horizontal variant uses 96px ring, compact sizes, and horizontal layout", () => {
+  test("compact variant supports the horizontal layout", () => {
     const { container } = render(
       <NDonutCard
         title="CompactHorizontal"
         items={items}
         valueFormatter={currency}
-        variant="compact-horizontal"
+        variant="compact"
+        layout="horizontal"
       />,
     );
     const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
-    expect(card.getAttribute("data-variant")).toBe("compact-horizontal");
+    expect(card.getAttribute("data-variant")).toBe("compact");
+    expect(card.getAttribute("data-layout")).toBe("horizontal");
     expect(card.className).toContain("grid");
-    expect(card.className).toContain("@min-[16rem]:grid-cols-[auto_minmax(0,1fr)]");
+    expect(card.className).toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(card.className).not.toContain("@min-[16rem]");
+    expect(card.className).not.toContain("@container");
     const ring = container.querySelector("[data-slot='donut-ring']") as HTMLElement;
     const ringStyle = ring.getAttribute("style")!;
     expect(ringStyle).toContain("96px");
@@ -314,21 +321,22 @@ describe("NDonutCard", () => {
     expect(style).toContain("#ef4444 0.8turn 1turn");
   });
 
-  test("horizontal variant uses grid layout with side-by-side donut and legend", () => {
+  test("horizontal layout uses a grid with side-by-side donut and legend", () => {
     const { container } = render(
       <NDonutCard
         title="Horizontal"
         items={items}
         valueFormatter={currency}
         percentageFormatter={formatRatio}
-        variant="horizontal"
+        variant="default"
+        layout="horizontal"
       />,
     );
     const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
     expect(card.className).toContain("grid");
-    expect(card.className).toContain(
-      "@min-[16rem]:grid-cols-[auto_minmax(0,1fr)]",
-    );
+    expect(card.className).toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(card.className).not.toContain("@min-[16rem]");
+    expect(card.className).not.toContain("@container");
 
     const legendItems = container.querySelectorAll("[data-slot='donut-legend-item']");
     expect(legendItems.length).toBe(items.length);
@@ -341,7 +349,8 @@ describe("NDonutCard", () => {
         items={items}
         valueFormatter={currency}
         percentageFormatter={formatRatio}
-        variant="horizontal"
+        variant="default"
+        layout="horizontal"
       />,
     );
     const legend = container.querySelector("[data-slot='donut-legend']") as HTMLElement;
@@ -425,6 +434,103 @@ describe("NDonutCard", () => {
     ) as HTMLElement;
     expect(centerContent.className).toContain("max-w-[88%]");
     expect(centerContent.className).toContain("px-1");
+  });
+
+  test("center content defaults to column orientation", () => {
+    const { container } = render(
+      <NDonutCard
+        title="Col"
+        items={items}
+        valueFormatter={currency}
+        centerUnit="MAD"
+        totalLabel="Total"
+      />,
+    );
+    const centerContent = container.querySelector(
+      "[data-slot='donut-center-content']",
+    ) as HTMLElement;
+    expect(centerContent.getAttribute("data-center-orientation")).toBe("column");
+    expect(centerContent.className).toContain("flex-col");
+    expect(centerContent.className).not.toContain("flex-row");
+    const unit = container.querySelector("[data-slot='donut-center-unit']") as HTMLElement;
+    const label = container.querySelector("[data-slot='donut-center-label']") as HTMLElement;
+    expect(unit.className).toMatch(/\bmt-/);
+    expect(label.className).toMatch(/\bmt-/);
+  });
+
+  test("centerOrientation=\"row\" lays value, unit, and label horizontally", () => {
+    const { container } = render(
+      <NDonutCard
+        title="Row"
+        items={items}
+        valueFormatter={currency}
+        centerUnit="MAD"
+        totalLabel="Total"
+        centerOrientation="row"
+      />,
+    );
+    const centerContent = container.querySelector(
+      "[data-slot='donut-center-content']",
+    ) as HTMLElement;
+    expect(centerContent.getAttribute("data-center-orientation")).toBe("row");
+    expect(centerContent.className).toContain("flex-row");
+    expect(centerContent.className).toContain("gap-1");
+    expect(centerContent.className).not.toContain("flex-col");
+    const unit = container.querySelector("[data-slot='donut-center-unit']") as HTMLElement;
+    const label = container.querySelector("[data-slot='donut-center-label']") as HTMLElement;
+    expect(unit.className).not.toMatch(/\bmt-/);
+    expect(label.className).not.toMatch(/\bmt-/);
+  });
+
+  test("centerOrientation=\"row\" works in compact variant", () => {
+    const { container } = render(
+      <NDonutCard
+        title="CompactRow"
+        items={items}
+        valueFormatter={currency}
+        centerUnit="MAD"
+        totalLabel="Total"
+        variant="compact"
+        centerOrientation="row"
+      />,
+    );
+    const centerContent = container.querySelector(
+      "[data-slot='donut-center-content']",
+    ) as HTMLElement;
+    expect(centerContent.getAttribute("data-center-orientation")).toBe("row");
+    expect(centerContent.className).toContain("flex-row");
+    const value = container.querySelector("[data-slot='donut-center-value']") as HTMLElement;
+    expect(value.className).toContain("text-xs");
+  });
+
+  test("compact horizontal layout contains no container-query classes anywhere", () => {
+    const { container } = render(
+      <NDonutCard
+        title="CompactHorizontalNoCQ"
+        items={items}
+        valueFormatter={currency}
+        variant="compact"
+        layout="horizontal"
+      />,
+    );
+
+    const cardContent = container.querySelector("[data-slot='card-content']") as HTMLElement;
+    expect(cardContent).toBeDefined();
+    expect(cardContent.className).not.toContain("@container");
+    expect(cardContent.className).not.toContain("@min-[16rem]");
+
+    const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
+    expect(card.className).not.toContain("@container");
+    expect(card.className).not.toContain("@min-[16rem]");
+    expect(card.className).toContain("grid-cols-[auto_minmax(0,1fr)]");
+
+    const legend = container.querySelector("[data-slot='donut-legend']") as HTMLElement;
+    expect(legend.className).not.toContain("@min-[16rem]");
+    expect(legend.className).toContain("min-w-0");
+    expect(legend.className).toContain("flex-1");
+
+    const donutWrapper = card.firstElementChild as HTMLElement;
+    expect(donutWrapper.className).toContain("shrink-0");
   });
 
   test("card height follows content; h-full is not forced", () => {

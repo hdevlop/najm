@@ -39,8 +39,8 @@ export function DonutCardPage() {
       category="Data Display"
     >
       <Example
-        title="All three variants"
-        description="Compact (96px), Default (144px), and Horizontal (128px) with percentages."
+        title="Size and layout combinations"
+        description="Compact and default sizes with vertical and horizontal layouts."
         center={false}
         previewHeight="h-[500px]"
         code={`import { NDonutCard } from 'najm-kit';
@@ -58,12 +58,16 @@ const pct = (r) => new Intl.NumberFormat("en-US", { style:"percent", maximumFrac
   <NDonutCard title="Compact" variant="compact" icon={Wallet}
     items={items} valueFormatter={(v) => \`\${v} MAD\`}
     centerValueFormatter={(v) => v.toLocaleString()} centerUnit="MAD"
-    totalLabel="Total" />
+    totalLabel="Total" centerOrientation="column" />
   <NDonutCard title="Default" variant="default" icon={Wallet}
-    items={items} valueFormatter={(v) => \`\${v} MAD\`} totalLabel="Total" />
-  <NDonutCard title="Horizontal" variant="horizontal" icon={PieChart}
-    items={items} valueFormatter={(v) => \`\${v} MAD\`} totalLabel="Total"
-    legendMarker="icon" percentageFormatter={pct} />
+    items={items} valueFormatter={(v) => \`\${v} MAD\`}
+    centerValueFormatter={(v) => v.toLocaleString()} centerUnit="MAD"
+    totalLabel="Total" centerOrientation="column" />
+  <NDonutCard title="Horizontal" variant="default" layout="horizontal" icon={PieChart}
+    items={items} valueFormatter={(v) => \`\${v} MAD\`}
+    centerValueFormatter={(v) => v.toLocaleString()} centerUnit="MAD"
+    totalLabel="Total" legendMarker="icon" percentageFormatter={pct}
+    centerOrientation="column" />
 </div>`}
       >
         <div className="grid w-full grid-cols-1 items-start gap-4 md:grid-cols-3">
@@ -76,24 +80,32 @@ const pct = (r) => new Intl.NumberFormat("en-US", { style:"percent", maximumFrac
             centerUnit="MAD"
             totalLabel="Total"
             variant="compact"
+            centerOrientation="column"
           />
           <NDonutCard
             title="Default"
             icon={Wallet}
             items={currencyItems}
             valueFormatter={mad}
+            centerValueFormatter={amount}
+            centerUnit="MAD"
             totalLabel="Total"
             variant="default"
+            centerOrientation="column"
           />
           <NDonutCard
             title="Horizontal"
             icon={PieChart}
             items={foodItems}
             valueFormatter={mad}
+            centerValueFormatter={amount}
+            centerUnit="MAD"
             totalLabel="Monthly Total"
-            variant="horizontal"
+            variant="default"
+            layout="horizontal"
             legendMarker="icon"
             percentageFormatter={pct}
+            centerOrientation="column"
           />
         </div>
       </Example>
@@ -113,18 +125,19 @@ const items = [
 ];
 
 <div className="grid grid-cols-3 gap-4">
-  <NDonutCard title="Icons" variant="horizontal" items={items}
+  <NDonutCard title="Icons" variant="default" layout="horizontal" items={items}
     valueFormatter={(v) => \`$\${v}\`} legendMarker="icon" />
-  <NDonutCard title="Dots" variant="horizontal" items={items}
+  <NDonutCard title="Dots" variant="default" layout="horizontal" items={items}
     valueFormatter={(v) => \`$\${v}\`} legendMarker="dot" />
-  <NDonutCard title="No markers" variant="horizontal" items={items}
+  <NDonutCard title="No markers" variant="default" layout="horizontal" items={items}
     valueFormatter={(v) => \`$\${v}\`} legendMarker="none" />
 </div>`}
       >
         <div className="grid w-full grid-cols-1 items-start gap-4 lg:grid-cols-3">
           <NDonutCard
             title="Icons"
-            variant="horizontal"
+            variant="default"
+            layout="horizontal"
             items={markerItems}
             valueFormatter={(v) => `$${v}`}
             totalLabel="Total"
@@ -133,7 +146,8 @@ const items = [
           />
           <NDonutCard
             title="Dots"
-            variant="horizontal"
+            variant="default"
+            layout="horizontal"
             items={markerItems}
             valueFormatter={(v) => `$${v}`}
             totalLabel="Total"
@@ -142,7 +156,8 @@ const items = [
           />
           <NDonutCard
             title="No markers"
-            variant="horizontal"
+            variant="default"
+            layout="horizontal"
             items={markerItems}
             valueFormatter={(v) => `$${v}`}
             totalLabel="Total"

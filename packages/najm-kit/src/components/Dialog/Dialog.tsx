@@ -44,14 +44,39 @@ const dialogPaddingMap: Record<DialogPadding, string> = {
   lg: "p-8",
 };
 
+const MOBILE_PADDING_QUERY = "(max-width: 639.98px)";
+
+function getDefaultPadding(): DialogPadding {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "md";
+  return window.matchMedia(MOBILE_PADDING_QUERY).matches ? "sm" : "md";
+}
+
+function useResponsivePadding(value: DialogPadding | undefined): DialogPadding {
+  const [resolved, setResolved] = React.useState<DialogPadding>(() => value ?? getDefaultPadding());
+  React.useEffect(() => {
+    if (value) {
+      setResolved(value);
+      return;
+    }
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mql = window.matchMedia(MOBILE_PADDING_QUERY);
+    const update = () => setResolved(mql.matches ? "sm" : "md");
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, [value]);
+  return resolved;
+}
+
 export interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
-  /** Controls the padding of the dialog surface. `none` also collapses the header/body/footer gap. Defaults to `md` (p-6). */
+  /** Controls the padding of the dialog surface. `none` also collapses the header/body/footer gap. Defaults to `sm` on mobile, `md` on desktop. */
   padding?: DialogPadding;
   /** Hides the built-in top-right close (X). Use when the content provides its own close control (e.g. inside a page header). */
   hideClose?: boolean;
 }
 
-function DialogContent({ className, children, padding = "md", hideClose = false, ...props }: DialogContentProps) {
+function DialogContent({ className, children, padding, hideClose = false, ...props }: DialogContentProps) {
+  const resolvedPadding = useResponsivePadding(padding);
   const portalClassName = useNPortalScope();
   return (
     <DialogPortal data-slot="dialog-portal">
@@ -59,10 +84,10 @@ function DialogContent({ className, children, padding = "md", hideClose = false,
         <DialogOverlay />
         <DialogPrimitive.Content
           data-slot="dialog-content"
-          data-padding={padding}
+          data-padding={resolvedPadding}
           className={cn(
-            "bg-card text-card-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg najm-border border-border shadow-lg duration-200",
-            dialogPaddingMap[padding],
+            "bg-card text-card-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-none lg:rounded-lg najm-border border-border shadow-lg duration-200",
+            dialogPaddingMap[resolvedPadding],
             className
           )}
           {...props}
@@ -107,4 +132,5 @@ export {
   DialogPortal,
   DialogTitle,
   DialogTrigger,
+  useResponsivePadding,
 };
