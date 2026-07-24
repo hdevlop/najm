@@ -3,7 +3,7 @@ import { cn } from "../../lib/cn";
 import { NIcon, type NIconSource } from "../Icon";
 import { NCard, NCardFooter } from "./Card";
 
-export type NDonutCardVariant = "compact" | "default" | "horizontal";
+export type NDonutCardVariant = "compact" | "compact-horizontal" | "default" | "horizontal";
 export type NDonutCardLegendMarker = "dot" | "icon" | "none";
 
 export interface NDonutCardItem {
@@ -50,6 +50,7 @@ export interface NDonutCardProps {
 
 const SIZE = {
   compact: { ring: 96, center: 72 },
+  "compact-horizontal": { ring: 96, center: 72 },
   default: { ring: 144, center: 112 },
   horizontal: { ring: 128, center: 92 },
 } as const;
@@ -163,8 +164,8 @@ export function NDonutCard({
   const sz = SIZE[variant];
   const isTitleString = typeof title === "string";
   const accessibleLabel = isTitleString ? title : ariaLabel;
-  const isCompact = variant === "compact";
-  const isHorizontal = variant === "horizontal";
+  const isCompact = variant === "compact" || variant === "compact-horizontal";
+  const isHorizontal = variant === "horizontal" || variant === "compact-horizontal";
 
   const ringStyle: React.CSSProperties = {
     width: sz.ring,
@@ -237,8 +238,7 @@ export function NDonutCard({
                     data-slot="donut-center-value"
                     className={cn(
                       "font-bold tabular-nums text-foreground leading-none break-words",
-                      isCompact ? "text-xs" : "text-base",
-                      isHorizontal && "text-sm",
+                      isCompact ? "text-xs" : isHorizontal ? "text-sm" : "text-base",
                     )}
                   >
                     {(centerValueFormatter ?? valueFormatter)(computedTotal)}

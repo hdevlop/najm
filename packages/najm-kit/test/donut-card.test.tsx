@@ -159,6 +159,26 @@ describe("NDonutCard", () => {
     expect(ringStyle).toContain("128px");
   });
 
+  test("compact-horizontal variant uses 96px ring, compact sizes, and horizontal layout", () => {
+    const { container } = render(
+      <NDonutCard
+        title="CompactHorizontal"
+        items={items}
+        valueFormatter={currency}
+        variant="compact-horizontal"
+      />,
+    );
+    const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
+    expect(card.getAttribute("data-variant")).toBe("compact-horizontal");
+    expect(card.className).toContain("grid");
+    expect(card.className).toContain("@min-[16rem]:grid-cols-[auto_minmax(0,1fr)]");
+    const ring = container.querySelector("[data-slot='donut-ring']") as HTMLElement;
+    const ringStyle = ring.getAttribute("style")!;
+    expect(ringStyle).toContain("96px");
+    const centerValue = container.querySelector("[data-slot='donut-center-value']") as HTMLElement;
+    expect(centerValue.className).toContain("text-xs");
+  });
+
   test("centerIcon replaces total text", () => {
     const { container } = render(
       <NDonutCard
