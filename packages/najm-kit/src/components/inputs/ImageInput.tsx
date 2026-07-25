@@ -1,6 +1,6 @@
 import React, { useRef, useState, useEffect } from "react";
 import { cn } from "../../lib/cn";
-import { X, Upload, Image as ImageIcon } from "lucide-react";
+import { X, Upload, Image as ImageIcon, Plus } from "lucide-react";
 import type { ImageInputProps } from "./types";
 
 const IMAGE_SIZE_MAP = {
@@ -22,6 +22,13 @@ export function ImageInput({
   imageSize = "md",
   imageVersion,
   disabled = false,
+  uploadIcon,
+  title = "Click to upload",
+  subtitle,
+  replaceTitle = "Replace image",
+  replaceSubtitle,
+  trigger = "icon",
+  buttonLabel = "Upload",
 }: ImageInputProps & { disabled?: boolean }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
@@ -56,6 +63,8 @@ export function ImageInput({
   };
 
   const effectiveSize = previewClassName || IMAGE_SIZE_MAP[imageSize];
+  const isDropzone = !!previewClassName;
+  const effectiveReplaceSubtitle = replaceSubtitle ?? subtitle;
 
   const renderPreview = () => (
     <div
@@ -65,25 +74,48 @@ export function ImageInput({
       )}
     >
       {preview ? (
-        <>
-          <img src={preview} alt="Preview" className="w-full h-full object-cover" />
-          <div
-            onClick={handleClick}
-            className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
-          >
-            <Upload className="h-8 w-8 text-white" />
-          </div>
-          {allowClear && (
-            <button
-              type="button"
-              onClick={handleClear}
-              disabled={disabled}
-              className="absolute top-2 right-2 p-1.5 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-destructive/90 z-10"
+        isDropzone ? (
+          <>
+            <img src={preview} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
+            <div className="relative w-full h-full flex flex-col items-center justify-center gap-1.5 bg-black/40 text-white px-6 py-8 text-center">
+              <span className="text-sm font-medium">{replaceTitle}</span>
+              {effectiveReplaceSubtitle ? (
+                <span className="text-xs opacity-80">{effectiveReplaceSubtitle}</span>
+              ) : null}
+              {allowClear && (
+                <button
+                  type="button"
+                  onClick={handleClear}
+                  disabled={disabled}
+                  className="absolute top-2 right-2 flex h-6 w-6 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90"
+                  aria-label="Remove image"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              )}
+            </div>
+          </>
+        ) : (
+          <>
+            <img src={preview} alt="Preview" className="w-full h-full object-cover" />
+            <div
+              onClick={handleClick}
+              className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
             >
-              <X className="h-4 w-4" />
-            </button>
-          )}
-        </>
+              <Upload className="h-8 w-8 text-white" />
+            </div>
+            {allowClear && (
+              <button
+                type="button"
+                onClick={handleClear}
+                disabled={disabled}
+                className="absolute top-2 right-2 p-1.5 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity shadow-md hover:bg-destructive/90 z-10"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
+          </>
+        )
       ) : defaultImage ? (
         <>
           <img src={defaultImage} alt="Default" className="w-full h-full object-cover" />
@@ -94,6 +126,29 @@ export function ImageInput({
             <Upload className="h-8 w-8 text-white" />
           </div>
         </>
+      ) : isDropzone ? (
+        <div
+          onClick={handleClick}
+          className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors px-6 py-8 text-center"
+        >
+          {(trigger === "icon" || trigger === "both") && (
+            <div className="text-primary">
+              {uploadIcon ?? <Plus className="h-8 w-8" />}
+            </div>
+          )}
+          {(trigger === "button" || trigger === "both") && (
+            <span
+              role="button"
+              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium text-foreground shadow-sm hover:bg-accent hover:text-accent-foreground"
+            >
+              {buttonLabel}
+            </span>
+          )}
+          <span className="text-sm font-medium text-foreground">{title}</span>
+          {subtitle ? (
+            <span className="text-xs text-muted-foreground">{subtitle}</span>
+          ) : null}
+        </div>
       ) : (
         <div
           onClick={handleClick}

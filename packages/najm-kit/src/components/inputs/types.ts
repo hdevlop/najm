@@ -190,6 +190,7 @@ export interface ImageInputProps extends BaseProps {
   placeholder?: string;
   icon?: InputIcon;
   showIcon?: boolean;
+  uploadIcon?: React.ReactNode;
   previewClassName?: string;
   showPreview?: boolean;
   previewPosition?: "top" | "bottom" | "left" | "right";
@@ -198,6 +199,12 @@ export interface ImageInputProps extends BaseProps {
   defaultImage?: string;
   imageSize?: "sm" | "md" | "lg" | "xl";
   imageVersion?: string | number | null;
+  title?: string;
+  subtitle?: string;
+  replaceTitle?: string;
+  replaceSubtitle?: string;
+  trigger?: "icon" | "button" | "both";
+  buttonLabel?: string;
 }
 
 export interface EmojiInputProps extends BaseProps {

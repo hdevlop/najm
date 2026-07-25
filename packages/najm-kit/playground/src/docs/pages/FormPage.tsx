@@ -7,6 +7,7 @@ import {
   Phone, Calendar, Star, Smile,
   Package, Hash,
   Building2, CreditCard, MapPin, Briefcase,
+  ImagePlus, Folder,
 } from 'lucide-react';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
@@ -267,6 +268,71 @@ function RepeatingFieldsDemo() {
   );
 }
 
+// ---- Image input ----
+const logoSchema = z.object({
+  company: z.string().min(1, 'Company name is required'),
+  logo: z
+    .custom<File>((v) => v instanceof File, 'Please upload your logo')
+    .refine((file) => ['image/png', 'image/jpeg'].includes(file.type), {
+      message: 'It must be a JPG or PNG file',
+    })
+    .refine((file) => file.size <= 5 * 1024 * 1024, {
+      message: 'Image must be smaller than 5 MB',
+    }),
+  attachments: z
+    .custom<File>((v) => v instanceof File, 'Please attach a file')
+    .refine((file) => file.size <= 5 * 1024 * 1024, {
+      message: 'File must be smaller than 5 MB',
+    }),
+});
+
+function ImageInputDemo() {
+  const [result, setResult] = useState<any>(null);
+  if (result) {
+    return (
+      <ResultShell
+        result={{
+          ...result,
+          logo: result.logo ? { name: result.logo.name, type: result.logo.type, size: result.logo.size } : null,
+          attachments: result.attachments ? { name: result.attachments.name, type: result.attachments.type, size: result.attachments.size } : null,
+        }}
+        onReset={() => setResult(null)}
+      />
+    );
+  }
+  return (
+    <FormShell icon={<ImagePlus size={16} />} title="Brand Setup" subtitle="Image upload via FormInput type='image' with Zod validation.">
+      <NForm
+        schema={logoSchema}
+        defaultValues={{ company: '', logo: undefined as unknown as File, attachments: undefined as unknown as File }}
+        onSubmit={async (v) => setResult(v)}
+      >
+        <FormInput name="company" type="text" formLabel="Company name" placeholder="Acme Inc." icon={<Building2 size={14} />} required />
+        <FormInput
+          name="logo"
+          type="image"
+          formLabel="Logo"
+          previewClassName="w-full h-40 rounded-xl"
+          trigger="icon"
+          title="Click to upload your logo"
+          subtitle="It must be a JPG or PNG file"
+          required
+        />
+        <FormInput
+          name="attachments"
+          type="image"
+          formLabel="Attachments"
+          previewClassName="w-full h-40 rounded-xl border-dotted"
+          trigger="icon"
+          uploadIcon={<Folder className="h-10 w-10" />}
+          title="Attach you files here"
+        />
+        <NButton type="submit" className="mt-2 w-full">Save brand</NButton>
+      </NForm>
+    </FormShell>
+  );
+}
+
 export function FormPage() {
   return (
     <ComponentPage
@@ -484,6 +550,58 @@ import { NForm, FormInput, RepeatingFields, NButton } from 'najm-kit';
 </NForm>`}
       >
         <RepeatingFieldsDemo />
+      </Example>
+
+      <Example
+        title="Image input"
+        description="FormInput type='image' renders the ImageInput with preview, hover overlay, and clear button — pass previewClassName to control dimensions and switch to the dropzone layout. Use trigger='icon' | 'button' | 'both' to pick the affordance, uploadIcon to swap the dropzone icon, and title/subtitle to customize the prompt copy."
+        previewHeight="h-[820px]"
+        noPad
+        center={false}
+        code={`import { Folder } from 'lucide-react';
+
+const logoSchema = z.object({
+  company: z.string().min(1, 'Company name is required'),
+  logo: z
+    .custom<File>((v) => v instanceof File, 'Please upload your logo')
+    .refine((file) => ['image/png', 'image/jpeg'].includes(file.type), {
+      message: 'It must be a JPG or PNG file',
+    })
+    .refine((file) => file.size <= 5 * 1024 * 1024, {
+      message: 'Image must be smaller than 5 MB',
+    }),
+  attachments: z
+    .custom<File>((v) => v instanceof File, 'Please attach a file')
+    .refine((file) => file.size <= 5 * 1024 * 1024, {
+      message: 'File must be smaller than 5 MB',
+    }),
+});
+
+<NForm schema={logoSchema} onSubmit={...}>
+  <FormInput name="company" type="text" formLabel="Company name" placeholder="Acme Inc." required />
+  <FormInput
+    name="logo"
+    type="image"
+    formLabel="Logo"
+    previewClassName="w-full h-40 rounded-xl"
+    trigger="icon"
+    title="Click to upload your logo"
+    subtitle="It must be a JPG or PNG file"
+    required
+  />
+  <FormInput
+    name="attachments"
+    type="image"
+    formLabel="Attachments"
+    previewClassName="w-full h-40 rounded-xl border-dotted"
+    trigger="icon"
+    uploadIcon={<Folder className="h-10 w-10" />}
+    title="Attach you files here"
+  />
+  <NButton type="submit" className="w-full">Save brand</NButton>
+</NForm>`}
+      >
+        <ImageInputDemo />
       </Example>
     </ComponentPage>
   );
