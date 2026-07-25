@@ -174,11 +174,38 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       [autoLoading, isDisabled, onClick]
     );
 
-    const content = loadingText && isLoading ? loadingText : children;
+    const child = asChild ? React.Children.only(children) : null;
+    const childContent =
+      asChild && React.isValidElement<{ children?: React.ReactNode }>(child)
+        ? child.props.children
+        : children;
+    const content = loadingText && isLoading ? loadingText : childContent;
     const loaderNode = isLoading ? loader : null;
     const leftIconNode = renderIcon(leftIcon);
     const rightIconNode = renderIcon(rightIcon);
     const showCenteredLoader = Boolean(loaderNode && loaderPosition === "center");
+    const renderedContent = showCenteredLoader ? (
+      <>
+        <span className="invisible inline-flex items-center gap-2">
+          {leftIconNode}
+          {content}
+          {rightIconNode}
+        </span>
+        <span className="absolute inset-0 inline-flex items-center justify-center">
+          {loaderNode}
+        </span>
+      </>
+    ) : (
+      <>
+        {loaderNode && loaderPosition === "left" ? loaderNode : leftIconNode}
+        {content}
+        {loaderNode && loaderPosition === "right" ? loaderNode : rightIconNode}
+      </>
+    );
+    const renderedChild =
+      asChild && React.isValidElement<{ children?: React.ReactNode }>(child)
+        ? React.cloneElement(child, undefined, renderedContent)
+        : renderedContent;
 
     return (
       <Comp
@@ -208,24 +235,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         onClick={handleClick}
         {...props}
       >
-        {showCenteredLoader ? (
-          <>
-            <span className="invisible inline-flex items-center gap-2">
-              {leftIconNode}
-              {content}
-              {rightIconNode}
-            </span>
-            <span className="absolute inset-0 inline-flex items-center justify-center">
-              {loaderNode}
-            </span>
-          </>
-        ) : (
-          <>
-            {loaderNode && loaderPosition === "left" ? loaderNode : leftIconNode}
-            {content}
-            {loaderNode && loaderPosition === "right" ? loaderNode : rightIconNode}
-          </>
-        )}
+        {renderedChild}
       </Comp>
     );
   }

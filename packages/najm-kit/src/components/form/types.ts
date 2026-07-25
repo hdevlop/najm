@@ -26,6 +26,14 @@ interface BaseFormInputProps {
 
 type FormInputSpecificProps<T> = Omit<T, "value" | "onChange" | keyof BaseFormInputProps>;
 
+type FormImageInputProps = FormInputSpecificProps<ImageInputProps> & {
+  /**
+   * Optional controlled preview value.
+   * React Hook Form owns the value when omitted.
+   */
+  value?: ImageInputProps["value"];
+};
+
 type InputTypeMap = {
   text: FormInputSpecificProps<TextInputProps>;
   number: FormInputSpecificProps<NumberInputProps>;
@@ -39,7 +47,7 @@ type InputTypeMap = {
   checkbox: FormInputSpecificProps<CheckboxInputProps>;
   checkboxGroup: FormInputSpecificProps<CheckboxGroupInputProps>;
   file: FormInputSpecificProps<FileInputProps>;
-  image: FormInputSpecificProps<ImageInputProps>;
+  image: FormImageInputProps;
   date: FormInputSpecificProps<DateInputProps>;
   starRating: FormInputSpecificProps<StarRatingInputProps>;
   colorArray: FormInputSpecificProps<ColorArrayInputProps>;

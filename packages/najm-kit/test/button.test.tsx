@@ -13,6 +13,19 @@ describe("Button", () => {
     expect(LegacyButton).toBe(Button);
   });
 
+  test("forwards slot props to the element supplied through asChild", () => {
+    const { getByRole } = render(
+      <Button asChild>
+        <a href="/dashboard">Dashboard</a>
+      </Button>,
+    );
+
+    const link = getByRole("link", { name: "Dashboard" });
+    expect(link.getAttribute("href")).toBe("/dashboard");
+    expect(link.getAttribute("data-slot")).toBe("button");
+    expect(link.className).toContain("inline-flex");
+  });
+
   test("applies expanded variant, size, rounded, and width classes", () => {
     const { container } = render(
       <Button variant="success" size="2xl" rounded="full" fullWidth>
