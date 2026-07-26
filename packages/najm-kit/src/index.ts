@@ -1,6 +1,12 @@
 // Theme
-export { NajmThemeProvider, useNajmAppearance } from "./theme/provider";
+export { NajmThemeProvider, useNajmAppearance, useNajmThemeMode } from "./theme/provider";
 export { NThemeCustomizer } from "./components/ThemeCustomizer";
+export {
+  DEFAULT_THEME_FILE_NAME,
+  normalizeThemeFileName,
+  parseThemeFile,
+  stringifyThemeFile,
+} from "./components/ThemeCustomizer";
 export type {
   NThemeCustomizerProps,
   NThemeCustomizerTab,

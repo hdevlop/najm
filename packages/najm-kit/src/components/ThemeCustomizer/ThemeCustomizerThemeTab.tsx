@@ -53,7 +53,7 @@ export interface ThemeCustomizerThemeTabProps {
   factoryValue: NajmDesignConfig;
   onChange: (value: NajmDesignConfig) => void;
   previewMode: NajmMode;
-  onPreviewModeChange: (mode: NajmMode) => void;
+  onPreviewModeChange?: (mode: NajmMode) => void;
   showPreviewMode?: boolean;
   labels: ThemeCustomizerThemeTabLabels;
   disabled?: boolean;
@@ -65,13 +65,13 @@ export function ThemeCustomizerThemeTab({
   onChange,
   previewMode,
   onPreviewModeChange,
-  showPreviewMode = true,
+  showPreviewMode = false,
   labels,
   disabled,
 }: ThemeCustomizerThemeTabProps) {
   return (
     <div className="flex flex-col gap-3">
-      {showPreviewMode && (
+      {showPreviewMode && onPreviewModeChange && (
         <div className="flex flex-col gap-1.5">
           <span className="text-xs font-medium text-muted-foreground">
             {labels.previewMode}

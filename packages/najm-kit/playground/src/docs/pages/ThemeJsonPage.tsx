@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Badge,
   composePreset,
@@ -9,7 +9,9 @@ import {
   NThemeCustomizer,
   NSheet,
   NajmDesignProvider,
+  parseThemeFile,
   SelectInput,
+  stringifyThemeFile,
   Tabs,
   TabsContent,
   TabsList,
@@ -26,12 +28,16 @@ import {
   BarChart3,
   Bell,
   CreditCard,
+  Download,
   LayoutDashboard,
   Package,
   Palette,
+  RotateCcw,
+  Save,
   Settings,
   Shield,
   Sparkles,
+  Upload,
   Users,
 } from 'lucide-react';
 import { ComponentPage } from '../ComponentPage';
@@ -604,12 +610,11 @@ const exampleCode = [
   '',
   '  return (',
   '    <NajmDesignProvider config={design} mode={previewMode}>',
+  '      <ThemeModeSelect value={previewMode} onChange={setPreviewMode} />',
   '      <NThemeCustomizer',
   '        value={design}',
   '        factoryValue={initialDesign}',
   '        onChange={setDesign}',
-  '        previewMode={previewMode}',
-  '        onPreviewModeChange={setPreviewMode}',
   '      />',
   '      <Dashboard />',
   '    </NajmDesignProvider>',
@@ -712,9 +717,32 @@ function DashboardPreview({
   const jsonPreview = useMemo(() => stringifyNajmDesignConfig(config), [config]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [selectedPreparedExample, setSelectedPreparedExample] = useState('');
+  const themeFileInputRef = useRef<HTMLInputElement>(null);
   const [previewMode, setPreviewMode] = useState<NajmMode>(config.theme.mode ?? 'light');
   const [factoryValue, setFactoryValue] = useState<NajmDesignConfig>(() => cloneDesignConfig(config));
   const theme = config.theme;
+
+  const importThemeFile = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = '';
+    if (!file) return;
+
+    const imported = parseThemeFile(await file.text());
+    setSelectedPreparedExample('');
+    onConfigChange(imported);
+  };
+
+  const exportThemeFile = () => {
+    const url = URL.createObjectURL(
+      new Blob([stringifyThemeFile(config)], { type: 'application/json' }),
+    );
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = 'najm-theme.json';
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
 
   // Preset generation is dashboard workflow, not editor behavior. It stays
   // above the shared customizer and produces a coherent palette in one action.
@@ -864,12 +892,53 @@ function DashboardPreview({
         width={440}
         contentClassName="bg-background"
         footer={(
-          <div className="flex gap-2">
-            <NButton className="flex-1" variant="outline" onClick={() => setCustomizerOpen(false)}>
-              Close
-            </NButton>
-            <NButton className="flex-1" onClick={() => setCustomizerOpen(false)}>
-              Save theme
+          <div className="flex w-full items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <input
+                ref={themeFileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="sr-only"
+                onChange={(event) => void importThemeFile(event)}
+              />
+              <NButton
+                variant="outline"
+                size="icon-sm"
+                aria-label="Import theme"
+                title="Import theme"
+                onClick={() => themeFileInputRef.current?.click()}
+              >
+                <Upload />
+              </NButton>
+              <NButton
+                variant="outline"
+                size="icon-sm"
+                aria-label="Export theme"
+                title="Export theme"
+                onClick={exportThemeFile}
+              >
+                <Download />
+              </NButton>
+              <NButton
+                variant="outline"
+                size="icon-sm"
+                aria-label="Reset theme"
+                title="Reset theme"
+                onClick={() => {
+                  setSelectedPreparedExample('');
+                  onConfigChange(cloneDesignConfig(factoryValue));
+                }}
+              >
+                <RotateCcw />
+              </NButton>
+            </div>
+            <NButton
+              size="icon-sm"
+              aria-label="Save theme"
+              title="Save theme"
+              onClick={() => setCustomizerOpen(false)}
+            >
+              <Save />
             </NButton>
           </div>
         )}
@@ -906,10 +975,9 @@ function DashboardPreview({
                 setSelectedPreparedExample('');
                 onConfigChange(nextConfig);
               }}
-              previewMode={previewMode}
-              onPreviewModeChange={setPreviewMode}
-              showPreviewMode={false}
               fontOptions={fontOptions}
+              showFileActions={false}
+              showResetAction={false}
             />
           </div>
         </div>
@@ -965,6 +1033,7 @@ const embeddedExampleCode = [
   '      onChange={setDraft}',
   '      previewMode={previewMode}',
   '      onPreviewModeChange={setPreviewMode}',
+  '      showPreviewMode',
   '    />',
   '  </TabsContent>',
   '  <TabsContent value="about">…</TabsContent>',
@@ -1011,6 +1080,7 @@ export function ThemeJsonEmbeddedPanel() {
                 onChange={setHostValue}
                 previewMode={hostMode}
                 onPreviewModeChange={setHostMode}
+                showPreviewMode
               />
             </TabsContent>
             <TabsContent value="about" className="px-4 pb-4">

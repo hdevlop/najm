@@ -74,7 +74,7 @@ export const BaseInput = React.forwardRef<HTMLDivElement, BaseInputProps>(
       } else {
         const restingBorderClass = inputBorderClasses(isBordered);
         borderClass = isBordered
-          ? `${STATIC_BASE} ${restingBorderClass} hover:border-input focus-within:border-primary/70`
+          ? `${STATIC_BASE} ${restingBorderClass} [&:not(:focus-within):not([data-state=open]):hover]:border-input focus-within:border-ring data-[state=open]:border-ring`
           : restingBorderClass;
       }
     }

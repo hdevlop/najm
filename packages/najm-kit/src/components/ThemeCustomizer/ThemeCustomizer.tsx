@@ -2,7 +2,7 @@ import * as React from "react";
 import { cn } from "../../lib/cn";
 import { NTabs } from "../tabs";
 import { NButton } from "../Button";
-import { RotateCcw } from "lucide-react";
+import { Download, RotateCcw, Upload } from "lucide-react";
 import { ThemeCustomizerThemeTab } from "./ThemeCustomizerThemeTab";
 import { ThemeCustomizerTypographyTab } from "./ThemeCustomizerTypographyTab";
 import { ThemeCustomizerComponentsLayoutTab } from "./ThemeCustomizerComponentsLayoutTab";
@@ -12,6 +12,12 @@ import {
   resetTypographySection,
 } from "./theme-customizer-config";
 import { DEFAULT_LABELS } from "./theme-customizer-meta";
+import { useNajmThemeMode } from "../../theme/provider";
+import {
+  normalizeThemeFileName,
+  parseThemeFile,
+  stringifyThemeFile,
+} from "./theme-customizer-file";
 import type {
   NThemeCustomizerProps,
   NThemeCustomizerTab,
@@ -67,7 +73,11 @@ export function NThemeCustomizer({
   onChange,
   previewMode,
   onPreviewModeChange,
-  showPreviewMode = true,
+  showPreviewMode = false,
+  showFileActions = true,
+  showResetAction = true,
+  exportFileName,
+  onImportError,
   showTabs = true,
   tabs,
   fontOptions,
@@ -75,9 +85,14 @@ export function NThemeCustomizer({
   disabled = false,
   className,
 }: NThemeCustomizerProps) {
+  const inheritedMode = useNajmThemeMode();
+  const resolvedPreviewMode =
+    previewMode ?? inheritedMode ?? value.theme.mode ?? "light";
   const visibleTabs = React.useMemo(() => buildTabs(tabs), [tabs]);
   const firstTab = visibleTabs[0] ?? "theme";
   const [activeTab, setActiveTab] = React.useState<string>(TAB_VALUE[firstTab]);
+  const [fileError, setFileError] = React.useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   React.useEffect(() => {
     setActiveTab(TAB_VALUE[firstTab]);
@@ -87,6 +102,9 @@ export function NThemeCustomizer({
   const typographyLabel = resolveLabel("typographyTab", labels);
   const resetSectionLabel = resolveLabel("resetSection", labels);
   const resetFieldLabel = resolveLabel("resetField", labels);
+  const importThemeLabel = resolveLabel("importTheme", labels);
+  const exportThemeLabel = resolveLabel("exportTheme", labels);
+  const invalidThemeFileLabel = resolveLabel("invalidThemeFile", labels);
   const defaultOptionLabel = resolveLabel("defaultOption", labels);
   const colorSwatchFallbackLabel = resolveLabel("colorSwatchFallback", labels);
 
@@ -140,9 +158,9 @@ export function NThemeCustomizer({
         value={value}
         factoryValue={factoryValue}
         onChange={onChange}
-        previewMode={previewMode}
+        previewMode={resolvedPreviewMode}
         onPreviewModeChange={onPreviewModeChange}
-        showPreviewMode={showPreviewMode}
+        showPreviewMode={showPreviewMode && Boolean(onPreviewModeChange)}
         disabled={disabled}
         labels={{
           resetField: resetFieldLabel,
@@ -249,6 +267,38 @@ export function NThemeCustomizer({
     else handleResetTypography();
   };
 
+  const handleImportFile = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const input = event.currentTarget;
+    const file = input.files?.[0];
+    input.value = "";
+    if (!file) return;
+
+    try {
+      const imported = parseThemeFile(await file.text());
+      setFileError(false);
+      onChange(imported);
+    } catch (cause) {
+      const error =
+        cause instanceof Error ? cause : new Error(String(cause));
+      setFileError(true);
+      onImportError?.(error);
+    }
+  };
+
+  const handleExportFile = () => {
+    const blob = new Blob([stringifyThemeFile(value)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = normalizeThemeFileName(exportFileName);
+    anchor.click();
+    URL.revokeObjectURL(url);
+  };
+
   const directContent = items[0]?.content ?? themeContent;
 
   return (
@@ -277,23 +327,65 @@ export function NThemeCustomizer({
         directContent
       )}
 
-      <div className="flex items-center justify-end">
-        <NButton
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleReset}
-          disabled={disabled}
-          aria-label={
-            typeof resetSectionLabel === "string" || typeof resetSectionLabel === "number"
-              ? String(resetSectionLabel)
-              : "Reset section"
-          }
-        >
-          <RotateCcw className="size-3.5" />
-          <span>{resetSectionLabel}</span>
-        </NButton>
-      </div>
+      {fileError ? (
+        <p role="alert" className="text-xs text-destructive">
+          {invalidThemeFileLabel}
+        </p>
+      ) : null}
+
+      {showFileActions || showResetAction ? (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          {showFileActions ? (
+            <div className="flex flex-wrap items-center gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".json,application/json"
+                className="sr-only"
+                disabled={disabled}
+                onChange={(event) => void handleImportFile(event)}
+              />
+              <NButton
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled}
+              >
+                <Upload className="size-3.5" />
+                <span>{importThemeLabel}</span>
+              </NButton>
+              <NButton
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleExportFile}
+                disabled={disabled}
+              >
+                <Download className="size-3.5" />
+                <span>{exportThemeLabel}</span>
+              </NButton>
+            </div>
+          ) : null}
+          {showResetAction ? (
+            <NButton
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleReset}
+              disabled={disabled}
+              aria-label={
+                typeof resetSectionLabel === "string" || typeof resetSectionLabel === "number"
+                  ? String(resetSectionLabel)
+                  : "Reset section"
+              }
+            >
+              <RotateCcw className="size-3.5" />
+              <span>{resetSectionLabel}</span>
+            </NButton>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

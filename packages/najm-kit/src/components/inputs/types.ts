@@ -68,6 +68,7 @@ export interface SelectInputProps extends BaseProps {
   onChange: (value: string) => void;
   items: (string | SelectItemType)[];
   placeholder?: string;
+  ariaLabel?: string;
   icon?: InputIcon;
   showIcon?: boolean;
   disabled?: boolean;

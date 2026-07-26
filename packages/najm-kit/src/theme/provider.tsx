@@ -88,6 +88,13 @@ function resolveThemeTokens({
 // value is informational only.
 const NajmThemeDepthContext = React.createContext(0);
 
+const NajmThemeModeContext = React.createContext<NajmMode | undefined>(undefined);
+
+/** Returns the active mode inherited from the nearest Najm theme provider. */
+export function useNajmThemeMode(): NajmMode | undefined {
+  return React.useContext(NajmThemeModeContext);
+}
+
 // Provides the nearest NajmThemeProvider div element so Radix portals
 // can render inside it and inherit the scoped CSS variables.
 export const NajmThemeContainerCtx = React.createContext<HTMLElement | null>(null);
@@ -114,6 +121,7 @@ export function NajmThemeProvider({
   children,
 }: NajmThemeProviderProps) {
   const depth = React.useContext(NajmThemeDepthContext);
+  const parentMode = React.useContext(NajmThemeModeContext);
   const parentAppearance = React.useContext(NajmAppearanceContext);
   const effectivePreset = preset ?? config?.preset;
   const effectiveMode = mode ?? config?.mode;
@@ -172,19 +180,21 @@ export function NajmThemeProvider({
 
   return (
     <NajmThemeDepthContext.Provider value={depth + 1}>
-      <NajmAppearanceContext.Provider value={resolvedAppearance}>
-        <NajmThemeContainerCtx.Provider value={container}>
-          <Comp
-            ref={handleContainerRef}
-            suppressHydrationWarning
-            data-najm-theme={effectivePreset ?? `${effectiveMode ?? 'light'}-${effectiveAccent ?? 'neutral'}`}
-            className={className}
-            style={style}
-          >
-            {children}
-          </Comp>
-        </NajmThemeContainerCtx.Provider>
-      </NajmAppearanceContext.Provider>
+      <NajmThemeModeContext.Provider value={effectiveMode ?? parentMode}>
+        <NajmAppearanceContext.Provider value={resolvedAppearance}>
+          <NajmThemeContainerCtx.Provider value={container}>
+            <Comp
+              ref={handleContainerRef}
+              suppressHydrationWarning
+              data-najm-theme={effectivePreset ?? `${effectiveMode ?? 'light'}-${effectiveAccent ?? 'neutral'}`}
+              className={className}
+              style={style}
+            >
+              {children}
+            </Comp>
+          </NajmThemeContainerCtx.Provider>
+        </NajmAppearanceContext.Provider>
+      </NajmThemeModeContext.Provider>
     </NajmThemeDepthContext.Provider>
   );
 }

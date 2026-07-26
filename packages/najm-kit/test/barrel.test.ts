@@ -12,6 +12,16 @@ describe("Root barrel import", () => {
     expect(typeof najmUI.stringifyNajmThemeConfig).toBe("function");
   });
 
+  test("exports the inherited theme mode hook", () => {
+    expect(najmUI.useNajmThemeMode).toBeDefined();
+  });
+
+  test("exports theme file helpers", () => {
+    expect(najmUI.parseThemeFile).toBeDefined();
+    expect(najmUI.stringifyThemeFile).toBeDefined();
+    expect(najmUI.normalizeThemeFileName).toBeDefined();
+  });
+
   test("exports Button component", () => {
     expect(najmUI.Button).toBeDefined();
   });

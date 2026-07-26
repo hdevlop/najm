@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn";
 import { ColorPickerInput } from "../inputs/ColorPickerInput";
-import { NativeSelect } from "../ui/native-select";
+import { SelectInput } from "../inputs/SelectInput";
 import { Switch } from "../ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
 import { ChevronDown } from "lucide-react";
@@ -114,17 +114,17 @@ export function ThemeCustomizerComponentsLayoutTab({
             label={labels.pageGutter}
             disabled={disabled}
           >
-            <NativeSelect
+            <SelectInput
               value={layout.pageGutter ?? ""}
-              onChange={(e) =>
-                onChange(setLayoutField(value, "pageGutter", e.target.value || undefined))
+              onChange={(next) =>
+                onChange(setLayoutField(value, "pageGutter", next || undefined))
               }
-              options={[
+              items={[
                 toOption(labels.defaultOption, ""),
                 ...LAYOUT_SIZE_VALUES.map((value) => ({ value, label: value })),
               ]}
               disabled={disabled}
-              aria-label={
+              ariaLabel={
                 typeof labels.pageGutter === "string" ? labels.pageGutter : "Page gutter"
               }
             />
@@ -134,57 +134,57 @@ export function ThemeCustomizerComponentsLayoutTab({
             label={labels.sectionGap}
             disabled={disabled}
           >
-            <NativeSelect
+            <SelectInput
               value={layout.sectionGap ?? ""}
-              onChange={(e) =>
-                onChange(setLayoutField(value, "sectionGap", e.target.value || undefined))
+              onChange={(next) =>
+                onChange(setLayoutField(value, "sectionGap", next || undefined))
               }
-              options={[
+              items={[
                 toOption(labels.defaultOption, ""),
                 ...LAYOUT_SIZE_VALUES.map((value) => ({ value, label: value })),
               ]}
               disabled={disabled}
-              aria-label={
+              ariaLabel={
                 typeof labels.sectionGap === "string" ? labels.sectionGap : "Section gap"
               }
             />
           </CustomizerField>
 
           <CustomizerField label={labels.globalBorderWidth} disabled={disabled}>
-            <NativeSelect
+            <SelectInput
               value={value.theme.appearance?.borderWidth ?? "1px"}
-              onChange={(event) => onChange(setThemeField(value, "appearance", {
+              onChange={(next) => onChange(setThemeField(value, "appearance", {
                 ...(value.theme.appearance ?? {}),
-                borderWidth: event.target.value,
+                borderWidth: next,
               }))}
-              options={BORDER_WIDTH_VALUES.map((borderWidth) => ({ value: borderWidth, label: borderWidth }))}
+              items={BORDER_WIDTH_VALUES.map((borderWidth) => ({ value: borderWidth, label: borderWidth }))}
               disabled={disabled}
-              aria-label={typeof labels.globalBorderWidth === "string" ? labels.globalBorderWidth : "Border width"}
+              ariaLabel={typeof labels.globalBorderWidth === "string" ? labels.globalBorderWidth : "Border width"}
             />
           </CustomizerField>
 
           <CustomizerField label={labels.inputBorderWidth} disabled={disabled}>
-            <NativeSelect
+            <SelectInput
               value={components.input?.borderWidth ?? ""}
-              onChange={(e) =>
-                onChange(setComponentField(value, "input", "borderWidth", e.target.value || undefined))
+              onChange={(next) =>
+                onChange(setComponentField(value, "input", "borderWidth", next || undefined))
               }
-              options={[
+              items={[
                 toOption(labels.defaultOption, ""),
                 ...COMPONENT_BORDER_WIDTH_VALUES.map((value) => ({ value, label: value })),
               ]}
               disabled={disabled}
-              aria-label={typeof labels.inputBorderWidth === "string" ? labels.inputBorderWidth : "Input border width"}
+              ariaLabel={typeof labels.inputBorderWidth === "string" ? labels.inputBorderWidth : "Input border width"}
             />
           </CustomizerField>
 
           <CustomizerField className="col-span-2" label={labels.globalRadius} disabled={disabled}>
-            <NativeSelect
+            <SelectInput
               value={value.theme.radius ?? "8px"}
-              onChange={(event) => onChange(setThemeField(value, "radius", event.target.value))}
-              options={RADIUS_VALUES.map((radius) => ({ value: radius, label: radius }))}
+              onChange={(next) => onChange(setThemeField(value, "radius", next))}
+              items={RADIUS_VALUES.map((radius) => ({ value: radius, label: radius }))}
               disabled={disabled}
-              aria-label={typeof labels.globalRadius === "string" ? labels.globalRadius : "Radius"}
+              ariaLabel={typeof labels.globalRadius === "string" ? labels.globalRadius : "Radius"}
             />
           </CustomizerField>
         </div>

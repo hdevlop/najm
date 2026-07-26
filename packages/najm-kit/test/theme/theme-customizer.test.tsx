@@ -1,14 +1,14 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, jest, test } from "bun:test";
 import React from "react";
-import { render, fireEvent } from "@testing-library/react";
+import { render, fireEvent, waitFor } from "@testing-library/react";
 import { NThemeCustomizer } from "../../src/components/ThemeCustomizer";
 import type {
   NThemeCustomizerProps,
   NThemeCustomizerTab,
 } from "../../src/components/ThemeCustomizer";
 import type { NajmDesignConfig } from "../../src/theme/design-types";
-import type { NajmMode } from "../../src/theme/types";
 import { parseNajmDesignConfig } from "../../src/theme/design-config";
+import { NajmThemeProvider } from "../../src/theme/provider";
 import { THEME_TOKEN_GROUPS } from "../../src/components/ThemeCustomizer/theme-customizer-meta";
 import * as najmUI from "../../src/index";
 
@@ -42,13 +42,10 @@ function renderCustomizer(
   const value = overrides.value ?? buildConfig();
   const factoryValue = factoryOverride ?? value;
   const onChange = overrides.onChange ?? (() => {});
-  const onPreviewModeChange = overrides.onPreviewModeChange ?? (() => {});
   const props: NThemeCustomizerProps = {
     value,
     factoryValue,
     onChange,
-    previewMode: overrides.previewMode ?? ("light" as NajmMode),
-    onPreviewModeChange,
     ...overrides,
   };
   return render(<NThemeCustomizer {...props} />);
@@ -94,6 +91,81 @@ describe("NThemeCustomizer - default (showTabs=true)", () => {
     expect(queryTabBar(container).list).toBeTruthy();
     expect(queryTabBar(container).triggers.length).toBe(2);
   });
+
+  test("inherits the provider mode and hides its mode control by default", () => {
+    const value = parseNajmDesignConfig({
+      theme: {
+        mode: "light",
+        tokens: { primary: "#abcdef" },
+        overrides: { dark: { primary: "#123456" } },
+      },
+    });
+    const { getByText, queryByText } = render(
+      <NajmThemeProvider mode="dark">
+        <NThemeCustomizer
+          value={value}
+          factoryValue={value}
+          onChange={() => {}}
+          tabs={["theme"]}
+          showTabs={false}
+        />
+      </NajmThemeProvider>,
+    );
+
+    expect(getByText("#123456")).toBeTruthy();
+    expect(queryByText("Preview mode")).toBeNull();
+  });
+
+  test("imports a valid JSON design file through onChange", async () => {
+    const onChange = jest.fn();
+    const imported = {
+      version: 1,
+      theme: { mode: "dark", tokens: { primary: "#123456" } },
+    };
+    const { container, getByText } = renderCustomizer({ onChange });
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+
+    expect(getByText("Import")).toBeTruthy();
+    expect(getByText("Export")).toBeTruthy();
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File([JSON.stringify(imported)], "theme.json", {
+            type: "application/json",
+          }),
+        ],
+      },
+    });
+
+    await waitFor(() => expect(onChange).toHaveBeenCalledTimes(1));
+    expect(onChange).toHaveBeenCalledWith(imported);
+  });
+
+  test("rejects an invalid imported file without changing the design", async () => {
+    const onChange = jest.fn();
+    const onImportError = jest.fn();
+    const { container, getByRole } = renderCustomizer({
+      onChange,
+      onImportError,
+    });
+    const input = container.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
+
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["{"], "broken.json", { type: "application/json" }),
+        ],
+      },
+    });
+
+    await waitFor(() => expect(onImportError).toHaveBeenCalledTimes(1));
+    expect(onChange).not.toHaveBeenCalled();
+    expect(getByRole("alert").textContent).toBe("Invalid theme file");
+  });
 });
 
 describe("NThemeCustomizer - direct mode (showTabs=false, tabs=['theme'])", () => {
@@ -119,6 +191,7 @@ describe("NThemeCustomizer - direct mode (showTabs=false, tabs=['theme'])", () =
       tabs: ["theme"],
       showTabs: false,
       showPreviewMode: true,
+      onPreviewModeChange: () => {},
     });
     expect(getByText("Preview mode")).toBeTruthy();
     expect(getByText("Light")).toBeTruthy();
@@ -132,6 +205,14 @@ describe("NThemeCustomizer - direct mode (showTabs=false, tabs=['theme'])", () =
       showPreviewMode: false,
     });
     expect(queryByText("Preview mode")).toBeNull();
+  });
+
+  test("can hide the internal reset action when the host owns reset", () => {
+    const { container } = renderCustomizer({ showResetAction: false });
+
+    expect(
+      container.querySelector('[aria-label="Reset section"]'),
+    ).toBeNull();
   });
 
   test("reset section targets Theme (tokens, components, layout)", () => {

@@ -11,6 +11,8 @@ import type { MultiSelectInputProps } from "./types";
 
 export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder = "Select items...", value = [], onChange, icon, showIcon = true, iconColor, items, className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, searchPlaceholder = "Search...", emptyMessage = "No items found.", maxDisplay = 3, showSearch = true }) => {
   const [open, setOpen] = useState(false);
+  const triggerRef = React.useRef<HTMLDivElement>(null);
+  const pointerDismissedRef = React.useRef(false);
   const shouldDisplayIcon = Boolean(icon) && showIcon && value.length === 0;
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
 
@@ -29,7 +31,21 @@ export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder 
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild disabled={disabled}>
-        <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("gap-2 cursor-pointer", className, disabled && "cursor-not-allowed opacity-50")}>
+        <BaseInput
+          ref={triggerRef}
+          variant={variant}
+          status={status}
+          bordered={bordered}
+          borderColor={borderColor}
+          role="combobox"
+          tabIndex={disabled ? -1 : 0}
+          aria-expanded={open}
+          className={cn(
+            "gap-2 cursor-pointer outline-none data-[state=open]:border-ring",
+            className,
+            disabled && "cursor-not-allowed opacity-50",
+          )}
+        >
           {shouldDisplayIcon && <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span>}
           <div className="flex items-center gap-1 flex-1 overflow-hidden">
             {value.length === 0 ? (
@@ -49,7 +65,19 @@ export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder 
           {open ? <ChevronUp className="h-4 w-4 text-muted-foreground ml-2 shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground ml-2 shrink-0" />}
         </BaseInput>
       </PopoverTrigger>
-      <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
+      <PopoverContent
+        className="w-[var(--radix-popover-trigger-width)] p-0"
+        align="start"
+        onPointerDownOutside={() => {
+          pointerDismissedRef.current = true;
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!pointerDismissedRef.current) return;
+          event.preventDefault();
+          pointerDismissedRef.current = false;
+          triggerRef.current?.blur();
+        }}
+      >
         <Command>
           {showSearch && <CommandInput placeholder={searchPlaceholder} className="h-9" />}
           <CommandEmpty>{emptyMessage}</CommandEmpty>

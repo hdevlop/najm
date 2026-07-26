@@ -25,6 +25,9 @@ export interface NThemeCustomizerLabels {
   darkMode: React.ReactNode;
   resetField: React.ReactNode;
   resetSection: React.ReactNode;
+  importTheme: React.ReactNode;
+  exportTheme: React.ReactNode;
+  invalidThemeFile: React.ReactNode;
   /** Override the swatch button's accessible name when no token label is provided. */
   colorSwatchFallback: React.ReactNode;
   defaultOption: React.ReactNode;
@@ -71,10 +74,20 @@ export interface NThemeCustomizerProps {
   value: NajmDesignConfig;
   factoryValue: NajmDesignConfig;
   onChange: (value: NajmDesignConfig) => void;
-  previewMode: NajmMode;
-  onPreviewModeChange: (mode: NajmMode) => void;
-  /** Whether to show the light/dark preview-mode control in the theme tab. */
+  /** Overrides the active mode inherited from the nearest Najm theme provider. */
+  previewMode?: NajmMode;
+  /** Handles the opt-in internal light/dark control in standalone editors. */
+  onPreviewModeChange?: (mode: NajmMode) => void;
+  /** Whether to show the internal light/dark control. Defaults to `false`. */
   showPreviewMode?: boolean;
+  /** Whether to show JSON import/export actions. Defaults to `true`. */
+  showFileActions?: boolean;
+  /** Whether to show the internal section reset action. Defaults to `true`. */
+  showResetAction?: boolean;
+  /** Download filename used by the Export action. Defaults to `najm-theme.json`. */
+  exportFileName?: string;
+  /** Receives strict JSON parsing or design-contract validation failures. */
+  onImportError?: (error: Error) => void;
   /**
    * Whether to render the internal Theme/Typography tab bar. Defaults to `true`.
    * When `false`, the first resolved entry from `tabs` is rendered directly so

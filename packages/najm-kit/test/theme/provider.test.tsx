@@ -4,6 +4,7 @@ import { render, fireEvent } from "@testing-library/react";
 import {
   NajmThemeProvider,
   NajmThemeContainerCtx,
+  useNajmThemeMode,
 } from "../../src/theme/provider";
 import { Select, SelectTrigger, SelectContent, SelectItem, SelectValue } from "../../src/components/ui/select";
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from "../../src/components/ui/dropdown-menu";
@@ -16,6 +17,11 @@ function getRootInlineVars(): Record<string, string> {
     if (k && k.startsWith("--")) out[k] = inline.getPropertyValue(k);
   }
   return out;
+}
+
+function ModeProbe() {
+  const mode = useNajmThemeMode();
+  return <span data-testid="mode-probe">{mode ?? "none"}</span>;
 }
 
 describe("NajmThemeProvider â€” opt-in theming", () => {
@@ -44,9 +50,9 @@ describe("NajmThemeProvider â€” opt-in theming", () => {
   });
 
   test("explicit mode=light: injects scoped token style on wrapper, no leakage to documentElement", () => {
-    render(
+    const { getByTestId } = render(
       <NajmThemeProvider mode="light" accent="neutral">
-        <span>x</span>
+        <ModeProbe />
       </NajmThemeProvider>
     );
 
@@ -58,6 +64,7 @@ describe("NajmThemeProvider â€” opt-in theming", () => {
 
     expect((document.documentElement as any).style.getPropertyValue("--background")).toBe("");
     expect((document.documentElement as any).style.getPropertyValue("--primary")).toBe("");
+    expect(getByTestId("mode-probe").textContent).toBe("light");
   });
 
   test("explicit tokens={...}: injects the supplied unprefixed --* vars on wrapper, not on :root", () => {

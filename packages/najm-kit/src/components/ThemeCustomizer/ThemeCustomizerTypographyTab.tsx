@@ -1,6 +1,6 @@
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
-import { NativeSelect } from "../ui/native-select";
+import { SelectInput } from "../inputs/SelectInput";
 import { CustomizerField } from "./CustomizerField";
 import {
   FONT_SIZE_VALUES,
@@ -86,17 +86,17 @@ export function ThemeCustomizerTypographyTab({
         label={labels.baseSize}
         disabled={disabled}
       >
-        <NativeSelect
+        <SelectInput
           value={typography.baseSize ?? ""}
-          onChange={(e) =>
-            handleTypography("baseSize", e.target.value || undefined)
+          onChange={(next) =>
+            handleTypography("baseSize", next || undefined)
           }
-          options={[
+          items={[
             toOption(labels.defaultOption, ""),
             ...FONT_SIZE_VALUES.map((value) => ({ value, label: value })),
           ]}
           disabled={disabled}
-          aria-label={typeof labels.baseSize === "string" ? labels.baseSize : "Base size"}
+          ariaLabel={typeof labels.baseSize === "string" ? labels.baseSize : "Base size"}
         />
       </CustomizerField>
 
@@ -127,15 +127,15 @@ export function ThemeCustomizerTypographyTab({
           ) : null}
 
           <CustomizerField label={labels.scale} disabled={disabled}>
-            <NativeSelect
+            <SelectInput
               value={typography.scale ?? ""}
-              onChange={(e) =>
+              onChange={(next) =>
                 handleTypography(
                   "scale",
-                  (e.target.value || undefined) as typeof typography.scale,
+                  (next || undefined) as typeof typography.scale,
                 )
               }
-              options={[
+              items={[
                 toOption(labels.defaultOption, ""),
                 ...SCALE_VALUES.map((o) => ({
                   value: o.value,
@@ -146,22 +146,22 @@ export function ThemeCustomizerTypographyTab({
                 })),
               ]}
               disabled={disabled}
-              aria-label={typeof labels.scale === "string" ? labels.scale : "Scale"}
+              ariaLabel={typeof labels.scale === "string" ? labels.scale : "Scale"}
             />
           </CustomizerField>
 
           <CustomizerField label={labels.lineHeight} disabled={disabled}>
-            <NativeSelect
+            <SelectInput
               value={typography.lineHeight ?? ""}
-              onChange={(e) =>
-                handleTypography("lineHeight", e.target.value || undefined)
+              onChange={(next) =>
+                handleTypography("lineHeight", next || undefined)
               }
-              options={[
+              items={[
                 toOption(labels.defaultOption, ""),
                 ...LINE_HEIGHT_VALUES.map((value) => ({ value, label: value })),
               ]}
               disabled={disabled}
-              aria-label={
+              ariaLabel={
                 typeof labels.lineHeight === "string"
                   ? labels.lineHeight
                   : "Line height"
@@ -170,17 +170,17 @@ export function ThemeCustomizerTypographyTab({
           </CustomizerField>
 
           <CustomizerField label={labels.letterSpacing} disabled={disabled}>
-            <NativeSelect
+            <SelectInput
               value={typography.letterSpacing ?? ""}
-              onChange={(e) =>
-                handleTypography("letterSpacing", e.target.value || undefined)
+              onChange={(next) =>
+                handleTypography("letterSpacing", next || undefined)
               }
-              options={[
+              items={[
                 toOption(labels.defaultOption, ""),
                 ...LETTER_SPACING_VALUES.map((value) => ({ value, label: value })),
               ]}
               disabled={disabled}
-              aria-label={
+              ariaLabel={
                 typeof labels.letterSpacing === "string"
                   ? labels.letterSpacing
                   : "Letter spacing"
@@ -234,12 +234,12 @@ function FontSelect({
       label={label}
       disabled={disabled}
     >
-      <NativeSelect
+      <SelectInput
         value={value ?? ""}
-        onChange={(e) => onChange(e.target.value || undefined)}
-        options={options}
+        onChange={(next) => onChange(next || undefined)}
+        items={options}
         disabled={disabled}
-        aria-label={typeof label === "string" ? label : "Font"}
+        ariaLabel={typeof label === "string" ? label : "Font"}
       />
     </CustomizerField>
   );
