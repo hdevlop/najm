@@ -2,6 +2,7 @@ import { describe, expect, test, jest } from "bun:test";
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
 import { ColorPickerInput } from "../../src/components/inputs/ColorPickerInput";
+import { NajmThemeProvider } from "../../src/theme/provider";
 
 describe("ColorPickerInput", () => {
   test("defaults to swatch mode and renders preset swatches", () => {
@@ -25,6 +26,31 @@ describe("ColorPickerInput", () => {
       <ColorPickerInput value="#ff0000" onChange={() => {}} mode="popover" />
     );
     expect(getByText("#ff0000")).toBeTruthy();
+  });
+
+  test("popover resolves scoped CSS variable values without replacing the reference", () => {
+    const { container, getByText } = render(
+      <NajmThemeProvider tokens={{ primary: "#123456" }}>
+        <ColorPickerInput
+          value="var(--primary)"
+          onChange={() => {}}
+          mode="popover"
+        />
+      </NajmThemeProvider>,
+    );
+
+    const trigger = container.querySelector("button") as HTMLButtonElement;
+    const swatch = trigger.querySelector("span") as HTMLSpanElement;
+    expect(swatch.style.backgroundColor).toBe("var(--primary)");
+    expect(getByText("var(--primary)")).toBeTruthy();
+
+    fireEvent.click(trigger);
+    const colorControl = document.body.querySelector(
+      '[aria-label="Color"]',
+    ) as HTMLDivElement;
+    expect(colorControl.getAttribute("aria-valuetext")).not.toBe(
+      "Saturation 0%, Brightness 0%",
+    );
   });
 
   test("popover preset click emits the preserved color from portal content", () => {

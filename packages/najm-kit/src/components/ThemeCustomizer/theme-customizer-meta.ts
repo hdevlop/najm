@@ -18,7 +18,18 @@ export const THEME_TOKEN_GROUPS: readonly ThemeTokenGroup[] = [
   {
     id: "surface",
     label: "Surface",
-    tokens: ["background", "foreground", "card", "card-foreground", "popover", "popover-foreground"],
+    tokens: [
+      "background",
+      "foreground",
+      "card",
+      "card-foreground",
+      "popover",
+      "popover-foreground",
+      "muted",
+      "muted-foreground",
+      "destructive",
+      "destructive-foreground",
+    ],
   },
   {
     id: "brand",
@@ -33,11 +44,6 @@ export const THEME_TOKEN_GROUPS: readonly ThemeTokenGroup[] = [
       "accent",
       "accent-foreground",
     ],
-  },
-  {
-    id: "feedback",
-    label: "Feedback",
-    tokens: ["muted", "muted-foreground", "destructive", "destructive-foreground"],
   },
   {
     id: "border-focus",

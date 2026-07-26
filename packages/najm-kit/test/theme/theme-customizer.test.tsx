@@ -9,6 +9,7 @@ import type {
 import type { NajmDesignConfig } from "../../src/theme/design-types";
 import type { NajmMode } from "../../src/theme/types";
 import { parseNajmDesignConfig } from "../../src/theme/design-config";
+import { THEME_TOKEN_GROUPS } from "../../src/components/ThemeCustomizer/theme-customizer-meta";
 import * as najmUI from "../../src/index";
 
 function buildConfig(): NajmDesignConfig {
@@ -65,6 +66,18 @@ function queryResetButton(container: HTMLElement): HTMLButtonElement | null {
     "button[aria-label='Reset section']",
   ) as HTMLButtonElement | null;
 }
+
+describe("NThemeCustomizer - token groups", () => {
+  test("keeps muted and destructive colors in Surface without a Feedback group", () => {
+    const surface = THEME_TOKEN_GROUPS.find((group) => group.id === "surface");
+
+    expect(surface?.tokens).toContain("muted");
+    expect(surface?.tokens).toContain("muted-foreground");
+    expect(surface?.tokens).toContain("destructive");
+    expect(surface?.tokens).toContain("destructive-foreground");
+    expect(THEME_TOKEN_GROUPS.some((group) => group.id === "feedback")).toBe(false);
+  });
+});
 
 describe("NThemeCustomizer - default (showTabs=true)", () => {
   test("renders the internal tab bar with Theme and Typography triggers", () => {

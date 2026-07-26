@@ -4,6 +4,7 @@ import { HexColorPicker } from "react-colorful";
 import { cn } from "../../lib/cn";
 import { BaseInput } from "./BaseInput";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
+import { NajmThemeContainerCtx } from "../../theme/provider";
 import type { ColorPickerInputProps } from "./types";
 import {
   type ColorFormat,
@@ -21,6 +22,40 @@ const PRESET_COLORS = [
 ];
 
 const DEFAULT_FORMATS: ColorFormat[] = ["hex", "rgb", "hsl", "oklch"];
+
+const CSS_VAR_RE = /^var\(\s*(--[\w-]+)\s*(?:,\s*(.+))?\)$/;
+
+function resolvePickerColor(
+  value: string,
+  themeContainer: HTMLElement | null,
+): string {
+  let current = value.trim();
+  const seen = new Set<string>();
+
+  for (let depth = 0; depth < 10; depth += 1) {
+    if (parseColor(current)) return current;
+
+    const match = current.match(CSS_VAR_RE);
+    if (!match) return current;
+
+    const [, property, fallback] = match;
+    if (seen.has(property)) return fallback?.trim() || current;
+    seen.add(property);
+
+    const target =
+      themeContainer ??
+      (typeof document !== "undefined" ? document.documentElement : null);
+    const resolved =
+      target?.style.getPropertyValue(property).trim() ||
+      (target && typeof getComputedStyle === "function"
+        ? getComputedStyle(target).getPropertyValue(property).trim()
+        : "");
+
+    current = resolved || fallback?.trim() || current;
+  }
+
+  return current;
+}
 
 export function ColorPickerInput(props: ColorPickerInputProps) {
   if (props.mode === "popover") {
@@ -42,6 +77,8 @@ function SwatchesColorPicker({
   hideSwatches = false,
 }: ColorPickerInputProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const themeContainer = React.useContext(NajmThemeContainerCtx);
+  const resolvedValue = resolvePickerColor(value, themeContainer);
 
   return (
     <BaseInput
@@ -62,7 +99,7 @@ function SwatchesColorPicker({
         <input
           ref={inputRef}
           type="color"
-          value={toPickerHex(value)}
+          value={toPickerHex(resolvedValue)}
           onChange={(e) => onChange(e.target.value)}
           disabled={disabled}
           className="sr-only"
@@ -107,8 +144,10 @@ function PopoverColorPicker({
   formats = DEFAULT_FORMATS,
   output = "preserve",
 }: ColorPickerInputProps) {
-  const initialFormat = formats.includes(detectFormat(value))
-    ? detectFormat(value)
+  const themeContainer = React.useContext(NajmThemeContainerCtx);
+  const resolvedValue = resolvePickerColor(value, themeContainer);
+  const initialFormat = formats.includes(detectFormat(resolvedValue))
+    ? detectFormat(resolvedValue)
     : formats[0] ?? "hex";
   const [activeFormat, setActiveFormat] = useState<ColorFormat>(initialFormat);
   const [draft, setDraft] = useState<string>(value);
@@ -163,14 +202,18 @@ function PopoverColorPicker({
         >
           <span
             className="w-8 h-8 rounded-md border border-border shrink-0"
-            style={{ backgroundColor: toPickerHex(value) }}
+            style={{ backgroundColor: value }}
           />
           <span className="text-sm text-muted-foreground font-mono truncate">{value}</span>
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-64 flex flex-col gap-3" align="start">
         <HexColorPicker
-          color={toPickerHex(draft)}
+          color={toPickerHex(
+            draft === value
+              ? resolvedValue
+              : resolvePickerColor(draft, themeContainer),
+          )}
           onChange={handlePickerChange}
           style={{ width: "100%" }}
         />
