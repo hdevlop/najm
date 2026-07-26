@@ -43,7 +43,6 @@ afterEach(() => {
     value: originalMatchMedia,
   });
 });
-
 function menuLabels(container: HTMLElement | Document): string[] {
   const menu = container.querySelector("[data-context-menu]");
   if (!menu) return [];
@@ -599,7 +598,7 @@ describe("menu-unified.test.tsx", () => {
 
       // Clamped left should be innerWidth - 8 - 192, not the raw edgeX
       const clampedLeft = Math.max(8, window.innerWidth - 8 - 192);
-      expect(menu!.style.left).toBe(`${clampedLeft}px`);
+      expect((menu as HTMLElement).style.left).toBe(`${clampedLeft}px`);
     } finally {
       HTMLElement.prototype.getBoundingClientRect = origGBCR;
     }
@@ -642,8 +641,8 @@ describe("menu-unified.test.tsx", () => {
 
       const clampedLeft = Math.max(8, window.innerWidth - 8 - 192);
       const clampedTop = Math.max(8, window.innerHeight - 8 - 80);
-      expect(menu!.style.left).toBe(`${clampedLeft}px`);
-      expect(menu!.style.top).toBe(`${clampedTop}px`);
+      expect((menu as HTMLElement).style.left).toBe(`${clampedLeft}px`);
+      expect((menu as HTMLElement).style.top).toBe(`${clampedTop}px`);
     } finally {
       HTMLElement.prototype.getBoundingClientRect = origGBCR;
     }

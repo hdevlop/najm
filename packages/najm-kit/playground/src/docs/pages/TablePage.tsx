@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import type { ColumnDef, Row, RowSelectionState } from '@tanstack/react-table';
-import { NTable, NPageHeader, NPageHeaderActions, NButton, Badge, type TableHeaderColor } from 'najm-kit';
+import { NTable, NPageHeader, NPageHeaderActions, NButton, Badge, Switch, type TableHeaderColor, type NTableColumnDef } from 'najm-kit';
 import {
   DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
   DropdownMenuLabel, DropdownMenuSeparator,
@@ -110,6 +110,30 @@ const BASE_COLUMNS: ColumnDef<Member>[] = [
   },
 ];
 
+// ── Responsive columns ────────────────────────────────────────────────────────
+
+function RESPONSIVE_COLUMNS(canReadEmail: boolean): NTableColumnDef<Member>[] {
+  return [
+    { accessorKey: 'name', header: 'Name' },
+    {
+      accessorKey: 'email',
+      header: 'Email',
+      meta: {
+        visible: canReadEmail,
+        hiddenBelow: 'lg',
+      },
+    },
+    { accessorKey: 'role', header: 'Role' },
+    { accessorKey: 'status', header: 'Status' },
+    {
+      accessorKey: 'department',
+      header: 'Department',
+      meta: { hiddenBelow: 'lg' },
+    },
+    { accessorKey: 'joined', header: 'Joined' },
+  ];
+}
+
 // ── Card renderer ─────────────────────────────────────────────────────────────
 
 function MemberCard({ data }: { data: Member; row: Row<Member> }) {
@@ -179,6 +203,7 @@ export function TablePage() {
   const [bordered, setBordered]                         = useState(false);
   const [colorThemeKey, setColorThemeKey]               = useState<TableHeaderColor | 'default'>('default');
   const [rowSelection, setRowSelection]                 = useState<RowSelectionState>({});
+  const [canReadEmail, setCanReadEmail]                 = useState(true);
 
   const baseData = tableState === 'empty' ? [] : MEMBERS;
   const selectedCount = Object.values(rowSelection).filter(Boolean).length;
@@ -455,6 +480,71 @@ export function TablePage() {
             filters={[
               { name: 'search', type: 'search', placeholder: 'Search members…' },
             ]}
+          />
+        </div>
+      </Example>
+
+      <Example
+        title="Responsive columns"
+        description='Each column can carry meta.visible (app-owned eligibility) and meta.hiddenBelow (Tailwind breakpoint). Toggle the capability below, then switch the viewport with the toolbar above (mobile / tablet / desktop) to see hiddenBelow hide the Department and Joined columns below the lg breakpoint.'
+        previewHeight="h-[560px]"
+        center={false}
+        noPad
+        code={`const canReadEmail = /* from your app's role/capability check */ true;
+
+const columns: NTableColumnDef<Member>[] = [
+  { accessorKey: 'name', header: 'Name' },
+  {
+    accessorKey: 'email',
+    header: 'Email',
+    meta: {
+      visible: canReadEmail,
+      hiddenBelow: 'lg',
+    },
+  },
+  { accessorKey: 'role', header: 'Role' },
+  { accessorKey: 'status', header: 'Status' },
+  {
+    accessorKey: 'department',
+    header: 'Department',
+    meta: { hiddenBelow: 'lg' },
+  },
+  { accessorKey: 'joined', header: 'Joined' },
+];
+
+<NTable
+  data={members}
+  columns={columns}
+  getRowId={(row) => row.id}
+  showPagination={false}
+  showSorting={false}
+  showAddButton={false}
+  showCheckbox={false}
+  showColumnVisibility={false}
+/>`}
+      >
+        <div className="flex h-full flex-col gap-3 p-4">
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/40 px-3 py-2">
+            <div className="flex flex-col">
+              <span className="text-sm font-medium">can(&quot;members.email.read&quot;)</span>
+              <span className="text-xs text-muted-foreground">
+                App-owned capability gate. Toggle off to remove the Email column everywhere (table, loading skeleton, settings menu).
+              </span>
+            </div>
+            <Switch checked={canReadEmail} onCheckedChange={setCanReadEmail} />
+          </div>
+          <NTable<Member>
+            data={MEMBERS}
+            columns={RESPONSIVE_COLUMNS(canReadEmail)}
+            getRowId={(row) => row.id}
+            showPagination={false}
+            showSorting={false}
+            showAddButton={false}
+            showCheckbox={false}
+            showColumnVisibility={false}
+            defaultPagination={{ pageIndex: 0, pageSize: 8 }}
+            pageSizeOptions={[5, 8, 10]}
+            density="comfortable"
           />
         </div>
       </Example>

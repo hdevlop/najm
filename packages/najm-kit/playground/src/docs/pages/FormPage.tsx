@@ -229,17 +229,20 @@ const contactSchema = z.object({
   birthdate: z.date().optional(),
   rating: z.number().min(1, 'Please rate').optional(),
   mood: z.number().optional(),
+  timeZone: z.string().min(1, 'Choose a time zone'),
 });
 
 function SpecialtyFormDemo() {
   const [result, setResult] = useState<any>(null);
   if (result) return <ResultShell result={result} onReset={() => setResult(null)} />;
   return (
-    <FormShell icon={<Phone size={16} />} title="Contact Info" subtitle="Phone, date picker, star rating, and emoji mood.">
-      <NForm schema={contactSchema} defaultValues={{ phone: '', birthdate: undefined, rating: 0, mood: 0 }} onSubmit={async (v) => setResult(v)}>
+    <FormShell icon={<Globe size={16} />} title="Contact Info" subtitle="Phone, date picker, time zone, star rating, and emoji mood.">
+      <NForm schema={contactSchema} defaultValues={{ phone: '', birthdate: undefined, rating: 0, mood: 0, timeZone: 'America/New_York' }} onSubmit={async (v) => setResult(v)}>
         <FormInput name="phone" type="phone" formLabel="Phone Number" icon={<Phone size={14} />} />
         <FormInput name="birthdate" type="date" formLabel="Date of Birth" placeholder="Pick a date" icon={<Calendar size={14} />} />
-        <FormInput name="rating" type="starRating" formLabel="Overall Rating" icon={<Star size={14} />} required />
+        <FormInput name="timeZone" type="timeZone" formLabel="Time Zone" icon={<Globe size={14} />} />
+        <FormInput name="timeZone" type="timeZone" formLabel="Time Zone" icon={<Globe size={14} />} />
+   <FormInput name="rating" type="starRating" formLabel="Overall Rating" icon={<Star size={14} />} required />
         <FormInput name="mood" type="emoji" formLabel="Current Mood" icon={<Smile size={14} />} />
         <NButton type="submit" className="mt-2 w-full">Submit</NButton>
       </NForm>
@@ -512,7 +515,7 @@ const schema = z.object({
 
       <Example
         title="Specialty inputs"
-        description="Phone, date picker, star rating, and emoji mood selector — via the same FormInput API."
+        description="Phone, date picker, time zone, star rating, and emoji mood selector — via the same FormInput API."
         previewHeight="h-[480px]"
         noPad
         center={false}

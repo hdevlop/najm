@@ -2,7 +2,6 @@ import type {
   NajmAccent,
   NajmMode,
   NajmPreset,
-  NajmRadiusScale,
   NajmThemeConfig,
   NajmThemeTokens,
 } from './types';
@@ -10,7 +9,6 @@ import type {
 const MODES = ['light', 'dark'] as const satisfies readonly NajmMode[];
 const ACCENTS = ['neutral', 'emerald', 'green', 'slate', 'blue', 'violet'] as const satisfies readonly NajmAccent[];
 const PRESETS = ['light', 'dark', 'dark-emerald', 'dark-green', 'dark-slate', 'dark-blue', 'dark-violet'] as const satisfies readonly NajmPreset[];
-const RADIUS_SCALES = ['shadcn', 'uniform'] as const satisfies readonly NajmRadiusScale[];
 const TOKEN_KEYS = [
   'background',
   'foreground',
@@ -58,8 +56,6 @@ const ROOT_KEYS = new Set([
   'accentOnly',
   'appearance',
   'radius',
-  'radiusScale',
-  'spacing',
 ]);
 const TOKEN_KEY_SET = new Set<string>(TOKEN_KEYS);
 const MODE_KEY_SET = new Set<string>(MODES);
@@ -166,8 +162,6 @@ export function parseNajmThemeConfig(input: unknown): NajmThemeConfig {
   const tokens = parseTokens(value.tokens);
   const overrides = parseOverrides(value.overrides);
   const radius = optionalString(value.radius, 'theme.radius');
-  const radiusScale = optionalEnum(value.radiusScale, RADIUS_SCALES, 'theme.radiusScale');
-  const spacing = optionalString(value.spacing, 'theme.spacing');
 
   if (preset !== undefined) config.preset = preset;
   if (mode !== undefined) config.mode = mode;
@@ -177,8 +171,6 @@ export function parseNajmThemeConfig(input: unknown): NajmThemeConfig {
   if (parsedAccentOnly !== undefined) config.accentOnly = parsedAccentOnly;
   if (appearance !== undefined) config.appearance = appearance;
   if (radius !== undefined) config.radius = radius;
-  if (radiusScale !== undefined) config.radiusScale = radiusScale;
-  if (spacing !== undefined) config.spacing = spacing;
 
   return config;
 }

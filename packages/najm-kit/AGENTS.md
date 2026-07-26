@@ -12,7 +12,10 @@
 - Build from repo root: `bun run build:ui`; package-local equivalent is `bun run --cwd packages/najm-kit build`.
 - Build CSS only: `bun run --cwd packages/najm-kit build:css`.
 - Run tests: `bun run test:ui` or `bun test packages/najm-kit`.
-- Run one file: `bun test packages/najm-kit/test/<file>.test.tsx`.
+- Run one file: `bun run --cwd packages/najm-kit test test/<file>.test.tsx`.
+- Type-check source only (build tsconfig): `bun run --cwd packages/najm-kit typecheck`.
+- Type-check source + tests: `bun run --cwd packages/najm-kit typecheck:tests` (uses `tsconfig.test.json`; pulls `bun` types for `@testing-library` test globals).
+- Lint (alias for both type checks): `bun run --cwd packages/najm-kit lint`; from repo root: `bun run lint:ui`.
 - Run the Vite playground: `bun run --cwd packages/najm-kit dev`; it uses `playground` as Vite root and serves on `127.0.0.1:5177`.
 - Build the playground only when needed: `bun run --cwd packages/najm-kit build:preview`.
 

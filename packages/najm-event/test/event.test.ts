@@ -1141,12 +1141,18 @@ describe("EventService Tests - @Events() Decorator & Constructor Injection", () 
         }
       }
 
+      let resolveShipmentScheduled!: () => void;
+      const shipmentScheduled = new Promise<void>((resolve) => {
+        resolveShipmentScheduled = resolve;
+      });
+
       @Service()
       class ShippingService {
         @On("payment.completed")
         async scheduleShipment(order: any) {
           await new Promise((r) => setTimeout(r, 5));
           processSteps.push("shipment_scheduled");
+          resolveShipmentScheduled();
         }
       }
 
@@ -1168,7 +1174,12 @@ describe("EventService Tests - @Events() Decorator & Constructor Injection", () 
         @Post("/")
         async placeOrder(@Body() body: { items: string[] }) {
           const order = await this.orderService.placeOrder(body.items);
-          await new Promise((r) => setTimeout(r, 50));
+          await Promise.race([
+            shipmentScheduled,
+            new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error("Shipment scheduling timed out")), 1_000);
+            }),
+          ]);
           return { order, steps: [...processSteps] };
         }
       }

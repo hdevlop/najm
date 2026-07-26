@@ -3,6 +3,9 @@
  * Loads Tailwind v4 + najm-kit's theme contract; the playground scans the
  * kit's source directory so utility classes used in components are emitted.
  */
+/* The package build inlines this stylesheet; load it explicitly when the
+   playground aliases najm-kit/theme.css to its unassembled source file. */
+@import "overlayscrollbars/overlayscrollbars.css";
 @import "tailwindcss";
 @import "najm-kit/theme.css";
 

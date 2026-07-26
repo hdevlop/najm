@@ -14,7 +14,9 @@ import {
   SwitchInput,
   DateInput,
   TimeInput,
+  TimeZoneInput,
   PhoneInput,
+
   FileInput,
   ImageInput,
   ColorPickerInput,
@@ -671,6 +673,29 @@ function TimeInputSection() {
   );
 }
 
+function TimeZoneInputSection() {
+  const [timeZone, setTimeZone] = useState('America/New_York');
+
+  return (
+    <ComponentPage title="Time Zone Input" description="Select an IANA time zone for scheduling, localization, and user preferences." category="Data Input">
+      <Example title="Time Zone Selector" center={false} previewHeight="h-48" code={`<TimeZoneInput value={timeZone} onChange={setTimeZone} />`}>
+        <PreviewBox>
+          <Field label="Preferred time zone" helper={`Selected: ${timeZone}`}>
+            <TimeZoneInput value={timeZone} onChange={setTimeZone} />
+          </Field>
+        </PreviewBox>
+      </Example>
+      <Example title="Custom Placeholder" center={false} previewHeight="h-48" code={`<TimeZoneInput value="" onChange={setTimeZone} placeholder="Choose a time zone" />`}>
+        <PreviewBox>
+          <Field label="Time zone">
+            <TimeZoneInput value="" onChange={setTimeZone} placeholder="Choose a time zone" />
+          </Field>
+        </PreviewBox>
+      </Example>
+    </ComponentPage>
+  );
+}
+
 function PhoneInputSection() {
   const [phoneUs, setPhoneUs] = useState('');
   const [phoneFr, setPhoneFr] = useState('');
@@ -1147,7 +1172,7 @@ const sectionMap: Record<string, () => React.ReactElement> = {
   'radio-group': RadioGroupSection,
   'switch-input': SwitchInputSection,
   'date-input': DateInputSection,
-  'time-input': TimeInputSection,
+  'time-zone-input': TimeZoneInputSection,
   'phone-input': PhoneInputSection,
   'file-input': FileInputSection,
   'image-input': ImageInputSection,

@@ -184,6 +184,10 @@ export interface TimeInputProps extends BaseProps {
   disabled?: boolean;
 }
 
+export interface TimeZoneInputProps extends Omit<ComboboxInputProps, "items"> {
+  items?: SelectItemType[];
+}
+
 export interface ImageInputProps extends BaseProps {
   value: File | string | null;
   onChange: (file: File | null) => void;

@@ -21,6 +21,7 @@ export { EmojiInput } from "./EmojiInput";
 export { LangInput } from "./LangInput";
 export { PhoneInput } from "./PhoneInput";
 export { TimeInput } from "./TimeInput";
+export { TimeZoneInput, timeZones } from "./TimeZoneInput";
 export { SliderInput } from "./SliderInput";
 export { getIconColorProps } from "./utils";
 export { formatColor, parseColor, detectFormat, toPickerHex } from "./color/convert";
@@ -47,6 +48,7 @@ export type {
   LangInputProps,
   PhoneInputProps,
   TimeInputProps,
+  TimeZoneInputProps,
   SliderInputProps,
   InputIcon,
   SelectItemType,

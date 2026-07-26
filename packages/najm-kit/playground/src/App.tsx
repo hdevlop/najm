@@ -89,7 +89,7 @@ const pageRegistry: Record<string, () => React.ReactElement> = {
   'radio-group': () => <InputsPage slug="radio-group" />,
   'switch-input': () => <InputsPage slug="switch-input" />,
   'date-input': () => <InputsPage slug="date-input" />,
-  'time-input': () => <InputsPage slug="time-input" />,
+  'time-zone-input': () => <InputsPage slug="time-zone-input" />,
   'phone-input': () => <InputsPage slug="phone-input" />,
   'color-picker': () => <InputsPage slug="color-picker" />,
   'star-rating': () => <InputsPage slug="star-rating" />,

@@ -18,7 +18,7 @@ function getRootInlineVars(): Record<string, string> {
   return out;
 }
 
-describe("NajmThemeProvider — opt-in theming", () => {
+describe("NajmThemeProvider â€” opt-in theming", () => {
   beforeEach(() => {
     (document.documentElement as any).removeAttribute("style");
   });
@@ -80,7 +80,7 @@ describe("NajmThemeProvider — opt-in theming", () => {
     expect((document.documentElement as any).style.getPropertyValue("--background")).toBe("");
   });
 
-  test("radius applies the standard shadcn radius scale without requiring theme tokens", () => {
+  test("radius always applies one uniform scale without requiring theme tokens", () => {
     render(
       <NajmThemeProvider radius="0.75rem">
         <span>x</span>
@@ -90,25 +90,9 @@ describe("NajmThemeProvider — opt-in theming", () => {
     const host = document.querySelector("[data-najm-theme]") as HTMLElement;
     const style = host.getAttribute("style") ?? "";
     expect(style).toContain("--radius: 0.75rem");
-    expect(style).toContain("--radius-md: calc(var(--radius) - 2px)");
+    expect(style).toContain("--radius-md: var(--radius)");
     expect(style).toContain("--radius-lg: var(--radius)");
-    expect(style).toContain("--radius-xl: calc(var(--radius) + 4px)");
-  });
-
-  test("uniform radius scale gives cards, tables, and buttons one shared radius", () => {
-    render(
-      <NajmThemeProvider radius="0.75rem" radiusScale="uniform">
-        <span>x</span>
-      </NajmThemeProvider>
-    );
-
-    const host = document.querySelector("[data-najm-theme]") as HTMLElement;
-    const inline = (host as any).style;
-    expect(inline.getPropertyValue("--radius")).toBe("0.75rem");
-    expect(inline.getPropertyValue("--radius-sm")).toBe("var(--radius)");
-    expect(inline.getPropertyValue("--radius-md")).toBe("var(--radius)");
-    expect(inline.getPropertyValue("--radius-lg")).toBe("var(--radius)");
-    expect(inline.getPropertyValue("--radius-xl")).toBe("var(--radius)");
+    expect(style).toContain("--radius-xl: var(--radius)");
   });
 
   test("applies and updates one JSON-friendly config object", () => {
@@ -118,7 +102,6 @@ describe("NajmThemeProvider — opt-in theming", () => {
           mode: "dark",
           accent: "blue",
           radius: "0.5rem",
-          radiusScale: "uniform",
           tokens: { primary: "oklch(0.6 0.2 250)" },
         }}
       >
@@ -136,7 +119,6 @@ describe("NajmThemeProvider — opt-in theming", () => {
           mode: "light",
           accent: "emerald",
           radius: "1rem",
-          radiusScale: "uniform",
           tokens: { primary: "oklch(0.7 0.18 155)" },
         }}
       >
@@ -151,9 +133,8 @@ describe("NajmThemeProvider — opt-in theming", () => {
   test("explicit props override JSON config values", () => {
     render(
       <NajmThemeProvider
-        config={{ radius: "1rem", radiusScale: "uniform" }}
+        config={{ radius: "1rem" }}
         radius="0.25rem"
-        radiusScale="shadcn"
       >
         <span>x</span>
       </NajmThemeProvider>
@@ -162,7 +143,7 @@ describe("NajmThemeProvider — opt-in theming", () => {
     const host = document.querySelector("[data-najm-theme]") as HTMLElement;
     const inline = (host as any).style;
     expect(inline.getPropertyValue("--radius")).toBe("0.25rem");
-    expect(inline.getPropertyValue("--radius-md")).toBe("calc(var(--radius) - 2px)");
+    expect(inline.getPropertyValue("--radius-md")).toBe("var(--radius)");
   });
 
   test("accentOnly: only the accent token keys are emitted on the wrapper", () => {

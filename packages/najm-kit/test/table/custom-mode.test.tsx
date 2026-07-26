@@ -117,7 +117,7 @@ describe("NTable custom modes", () => {
   });
 
   test("warns in development when custom render keys are not in availableModes", async () => {
-    const warn = mock(() => {});
+    const warn = mock((..._args: unknown[]) => {});
     console.warn = warn as unknown as typeof console.warn;
 
     render(

@@ -141,6 +141,8 @@
     "test:validation": "turbo run test --filter=najm-validation",
     "test:whatsapp": "turbo run test --filter=najm-whatsapp",
     "test:ui": "bun run --cwd packages/najm-kit test",
+    "lint:ui": "bun run --cwd packages/najm-kit lint",
+    "typecheck:ui": "bun run --cwd packages/najm-kit typecheck:tests",
     "test:seq": "bun run scripts/test-sequential.ts",
     "test:node-runtime": "node scripts/node-runtime-smoke.mjs",
     "test:playground:e2e": "bun --cwd apps/playground test",

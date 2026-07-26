@@ -4,6 +4,7 @@ import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowMo
 import { createTableStore, type TableState } from "./store";
 import { useKeyboard } from "../../hooks/useKeyboard";
 import { useTableStore } from "./TableContext";
+import { filterResponsiveColumns } from "./responsiveColumns";
 
 const ROW_HEIGHT = 56;
 const MIN_ROWS = 5;
@@ -216,7 +217,15 @@ export function useTable() {
   const renderSubRow = useTableStore.use.renderSubRow();
 
   const finalColumns = useMemo(() => {
-    const effectiveColumns = columns.length === 0 && CardComponent ? [{ id: "id", accessorKey: "id", header: "ID" }] : columns;
+    const responsiveColumns = filterResponsiveColumns(columns);
+    // Only fall back to a synthetic ID column when the caller supplied NO columns.
+    // All-supplied columns gated by `meta.visible: false` must NOT produce an
+    // unintended ID column.
+    const callerProvidedColumns = columns.length > 0;
+    const effectiveColumns =
+      responsiveColumns.length === 0 && !callerProvidedColumns && CardComponent
+        ? [{ id: "id", accessorKey: "id", header: "ID" }]
+        : responsiveColumns;
     if (hasActions) {
       const isMenuActions = Boolean(menuButton && openRowMenu);
       return [

@@ -58,7 +58,7 @@ function hasBorderedBaseInputClass(el: HTMLElement | null): boolean {
 function findBaseInputByIcon(container: HTMLElement, lucideClass: string): HTMLElement | null {
   const icons = Array.from(container.querySelectorAll("svg"));
   const target = icons.find((svg) => svg.classList.toString().includes(lucideClass));
-  return target ? findBaseInputWrapper(target) : null;
+  return target ? findBaseInputWrapper(target as unknown as HTMLElement) : null;
 }
 
 describe("NTableHeader bordered opt-in propagation", () => {

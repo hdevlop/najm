@@ -9,8 +9,6 @@ export type NajmPreset =
   | 'dark-blue'
   | 'dark-violet';
 
-export type NajmRadiusScale = 'shadcn' | 'uniform';
-
 export interface NajmAppearance {
   /** Global border thickness, e.g. `'0'`, `'1px'`, `'2px'`. `'0'` hides borders. */
   borderWidth?: string;
@@ -70,14 +68,6 @@ export interface NajmThemeConfig {
   accentOnly?: boolean;
   appearance?: NajmAppearance;
   radius?: string;
-  radiusScale?: NajmRadiusScale;
-  /**
-   * Global spacing base that scales every spacing utility (padding, gap,
-   * margin, sizing) in the subtree. Maps to Tailwind v4's `--spacing` token,
-   * for example `'0.25rem'` (default), `'0.2rem'` (compact), `'0.3rem'`
-   * (comfortable). Acts as a single density dial for the whole UI.
-   */
-  spacing?: string;
 }
 
 export interface NajmThemeProviderProps {
@@ -94,14 +84,6 @@ export interface NajmThemeProviderProps {
   appearance?: NajmAppearance;
   /** Global base radius, for example `0`, `0.5rem`, or `0.75rem`. */
   radius?: string;
-  /**
-   * `shadcn` keeps the standard sm/md/lg offsets around the base radius.
-   * `uniform` makes every non-pill radius utility use the same value.
-   */
-  radiusScale?: NajmRadiusScale;
-  /** Global spacing base mapped to Tailwind's `--spacing` token. Scales all
-   *  padding/gap/margin/sizing utilities in the subtree (density dial). */
-  spacing?: string;
   className?: string;
   asChild?: boolean;
   children: React.ReactNode;

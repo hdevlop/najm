@@ -11,8 +11,6 @@ describe('Najm theme JSON config', () => {
       mode: 'dark',
       accent: 'violet',
       radius: '0.75rem',
-      radiusScale: 'uniform',
-      spacing: '0.2rem',
       appearance: { borderWidth: '2px' },
       tokens: {
         primary: 'oklch(0.62 0.2 290)',
@@ -23,8 +21,6 @@ describe('Najm theme JSON config', () => {
     }));
 
     expect(config.mode).toBe('dark');
-    expect(config.radiusScale).toBe('uniform');
-    expect(config.spacing).toBe('0.2rem');
     expect(config.appearance?.borderWidth).toBe('2px');
     expect(config.tokens?.primary).toBe('oklch(0.62 0.2 290)');
     expect(config.tokens?.sidebar).toBe('oklch(0.18 0.02 290)');
@@ -55,13 +51,13 @@ describe('Najm theme JSON config', () => {
     expect(() => parseNajmThemeConfig({ raduis: '1rem' })).toThrow(
       'Unknown theme property: raduis',
     );
-    expect(() => parseNajmThemeConfig({ radiusScale: 'same' })).toThrow(
-      'theme.radiusScale must be one of: shadcn, uniform',
+    expect(() => parseNajmThemeConfig({ radiusScale: 'uniform' })).toThrow(
+      'Unknown theme property: radiusScale',
     );
   });
 
   test('supports typed authoring and JSON persistence', () => {
-    const config = defineNajmThemeConfig({ mode: 'light', radius: '0.5rem', spacing: '0.25rem' });
+    const config = defineNajmThemeConfig({ mode: 'light', radius: '0.5rem' });
     expect(parseNajmThemeConfig(stringifyNajmThemeConfig(config))).toEqual(config);
   });
 });

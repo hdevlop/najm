@@ -6,6 +6,7 @@ import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import { NajmScroll } from "../ui/scroll";
 import { surfaceBorderClasses } from "../../theme/borders";
+import { filterResponsiveColumns, resolveHiddenBelowClass } from "./responsiveColumns";
 
 const DEFAULT_ROWS = 6;
 const DEFAULT_CARD_COUNT = 16;
@@ -81,7 +82,9 @@ function NTableHeaderSkeleton() {
 }
 
 export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }) {
-  const columns = useTableStore.use.columns() as any[];
+  const rawColumns = useTableStore.use.columns() as any[];
+  const responsiveColumns = React.useMemo(() => filterResponsiveColumns(rawColumns), [rawColumns]);
+  const columns = responsiveColumns as any[];
   const showCheckbox = useTableStore.use.showCheckbox();
   const headerClassName = useTableStore.use.headerClassName();
   const classNames = useTableStore.use.classNames();
@@ -113,7 +116,7 @@ export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }
                 {columns.map((col, i) => (
                   <TableHead
                     key={col?.id ?? col?.accessorKey ?? i}
-                    className="text-foreground h-12"
+                    className={cn("text-foreground h-12", resolveHiddenBelowClass(col?.meta?.hiddenBelow))}
                     style={col?.size ? { width: col.size } : undefined}
                   >
                     {renderHeaderLabel(col?.header)}
@@ -137,7 +140,7 @@ export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }
                   {columns.map((col, c) => (
                     <TableCell
                       key={`skeleton-${r}-${col?.id ?? col?.accessorKey ?? c}`}
-                      className="h-14"
+                      className={cn("h-14", resolveHiddenBelowClass(col?.meta?.hiddenBelow))}
                       style={col?.size ? { width: col.size } : undefined}
                     >
                       <NSkeleton className="h-4 w-full" />

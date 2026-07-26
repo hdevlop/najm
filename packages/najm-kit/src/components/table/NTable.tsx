@@ -18,8 +18,10 @@ import { useTableStore } from "./TableContext";
 import type { ComponentType } from "react";
 import type { ViewMode, CustomModeRenderers, NTableClassNames as NTableClassNamesAlias } from "./store";
 import { useNajmComponentStyle } from "../../theme/design-provider";
+import type { NTableColumnDef } from "./responsiveColumns";
 export type { NTableClassNames } from "./store";
 export type { TableHeaderColor } from "./tableColors";
+export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint } from "./responsiveColumns";
 
 export interface NTableState {
   sorting: SortingState;
@@ -45,7 +47,7 @@ export type NTableMenuProp<T = any> = NTableMenu<T> | ((row: T) => ContextMenuIt
 
 export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   data: T[];
-  columns: ColumnDef<T, any>[];
+  columns: ReadonlyArray<NTableColumnDef<T, any>>;
   loading?: boolean;
   error?: any;
   getRowId?: (row: T) => string;
@@ -276,7 +278,29 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
   );
 }
 
-export function NTable<T = any, M extends ViewMode = ViewMode>(props: NTableProps<T, M>) {
+type NTableColumnDefCompatibilityProps<T, M extends ViewMode> =
+  Omit<NTableProps<NoInfer<T>, M>, "data" | "columns"> & {
+    data: T[];
+    columns: ReadonlyArray<ColumnDef<T, any>>;
+  };
+
+/**
+ * Backward-compatible overload for callers whose reusable column arrays are
+ * declared with TanStack's plain `ColumnDef<T>[]`.
+ */
+export function NTable<T = any, M extends ViewMode = ViewMode>(
+  props: NTableColumnDefCompatibilityProps<T, M>,
+): React.ReactElement;
+/**
+ * Najm-specific overload providing typed `meta.visible` and
+ * `meta.hiddenBelow` metadata.
+ */
+export function NTable<T = any, M extends ViewMode = ViewMode>(
+  props: NTableProps<T, M>,
+): React.ReactElement;
+export function NTable<T = any, M extends ViewMode = ViewMode>(
+  props: NTableProps<T, M> | NTableColumnDefCompatibilityProps<T, M>,
+) {
   const recipe = useNajmComponentStyle("table");
   const recipeBordered = Boolean(recipe?.borderColor || recipe?.borderWidth);
   const availableModes = props.availableModes ?? (["table", "cards", "json"] as const);

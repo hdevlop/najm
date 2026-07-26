@@ -34,7 +34,6 @@ export function toCssVars(config: NajmDesignConfig, layout: ExportLayout): strin
   const tokens = config.theme.tokens ?? {};
   const lines = Object.entries(tokens).map(([k, v]) => `  --${k}: ${v};`);
   if (config.theme.radius) lines.push(`  --radius: ${config.theme.radius};`);
-  if (config.theme.spacing) lines.push(`  --spacing: ${config.theme.spacing};`);
   const t = config.typography;
   if (t?.fontSans) lines.push(`  --font-sans: ${t.fontSans};`);
   if (t?.fontHeading) lines.push(`  --font-heading: ${t.fontHeading};`);

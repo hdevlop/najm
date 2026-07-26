@@ -79,7 +79,6 @@ interface StudioActions {
   setMode: (mode: 'light' | 'dark') => void;
   setAccent: (accent: NajmDesignConfig['theme']['accent']) => void;
   setBorderWidth: (value: string) => void;
-  setSpacing: (value: string) => void;
   setTypography: (patch: Partial<NajmTypographyConfig>) => void;
   setComponentConfig: (name: NajmComponentName, patch: Partial<NajmComponentStyleConfig>) => void;
   setComponentVariantAlias: (
@@ -607,15 +606,6 @@ export function StudioProvider({
     [mutateTheme],
   );
 
-  const setSpacing = useCallback(
-    (value: string) => {
-      mutateTheme((theme) => {
-        theme.spacing = value;
-      });
-    },
-    [mutateTheme],
-  );
-
   const setPreviewGutter = useCallback((value: number) => {
     const gutter = clampSpace(value, DEFAULT_PREVIEW_LAYOUT.gutter);
     setPreviewLayout((prev) => ({ ...prev, gutter }));
@@ -797,7 +787,6 @@ export function StudioProvider({
       setMode,
       setAccent,
       setBorderWidth,
-      setSpacing,
       setTypography,
       setComponentConfig,
       setComponentVariantAlias,
@@ -849,7 +838,6 @@ export function StudioProvider({
       setMode,
       setAccent,
       setBorderWidth,
-      setSpacing,
       setTypography,
       setComponentConfig,
       setComponentVariantAlias,

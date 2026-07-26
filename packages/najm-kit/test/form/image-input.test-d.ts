@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import type { FormInputProps } from "../src/components/form";
+import type { FormInputProps } from "../../src/components/form";
 
 describe("FormInput image type", () => {
   test("accepts an optional controlled value and onChange", () => {

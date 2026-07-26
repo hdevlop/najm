@@ -16,7 +16,7 @@ export const navGroups: NavGroup[] = [
       { slug: 'introduction', label: 'Introduction' },
       { slug: 'installation', label: 'Installation' },
       { slug: 'theming', label: 'Theming' },
-      { slug: 'theme-json-dashboard', label: 'JSON Theme Dashboard', badge: 'New' },
+      { slug: 'theme-json-dashboard', label: 'JSON Design Dashboard', badge: 'New' },
     ],
   },
   {
@@ -58,7 +58,7 @@ export const navGroups: NavGroup[] = [
       { slug: 'radio-group', label: 'Radio Group' },
       { slug: 'switch-input', label: 'Switch' },
       { slug: 'date-input', label: 'Date Input' },
-      { slug: 'time-input', label: 'Time Input' },
+      { slug: 'time-zone-input', label: 'Time Zone Input' },
       { slug: 'phone-input', label: 'Phone Input' },
       { slug: 'color-picker', label: 'Color Picker' },
       { slug: 'star-rating', label: 'Star Rating' },

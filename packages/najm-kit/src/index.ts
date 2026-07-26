@@ -1,7 +1,14 @@
 // Theme
 export { NajmThemeProvider, useNajmAppearance } from "./theme/provider";
+export { NThemeCustomizer } from "./components/ThemeCustomizer";
+export type {
+  NThemeCustomizerProps,
+  NThemeCustomizerTab,
+  NThemeCustomizerFontOption,
+  NThemeCustomizerLabels,
+} from "./components/ThemeCustomizer";
 export { defineNajmThemeConfig, parseNajmThemeConfig, stringifyNajmThemeConfig } from "./theme/config";
-export type { NajmThemeProviderProps, NajmThemeConfig, NajmThemeTokens, NajmMode, NajmAccent, NajmPreset, NajmRadiusScale, NajmAppearance } from "./theme/types";
+export type { NajmThemeProviderProps, NajmThemeConfig, NajmThemeTokens, NajmMode, NajmAccent, NajmPreset, NajmAppearance } from "./theme/types";
 export { composePreset, resolvePreset } from "./theme/presets/compose";
 export { NajmDesignProvider, useNajmDesign, useNajmComponentStyle } from "./theme/design-provider";
 export type { NajmDesignProviderProps } from "./theme/design-provider";
@@ -118,8 +125,8 @@ export { NFileTypeIcon, NFolderIcon } from "./components/data-display/NFileTypeI
 export type { NFileTypeIconProps, NFolderIconProps } from "./components/data-display/NFileTypeIcon";
 
 // Inputs
-export { BaseInput, TextInput, NumberInput, PasswordInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, CheckboxInput, CheckboxGroupInput, SwitchInput, DateInput, FileInput, NUploader, ImageInput, StarRatingInput, ColorArrayInput, ColorPickerInput, EmojiInput, LangInput, PhoneInput, TimeInput, SliderInput, getIconColorProps } from "./components/inputs";
-export type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, ComboboxInputProps, MultiSelectInputProps, RadioGroupInputProps, CheckboxInputProps, CheckboxGroupInputProps, SwitchInputProps, DateInputProps, FileInputProps, NUploaderProps, NUploaderItem, NUploaderItemStatus, ImageInputProps, StarRatingInputProps, ColorArrayInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeInputProps, SliderInputProps, InputIcon, SelectItemType } from "./components/inputs";
+export { BaseInput, TextInput, NumberInput, PasswordInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, CheckboxInput, CheckboxGroupInput, SwitchInput, DateInput, FileInput, NUploader, ImageInput, StarRatingInput, ColorArrayInput, ColorPickerInput, EmojiInput, LangInput, PhoneInput, TimeInput, TimeZoneInput, SliderInput, getIconColorProps } from "./components/inputs";
+export type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, ComboboxInputProps, MultiSelectInputProps, RadioGroupInputProps, CheckboxInputProps, CheckboxGroupInputProps, SwitchInputProps, DateInputProps, FileInputProps, NUploaderProps, NUploaderItem, NUploaderItemStatus, ImageInputProps, StarRatingInputProps, ColorArrayInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeInputProps, TimeZoneInputProps, SliderInputProps, InputIcon, SelectItemType } from "./components/inputs";
 export { Slider, type SliderProps } from "./components/inputs/SliderInput";
 export { NSlider, sliderVariants } from "./components/Slider";
 export type { NSliderProps, SliderVariant, SliderSize, SliderOrientation } from "./components/Slider";
@@ -138,8 +145,8 @@ export { NForm, FormInput, NFormSectionHeader, RepeatingFields, DynamicArray, Pr
 export type { FormInputBackground, FormInputProps, FormProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./components/form";
 
 // Table
-export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard } from "./components/table";
-export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp } from "./components/table";
+export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses } from "./components/table";
+export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp, NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint } from "./components/table";
 export type { NDataCardShellProps, NDataCardShellActions } from "./components/table";
 export type { NTableCardRootProps, NFileBrowserProps, NFileBrowserCardProps, NFileBrowserRenderThumbProps, FileNode, FileBrowserMode, BuildDefaultFileColumnsOptions } from "./components/table";
 

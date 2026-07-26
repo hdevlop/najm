@@ -9,7 +9,10 @@ const themeCssPath = resolve(packageRoot, "src", "theme.css");
 const distThemeCssPath = resolve(packageRoot, "dist", "theme.css");
 
 test("compiled rounded utilities preserve runtime radius variables", async () => {
-  const result = await postcss([tailwindcss()]).process(
+  // @tailwindcss/postcss carries its own compatible PostCSS declaration copy;
+  // cast only at this test boundary to avoid treating duplicate package paths
+  // as different plugin protocols.
+  const result = await postcss([tailwindcss() as any]).process(
     '@import "tailwindcss";\n@import "../../src/theme.css";\n@source inline("rounded-md rounded-xl");',
     { from: resolve(packageRoot, "test", "theme", "radius-fixture.css") },
   );

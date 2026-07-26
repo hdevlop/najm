@@ -23,6 +23,7 @@
 /* Classes built dynamically at runtime (borders.ts, BaseInput.tsx, responsive
    helpers) never appear as literals the scanner can find, so safelist them. */
 @source inline("{sm,md,lg}:{hidden,flex}");
+@source inline("{sm,md,lg,xl,2xl}:table-cell");
 @source inline("border-{black,white}");
 @source inline("border-{gray,slate,zinc,neutral,stone,red,orange,amber,yellow,green,teal,blue,indigo,purple}{,-600}");
 @source inline("najm-border najm-border-t najm-border-r najm-border-b najm-border-l");
@@ -37,7 +38,7 @@
    utilities resolve the semantic token at the themed element. Radius tokens
    intentionally live in the non-inline block below so rounded-* utilities
    keep referencing --radius-* and can be changed at runtime by
-   NajmThemeProvider's radiusScale. */
+   NajmThemeProvider's radius setting. */
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -106,7 +107,7 @@
 
 /* Typography variables emitted by NajmDesignProvider. */
 [data-najm-design-vars] {
-  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-family: var(--font-sans, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
   font-size: var(--font-size-base, 14px);
   line-height: var(--line-height-base, 1.5);
   letter-spacing: var(--letter-spacing-base, 0);
@@ -133,11 +134,11 @@
   [data-slot="dialog-title"],
   [data-slot="sheet-title"]
 ) {
-  font-family: var(--font-heading, var(--font-sans, ui-sans-serif, system-ui, sans-serif));
+  font-family: var(--font-heading, var(--font-sans, ui-sans-serif)), var(--font-sans, ui-sans-serif), ui-sans-serif, system-ui, sans-serif;
 }
 
 [data-najm-design-vars] :where(code, kbd, pre, samp) {
-  font-family: var(--font-mono, ui-monospace, monospace);
+  font-family: var(--font-mono, ui-monospace), ui-monospace, SFMono-Regular, Consolas, monospace;
 }
 
 /* Default token values (oklch). Override globally via :root / .dark, or per

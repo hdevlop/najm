@@ -152,7 +152,7 @@ const RAW_PRESETS: StudioPreset[] = [
     name: "Najm Default",
     config: {
       version: 1,
-      theme: { mode: "light", accent: "neutral", radius: "0.625rem", radiusScale: "shadcn" },
+      theme: { mode: "light", accent: "neutral", radius: "10px" },
       typography: baseTypography,
       components: {},
     },
@@ -162,7 +162,7 @@ const RAW_PRESETS: StudioPreset[] = [
     name: "Shadcn Neutral",
     config: {
       version: 1,
-      theme: { mode: "light", accent: "neutral", radius: "0.5rem", radiusScale: "shadcn" },
+      theme: { mode: "light", accent: "neutral", radius: "8px" },
       typography: baseTypography,
     },
   },
@@ -174,8 +174,7 @@ const RAW_PRESETS: StudioPreset[] = [
       theme: {
         mode: "dark",
         accent: "violet",
-        radius: "0.75rem",
-        radiusScale: "uniform",
+        radius: "12px",
         tokens: { primary: "oklch(0.62 0.24 292)" },
       },
       typography: baseTypography,
@@ -191,7 +190,7 @@ const RAW_PRESETS: StudioPreset[] = [
     name: "Emerald",
     config: {
       version: 1,
-      theme: { mode: "dark", accent: "emerald", radius: "0.625rem" },
+      theme: { mode: "dark", accent: "emerald", radius: "10px" },
       typography: baseTypography,
     },
   },
@@ -200,7 +199,7 @@ const RAW_PRESETS: StudioPreset[] = [
     name: "Dashboard Blue",
     config: {
       version: 1,
-      theme: { mode: "light", accent: "blue", radius: "0.5rem" },
+      theme: { mode: "light", accent: "blue", radius: "8px" },
       typography: baseTypography,
       components: { card: { radius: "lg" }, button: { radius: "sm" } },
     },
@@ -213,9 +212,7 @@ const RAW_PRESETS: StudioPreset[] = [
       theme: {
         mode: "light",
         accent: "neutral",
-        radius: "0.375rem",
-        radiusScale: "shadcn",
-        spacing: "0.25rem",
+        radius: "6px",
         tokens: smsLightTokens,
       },
       typography: smsTypography,
@@ -236,9 +233,7 @@ const RAW_PRESETS: StudioPreset[] = [
         theme: {
           mode: "dark",
           accent: "neutral",
-          radius: "0.375rem",
-          radiusScale: "shadcn",
-          spacing: "0.25rem",
+          radius: "6px",
           tokens: smsDarkTokens,
         },
         typography: smsTypography,
@@ -260,7 +255,7 @@ const RAW_PRESETS: StudioPreset[] = [
     name: "Warm Professional",
     config: {
       version: 1,
-      theme: { mode: "dark", accent: "slate", radius: "0.5rem" },
+      theme: { mode: "dark", accent: "slate", radius: "8px" },
       typography: { ...baseTypography, fontSans: "Inter, ui-sans-serif, system-ui, sans-serif" },
     },
   },
@@ -272,7 +267,7 @@ const RAW_PRESETS: StudioPreset[] = [
       theme: {
         mode: "dark",
         accent: "neutral",
-        radius: "0.25rem",
+        radius: "4px",
         appearance: { borderWidth: "2px" },
         tokens: {
           background: "oklch(0 0 0)",

@@ -1,7 +1,7 @@
 import { describe, test, expect, mock } from "bun:test";
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
-import type { Row } from "@tanstack/react-table";
+import type { Row as TanStackRow } from "@tanstack/react-table";
 
 import { NDataCardShell } from "../../src/components/table/NDataCardShell";
 
@@ -17,7 +17,7 @@ describe("data-card-shell.test.tsx", () => {
       getCanExpand: () => true,
       getIsExpanded: () => false,
       toggleExpanded: mock(),
-    } as unknown as Row<Row>;
+    } as unknown as TanStackRow<Row>;
 
     const { container } = render(
       <NDataCardShell row={row}>
@@ -42,7 +42,7 @@ describe("data-card-shell.test.tsx", () => {
       getCanExpand: () => false,
       getIsExpanded: () => false,
       toggleExpanded: mock(),
-    } as unknown as Row<Row>;
+    } as unknown as TanStackRow<Row>;
 
     const { container } = render(
       <NDataCardShell row={row} onClick={onClick}>
@@ -60,7 +60,7 @@ describe("data-card-shell.test.tsx", () => {
     // onClick should NOT have been called (checkbox click is stopped)
     expect(onClick).not.toHaveBeenCalled();
     // toggleSelected should have been called
-    const rowObj = row as unknown as { toggleSelected: mock };
+    const rowObj = row as unknown as { toggleSelected: ReturnType<typeof mock> };
     expect(rowObj.toggleSelected).toHaveBeenCalled();
   });
 
@@ -73,7 +73,7 @@ describe("data-card-shell.test.tsx", () => {
       getCanExpand: () => false,
       getIsExpanded: () => false,
       toggleExpanded: mock(),
-    } as unknown as Row<Row>;
+    } as unknown as TanStackRow<Row>;
 
     const { container } = render(
       <NDataCardShell row={row}>
@@ -97,7 +97,7 @@ describe("data-card-shell.test.tsx", () => {
       getCanExpand: () => false,
       getIsExpanded: () => false,
       toggleExpanded: mock(),
-    } as unknown as Row<Row>;
+    } as unknown as TanStackRow<Row>;
 
     const { container } = render(
       <NDataCardShell row={row} bordered>
@@ -122,7 +122,7 @@ describe("data-card-shell.test.tsx", () => {
       getCanExpand: () => false,
       getIsExpanded: () => false,
       toggleExpanded: mock(),
-    } as unknown as Row<Row>;
+    } as unknown as TanStackRow<Row>;
 
     const { container } = render(
       <NDataCardShell row={row}>

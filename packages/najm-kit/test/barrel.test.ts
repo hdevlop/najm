@@ -161,6 +161,13 @@ describe("Root barrel import", () => {
     expect(typeof najmUI.useDialog).toBe("function");
   });
 
+  test("exports NTable responsive column helpers", () => {
+    expect(typeof najmUI.filterResponsiveColumns).toBe("function");
+    expect(typeof najmUI.resolveHiddenBelowClass).toBe("function");
+    expect(najmUI.hiddenBelowClasses).toBeDefined();
+    expect(najmUI.hiddenBelowClasses.lg).toBe("hidden lg:table-cell");
+  });
+
   test("exports WizardForm component", () => {
     expect(najmUI.WizardForm).toBeDefined();
   });
@@ -203,6 +210,10 @@ describe("Root barrel import", () => {
 
   test("exports NNavbar component", () => {
     expect(najmUI.NNavbar).toBeDefined();
+  });
+
+  test("exports NThemeCustomizer component", () => {
+    expect(najmUI.NThemeCustomizer).toBeDefined();
   });
 
   test("exports NCommandPalette component", () => {

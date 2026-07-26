@@ -1,4 +1,4 @@
-export { NTable, type NTableProps, type NTableState, type NTableClassNames, type TableHeaderColor, type NTableMenu, type NTableMenuProp } from "./NTable";
+export { NTable, type NTableProps, type NTableState, type NTableClassNames, type TableHeaderColor, type NTableMenu, type NTableMenuProp, type NTableColumnDef, type NTableColumnMeta, type NTableColumnBreakpoint } from "./NTable";
 export { NTableContent } from "./NTableContent";
 export { NTableCards } from "./NTableCards";
 export { NTablePagination } from "./NTablePagination";
@@ -11,3 +11,4 @@ export { NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelat
 export { TableStoreContext, useTableStore } from "./TableContext";
 export { createTableStore, type TableState, type TableStore, type NTableClassNames as StoreClassNames, type ViewMode, type BuiltInViewMode, type CustomModeRenderers } from "./store";
 export { useStoreSync, useDynamicPageSize, useTable, useTableKeyboard } from "./hooks";
+export { filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses } from "./responsiveColumns";

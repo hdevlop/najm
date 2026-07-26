@@ -1,4 +1,4 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, test, jest } from "bun:test";
 import React from "react";
 import { render, fireEvent } from "@testing-library/react";
 import { ColorPickerInput } from "../../src/components/inputs/ColorPickerInput";
@@ -25,6 +25,36 @@ describe("ColorPickerInput", () => {
       <ColorPickerInput value="#ff0000" onChange={() => {}} mode="popover" />
     );
     expect(getByText("#ff0000")).toBeTruthy();
+  });
+
+  test("popover preset click emits the preserved color from portal content", () => {
+    const onChange = jest.fn();
+    const { container } = render(
+      <ColorPickerInput value="oklch(0.6 0.2 100)" onChange={onChange} mode="popover" />
+    );
+    const trigger = container.querySelector("button") as HTMLButtonElement;
+    fireEvent.click(trigger);
+    const swatch = document.body.querySelector(
+      'button[title="#3B82F6"]',
+    ) as HTMLButtonElement;
+    expect(swatch).toBeTruthy();
+    fireEvent.click(swatch);
+    expect(onChange).toHaveBeenCalledWith("#3B82F6");
+  });
+
+  test("popover invalid draft does not emit", () => {
+    const onChange = jest.fn();
+    const { container } = render(
+      <ColorPickerInput value="#ff0000" onChange={onChange} mode="popover" />
+    );
+    fireEvent.click(container.querySelector("button") as HTMLButtonElement);
+    const input = document.body.querySelector(
+      '[data-slot="popover-content"] input[type="text"]',
+    ) as HTMLInputElement;
+    expect(input).toBeTruthy();
+    fireEvent.change(input, { target: { value: "not-a-color" } });
+    expect(input.value).toBe("not-a-color");
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   test("swatch click emits the color", () => {

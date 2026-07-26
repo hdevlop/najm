@@ -9,6 +9,7 @@ import { surfaceBorderClasses } from "../../theme/borders";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
 import { useTableStore } from "./TableContext";
+import { resolveHiddenBelowClass } from "./responsiveColumns";
 import {
   DEFAULT_TABLE_BORDER_COLOR,
   DEFAULT_TABLE_HEADER_COLOR,
@@ -164,20 +165,24 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                   style={headerCellStyle}
                 />
               )}
-              {hg.headers.map((header) => (
-                <TableHead
-                  key={header.id}
-                  className="text-foreground h-12"
-                  style={headerCellStyle}
-                >
-                  {header.isPlaceholder ? null : (
-                    <div className={cn("flex items-center gap-2", header.column.getCanSort() && showSorting && "cursor-pointer select-none")} onClick={header.column.getToggleSortingHandler()}>
-                      {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getCanSort() && showSorting && <span>{getSortIcon(header.column)}</span>}
-                    </div>
-                  )}
-                </TableHead>
-              ))}
+              {hg.headers.map((header) => {
+                const headerMeta = (header.column.columnDef as any).meta || {};
+                const responsiveClass = resolveHiddenBelowClass(headerMeta.hiddenBelow);
+                return (
+                  <TableHead
+                    key={header.id}
+                    className={cn("text-foreground h-12", responsiveClass)}
+                    style={headerCellStyle}
+                  >
+                    {header.isPlaceholder ? null : (
+                      <div className={cn("flex items-center gap-2", header.column.getCanSort() && showSorting && "cursor-pointer select-none")} onClick={header.column.getToggleSortingHandler()}>
+                        {flexRender(header.column.columnDef.header, header.getContext())}
+                        {header.column.getCanSort() && showSorting && <span>{getSortIcon(header.column)}</span>}
+                      </div>
+                    )}
+                  </TableHead>
+                );
+              })}
             </TableRow>
           ))}
         </TableHeader>
@@ -236,8 +241,9 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                       const columnDef = cell.column.columnDef as any;
                       const meta = columnDef.meta || {};
                       const isEditable = Boolean(onCellEdit) && Boolean(meta.editable);
+                      const responsiveClass = resolveHiddenBelowClass(meta.hiddenBelow);
                       return (
-                        <TableCell key={cell.id} className="h-14">
+                        <TableCell key={cell.id} className={cn("h-14", responsiveClass)}>
                           {isEditable ? <EditableCell cell={cell} onCellEdit={onCellEdit} /> : flexRender(columnDef.cell, cell.getContext())}
                         </TableCell>
                       );
@@ -254,7 +260,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
               );
             })
           ) : (
-            <TableRow style={rowBorderStyle}><TableCell colSpan={columns.length + (showCheckbox ? 1 : 0) + (hasExpansion ? 1 : 0)} className="h-16 text-center">{noResultsText}</TableCell></TableRow>
+            <TableRow style={rowBorderStyle}><TableCell colSpan={(table.getVisibleLeafColumns?.()?.length ?? columns.length) + (showCheckbox ? 1 : 0) + (hasExpansion ? 1 : 0)} className="h-16 text-center">{noResultsText}</TableCell></TableRow>
           )}
         </TableBody>
       </Table>

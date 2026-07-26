@@ -12,7 +12,7 @@ Peer dependencies: `react >=18`, `react-dom >=18`. Requires **Tailwind CSS v4** 
 
 Optional peer dependencies: `recharts`, `@tanstack/react-table`, `react-hook-form`, `@tanstack/react-query`.
 
-## Styling — the entire setup
+## Styling â€” the entire setup
 
 najm-kit is a Tailwind v4, shadcn-compatible library. PostCSS config (`postcss.config.mjs`):
 
@@ -20,7 +20,7 @@ najm-kit is a Tailwind v4, shadcn-compatible library. PostCSS config (`postcss.c
 export default { plugins: { "@tailwindcss/postcss": {} } };
 ```
 
-Your global stylesheet — **two imports, that's it**:
+Your global stylesheet â€” **two imports, that's it**:
 
 ```css
 @import "tailwindcss";
@@ -29,12 +29,12 @@ Your global stylesheet — **two imports, that's it**:
 
 This gives you every najm-kit component styled, dark mode wired (the `.dark` class),
 and a full token-backed palette you can use in your own markup too
-(`bg-background`, `bg-card`, `bg-primary`, `text-muted-foreground`, `border-border`, …).
+(`bg-background`, `bg-card`, `bg-primary`, `text-muted-foreground`, `border-border`, â€¦).
 
 ### Theming
 
 najm-kit uses the **standard shadcn token names** (no prefix), so you rebrand by
-overriding CSS variables — or paste a theme straight from
+overriding CSS variables â€” or paste a theme straight from
 [tweakcn](https://tweakcn.com) / the shadcn registry:
 
 ```css
@@ -45,7 +45,7 @@ overriding CSS variables — or paste a theme straight from
 Add your own extra colors alongside najm-kit's:
 
 ```css
-@theme { --color-success: oklch(0.7 0.18 150); } /* → bg-success, text-success */
+@theme { --color-success: oklch(0.7 0.18 150); } /* â†’ bg-success, text-success */
 ```
 
 Dark mode: toggle the `dark` class on `<html>` (or any wrapper):
@@ -56,7 +56,7 @@ document.documentElement.classList.toggle("dark");
 
 ## Theme Provider (optional)
 
-For scoped theming without writing CSS — useful for embedded surfaces. The provider
+For scoped theming without writing CSS â€” useful for embedded surfaces. The provider
 is opt-in: with no props it injects nothing and your `:root`/`.dark` CSS owns theming.
 
 ```tsx
@@ -72,7 +72,7 @@ import { NajmThemeProvider } from 'najm-kit';
 <NajmThemeProvider radius="0.75rem">{children}</NajmThemeProvider>
 
 // exact same radius for cards, tables, buttons, inputs, dialogs, etc.:
-<NajmThemeProvider radius="0.75rem" radiusScale="uniform">
+<NajmThemeProvider radius="0.75rem">
   {children}
 </NajmThemeProvider>
 ```
@@ -89,7 +89,6 @@ Store one theme object in a JSON file, local storage, or your settings API:
   "mode": "dark",
   "accent": "violet",
   "radius": "0.75rem",
-  "radiusScale": "uniform",
   "appearance": { "borderWidth": "1px" },
   "tokens": {
     "primary": "oklch(0.62 0.2 290)",
@@ -162,7 +161,58 @@ import { useSelection } from 'najm-kit';
 ## Production Notes
 
 - Designed for dashboard/admin UIs in Najm-powered applications
-- Uses Radix UI primitives under the hood — accessible by default
-- All components are unstyled by default — apply `buttonVariants()`, `badgeVariants()`, etc. with Tailwind
+- Uses Radix UI primitives under the hood â€” accessible by default
+- All components are unstyled by default â€” apply `buttonVariants()`, `badgeVariants()`, etc. with Tailwind
 - Requires Tailwind CSS **v4** in the host application (see Styling above)
-- CodeMirror components are optional peer deps — import from `najm-kit/json` only if needed
+- CodeMirror components are optional peer deps â€” import from `najm-kit/json` only if needed
+
+## NTable responsive columns
+
+`NTable` accepts an `NTableColumnDef<T>[]`. Each column's `meta` can carry:
+
+- `visible?: boolean` — app-owned eligibility gate. Defaults to `true`. Set
+  this from your role / capability decision. Columns with `visible: false`
+  are removed from headers, body cells, the loading skeleton, and the
+  column-settings menu.
+- `hiddenBelow?: "sm" | "md" | "lg" | "xl" | "2xl"` — hide the table column
+  below the chosen Tailwind breakpoint. The column remains visible at that
+  breakpoint and above (mobile-first). Table view only.
+
+```tsx
+import { NTable, type NTableColumnDef } from "najm-kit";
+
+const columns: NTableColumnDef<Family>[] = [
+  { accessorKey: "name", header: "Family account" },
+  {
+    accessorKey: "email",
+    header: "Email",
+    meta: {
+      visible: can("families.email.read"),
+      hiddenBelow: "lg",
+    },
+  },
+];
+```
+
+Notes:
+
+- `visible` is **application-owned eligibility**, not an NTable role system.
+  `NTable` never imports `najm-auth` or reads a session; convert your own
+  role / capabilities to a boolean.
+- Omitting `visible` is the same as `true`.
+- `hiddenBelow` is table-only. Card view, JSON view, and custom modes
+  ignore it. Cards must do their own capability gating inside `renderCard`.
+- Hiding a column is **presentation only**. The backend must still enforce
+  the permission and privacy-project the field. Never rely on UI hiding to
+  protect sensitive data.
+- The user-controlled column visibility menu (settings → Columns) keeps
+  working independently. It can report a column as selected while CSS
+  hides it below the configured breakpoint.
+- The columns the TanStack table receives are already filtered, so the
+  settings menu will not list `visible: false` columns.
+
+If you need to inspect or build your own effective column list, the same
+pure helper is exported as `filterResponsiveColumns`. The literal class
+map is also exported as `hiddenBelowClasses`, and
+`resolveHiddenBelowClass(breakpoint)` returns the class for a single
+breakpoint or `undefined` when no breakpoint is set.

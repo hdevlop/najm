@@ -3,7 +3,6 @@ import { Slot } from '@radix-ui/react-slot';
 import type {
   NajmAppearance,
   NajmMode,
-  NajmRadiusScale,
   NajmThemeConfig,
   NajmThemeProviderProps,
   NajmThemeTokens,
@@ -30,23 +29,15 @@ function tokensToStyle(tokens: NajmThemeTokens, accentOnly?: boolean): React.CSS
   return style as React.CSSProperties;
 }
 
-const SHADCN_RADIUS_SCALE: Record<string, string> = {
-  '--radius-xs': 'calc(var(--radius) - 4px)',
-  '--radius-sm': 'calc(var(--radius) - 4px)',
-  '--radius-md': 'calc(var(--radius) - 2px)',
-  '--radius-lg': 'var(--radius)',
-  '--radius-xl': 'calc(var(--radius) + 4px)',
-  '--radius-2xl': 'calc(var(--radius) + 8px)',
-  '--radius-3xl': 'calc(var(--radius) + 12px)',
-  '--radius-4xl': 'calc(var(--radius) + 16px)',
-};
+const RADIUS_TOKENS = [
+  '--radius-xs', '--radius-sm', '--radius-md', '--radius-lg', '--radius-xl',
+  '--radius-2xl', '--radius-3xl', '--radius-4xl',
+] as const;
 
-function radiusToStyle(radius: string, scale: NajmRadiusScale): React.CSSProperties {
+function radiusToStyle(radius: string): React.CSSProperties {
   const style: Record<string, string> = { '--radius': radius };
 
-  for (const [key, value] of Object.entries(SHADCN_RADIUS_SCALE)) {
-    style[key] = scale === 'uniform' ? 'var(--radius)' : value;
-  }
+  for (const key of RADIUS_TOKENS) style[key] = 'var(--radius)';
 
   return style as React.CSSProperties;
 }
@@ -118,8 +109,6 @@ export function NajmThemeProvider({
   accentOnly,
   appearance,
   radius,
-  radiusScale,
-  spacing,
   className,
   asChild,
   children,
@@ -131,8 +120,6 @@ export function NajmThemeProvider({
   const effectiveAccent = accent ?? config?.accent;
   const effectiveAccentOnly = accentOnly ?? config?.accentOnly;
   const effectiveRadius = radius ?? config?.radius;
-  const effectiveRadiusScale = radiusScale ?? config?.radiusScale ?? 'shadcn';
-  const effectiveSpacing = spacing ?? config?.spacing;
   const effectiveBorderWidth = appearance?.borderWidth ?? config?.appearance?.borderWidth;
 
   const resolved: NajmThemeTokens | null = React.useMemo(() => {
@@ -159,19 +146,15 @@ export function NajmThemeProvider({
     () => {
       const tokenStyle = resolved ? tokensToStyle(resolved, effectiveAccentOnly) : undefined;
       const radiusStyle = effectiveRadius !== undefined
-        ? radiusToStyle(effectiveRadius, effectiveRadiusScale)
+        ? radiusToStyle(effectiveRadius)
         : undefined;
       const borderWidthStyle = effectiveBorderWidth !== undefined
         ? { '--border-width': effectiveBorderWidth } as React.CSSProperties
         : undefined;
-      const spacingStyle = effectiveSpacing !== undefined
-        ? { '--spacing': effectiveSpacing } as React.CSSProperties
-        : undefined;
-
-      if (!tokenStyle && !radiusStyle && !borderWidthStyle && !spacingStyle) return undefined;
-      return { ...tokenStyle, ...radiusStyle, ...borderWidthStyle, ...spacingStyle } as React.CSSProperties;
+      if (!tokenStyle && !radiusStyle && !borderWidthStyle) return undefined;
+      return { ...tokenStyle, ...radiusStyle, ...borderWidthStyle } as React.CSSProperties;
     },
-    [resolved, effectiveAccentOnly, effectiveRadius, effectiveRadiusScale, effectiveSpacing, effectiveBorderWidth],
+    [resolved, effectiveAccentOnly, effectiveRadius, effectiveBorderWidth],
   );
   const Comp: any = asChild ? Slot : 'div';
   const [container, setContainer] = React.useState<HTMLElement | null>(null);

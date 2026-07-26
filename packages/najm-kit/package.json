@@ -1,6 +1,6 @@
 {
   "name": "najm-kit",
-  "version": "2.1.31",
+  "version": "2.1.36",
   "license": "MIT",
   "type": "module",
   "description": "Reusable React UI component package for Najm framework",
@@ -35,6 +35,9 @@
   "scripts": {
     "build": "tsup && node scripts/build-css.mjs",
     "build:css": "node scripts/build-css.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
+    "lint": "bun run typecheck && bun run typecheck:tests",
     "dev": "vite",
     "dev:preview": "vite",
     "preview": "vite preview",

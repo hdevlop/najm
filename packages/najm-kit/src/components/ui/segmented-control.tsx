@@ -15,6 +15,7 @@ export interface SegmentedControlProps<T extends string = string> {
   ariaLabel?: string;
   className?: string;
   size?: "sm" | "md";
+  disabled?: boolean;
 }
 
 const sizeClasses = {
@@ -29,11 +30,13 @@ export function SegmentedControl<T extends string = string>({
   ariaLabel,
   className,
   size = "md",
+  disabled = false,
 }: SegmentedControlProps<T>) {
   return (
     <div
       role="radiogroup"
       aria-label={ariaLabel}
+      data-disabled={disabled ? "" : undefined}
       className={cn(
         "inline-flex items-center rounded-lg bg-muted",
         sizeClasses[size],
@@ -52,10 +55,13 @@ export function SegmentedControl<T extends string = string>({
               opt.ariaLabel ??
               (typeof opt.label === "string" ? opt.label : undefined)
             }
+            disabled={disabled}
+            aria-disabled={disabled || undefined}
             onClick={() => onChange(opt.value)}
             className={cn(
               "inline-flex items-center justify-center gap-1.5 rounded-md font-medium transition-colors",
               "outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "disabled:pointer-events-none disabled:opacity-50",
               selected
                 ? "bg-background text-foreground shadow-sm"
                 : "text-muted-foreground hover:text-foreground"

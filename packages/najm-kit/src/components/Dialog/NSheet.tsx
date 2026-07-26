@@ -73,7 +73,7 @@ export function NSheet({
           )}
         </SheetHeader>
         <NajmScroll axis="y" className="min-h-0 flex-1">
-          <div className={cn("px-6 py-5", bodyClassName)}>
+          <div className={cn("px-2", bodyClassName)}>
             {children}
           </div>
         </NajmScroll>

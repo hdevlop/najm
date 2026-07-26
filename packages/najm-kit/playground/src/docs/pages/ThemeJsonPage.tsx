@@ -1,15 +1,22 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Badge,
   composePreset,
   NButton,
   NCard,
+  NPageHeader,
+  NPageLayout,
+  NThemeCustomizer,
   NSheet,
-  NajmThemeProvider,
+  NajmDesignProvider,
   SelectInput,
-  stringifyNajmThemeConfig,
-  TextInput,
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+  stringifyNajmDesignConfig,
   type NajmAccent,
+  type NajmDesignConfig,
   type NajmMode,
   type NajmThemeConfig,
   type NajmThemeTokens,
@@ -22,7 +29,6 @@ import {
   LayoutDashboard,
   Package,
   Palette,
-  Search,
   Settings,
   Shield,
   Sparkles,
@@ -34,8 +40,7 @@ import { CodeBlock } from '../CodeBlock';
 const violetTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'violet',
-  radius: '0.85rem',
-  radiusScale: 'uniform',
+  radius: '14px',
   appearance: { borderWidth: '1px' },
   tokens: {
     background: 'oklch(0.145 0.024 285.7)',
@@ -78,7 +83,7 @@ const violetTheme: NajmThemeConfig = {
 const emeraldTheme: NajmThemeConfig = {
   ...violetTheme,
   accent: 'emerald',
-  radius: '0.5rem',
+  radius: '8px',
   tokens: {
     ...violetTheme.tokens,
     primary: 'oklch(0.70 0.16 162)',
@@ -97,8 +102,7 @@ const emeraldTheme: NajmThemeConfig = {
 const lightTheme: NajmThemeConfig = {
   mode: 'light',
   accent: 'blue',
-  radius: '1.1rem',
-  radiusScale: 'uniform',
+  radius: '18px',
   appearance: { borderWidth: '1px' },
   tokens: {
     background: 'oklch(0.985 0.006 250)',
@@ -141,8 +145,7 @@ const lightTheme: NajmThemeConfig = {
 const slateTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'slate',
-  radius: '0.5rem',
-  radiusScale: 'uniform',
+  radius: '8px',
   appearance: { borderWidth: '1px' },
   tokens: {
     background: 'oklch(0.13 0.018 260)',
@@ -182,13 +185,12 @@ const slateTheme: NajmThemeConfig = {
   },
 };
 
-// ── World-class presets (popular design systems & editor themes) ──
+// â”€â”€ World-class presets (popular design systems & editor themes) â”€â”€
 
 const tokyoNightTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'blue',
-  radius: '0.6rem',
-  radiusScale: 'uniform',
+  radius: '10px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...violetTheme.tokens,
@@ -232,8 +234,7 @@ const tokyoNightTheme: NajmThemeConfig = {
 const draculaTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'violet',
-  radius: '0.5rem',
-  radiusScale: 'uniform',
+  radius: '8px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...violetTheme.tokens,
@@ -277,8 +278,7 @@ const draculaTheme: NajmThemeConfig = {
 const nordTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'blue',
-  radius: '0.5rem',
-  radiusScale: 'uniform',
+  radius: '8px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...violetTheme.tokens,
@@ -322,8 +322,7 @@ const nordTheme: NajmThemeConfig = {
 const catppuccinTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'violet',
-  radius: '0.85rem',
-  radiusScale: 'uniform',
+  radius: '14px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...violetTheme.tokens,
@@ -367,8 +366,7 @@ const catppuccinTheme: NajmThemeConfig = {
 const githubDarkTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'blue',
-  radius: '0.375rem',
-  radiusScale: 'uniform',
+  radius: '6px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...violetTheme.tokens,
@@ -412,8 +410,7 @@ const githubDarkTheme: NajmThemeConfig = {
 const rosePineTheme: NajmThemeConfig = {
   mode: 'dark',
   accent: 'violet',
-  radius: '0.75rem',
-  radiusScale: 'uniform',
+  radius: '12px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...violetTheme.tokens,
@@ -457,8 +454,7 @@ const rosePineTheme: NajmThemeConfig = {
 const vercelTheme: NajmThemeConfig = {
   mode: 'light',
   accent: 'neutral',
-  radius: '0.5rem',
-  radiusScale: 'uniform',
+  radius: '8px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...lightTheme.tokens,
@@ -502,8 +498,7 @@ const vercelTheme: NajmThemeConfig = {
 const solarizedLightTheme: NajmThemeConfig = {
   mode: 'light',
   accent: 'blue',
-  radius: '0.5rem',
-  radiusScale: 'uniform',
+  radius: '8px',
   appearance: { borderWidth: '1px' },
   tokens: {
     ...lightTheme.tokens,
@@ -553,7 +548,7 @@ const themePresets = [
   { id: 'nord', label: 'Nord', config: nordTheme },
   { id: 'catppuccin', label: 'Catppuccin Mocha', config: catppuccinTheme },
   { id: 'github', label: 'GitHub Dark', config: githubDarkTheme },
-  { id: 'rosepine', label: 'Rosé Pine', config: rosePineTheme },
+  { id: 'rosepine', label: 'RosÃ© Pine', config: rosePineTheme },
   { id: 'light', label: 'Light Blue SaaS', config: lightTheme },
   { id: 'vercel', label: 'Vercel Light', config: vercelTheme },
   { id: 'solarized', label: 'Solarized Light', config: solarizedLightTheme },
@@ -563,105 +558,6 @@ const modeOptions = [
   { value: 'light', label: 'Light' },
   { value: 'dark', label: 'Dark' },
 ];
-
-const accentOptions = [
-  { value: 'neutral', label: 'Neutral' },
-  { value: 'slate', label: 'Slate' },
-  { value: 'blue', label: 'Blue' },
-  { value: 'violet', label: 'Violet' },
-  { value: 'emerald', label: 'Emerald' },
-  { value: 'green', label: 'Green' },
-];
-
-const radiusOptions = [
-  { value: '0', label: 'None — 0' },
-  { value: '0.25rem', label: 'Small — 0.25rem' },
-  { value: '0.5rem', label: 'Default — 0.5rem' },
-  { value: '0.75rem', label: 'Medium — 0.75rem' },
-  { value: '1rem', label: 'Large — 1rem' },
-  { value: '1.5rem', label: 'Extra large — 1.5rem' },
-];
-
-const borderWidthOptions = [
-  { value: '0', label: 'None — 0' },
-  { value: '1px', label: 'Thin — 1px' },
-  { value: '2px', label: 'Medium — 2px' },
-  { value: '3px', label: 'Thick — 3px' },
-];
-
-type TokenCategoryId = 'surfaces' | 'brand' | 'status' | 'sidebar' | 'charts';
-type TokenField = { key: keyof NajmThemeTokens; label: string; hint: string };
-
-const tokenCategories = [
-  {
-    id: 'surfaces',
-    label: 'Surface colors',
-    description: 'App background, cards, popovers, and muted areas.',
-    fields: [
-      { key: 'background', label: 'Background', hint: 'Main app canvas.' },
-      { key: 'foreground', label: 'Foreground', hint: 'Default text color.' },
-      { key: 'card', label: 'Card', hint: 'Cards, panels, and table shells.' },
-      { key: 'card-foreground', label: 'Card foreground', hint: 'Text inside card surfaces.' },
-      { key: 'popover', label: 'Popover', hint: 'Dropdowns, menus, sheets, and floating surfaces.' },
-      { key: 'popover-foreground', label: 'Popover foreground', hint: 'Text inside floating surfaces.' },
-      { key: 'muted', label: 'Muted', hint: 'Muted blocks, rows, and soft sections.' },
-      { key: 'muted-foreground', label: 'Muted foreground', hint: 'Secondary text and descriptions.' },
-    ],
-  },
-  {
-    id: 'brand',
-    label: 'Brand colors',
-    description: 'Primary action colors plus secondary, tertiary, and accent tones.',
-    fields: [
-      { key: 'primary', label: 'Primary', hint: 'Main brand color — also sets ring, sidebar, and chart-1.' },
-      { key: 'primary-foreground', label: 'Primary foreground', hint: 'Text/icons on primary.' },
-      { key: 'secondary', label: 'Secondary', hint: 'Secondary buttons and soft controls.' },
-      { key: 'secondary-foreground', label: 'Secondary foreground', hint: 'Text/icons on secondary.' },
-      { key: 'tertiary', label: 'Tertiary', hint: 'Optional third-level action color.' },
-      { key: 'tertiary-foreground', label: 'Tertiary foreground', hint: 'Text/icons on tertiary.' },
-      { key: 'accent', label: 'Accent', hint: 'Hover and selected background accents.' },
-      { key: 'accent-foreground', label: 'Accent foreground', hint: 'Text/icons on accent.' },
-      { key: 'ring', label: 'Ring', hint: 'Focus ring and highlights.' },
-    ],
-  },
-  {
-    id: 'status',
-    label: 'Status colors',
-    description: 'Error/destructive colors and their readable foreground.',
-    fields: [
-      { key: 'destructive', label: 'Destructive', hint: 'Danger buttons and errors.' },
-      { key: 'destructive-foreground', label: 'Destructive foreground', hint: 'Text/icons on destructive.' },
-    ],
-  },
-  {
-    id: 'sidebar',
-    label: 'Sidebar colors',
-    description: 'Sidebar surface, text, and active navigation. The rest is derived.',
-    fields: [
-      { key: 'sidebar', label: 'Sidebar', hint: 'Sidebar background.' },
-      { key: 'sidebar-foreground', label: 'Sidebar foreground', hint: 'Sidebar text.' },
-      { key: 'sidebar-accent', label: 'Active nav background', hint: 'Selected route background.' },
-      { key: 'sidebar-accent-foreground', label: 'Active nav text', hint: 'Selected route text color.' },
-    ],
-  },
-  {
-    id: 'charts',
-    label: 'Chart colors',
-    description: 'Chart palettes used by analytics and data visualization.',
-    fields: [
-      { key: 'chart-1', label: 'Chart 1', hint: 'Primary chart series.' },
-      { key: 'chart-2', label: 'Chart 2', hint: 'Secondary chart series.' },
-      { key: 'chart-3', label: 'Chart 3', hint: 'Tertiary chart series.' },
-      { key: 'chart-4', label: 'Chart 4', hint: 'Fourth chart series.' },
-      { key: 'chart-5', label: 'Chart 5', hint: 'Fifth chart series.' },
-    ],
-  },
-] as const satisfies readonly {
-  id: TokenCategoryId;
-  label: string;
-  description: string;
-  fields: readonly TokenField[];
-}[];
 
 const navItems = [
   { label: 'Dashboard', icon: LayoutDashboard, active: true },
@@ -679,53 +575,80 @@ const tableRows = [
 ];
 
 const exampleCode = [
-  '// theme.json',
+  '// design.json',
   '{',
-  '  "mode": "dark",',
-  '  "accent": "violet",',
-  '  "radius": "0.85rem",',
-  '  "radiusScale": "uniform",',
-  '  "appearance": { "borderWidth": "1px" },',
-  '  "tokens": {',
-  '    "background": "oklch(0.145 0.024 285.7)",',
-  '    "card": "oklch(0.21 0.034 285.3)",',
-  '    "primary": "oklch(0.62 0.24 292)",',
-  '    "primary-foreground": "oklch(1 0 0)",',
-  '    "sidebar": "oklch(0.18 0.03 286)",',
-  '    "sidebar-foreground": "oklch(0.94 0.01 286)",',
-  '    "chart-1": "oklch(0.70 0.22 292)"',
-  '  }',
+  '  "version": 1,',
+  '  "theme": {',
+  '    "mode": "dark",',
+  '    "accent": "violet",',
+  '    "radius": "14px",',
+  '    "tokens": {',
+  '      "background": "oklch(0.145 0.024 285.7)",',
+  '      "primary": "oklch(0.62 0.24 292)",',
+  '      "sidebar": "oklch(0.18 0.03 286)"',
+  '    }',
+  '  },',
+  '  "typography": { "baseSize": "16px", "scale": "default" },',
+  '  "layout": { "pageGutter": "24px", "sectionGap": "20px" }',
   '}',
   '',
   '// App.tsx',
-  "import rawTheme from './theme.json';",
-  "import { NajmThemeProvider, parseNajmThemeConfig } from 'najm-kit';",
+  "import rawDesign from './design.json';",
+  "import { NThemeCustomizer, NajmDesignProvider, parseNajmDesignConfig } from 'najm-kit';",
   '',
-  'const initialTheme = parseNajmThemeConfig(rawTheme);',
+  'const initialDesign = parseNajmDesignConfig(rawDesign);',
   '',
   'export function App() {',
-  '  const [theme, setTheme] = useState(initialTheme);',
+  '  const [design, setDesign] = useState(initialDesign);',
+  "  const [previewMode, setPreviewMode] = useState(design.theme.mode ?? 'light');",
   '',
   '  return (',
-  '    <NajmThemeProvider config={theme}>',
-  '      <SettingsPage value={theme} onChange={setTheme} />',
+  '    <NajmDesignProvider config={design} mode={previewMode}>',
+  '      <NThemeCustomizer',
+  '        value={design}',
+  '        factoryValue={initialDesign}',
+  '        onChange={setDesign}',
+  '        previewMode={previewMode}',
+  '        onPreviewModeChange={setPreviewMode}',
+  '      />',
   '      <Dashboard />',
-  '    </NajmThemeProvider>',
+  '    </NajmDesignProvider>',
   '  );',
   '}',
 ].join('\\n');
 
-function cloneThemeConfig(config: NajmThemeConfig): NajmThemeConfig {
-  return JSON.parse(JSON.stringify(config)) as NajmThemeConfig;
+function cloneDesignConfig(config: NajmDesignConfig): NajmDesignConfig {
+  return JSON.parse(JSON.stringify(config)) as NajmDesignConfig;
 }
 
-// Editing a base token should keep its derived tokens in sync, so one swatch
-// change recolors the whole brand instead of leaving stale values behind.
-const LINKED_TOKENS: Partial<Record<keyof NajmThemeTokens, (keyof NajmThemeTokens)[]>> = {
-  primary: ['ring', 'sidebar-primary', 'sidebar-ring', 'chart-1'],
+const dashboardFactory: NajmDesignConfig = {
+  version: 1,
+  theme: violetTheme,
+  typography: {
+    fontSans: "'Inter', ui-sans-serif, system-ui, sans-serif",
+    fontHeading: "'Manrope', ui-sans-serif, system-ui, sans-serif",
+    fontMono: "'JetBrains Mono', ui-monospace, Consolas, monospace",
+    baseSize: '16px',
+    scale: 'default',
+    lineHeight: '1.5',
+  },
+  components: {
+    pageHeader: { card: false },
+    sidebar: { showSectionLabels: true, showSectionSeparators: true },
+    input: { borderWidth: '1px' },
+  },
+  layout: { pageGutter: '24px', sectionGap: '20px' },
 };
 
-// composePreset only emits surfaces + 5 accent tokens — no sidebar/chart keys.
+const fontOptions = [
+  { value: "'Inter', ui-sans-serif, system-ui, sans-serif", label: 'Inter' },
+  { value: "'Manrope', ui-sans-serif, system-ui, sans-serif", label: 'Manrope' },
+  { value: "'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif", label: 'Plus Jakarta Sans' },
+  { value: "'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif", label: 'IBM Plex Sans' },
+  { value: "'JetBrains Mono', ui-monospace, Consolas, monospace", label: 'JetBrains Mono' },
+];
+
+// composePreset only emits surfaces + 5 accent tokens â€” no sidebar/chart keys.
 // Derive those from the composed palette so the sidebar (and charts) track the
 // chosen mode/accent instead of falling back to the static stylesheet defaults.
 function composeFullPalette(mode: NajmMode, accent: NajmAccent): NajmThemeTokens {
@@ -748,162 +671,6 @@ function composeFullPalette(mode: NajmMode, accent: NajmAccent): NajmThemeTokens
 
 function FieldLabel({ children }: { children: React.ReactNode }) {
   return <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{children}</p>;
-}
-
-const tokenColorFallbacks: Partial<Record<keyof NajmThemeTokens, string>> = {
-  background: '#111827',
-  foreground: '#f8fafc',
-  card: '#1f2937',
-  'card-foreground': '#f8fafc',
-  popover: '#1f2937',
-  'popover-foreground': '#f8fafc',
-  primary: '#10b981',
-  'primary-foreground': '#ffffff',
-  secondary: '#334155',
-  'secondary-foreground': '#e2e8f0',
-  tertiary: '#475569',
-  'tertiary-foreground': '#e2e8f0',
-  muted: '#334155',
-  'muted-foreground': '#94a3b8',
-  accent: '#164e3b',
-  'accent-foreground': '#bbf7d0',
-  destructive: '#dc2626',
-  'destructive-foreground': '#ffffff',
-  border: '#475569',
-  
-  
-  input: '#475569',
-  ring: '#10b981',
-  sidebar: '#0f172a',
-  'sidebar-foreground': '#f8fafc',
-  'sidebar-primary': '#10b981',
-  'sidebar-primary-foreground': '#ffffff',
-  'sidebar-accent': '#164e3b',
-  'sidebar-accent-foreground': '#bbf7d0',
-  'sidebar-border': '#334155',
-  'sidebar-ring': '#10b981',
-  'chart-1': '#10b981',
-  'chart-2': '#3b82f6',
-  'chart-3': '#f59e0b',
-  'chart-4': '#a855f7',
-  'chart-5': '#ef4444',
-};
-
-// Convert any CSS color (oklch, rgb, named, hex) to a 6-digit hex string using
-// the browser's own color engine via a canvas — no dependency. Returns '' if
-// the input can't be parsed, so callers can fall back.
-let _hexCanvasCtx: CanvasRenderingContext2D | null | undefined;
-function toHexColor(input: string): string {
-  const v = (input ?? '').trim();
-  if (!v) return '';
-  if (/^#[0-9a-f]{6}$/i.test(v)) return v.toLowerCase();
-  if (/^#[0-9a-f]{3}$/i.test(v)) {
-    return `#${v[1]}${v[1]}${v[2]}${v[2]}${v[3]}${v[3]}`.toLowerCase();
-  }
-  if (typeof document === 'undefined') return '';
-  if (_hexCanvasCtx === undefined) _hexCanvasCtx = document.createElement('canvas').getContext('2d');
-  const ctx = _hexCanvasCtx;
-  if (!ctx) return '';
-  // Double-parse against two sentinels: a valid color resolves the same both
-  // times; an invalid one leaves each sentinel untouched (and they differ).
-  ctx.fillStyle = '#000000';
-  ctx.fillStyle = v;
-  const a = ctx.fillStyle;
-  ctx.fillStyle = '#ffffff';
-  ctx.fillStyle = v;
-  const b = ctx.fillStyle;
-  if (a !== b) return '';
-  return typeof a === 'string' && a.startsWith('#') ? a.toLowerCase() : '';
-}
-
-function colorInputValue(value: string, tokenKey: keyof NajmThemeTokens) {
-  return toHexColor(value) || tokenColorFallbacks[tokenKey] || '#000000';
-}
-
-function ColorTokenRow({
-  field,
-  value,
-  onChange,
-}: {
-  field: TokenField;
-  value: string;
-  onChange: (value: string) => void;
-}) {
-  // The editor works in hex; oklch (or any CSS color) from presets is converted
-  // for display. Edits store hex — converted back to oklch in the save phase.
-  const [textDraft, setTextDraft] = useState(() => colorInputValue(value, field.key));
-  const [pickerDraft, setPickerDraft] = useState(() => colorInputValue(value, field.key));
-  const commitTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  React.useEffect(() => {
-    setTextDraft(colorInputValue(value, field.key));
-    setPickerDraft(colorInputValue(value, field.key));
-  }, [field.key, value]);
-
-  React.useEffect(() => {
-    return () => {
-      if (commitTimer.current) clearTimeout(commitTimer.current);
-    };
-  }, []);
-
-  const commitColor = (nextValue: string, delay = 140) => {
-    if (commitTimer.current) clearTimeout(commitTimer.current);
-    commitTimer.current = setTimeout(() => {
-      onChange(nextValue);
-      commitTimer.current = null;
-    }, delay);
-  };
-
-  const flushColor = () => {
-    if (commitTimer.current) clearTimeout(commitTimer.current);
-    commitTimer.current = null;
-    onChange(pickerDraft);
-  };
-
-  return (
-    <div className="flex items-center gap-2.5 border-b border-border/50 py-1.5 last:border-b-0">
-      {/* Swatch shows the current hex; the native color input sits on top
-          transparently so it still opens the picker. */}
-      <span
-        className="relative size-7 shrink-0 overflow-hidden rounded-md border border-border"
-        style={{ background: textDraft || pickerDraft }}
-      >
-        <input
-          aria-label={`${field.label} color`}
-          className="absolute inset-0 size-full cursor-pointer opacity-0"
-          type="color"
-          value={pickerDraft}
-          onInput={(event) => {
-            const nextValue = event.currentTarget.value;
-            setPickerDraft(nextValue);
-            setTextDraft(nextValue);
-            commitColor(nextValue);
-          }}
-          onChange={(event) => {
-            const nextValue = event.currentTarget.value;
-            setPickerDraft(nextValue);
-            setTextDraft(nextValue);
-            commitColor(nextValue);
-          }}
-          onBlur={flushColor}
-          title={textDraft}
-        />
-      </span>
-      <label className="min-w-0 flex-1 truncate text-xs font-medium text-foreground" title={field.hint}>
-        {field.label}
-      </label>
-      <TextInput
-        className="w-[148px] shrink-0 font-mono !text-[11px]"
-        value={textDraft}
-        onChange={(nextValue) => {
-          setTextDraft(nextValue);
-          onChange(nextValue);
-        }}
-        placeholder="#10b981"
-        bordered
-      />
-    </div>
-  );
 }
 
 function MetricCard({
@@ -939,83 +706,47 @@ function DashboardPreview({
   config,
   onConfigChange,
 }: {
-  config: NajmThemeConfig;
-  onConfigChange: React.Dispatch<React.SetStateAction<NajmThemeConfig>>;
+  config: NajmDesignConfig;
+  onConfigChange: React.Dispatch<React.SetStateAction<NajmDesignConfig>>;
 }) {
-  const jsonPreview = useMemo(() => stringifyNajmThemeConfig(config), [config]);
+  const jsonPreview = useMemo(() => stringifyNajmDesignConfig(config), [config]);
   const [customizerOpen, setCustomizerOpen] = useState(false);
   const [selectedPreparedExample, setSelectedPreparedExample] = useState('');
-  const [tokenCategory, setTokenCategory] = useState<TokenCategoryId>('brand');
-  const surfaceBorderWidth = config.appearance?.borderWidth ?? '1px';
-  // Per-mode border (+ input): a border you set in dark mode is stored as the
-  // dark border, one set in light mode as the light border. Toggling Mode shows
-  // the value already saved for that mode, so you build a light + a dark theme.
-  const [borderByMode, setBorderByMode] = useState<Partial<Record<NajmMode, string>>>({});
-  const activeMode: NajmMode = config.mode ?? 'light';
-  const updateRoot = <Key extends keyof NajmThemeConfig>(key: Key, value: NajmThemeConfig[Key]) => {
-    setSelectedPreparedExample('');
-    onConfigChange((current) => ({ ...current, [key]: value }));
-  };
-  // Mode + accent regenerate the base token palette via composePreset, so they
-  // actually drive the colors (tokens always win in the provider). The Color
-  // tokens section below then fine-tunes the generated palette.
-  // Base palette (mode + accent) always regenerates a coherent token set, so
-  // selecting an accent or flipping light/dark visibly recolors every token
-  // (and the border flips smartly). Radius and border width are kept.
+  const [previewMode, setPreviewMode] = useState<NajmMode>(config.theme.mode ?? 'light');
+  const [factoryValue, setFactoryValue] = useState<NajmDesignConfig>(() => cloneDesignConfig(config));
+  const theme = config.theme;
+
+  // Preset generation is dashboard workflow, not editor behavior. It stays
+  // above the shared customizer and produces a coherent palette in one action.
   const updatePalette = (next: { mode?: NajmMode; accent?: NajmAccent }) => {
     setSelectedPreparedExample('');
     onConfigChange((current) => {
-      const mode = next.mode ?? current.mode ?? 'light';
-      const accent = next.accent ?? current.accent ?? 'neutral';
+      const mode = next.mode ?? current.theme.mode ?? 'light';
+      const accent = next.accent ?? current.theme.accent ?? 'neutral';
       const tokens = composeFullPalette(mode, accent);
-      // Apply the border already saved for the mode we're switching to, so
-      // toggling light/dark shows that mode's border instead of the default.
-      const storedBorder = borderByMode[mode];
-      if (storedBorder) {
-        tokens.border = storedBorder;
-        tokens.input = storedBorder;
-      }
-      return { ...current, mode, accent, tokens };
+      return {
+        ...current,
+        theme: { ...current.theme, mode, accent, tokens, overrides: undefined },
+      };
     });
+    if (next.mode) setPreviewMode(next.mode);
   };
-  const updateAppearance = (borderWidth: string) => {
-    setSelectedPreparedExample('');
-    onConfigChange((current) => ({
-      ...current,
-      appearance: { ...current.appearance, borderWidth },
-    }));
-  };
-  // Set the border (and input) for the current mode and remember it, so the
-  // value is restored when you toggle back to this mode later.
-  const updateBorderForMode = (value: string) => {
-    setSelectedPreparedExample('');
-    setBorderByMode((prev) => ({ ...prev, [activeMode]: value || undefined }));
-    onConfigChange((current) => ({
-      ...current,
-      tokens: { ...current.tokens, border: value || undefined, input: value || undefined },
-    }));
-  };
-  const updateToken = (key: keyof NajmThemeTokens, value: string) => {
-    setSelectedPreparedExample('');
-    onConfigChange((current) => {
-      const tokens = { ...current.tokens, [key]: value || undefined };
-      const linked = LINKED_TOKENS[key];
-      if (linked && value) {
-        for (const linkedKey of linked) tokens[linkedKey] = value;
-      }
-      return { ...current, tokens };
-    });
-  };
+
   const applyPreparedExample = (presetId: string) => {
     const preset = themePresets.find((item) => item.id === presetId);
     if (!preset) return;
+    const nextConfig: NajmDesignConfig = {
+      ...config,
+      theme: JSON.parse(JSON.stringify(preset.config)) as NajmThemeConfig,
+    };
     setSelectedPreparedExample(presetId);
-    setBorderByMode({});
-    onConfigChange(cloneThemeConfig(preset.config));
+    setPreviewMode(preset.config.mode ?? 'light');
+    setFactoryValue(cloneDesignConfig(nextConfig));
+    onConfigChange(nextConfig);
   };
 
   return (
-    <NajmThemeProvider config={config} className={config.mode === 'dark' ? 'dark' : ''}>
+    <NajmDesignProvider config={config} mode={previewMode} className={previewMode === 'dark' ? 'dark' : ''}>
       <div className="overflow-hidden rounded-xl najm-border border-border bg-background text-foreground shadow-2xl">
         <div className="flex min-h-[620px]">
           <aside className="hidden w-60 shrink-0 flex-col najm-border-r border-sidebar-border bg-sidebar text-sidebar-foreground md:flex">
@@ -1025,7 +756,7 @@ function DashboardPreview({
               </div>
               <div>
                 <p className="text-sm font-bold">Najm School</p>
-                <p className="text-xs text-sidebar-foreground/60">Theme from JSON</p>
+                <p className="text-xs text-sidebar-foreground/60">Design from JSON</p>
               </div>
             </div>
             <nav className="flex-1 space-y-1 p-3">
@@ -1046,33 +777,33 @@ function DashboardPreview({
             </nav>
             <div className="m-3 rounded-lg najm-border border-sidebar-border bg-sidebar-accent/50 p-3">
               <p className="text-xs font-semibold">Radius</p>
-              <p className="mt-1 text-xs text-sidebar-foreground/65">{config.radius} / {config.radiusScale}</p>
+              <p className="mt-1 text-xs text-sidebar-foreground/65">{theme.radius}</p>
             </div>
           </aside>
 
           <main className="min-w-0 flex-1 bg-background">
-            <header className="flex h-16 items-center gap-3 najm-border-b border-border bg-card/70 px-4">
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold">Dashboard</p>
-                <p className="text-xs text-muted-foreground">Every surface below reads from one JSON config.</p>
-              </div>
-              <div className="hidden h-9 w-56 items-center gap-2 rounded-md najm-border border-input bg-background px-3 text-sm text-muted-foreground sm:flex">
-                <Search size={14} />
-                Search records...
-              </div>
-              <NButton variant="outline" size="icon" aria-label="Notifications">
-                <Bell size={16} />
-              </NButton>
-              <NButton
-                leftIcon={Palette}
-                aria-expanded={customizerOpen}
-                onClick={() => setCustomizerOpen(true)}
-              >
-                Customize
-              </NButton>
-            </header>
+            <NPageLayout as="div">
+              <NPageHeader
+                icon={LayoutDashboard}
+                title="Dashboard"
+                subtitle="Every surface below reads from one JSON config."
+                search={{ placeholder: 'Search records...' }}
+                actions={(
+                  <>
+                    <NButton variant="outline" size="icon" aria-label="Notifications">
+                      <Bell size={16} />
+                    </NButton>
+                    <NButton
+                      leftIcon={Palette}
+                      aria-expanded={customizerOpen}
+                      onClick={() => setCustomizerOpen(true)}
+                    >
+                      Customize
+                    </NButton>
+                  </>
+                )}
+              />
 
-            <div className="space-y-5 p-4 lg:p-6">
               <section className="grid gap-3 md:grid-cols-3">
                 <MetricCard title="Revenue" value="$42.8k" change="+18.4%" icon={BarChart3}  />
                 <MetricCard title="Students" value="1,284" change="+126 this week" icon={Users}  />
@@ -1121,7 +852,7 @@ function DashboardPreview({
                   </div>
                 </NCard>
               </section>
-            </div>
+            </NPageLayout>
           </main>
         </div>
       </div>
@@ -1143,14 +874,7 @@ function DashboardPreview({
           </div>
         )}
       >
-        <div className="space-y-4">
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card/80 px-3 py-2">
-            <p className="text-xs font-semibold text-muted-foreground">Live JSON</p>
-            <p className="text-sm">
-              {config.mode ?? 'light'} / {config.accent ?? 'neutral'} / {config.radius ?? 'default'}
-            </p>
-          </div>
-
+        <div className="space-y-3">
           <div className="space-y-2">
             <FieldLabel>Saved themes</FieldLabel>
             <SelectInput
@@ -1164,130 +888,57 @@ function DashboardPreview({
           </div>
 
           <div className="space-y-2">
-            <FieldLabel>Base palette</FieldLabel>
+            <FieldLabel>Theme mode</FieldLabel>
             <SelectInput
-              value={config.mode ?? 'light'}
+              value={theme.mode ?? 'light'}
               onChange={(value) => updatePalette({ mode: value as NajmMode })}
               items={modeOptions}
-              placeholder="Mode"
+              placeholder="Theme mode"
               bordered
-            
-            />
-            <SelectInput
-              value={config.accent ?? 'neutral'}
-              onChange={(value) => updatePalette({ accent: value as NajmAccent })}
-              items={accentOptions}
-              placeholder="Accent"
-              bordered
-            
             />
           </div>
 
-          <div className="space-y-2">
-            <FieldLabel>Shape</FieldLabel>
-            <SelectInput
-              value={config.radius ?? '0.5rem'}
-              onChange={(value) => updateRoot('radius', value || undefined)}
-              items={radiusOptions}
-              placeholder="Corner radius"
-              bordered
-            />
-            <SelectInput
-              value={surfaceBorderWidth}
-              onChange={(value) => updateAppearance(value)}
-              items={borderWidthOptions}
-              placeholder="Border width"
-              bordered
-            />
-            <ColorTokenRow
-              field={{
-                key: 'border',
-                label: `Border · ${activeMode}`,
-                hint: 'Border + input color, saved per mode. Toggle Mode to set the other.',
+          <div className="border-t border-border pt-4">
+            <NThemeCustomizer
+              value={config}
+              factoryValue={factoryValue}
+              onChange={(nextConfig) => {
+                setSelectedPreparedExample('');
+                onConfigChange(nextConfig);
               }}
-              value={config.tokens?.border ?? ''}
-              onChange={updateBorderForMode}
+              previewMode={previewMode}
+              onPreviewModeChange={setPreviewMode}
+              showPreviewMode={false}
+              fontOptions={fontOptions}
             />
-          </div>
-
-          <div className="space-y-2">
-            <FieldLabel>Color tokens</FieldLabel>
-            <div className="space-y-2">
-              {tokenCategories.map((category) => {
-                const isOpen = tokenCategory === category.id;
-                const previewFields = category.fields.slice(0, 3);
-
-              return (
-                  <section key={category.id} className="overflow-hidden rounded-lg border border-border bg-card/45">
-                    <button
-                      className="flex w-full items-center justify-between gap-3 px-3 py-2 text-left"
-                      type="button"
-                      aria-expanded={isOpen}
-                      onClick={() => setTokenCategory(category.id)}
-                    >
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold text-foreground">{category.label}</p>
-                      </div>
-                      <div className="flex shrink-0 items-center gap-1">
-                        {previewFields.map((field) => {
-                          const value = config.tokens?.[field.key] ?? '';
-
-                          return (
-                            <span
-                              key={field.key}
-                              aria-hidden="true"
-                              className="size-4 rounded border border-border"
-                              style={{ background: value || colorInputValue('', field.key) }}
-                            />
-                          );
-                        })}
-                        <span className="ml-1 text-xs font-semibold text-muted-foreground">
-                          {isOpen ? 'Close' : 'Edit'}
-                        </span>
-                      </div>
-                    </button>
-
-                    {isOpen && (
-                      <div className="border-t border-border px-3 py-2">
-                        {category.fields.map((field) => (
-                          <ColorTokenRow
-                            key={field.key}
-                            field={field}
-                            value={config.tokens?.[field.key] ?? ''}
-                          
-                            onChange={(value) => updateToken(field.key, value)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
-            </div>
           </div>
         </div>
       </NSheet>
-    </NajmThemeProvider>
+    </NajmDesignProvider>
   );
 }
 
 export function ThemeJsonPage() {
-  const [editableTheme, setEditableTheme] = useState<NajmThemeConfig>(() => cloneThemeConfig(violetTheme));
+  const [editableDesign, setEditableDesign] = useState<NajmDesignConfig>(() =>
+    cloneDesignConfig(dashboardFactory),
+  );
 
   return (
     <ComponentPage
-      title="JSON Theme Dashboard"
-      description="A full dashboard example where sidebar, buttons, cards, table rows, badges, border contrast, and radius all come from one JSON object. Click Customize to load a world-class preset and edit every token."
+      title="JSON Design Dashboard"
+      description="A full dashboard where theme, typography, component recipes, and layout come from one JSON object. Click Customize to load a preset and edit the complete design in the shared customizer."
       category="Getting Started"
     >
       <div className="space-y-6">
-        <DashboardPreview config={editableTheme} onConfigChange={setEditableTheme} />
+        <DashboardPreview config={editableDesign} onConfigChange={setEditableDesign} />
+
+        <ThemeJsonEmbeddedPanel />
 
         <div className="space-y-3">
           <div>
             <h2 className="text-lg font-semibold text-slate-200">Consumer setup</h2>
             <p className="mt-1 text-sm text-slate-400">
-              Keep this JSON in a file, database row, or local storage. Parse it once, then pass it to the provider.
+              Keep this design JSON in a file, database row, or local storage. Parse it once, then pass it to the provider.
             </p>
           </div>
           <div className="overflow-hidden rounded-xl border border-slate-800/80">
@@ -1296,5 +947,84 @@ export function ThemeJsonPage() {
         </div>
       </div>
     </ComponentPage>
+  );
+}
+
+const embeddedExampleCode = [
+  '<Tabs defaultValue="theme">',
+  '  <TabsList variant="pills">',
+  '    <TabsTrigger value="theme" variant="pills">Theme</TabsTrigger>',
+  '    <TabsTrigger value="about" variant="pills">About</TabsTrigger>',
+  '  </TabsList>',
+  '  <TabsContent value="theme">',
+  '    <NThemeCustomizer',
+  '      tabs={["theme"]}',
+  '      showTabs={false}',
+  '      value={draft}',
+  '      factoryValue={factoryDesign}',
+  '      onChange={setDraft}',
+  '      previewMode={previewMode}',
+  '      onPreviewModeChange={setPreviewMode}',
+  '    />',
+  '  </TabsContent>',
+  '  <TabsContent value="about">…</TabsContent>',
+  '</Tabs>',
+].join('\\n');
+
+export function ThemeJsonEmbeddedPanel() {
+  const [hostValue, setHostValue] = useState<NajmDesignConfig>(() =>
+    cloneDesignConfig(dashboardFactory),
+  );
+  const [hostFactory] = useState<NajmDesignConfig>(() =>
+    cloneDesignConfig(dashboardFactory),
+  );
+  const [hostMode, setHostMode] = useState<NajmMode>(
+    dashboardFactory.theme.mode ?? 'light',
+  );
+
+  return (
+    <NajmDesignProvider
+      config={hostValue}
+      mode={hostMode}
+      className={hostMode === 'dark' ? 'dark' : ''}
+    >
+      <section className="space-y-3">
+        <div>
+          <h2 className="text-lg font-semibold text-slate-200">Host tab embedding</h2>
+          <p className="mt-1 text-sm text-slate-400">
+            Pass <code className="rounded bg-slate-800/60 px-1 py-0.5 text-[12px]">showTabs={'{false}'}</code> to render one section directly
+            inside your own tab list. The host keeps its own tabs and the existing light/dark preview control stays available.
+          </p>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-800/80 bg-background">
+          <Tabs defaultValue="theme">
+            <TabsList variant="pills" className="m-4">
+              <TabsTrigger value="theme" variant="pills">Theme</TabsTrigger>
+              <TabsTrigger value="about" variant="pills">About</TabsTrigger>
+            </TabsList>
+            <TabsContent value="theme" className="px-4 pb-4">
+              <NThemeCustomizer
+                tabs={['theme']}
+                showTabs={false}
+                value={hostValue}
+                factoryValue={hostFactory}
+                onChange={setHostValue}
+                previewMode={hostMode}
+                onPreviewModeChange={setHostMode}
+              />
+            </TabsContent>
+            <TabsContent value="about" className="px-4 pb-4">
+              <p className="text-sm text-muted-foreground">
+                The host application owns the tab header. The Najm customizer renders Theme controls plus the
+                Components/Layout subsection below them without rendering its own nested tab bar.
+              </p>
+            </TabsContent>
+          </Tabs>
+        </div>
+        <div className="overflow-hidden rounded-xl border border-slate-800/80">
+          <CodeBlock code={embeddedExampleCode} lang="tsx" bare />
+        </div>
+      </section>
+    </NajmDesignProvider>
   );
 }
