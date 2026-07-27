@@ -25,3 +25,20 @@ describe("FormInput image type", () => {
     expect(controlledImageInput.value).toBe(file);
   });
 });
+
+describe("FormInput avatar type", () => {
+  test("accepts ImageInput sizing and inner-content options", () => {
+    const avatarInput = {
+      name: "avatar",
+      type: "avatar",
+      value: null,
+      previewClassName: "h-32 w-32",
+      size: 128,
+      title: "Add photo",
+      subtitle: "JPG or PNG",
+      onChange: (_value: File | null) => {},
+    } satisfies FormInputProps;
+
+    expect(avatarInput.type).toBe("avatar");
+  });
+});

@@ -1,6 +1,6 @@
 import type { SubmitHandler, UseFormProps, UseFormReturn } from "react-hook-form";
 import type { ZodTypeAny, TypeOf } from "zod";
-import type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeZoneInputProps, SliderInputProps } from "../inputs/types";
+import type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, AvatarInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeZoneInputProps, SliderInputProps } from "../inputs/types";
 import type { FormSlotClassNames, FormVariant } from "./VariantContext";
 import type { NIconSource } from "../Icon";
 
@@ -34,6 +34,11 @@ type FormImageInputProps = FormInputSpecificProps<ImageInputProps> & {
   value?: ImageInputProps["value"];
 };
 
+type FormAvatarInputProps = FormInputSpecificProps<AvatarInputProps> & {
+  /** Optional controlled preview value. React Hook Form owns it when omitted. */
+  value?: AvatarInputProps["value"];
+};
+
 type InputTypeMap = {
   text: FormInputSpecificProps<TextInputProps>;
   number: FormInputSpecificProps<NumberInputProps>;
@@ -48,6 +53,7 @@ type InputTypeMap = {
   checkboxGroup: FormInputSpecificProps<CheckboxGroupInputProps>;
   file: FormInputSpecificProps<FileInputProps>;
   image: FormImageInputProps;
+  avatar: FormAvatarInputProps;
   date: FormInputSpecificProps<DateInputProps>;
   starRating: FormInputSpecificProps<StarRatingInputProps>;
   colorArray: FormInputSpecificProps<ColorArrayInputProps>;

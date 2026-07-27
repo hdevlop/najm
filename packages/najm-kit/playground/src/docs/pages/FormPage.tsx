@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { z } from 'zod';
-import { NForm, FormInput, RepeatingFields, NButton } from 'najm-kit';
+import { NForm, FormInput, AvatarFormInput, RepeatingFields, NButton } from 'najm-kit';
 import {
   User, Mail, Lock, ShieldCheck,
   FileText, Globe, Palette, Bell,
   Phone, Calendar, Star, Smile,
   Package, Hash,
   Building2, CreditCard, MapPin, Briefcase,
-  ImagePlus, Folder,
+  ImagePlus, Folder, Camera,
 } from 'lucide-react';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
@@ -336,6 +336,95 @@ function ImageInputDemo() {
   );
 }
 
+// ---- Avatar input ----
+const avatarFileSchema = z
+  .custom<File>((v) => v instanceof File, 'Please choose a profile photo')
+  .refine((file) => ['image/png', 'image/jpeg'].includes(file.type), {
+    message: 'Use a JPG or PNG image',
+  })
+  .refine((file) => file.size <= 5 * 1024 * 1024, {
+    message: 'Image must be smaller than 5 MB',
+  });
+
+const avatarSchema = z.object({
+  circleAvatar: avatarFileSchema,
+  squareAvatar: avatarFileSchema,
+  roundedAvatar: avatarFileSchema,
+});
+
+function AvatarInputDemo() {
+  const [result, setResult] = useState<any>(null);
+  if (result) {
+    return (
+      <ResultShell
+        result={{
+          circleAvatar: result.circleAvatar
+            ? { name: result.circleAvatar.name, type: result.circleAvatar.type, size: result.circleAvatar.size }
+            : null,
+          squareAvatar: result.squareAvatar
+            ? { name: result.squareAvatar.name, type: result.squareAvatar.type, size: result.squareAvatar.size }
+            : null,
+          roundedAvatar: result.roundedAvatar
+            ? { name: result.roundedAvatar.name, type: result.roundedAvatar.type, size: result.roundedAvatar.size }
+            : null,
+        }}
+        onReset={() => setResult(null)}
+      />
+    );
+  }
+
+  return (
+    <FormShell icon={<Camera size={16} />} title="Profile photo" subtitle="AvatarFormInput uses the same upload behavior as ImageInput.">
+      <NForm
+        schema={avatarSchema}
+        defaultValues={{
+          circleAvatar: undefined as unknown as File,
+          squareAvatar: undefined as unknown as File,
+          roundedAvatar: undefined as unknown as File,
+        }}
+        onSubmit={async (v) => setResult(v)}
+      >
+        <div className="grid grid-cols-3 gap-4">
+          <AvatarFormInput
+            name="circleAvatar"
+            formLabel="Full"
+            radius="full"
+            size={104}
+            accept="image/png,image/jpeg"
+            uploadIcon={<Camera className="size-6" />}
+            title="Add photo"
+            subtitle="PNG/JPG · 5 MB max"
+            required
+          />
+          <AvatarFormInput
+            name="roundedAvatar"
+            formLabel="Rounded"
+            radius="xl"
+            size={104}
+            accept="image/png,image/jpeg"
+            uploadIcon={<Camera className="size-6" />}
+            title="Add photo"
+            subtitle="PNG/JPG · 5 MB max"
+            required
+          />
+          <AvatarFormInput
+            name="squareAvatar"
+            formLabel="Square"
+            radius="none"
+            size={104}
+            accept="image/png,image/jpeg"
+            uploadIcon={<Camera className="size-6" />}
+            title="Add photo"
+            subtitle="PNG/JPG · 5 MB max"
+            required
+          />
+        </div>
+        <NButton type="submit" className="mt-2 w-full">Save profile</NButton>
+      </NForm>
+    </FormShell>
+  );
+}
+
 export function FormPage() {
   return (
     <ComponentPage
@@ -553,6 +642,57 @@ import { NForm, FormInput, RepeatingFields, NButton } from 'najm-kit';
 </NForm>`}
       >
         <RepeatingFieldsDemo />
+      </Example>
+
+      <Example
+        title="Avatar input"
+        description="AvatarFormInput uses a radius scale: full for a circle, xl for rounded corners, or none for a square. Use size={104} for exact pixels, imageSize for presets, or previewClassName for custom layout."
+        previewHeight="h-[520px]"
+        noPad
+        center={false}
+        code={`import { Camera } from 'lucide-react';
+import { NForm, AvatarFormInput, NButton } from 'najm-kit';
+
+<NForm schema={avatarSchema} onSubmit={...}>
+  <div className="grid grid-cols-3 gap-4">
+    <AvatarFormInput
+      name="circleAvatar"
+      formLabel="Full"
+      radius="full"
+      size={104}
+      accept="image/png,image/jpeg"
+      uploadIcon={<Camera className="size-6" />}
+      title="Add photo"
+      subtitle="PNG/JPG · 5 MB max"
+      required
+    />
+    <AvatarFormInput
+      name="roundedAvatar"
+      formLabel="Rounded"
+      radius="xl"
+      size={104}
+      accept="image/png,image/jpeg"
+      uploadIcon={<Camera className="size-6" />}
+      title="Add photo"
+      subtitle="PNG/JPG · 5 MB max"
+      required
+    />
+    <AvatarFormInput
+      name="squareAvatar"
+      formLabel="Square"
+      radius="none"
+      size={104}
+      accept="image/png,image/jpeg"
+      uploadIcon={<Camera className="size-6" />}
+      title="Add photo"
+      subtitle="PNG/JPG · 5 MB max"
+      required
+    />
+  </div>
+  <NButton type="submit" className="w-full">Save profile</NButton>
+</NForm>`}
+      >
+        <AvatarInputDemo />
       </Example>
 
       <Example

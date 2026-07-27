@@ -197,6 +197,10 @@ export interface ImageInputProps extends BaseProps {
   showIcon?: boolean;
   uploadIcon?: React.ReactNode;
   previewClassName?: string;
+  /** Inline styles applied to the preview container. */
+  previewStyle?: CSSProperties;
+  /** Class applied to the empty and replace-overlay content inside the preview. */
+  contentClassName?: string;
   showPreview?: boolean;
   previewPosition?: "top" | "bottom" | "left" | "right";
   allowClear?: boolean;
@@ -206,10 +210,23 @@ export interface ImageInputProps extends BaseProps {
   imageVersion?: string | number | null;
   title?: string;
   subtitle?: string;
+  titleClassName?: string;
+  subtitleClassName?: string;
   replaceTitle?: string;
   replaceSubtitle?: string;
   trigger?: "icon" | "button" | "both";
   buttonLabel?: string;
+  disabled?: boolean;
+}
+
+export type AvatarInputRadius = "none" | "sm" | "md" | "lg" | "xl" | "2xl" | "full";
+
+/** ImageInput options with avatar-specific radius defaults. */
+export interface AvatarInputProps extends ImageInputProps {
+  /** Preview corner radius. `none` is square and `full` is circular. */
+  radius?: AvatarInputRadius;
+  /** Exact width and height. Numbers are interpreted as pixels. */
+  size?: number | string;
 }
 
 export interface EmojiInputProps extends BaseProps {

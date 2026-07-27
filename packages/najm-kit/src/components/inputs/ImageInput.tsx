@@ -14,6 +14,8 @@ export function ImageInput({
   value,
   onChange,
   previewClassName,
+  previewStyle,
+  contentClassName,
   showPreview = true,
   previewPosition = "top",
   allowClear = true,
@@ -25,11 +27,13 @@ export function ImageInput({
   uploadIcon,
   title = "Click to upload",
   subtitle,
+  titleClassName,
+  subtitleClassName,
   replaceTitle = "Replace image",
   replaceSubtitle,
   trigger = "icon",
   buttonLabel = "Upload",
-}: ImageInputProps & { disabled?: boolean }) {
+}: ImageInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
@@ -68,6 +72,7 @@ export function ImageInput({
 
   const renderPreview = () => (
     <div
+      style={previewStyle}
       className={cn(
         "flex relative group rounded-lg overflow-hidden border-2 border-dashed border-muted-foreground/60 hover:border-primary transition-colors",
         effectiveSize
@@ -77,10 +82,10 @@ export function ImageInput({
         isDropzone ? (
           <>
             <img src={preview} alt="Preview" className="absolute inset-0 w-full h-full object-cover" />
-            <div className="relative w-full h-full flex flex-col items-center justify-center gap-1.5 bg-black/40 text-white px-6 py-8 text-center">
-              <span className="text-sm font-medium">{replaceTitle}</span>
+            <div className={cn("relative w-full h-full flex flex-col items-center justify-center gap-1.5 bg-black/40 text-white px-6 py-8 text-center", contentClassName)}>
+              <span className={cn("text-sm font-medium", titleClassName)}>{replaceTitle}</span>
               {effectiveReplaceSubtitle ? (
-                <span className="text-xs opacity-80">{effectiveReplaceSubtitle}</span>
+                <span className={cn("text-xs opacity-80", subtitleClassName)}>{effectiveReplaceSubtitle}</span>
               ) : null}
               {allowClear && (
                 <button
@@ -129,7 +134,7 @@ export function ImageInput({
       ) : isDropzone ? (
         <div
           onClick={handleClick}
-          className="w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors px-6 py-8 text-center"
+          className={cn("w-full h-full flex flex-col items-center justify-center gap-2 cursor-pointer bg-muted/30 hover:bg-muted/50 transition-colors px-6 py-8 text-center", contentClassName)}
         >
           {(trigger === "icon" || trigger === "both") && (
             <div className="text-primary">
@@ -144,9 +149,9 @@ export function ImageInput({
               {buttonLabel}
             </span>
           )}
-          <span className="text-sm font-medium text-foreground">{title}</span>
+          <span className={cn("text-sm font-medium text-foreground", titleClassName)}>{title}</span>
           {subtitle ? (
-            <span className="text-xs text-muted-foreground">{subtitle}</span>
+            <span className={cn("text-xs text-muted-foreground", subtitleClassName)}>{subtitle}</span>
           ) : null}
         </div>
       ) : (

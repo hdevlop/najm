@@ -14,6 +14,7 @@ export { DateInput } from "./DateInput";
 export { FileInput } from "./FileInput";
 export { NUploader } from "./NUploader";
 export { ImageInput } from "./ImageInput";
+export { AvatarInput } from "./AvatarInput";
 export { StarRatingInput } from "./StarRatingInput";
 export { ColorArrayInput } from "./ColorArrayInput";
 export { ColorPickerInput } from "./ColorPickerInput";
@@ -41,6 +42,8 @@ export type {
   DateInputProps,
   FileInputProps,
   ImageInputProps,
+  AvatarInputProps,
+  AvatarInputRadius,
   StarRatingInputProps,
   ColorArrayInputProps,
   ColorPickerInputProps,

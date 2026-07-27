@@ -198,6 +198,11 @@ describe("Root barrel import", () => {
     expect(najmUI.ImageInput).toBeDefined();
   });
 
+  test("exports avatar input components", () => {
+    expect(najmUI.AvatarInput).toBeDefined();
+    expect(najmUI.AvatarFormInput).toBeDefined();
+  });
+
   test("exports LangInput component", () => {
     expect(najmUI.LangInput).toBeDefined();
   });

@@ -2,6 +2,8 @@ export { NForm } from "./NForm";
 export { NFormSectionHeader } from "./NFormSectionHeader";
 export type { NFormSectionHeaderProps } from "./NFormSectionHeader";
 export { FormInput } from "./FormInput";
+export { AvatarFormInput } from "./AvatarFormInput";
+export type { AvatarFormInputProps } from "./AvatarFormInput";
 export { default as DynamicArray, RepeatingFields } from "./DynamicArray";
 export { PrefixProvider, usePrefix } from "./PrefixContext";
 export { VariantProvider, useVariant, useVariantPreset } from "./VariantContext";

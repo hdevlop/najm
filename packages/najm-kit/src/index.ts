@@ -131,8 +131,8 @@ export { NFileTypeIcon, NFolderIcon } from "./components/data-display/NFileTypeI
 export type { NFileTypeIconProps, NFolderIconProps } from "./components/data-display/NFileTypeIcon";
 
 // Inputs
-export { BaseInput, TextInput, NumberInput, PasswordInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, CheckboxInput, CheckboxGroupInput, SwitchInput, DateInput, FileInput, NUploader, ImageInput, StarRatingInput, ColorArrayInput, ColorPickerInput, EmojiInput, LangInput, PhoneInput, TimeInput, TimeZoneInput, SliderInput, getIconColorProps } from "./components/inputs";
-export type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, ComboboxInputProps, MultiSelectInputProps, RadioGroupInputProps, CheckboxInputProps, CheckboxGroupInputProps, SwitchInputProps, DateInputProps, FileInputProps, NUploaderProps, NUploaderItem, NUploaderItemStatus, ImageInputProps, StarRatingInputProps, ColorArrayInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeInputProps, TimeZoneInputProps, SliderInputProps, InputIcon, SelectItemType } from "./components/inputs";
+export { BaseInput, TextInput, NumberInput, PasswordInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, CheckboxInput, CheckboxGroupInput, SwitchInput, DateInput, FileInput, NUploader, ImageInput, AvatarInput, StarRatingInput, ColorArrayInput, ColorPickerInput, EmojiInput, LangInput, PhoneInput, TimeInput, TimeZoneInput, SliderInput, getIconColorProps } from "./components/inputs";
+export type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, ComboboxInputProps, MultiSelectInputProps, RadioGroupInputProps, CheckboxInputProps, CheckboxGroupInputProps, SwitchInputProps, DateInputProps, FileInputProps, NUploaderProps, NUploaderItem, NUploaderItemStatus, ImageInputProps, AvatarInputProps, AvatarInputRadius, StarRatingInputProps, ColorArrayInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeInputProps, TimeZoneInputProps, SliderInputProps, InputIcon, SelectItemType } from "./components/inputs";
 export { Slider, type SliderProps } from "./components/inputs/SliderInput";
 export { NSlider, sliderVariants } from "./components/Slider";
 export type { NSliderProps, SliderVariant, SliderSize, SliderOrientation } from "./components/Slider";
@@ -147,8 +147,8 @@ export type { ColorPickerInputProps } from "./components/inputs/types";
 export { Combobox, type ComboboxOption, type ComboboxProps } from "./components/ui/combobox";
 
 // Form
-export { NForm, FormInput, NFormSectionHeader, RepeatingFields, DynamicArray, PrefixProvider, usePrefix, VariantProvider, useVariant, useVariantPreset, useNForm, WizardForm, StepIndicator, StepsHeader, StepsProgress, useStepNavigation, useFormSubmission } from "./components/form";
-export type { FormInputBackground, FormInputProps, FormProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./components/form";
+export { NForm, FormInput, AvatarFormInput, NFormSectionHeader, RepeatingFields, DynamicArray, PrefixProvider, usePrefix, VariantProvider, useVariant, useVariantPreset, useNForm, WizardForm, StepIndicator, StepsHeader, StepsProgress, useStepNavigation, useFormSubmission } from "./components/form";
+export type { FormInputBackground, FormInputProps, FormProps, AvatarFormInputProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./components/form";
 
 // Table
 export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses } from "./components/table";
