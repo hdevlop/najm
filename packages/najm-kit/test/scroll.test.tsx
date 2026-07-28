@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import React from "react";
-import { render, waitFor } from "@testing-library/react";
+import { fireEvent, render, waitFor } from "@testing-library/react";
 
 import { NajmScroll, useNajmScrollViewport } from "../src/components/ui/scroll";
 
@@ -40,5 +40,21 @@ describe("NajmScroll", () => {
     });
 
     expect(getByTestId("viewport").hasAttribute("data-overlayscrollbars-viewport")).toBe(true);
+  });
+
+  test("contains popup wheel events so an outer smart scroll cannot consume them", async () => {
+    let outerWheelEvents = 0;
+    const { getByTestId } = render(
+      <div onWheel={() => { outerWheelEvents += 1; }}>
+        <ExistingViewportHarness />
+      </div>,
+    );
+
+    await waitFor(() => {
+      expect(getByTestId("host").querySelector(".os-scrollbar.os-theme-najm")).toBeTruthy();
+    });
+    fireEvent.wheel(getByTestId("viewport"), { deltaY: 120 });
+
+    expect(outerWheelEvents).toBe(0);
   });
 });

@@ -139,7 +139,7 @@ export function Combobox({
               className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground caret-foreground"
             />
           </div>
-          <NajmScroll className="max-h-64">
+          <NajmScroll className="max-h-64" onWheel={(event) => event.stopPropagation()}>
             <div className="py-1">
               {filtered.length === 0 ? (
                 <div className="px-3 py-6 text-center text-sm text-muted-foreground">

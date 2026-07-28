@@ -73,8 +73,13 @@ export function useNajmScrollViewport<T extends HTMLElement = HTMLDivElement>({
       { target, elements: { viewport } },
       najmScrollOptions(axis, autoHide, options),
     );
+    const containWheel = (event: WheelEvent) => event.stopPropagation();
+    viewport.addEventListener("wheel", containWheel, { passive: true });
 
-    return () => instance.destroy();
+    return () => {
+      viewport.removeEventListener("wheel", containWheel);
+      instance.destroy();
+    };
   }, [axis, autoHide, options]);
 
   return { hostRef, viewportRef };

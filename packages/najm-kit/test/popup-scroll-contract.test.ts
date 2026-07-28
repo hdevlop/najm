@@ -34,7 +34,7 @@ describe("popup smart-scroll contract", () => {
     const comboboxInput = source("../src/components/inputs/ComboboxInput.tsx");
     const multiSelect = source("../src/components/inputs/MultiSelectInput.tsx");
 
-    expect(combobox).toContain('<NajmScroll className="max-h-64">');
+    expect(combobox).toContain('<NajmScroll className="max-h-64" onWheel={(event) => event.stopPropagation()}>');
     expect(comboboxInput).toContain("<CommandList>");
     expect(multiSelect).toContain("<CommandList>");
     expect(`${combobox}\n${comboboxInput}\n${multiSelect}`).not.toContain("najm-overlay-scroll-y");
