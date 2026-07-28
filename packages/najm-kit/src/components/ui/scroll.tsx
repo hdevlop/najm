@@ -1,6 +1,13 @@
 import * as React from "react";
+import { OverlayScrollbars, type PartialOptions } from "overlayscrollbars";
 import { OverlayScrollbarsComponent, type OverlayScrollbarsComponentProps } from "overlayscrollbars-react";
 import { cn } from "../../lib/cn";
+
+export interface NajmScrollViewportOptions {
+  axis?: "both" | "x" | "y";
+  autoHide?: "never" | "scroll" | "leave" | "move";
+  options?: PartialOptions;
+}
 
 export interface NajmScrollProps extends Omit<OverlayScrollbarsComponentProps, "options" | "ref" | "element"> {
   /** Host element tag. Defaults to "div". */
@@ -29,6 +36,50 @@ function applyViewportLayout(node: HTMLElement, axis: "both" | "x" | "y") {
   node.style.overflowY = axis === "y" || axis === "both" ? "auto" : "hidden";
 }
 
+function najmScrollOptions(
+  axis: "both" | "x" | "y",
+  autoHide: "never" | "scroll" | "leave" | "move",
+  options?: PartialOptions,
+): PartialOptions {
+  return {
+    scrollbars: { theme: "os-theme-najm", autoHide, autoHideDelay: 500, clickScroll: true },
+    overflow: {
+      x: axis === "x" || axis === "both" ? "scroll" : "hidden",
+      y: axis === "y" || axis === "both" ? "scroll" : "hidden",
+    },
+    ...options,
+  };
+}
+
+/**
+ * Applies Najm's overlay scrollbar to an existing host + viewport pair.
+ * Use this for headless primitives (Radix/cmdk) that must keep ownership of
+ * their actual scrolling viewport for keyboard navigation and positioning.
+ */
+export function useNajmScrollViewport<T extends HTMLElement = HTMLDivElement>({
+  axis = "y",
+  autoHide = "never",
+  options,
+}: NajmScrollViewportOptions = {}) {
+  const hostRef = React.useRef<T>(null);
+  const viewportRef = React.useRef<T>(null);
+
+  React.useEffect(() => {
+    const target = hostRef.current;
+    const viewport = viewportRef.current;
+    if (!target || !viewport) return;
+
+    const instance = OverlayScrollbars(
+      { target, elements: { viewport } },
+      najmScrollOptions(axis, autoHide, options),
+    );
+
+    return () => instance.destroy();
+  }, [axis, autoHide, options]);
+
+  return { hostRef, viewportRef };
+}
+
 /**
  * Scroll container with a custom overlay scrollbar (OverlayScrollbars).
  *
@@ -50,14 +101,7 @@ export function NajmScroll({ className, axis = "y", autoHide = "never", viewport
       }}
       element={element as "div" | undefined}
       defer
-      options={{
-        scrollbars: { theme: "os-theme-najm", autoHide, autoHideDelay: 500, clickScroll: true },
-        overflow: {
-          x: axis === "x" || axis === "both" ? "scroll" : "hidden",
-          y: axis === "y" || axis === "both" ? "scroll" : "hidden",
-        },
-        ...options,
-      }}
+      options={najmScrollOptions(axis, autoHide, options || undefined)}
       events={{
         ...events,
         initialized: (instance, ...rest) => {

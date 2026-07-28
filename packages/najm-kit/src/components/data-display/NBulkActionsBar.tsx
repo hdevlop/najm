@@ -218,7 +218,7 @@ function FloatingSelectSegment({
         <span className="hidden sm:inline">{action.label}</span>
         <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" />
       </DropdownMenuTrigger>
-      <DropdownMenuContent side="top" align="center" className="max-h-72 najm-overlay-scroll-y">
+      <DropdownMenuContent side="top" align="center" className="max-h-72">
         {action.options.map((o) => (
           <DropdownMenuItem
             key={o.value}

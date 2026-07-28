@@ -1,6 +1,7 @@
 import * as React from 'react';
 import { ChevronDown, Search, Check, X } from 'lucide-react';
 import { cn } from "../../lib/cn";
+import { NajmScroll } from "./scroll";
 
 export interface ComboboxOption {
   value: string;
@@ -138,30 +139,32 @@ export function Combobox({
               className="flex-1 bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground caret-foreground"
             />
           </div>
-          <div className="max-h-64 najm-overlay-scroll-y py-1">
-            {filtered.length === 0 ? (
-              <div className="px-3 py-6 text-center text-sm text-muted-foreground">
-                {allowFreeText && query.trim() ? `Press Enter to use "${query.trim()}"` : emptyText}
-              </div>
-            ) : (
-              filtered.map((opt, i) => (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onMouseEnter={() => setHighlight(i)}
-                  onClick={() => commit(opt.value)}
-                  className={cn(
-                    'flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-colors',
-                    i === highlight ? 'bg-muted text-foreground' : 'text-foreground',
-                    opt.value === value && 'font-medium',
-                  )}
-                >
-                  <span className="truncate font-mono text-sm">{opt.label}</span>
-                  {opt.value === value && <Check className="h-3.5 w-3.5 text-primary" />}
-                </button>
-              ))
-            )}
-          </div>
+          <NajmScroll className="max-h-64">
+            <div className="py-1">
+              {filtered.length === 0 ? (
+                <div className="px-3 py-6 text-center text-sm text-muted-foreground">
+                  {allowFreeText && query.trim() ? `Press Enter to use "${query.trim()}"` : emptyText}
+                </div>
+              ) : (
+                filtered.map((opt, i) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onMouseEnter={() => setHighlight(i)}
+                    onClick={() => commit(opt.value)}
+                    className={cn(
+                      'flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-colors',
+                      i === highlight ? 'bg-muted text-foreground' : 'text-foreground',
+                      opt.value === value && 'font-medium',
+                    )}
+                  >
+                    <span className="truncate font-mono text-sm">{opt.label}</span>
+                    {opt.value === value && <Check className="h-3.5 w-3.5 text-primary" />}
+                  </button>
+                ))
+              )}
+            </div>
+          </NajmScroll>
         </div>
       )}
     </div>

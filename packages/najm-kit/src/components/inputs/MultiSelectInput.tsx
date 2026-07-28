@@ -1,6 +1,6 @@
 ﻿import React, { useState } from "react";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "../ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "../ui/command";
 import { Checkbox } from "../ui/checkbox";
 import { Badge } from "../Badge";
 import { BaseInput } from "./BaseInput";
@@ -80,20 +80,22 @@ export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder 
       >
         <Command>
           {showSearch && <CommandInput placeholder={searchPlaceholder} className="h-9" />}
-          <CommandEmpty>{emptyMessage}</CommandEmpty>
-          <CommandGroup className="max-h-[300px] najm-overlay-scroll-y">
-            {items.map((item) => {
-              const itemValue = typeof item === "string" ? item : item.value;
-              const itemLabel = typeof item === "string" ? item : item.label;
-              const isSelected = value.includes(itemValue);
-              return (
-                <CommandItem key={itemValue} onSelect={() => handleSelect(itemValue)} className="flex items-center gap-2 cursor-pointer">
-                  <Checkbox checked={isSelected} onCheckedChange={() => handleSelect(itemValue)} className="pointer-events-none" />
-                  <span className="flex-1">{itemLabel}</span>
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
+          <CommandList>
+            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandGroup>
+              {items.map((item) => {
+                const itemValue = typeof item === "string" ? item : item.value;
+                const itemLabel = typeof item === "string" ? item : item.label;
+                const isSelected = value.includes(itemValue);
+                return (
+                  <CommandItem key={itemValue} onSelect={() => handleSelect(itemValue)} className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox checked={isSelected} onCheckedChange={() => handleSelect(itemValue)} className="pointer-events-none" />
+                    <span className="flex-1">{itemLabel}</span>
+                  </CommandItem>
+                );
+              })}
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

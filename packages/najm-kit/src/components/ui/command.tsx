@@ -3,6 +3,7 @@ import { Command as CommandPrimitive } from "cmdk"
 import { SearchIcon } from "lucide-react"
 import { cn } from "../../lib/cn"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "../Dialog"
+import { useNajmScrollViewport } from "./scroll"
 
 function Command({ className, ...props }: React.ComponentProps<typeof CommandPrimitive>) {
   return <CommandPrimitive data-slot="command" className={cn("bg-popover text-popover-foreground flex h-full w-full flex-col overflow-hidden rounded-md", className)} {...props} />
@@ -37,8 +38,21 @@ function CommandInput({ className, ...props }: React.ComponentProps<typeof Comma
   )
 }
 
-function CommandList({ className, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
-  return <CommandPrimitive.List data-slot="command-list" className={cn("max-h-[300px] najm-overlay-scroll-y overflow-x-hidden", className)} {...props} />
+function CommandList({ className, children, ...props }: React.ComponentProps<typeof CommandPrimitive.List>) {
+  const { hostRef, viewportRef } = useNajmScrollViewport<HTMLDivElement>();
+
+  return (
+    <CommandPrimitive.List
+      ref={hostRef}
+      data-slot="command-list"
+      className={cn("max-h-[300px] overflow-hidden", className)}
+      {...props}
+    >
+      <div ref={viewportRef} data-slot="command-list-viewport" className="max-h-[300px] overflow-x-hidden">
+        {children}
+      </div>
+    </CommandPrimitive.List>
+  )
 }
 
 function CommandEmpty({ ...props }: React.ComponentProps<typeof CommandPrimitive.Empty>) {

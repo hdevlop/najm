@@ -6,6 +6,7 @@ import { NajmThemeContainerCtx } from "../../theme/provider"
 import { useNajmPortalLayerStyles } from "../../theme/portal-layer"
 import { useNajmComponentStyle } from "../../theme/design-provider"
 import { resolveRadiusValue } from "../../theme/design-types"
+import { useNajmScrollViewport } from "./scroll"
 
 function Select({ ...props }: React.ComponentProps<typeof SelectPrimitive.Root>) {
   return <SelectPrimitive.Root data-slot="select" {...props} />
@@ -63,11 +64,13 @@ function SelectContent({ className, children, position = "popper", style, ...pro
         }
       : {}),
   };
+  const { hostRef, viewportRef } = useNajmScrollViewport<HTMLDivElement>();
   useNajmPortalLayerStyles();
 
   return (
     <SelectPrimitive.Portal container={container ?? undefined}>
       <SelectPrimitive.Content
+        ref={hostRef}
         data-slot="select-content"
         className={cn(
           "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-[10000] max-h-(--radix-select-content-available-height) min-w-[8rem] overflow-hidden rounded-md shadow-md",
@@ -79,11 +82,15 @@ function SelectContent({ className, children, position = "popper", style, ...pro
         position={position}
         {...props}
       >
-        <SelectScrollUpButton />
-        <SelectPrimitive.Viewport className={cn("p-1", position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]")}>
-          {children}
+        <SelectPrimitive.Viewport
+          ref={viewportRef}
+          className={cn(
+            "max-h-[var(--radix-select-content-available-height)] overflow-x-hidden",
+            position === "popper" && "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)]",
+          )}
+        >
+          <div className="p-1">{children}</div>
         </SelectPrimitive.Viewport>
-        <SelectScrollDownButton />
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   )
