@@ -64,8 +64,13 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
   const presetInput = type === "textarea"
     ? preset.input?.replace(/\bh-\d+\b/g, "").trim()
     : preset.input;
+  const isFillAvatar = type === "avatar" && inputRest.fill === true;
   const slot = {
-    item: cn(preset.item, classNames?.item),
+    item: cn(
+      preset.item,
+      isFillAvatar && "flex h-full min-h-0 w-full flex-col",
+      classNames?.item,
+    ),
     label: cn(preset.label, classNames?.label),
     input: cn(presetInput, background && inputBackgroundClasses[background], classNames?.input, className),
     description: cn(preset.description, classNames?.description),

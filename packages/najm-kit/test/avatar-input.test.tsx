@@ -3,6 +3,8 @@ import React from "react";
 import { render } from "@testing-library/react";
 import { Camera } from "lucide-react";
 import { AvatarInput } from "../src/components/inputs/AvatarInput";
+import { AvatarFormInput } from "../src/components/form/AvatarFormInput";
+import { NForm } from "../src/components/form/NForm";
 
 describe("AvatarInput", () => {
   test("uses circular ImageInput defaults", () => {
@@ -63,5 +65,29 @@ describe("AvatarInput", () => {
 
     expect(preview?.style.width).toBe("118px");
     expect(preview?.style.height).toBe("118px");
+  });
+
+  test("fills the available width and height", () => {
+    const { container } = render(
+      <AvatarInput value={null} onChange={() => {}} fill />,
+    );
+    const root = container.firstElementChild;
+    const preview = container.querySelector(".group");
+
+    expect(root?.className).toContain("flex-1");
+    expect(root?.className).toContain("w-full");
+    expect(preview?.className).toContain("size-full");
+  });
+
+  test("stretches its form item when fill is enabled", () => {
+    const { container } = render(
+      <NForm defaultValues={{ avatar: null }} onSubmit={() => {}}>
+        <AvatarFormInput name="avatar" fill />
+      </NForm>,
+    );
+
+    const item = container.querySelector('[data-slot="form-item"]');
+    expect(item?.className).toContain("h-full");
+    expect(item?.className).toContain("w-full");
   });
 });

@@ -34,6 +34,7 @@ describe("FormInput avatar type", () => {
       value: null,
       previewClassName: "h-32 w-32",
       size: 128,
+      fill: true,
       title: "Add photo",
       subtitle: "JPG or PNG",
       onChange: (_value: File | null) => {},

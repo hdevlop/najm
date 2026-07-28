@@ -25,7 +25,9 @@ const AVATAR_RADIUS_MAP = {
 export function AvatarInput({
   imageSize = "md",
   size,
+  fill = false,
   radius = "full",
+  containerClassName,
   previewClassName,
   previewStyle,
   contentClassName,
@@ -39,15 +41,19 @@ export function AvatarInput({
     <ImageInput
       {...props}
       imageSize={imageSize}
+      containerClassName={cn(
+        fill && "min-h-24 w-full flex-1",
+        containerClassName,
+      )}
       previewClassName={cn(
-        AVATAR_SIZE_MAP[imageSize],
+        fill ? "size-full min-h-0" : AVATAR_SIZE_MAP[imageSize],
         "shrink-0",
         AVATAR_RADIUS_MAP[radius],
         previewClassName,
       )}
       previewStyle={{
         ...previewStyle,
-        ...(size != null ? { width: size, height: size } : null),
+        ...(size != null && !fill ? { width: size, height: size } : null),
       }}
       contentClassName={cn("gap-1 p-2", contentClassName)}
       uploadIcon={uploadIcon ?? <Camera className="size-6" />}

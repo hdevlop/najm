@@ -13,6 +13,7 @@ const IMAGE_SIZE_MAP = {
 export function ImageInput({
   value,
   onChange,
+  containerClassName,
   previewClassName,
   previewStyle,
   contentClassName,
@@ -181,7 +182,7 @@ export function ImageInput({
 
   if (previewPosition === "left" || previewPosition === "right") {
     return (
-      <div className={cn("flex items-center gap-4", previewPosition === "right" && "flex-row-reverse")}>
+      <div className={cn("flex items-center gap-4", previewPosition === "right" && "flex-row-reverse", containerClassName)}>
         {renderPreview()}
         <div className="flex-1">{renderFileInput()}</div>
       </div>
@@ -189,7 +190,7 @@ export function ImageInput({
   }
 
   return (
-    <div className={cn("flex flex-col gap-3", previewPosition === "bottom" && "flex-col-reverse")}>
+    <div className={cn("flex flex-col gap-3", previewPosition === "bottom" && "flex-col-reverse", containerClassName)}>
       {renderPreview()}
       {renderFileInput()}
     </div>

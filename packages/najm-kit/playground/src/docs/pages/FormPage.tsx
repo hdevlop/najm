@@ -37,16 +37,18 @@ function FormShell({
   icon,
   title,
   subtitle,
+  wide = false,
   children,
 }: {
   icon?: React.ReactNode;
   title: string;
   subtitle?: string;
+  wide?: boolean;
   children: React.ReactNode;
 }) {
   return (
     <div className="w-full h-full overflow-y-auto p-6 flex justify-center">
-      <div className="w-full max-w-sm">
+      <div className={wide ? "w-full max-w-3xl" : "w-full max-w-sm"}>
         <div className="mb-5">
           <div className="flex items-center gap-2 mb-0.5">
             {icon && <span className="text-primary">{icon}</span>}
@@ -346,10 +348,12 @@ const avatarFileSchema = z
     message: 'Image must be smaller than 5 MB',
   });
 
-const avatarSchema = z.object({
-  circleAvatar: avatarFileSchema,
-  squareAvatar: avatarFileSchema,
-  roundedAvatar: avatarFileSchema,
+const sponsorSchema = z.object({
+  avatar: avatarFileSchema.optional(),
+  fullName: z.string().min(2, 'Full name is required'),
+  email: z.string().email('Enter a valid email'),
+  phone: z.string().min(1, 'Phone is required'),
+  cin: z.string().min(1, 'CIN is required'),
 });
 
 function AvatarInputDemo() {
@@ -358,14 +362,9 @@ function AvatarInputDemo() {
     return (
       <ResultShell
         result={{
-          circleAvatar: result.circleAvatar
-            ? { name: result.circleAvatar.name, type: result.circleAvatar.type, size: result.circleAvatar.size }
-            : null,
-          squareAvatar: result.squareAvatar
-            ? { name: result.squareAvatar.name, type: result.squareAvatar.type, size: result.squareAvatar.size }
-            : null,
-          roundedAvatar: result.roundedAvatar
-            ? { name: result.roundedAvatar.name, type: result.roundedAvatar.type, size: result.roundedAvatar.size }
+          ...result,
+          avatar: result.avatar
+            ? { name: result.avatar.name, type: result.avatar.type, size: result.avatar.size }
             : null,
         }}
         onReset={() => setResult(null)}
@@ -374,52 +373,37 @@ function AvatarInputDemo() {
   }
 
   return (
-    <FormShell icon={<Camera size={16} />} title="Profile photo" subtitle="AvatarFormInput uses the same upload behavior as ImageInput.">
+    <FormShell wide icon={<Camera size={16} />} title="Sponsor profile" subtitle="The avatar fills the left column and matches the complete height of the two field rows.">
       <NForm
-        schema={avatarSchema}
+        schema={sponsorSchema}
         defaultValues={{
-          circleAvatar: undefined as unknown as File,
-          squareAvatar: undefined as unknown as File,
-          roundedAvatar: undefined as unknown as File,
+          avatar: undefined,
+          fullName: '',
+          email: '',
+          phone: '',
+          cin: '',
         }}
         onSubmit={async (v) => setResult(v)}
       >
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-stretch">
           <AvatarFormInput
-            name="circleAvatar"
-            formLabel="Full"
-            radius="full"
-            size={104}
-            accept="image/png,image/jpeg"
-            uploadIcon={<Camera className="size-6" />}
-            title="Add photo"
-            subtitle="PNG/JPG · 5 MB max"
-            required
-          />
-          <AvatarFormInput
-            name="roundedAvatar"
-            formLabel="Rounded"
+            name="avatar"
+            formLabel="Sponsor avatar"
+            fill
             radius="xl"
-            size={104}
             accept="image/png,image/jpeg"
             uploadIcon={<Camera className="size-6" />}
-            title="Add photo"
-            subtitle="PNG/JPG · 5 MB max"
-            required
+            title="Upload photo"
+            subtitle="Optional - PNG/JPG - 5 MB max"
           />
-          <AvatarFormInput
-            name="squareAvatar"
-            formLabel="Square"
-            radius="none"
-            size={104}
-            accept="image/png,image/jpeg"
-            uploadIcon={<Camera className="size-6" />}
-            title="Add photo"
-            subtitle="PNG/JPG · 5 MB max"
-            required
-          />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormInput name="fullName" type="text" formLabel="Full name" placeholder="Sponsor's full name" icon={<User size={14} />} required />
+            <FormInput name="email" type="text" formLabel="Email" placeholder="sponsor@example.com" icon={<Mail size={14} />} required />
+            <FormInput name="phone" type="text" formLabel="Phone" placeholder="+212..." icon={<Phone size={14} />} required />
+            <FormInput name="cin" type="text" formLabel="CIN" placeholder="National identity number" icon={<CreditCard size={14} />} required />
+          </div>
         </div>
-        <NButton type="submit" className="mt-2 w-full">Save profile</NButton>
+        <NButton type="submit" className="mt-4 ml-auto">Create sponsor</NButton>
       </NForm>
     </FormShell>
   );
@@ -645,51 +629,34 @@ import { NForm, FormInput, RepeatingFields, NButton } from 'najm-kit';
       </Example>
 
       <Example
-        title="Avatar input"
-        description="AvatarFormInput uses a radius scale: full for a circle, xl for rounded corners, or none for a square. Use size={104} for exact pixels, imageSize for presets, or previewClassName for custom layout."
-        previewHeight="h-[520px]"
+        title="Avatar beside form rows"
+        description="Use a fixed-width left column and fill to stretch the avatar across the available width and remaining height beside the nested field rows."
+        previewHeight="h-[560px]"
         noPad
         center={false}
         code={`import { Camera } from 'lucide-react';
 import { NForm, AvatarFormInput, NButton } from 'najm-kit';
 
-<NForm schema={avatarSchema} onSubmit={...}>
-  <div className="grid grid-cols-3 gap-4">
+<NForm schema={sponsorSchema} onSubmit={...}>
+  <div className="grid gap-4 md:grid-cols-[180px_minmax(0,1fr)] md:items-stretch">
     <AvatarFormInput
-      name="circleAvatar"
-      formLabel="Full"
-      radius="full"
-      size={104}
-      accept="image/png,image/jpeg"
-      uploadIcon={<Camera className="size-6" />}
-      title="Add photo"
-      subtitle="PNG/JPG · 5 MB max"
-      required
-    />
-    <AvatarFormInput
-      name="roundedAvatar"
-      formLabel="Rounded"
+      name="avatar"
+      formLabel="Sponsor avatar"
+      fill
       radius="xl"
-      size={104}
       accept="image/png,image/jpeg"
       uploadIcon={<Camera className="size-6" />}
-      title="Add photo"
-      subtitle="PNG/JPG · 5 MB max"
-      required
+      title="Upload photo"
+      subtitle="Optional - PNG/JPG - 5 MB max"
     />
-    <AvatarFormInput
-      name="squareAvatar"
-      formLabel="Square"
-      radius="none"
-      size={104}
-      accept="image/png,image/jpeg"
-      uploadIcon={<Camera className="size-6" />}
-      title="Add photo"
-      subtitle="PNG/JPG · 5 MB max"
-      required
-    />
+    <div className="grid gap-4 sm:grid-cols-2">
+      <FormInput name="fullName" type="text" formLabel="Full name" required />
+      <FormInput name="email" type="text" formLabel="Email" required />
+      <FormInput name="phone" type="text" formLabel="Phone" required />
+      <FormInput name="cin" type="text" formLabel="CIN" required />
+    </div>
   </div>
-  <NButton type="submit" className="w-full">Save profile</NButton>
+  <NButton type="submit" className="ml-auto">Create sponsor</NButton>
 </NForm>`}
       >
         <AvatarInputDemo />

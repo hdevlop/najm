@@ -196,6 +196,8 @@ export interface ImageInputProps extends BaseProps {
   icon?: InputIcon;
   showIcon?: boolean;
   uploadIcon?: React.ReactNode;
+  /** Class applied to the component's outer layout container. */
+  containerClassName?: string;
   previewClassName?: string;
   /** Inline styles applied to the preview container. */
   previewStyle?: CSSProperties;
@@ -227,6 +229,8 @@ export interface AvatarInputProps extends ImageInputProps {
   radius?: AvatarInputRadius;
   /** Exact width and height. Numbers are interpreted as pixels. */
   size?: number | string;
+  /** Fill the available width and remaining height of the form item. */
+  fill?: boolean;
 }
 
 export interface EmojiInputProps extends BaseProps {
