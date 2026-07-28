@@ -20,9 +20,15 @@ export class UserRepository {
   private get users() { return this.schema.users; }
   private get roles() { return this.schema.roles; }
 
-  /** Shared query helper */
-  private queryHelper?: AuthQueries;
-  private get q() { return this.queryHelper ??= new AuthQueries(this.db, this.schema); }
+  /** Shared query helper, scoped to the current database/transaction identity. */
+  private queryHelper?: { db: TDb; queries: AuthQueries };
+  private get q() {
+    const db = this.db;
+    if (this.queryHelper?.db !== db) {
+      this.queryHelper = { db, queries: new AuthQueries(db, this.schema) };
+    }
+    return this.queryHelper.queries;
+  }
 
   async getAll(limit = 50, offset = 0): Promise<UserWithPermissions[]> {
     // Fix N+1: Load users in one query
