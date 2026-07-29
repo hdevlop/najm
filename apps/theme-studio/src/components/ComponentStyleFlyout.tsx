@@ -5,6 +5,7 @@ import {
   Switch,
   Label,
 } from "najm-kit";
+import { SlidersHorizontal } from "lucide-react";
 import { useStudio } from "../app/studio-store";
 import {
   COMPONENT_META,
@@ -93,6 +94,7 @@ export function ComponentStyleFlyout() {
 
   return (
     <NSheet
+      icon={SlidersHorizontal}
       open={flyoutOpen}
       onOpenChange={(v) => !v && closeFlyout()}
       title={`Style ${meta.label}`}

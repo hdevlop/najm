@@ -7,7 +7,7 @@ export type { NConfirmDialogProps } from "./NConfirmDialog";
 export { NDeleteDialog, NDeleteDialogContent } from "./NDeleteDialog";
 export type { NDeleteDialogContentProps, NDeleteDialogProps } from "./NDeleteDialog";
 export { NSheet, NPortalScopeProvider, useNPortalScope } from "./NSheet";
-export type { NSheetProps } from "./NSheet";
+export type { NSheetClassNames, NSheetProps } from "./NSheet";
 export { useDialog } from "./useDialog";
 export { useDialogStore, createDialogStore, type DialogStore } from "./store";
 export type {

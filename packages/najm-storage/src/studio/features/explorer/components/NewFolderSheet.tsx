@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Input, NSheet } from 'najm-kit';
+import { FolderPlus } from 'lucide-react';
 import type { NewFolderState } from '../types';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
 export function NewFolderSheet({ state, prefix, onChange, onSubmit, onClose }: Props) {
   return (
     <NSheet
+      icon={FolderPlus}
       open={state.open}
       onOpenChange={(v) => { if (!v && !state.busy) onClose(); }}
       title="New folder"

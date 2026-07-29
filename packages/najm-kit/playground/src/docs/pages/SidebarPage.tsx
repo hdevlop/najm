@@ -21,6 +21,7 @@ import {
   Inbox,
   LayoutDashboard,
   Plus,
+  Settings,
   Shield,
   Users,
 } from 'lucide-react';
@@ -111,6 +112,7 @@ function SidebarSettingsSheet({
 }) {
   return (
     <NSheet
+      icon={Settings}
       open={open}
       onOpenChange={onOpenChange}
       title="Settings"
@@ -310,7 +312,7 @@ const [mobileOpen, setMobileOpen] = React.useState(false);
     </section>
   </main>
 
-  <NSheet open={settingsOpen} onOpenChange={setSettingsOpen} title="Settings">
+  <NSheet icon={Settings} open={settingsOpen} onOpenChange={setSettingsOpen} title="Settings">
     <Input type="number" value={expandedWidth} onChange={(event) => setExpandedWidth(Number(event.currentTarget.value))} />
     <Input type="number" value={collapsedWidth} onChange={(event) => setCollapsedWidth(Number(event.currentTarget.value))} />
     <Input type="number" value={mobileWidth} onChange={(event) => setMobileWidth(Number(event.currentTarget.value))} />

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { NSheet, NUploader } from 'najm-kit';
+import { Upload } from 'lucide-react';
 import type { UploadManager } from '../hooks/useUploadManager';
 
 interface Props {
@@ -23,6 +24,7 @@ export function UploadSheet({ open, onOpenChange, prefix, manager }: Props) {
 
   return (
     <NSheet
+      icon={Upload}
       open={open}
       onOpenChange={onOpenChange}
       title="Upload Files"

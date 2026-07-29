@@ -1,4 +1,4 @@
-import React, { createContext, useContext, type ReactNode, type CSSProperties } from "react";
+import React, { createContext, useContext, type ComponentType, type ReactNode, type CSSProperties } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "../ui/sheet";
 import { NajmScroll } from "../ui/scroll";
 import { cn } from "../../lib/cn";
@@ -11,9 +11,17 @@ export function NPortalScopeProvider({ className, children }: { className?: stri
 
 export const useNPortalScope = () => useContext(PortalScopeContext);
 
+export interface NSheetClassNames {
+  content?: string;
+  header?: string;
+  body?: string;
+  footer?: string;
+}
+
 export interface NSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  icon: ComponentType<{ className?: string }>;
   title: ReactNode;
   description?: ReactNode;
   /** Sheet width in pixels. Default 480. */
@@ -21,13 +29,17 @@ export interface NSheetProps {
   side?: "left" | "right" | "top" | "bottom";
   /** Override portal scope class (otherwise inherits from NPortalScopeProvider). */
   portalClassName?: string;
-  /** Override the body container className (default: standard padding + scroll). */
+  /** Slot-level class overrides for the sheet surface and its three sections. */
+  classNames?: NSheetClassNames;
+  /** @deprecated Use `classNames.body` instead. */
   bodyClassName?: string;
-  /** Override the SheetContent className (e.g. for bg / border tweaks). */
+  /** @deprecated Use `classNames.content` instead. */
   contentClassName?: string;
   children: ReactNode;
   footer?: ReactNode;
 }
+
+const responsiveSectionPadding = "px-3 py-3 lg:px-3 xl:px-4 2xl:px-5";
 
 /**
  * Standardized studio sheet primitive.
@@ -38,11 +50,13 @@ export interface NSheetProps {
 export function NSheet({
   open,
   onOpenChange,
+  icon: Icon,
   title,
   description,
   width = 480,
   side = "right",
   portalClassName,
+  classNames,
   bodyClassName,
   contentClassName,
   children,
@@ -61,24 +75,52 @@ export function NSheet({
         side={side}
         portalClassName={portal}
         className={cn(
-          "flex h-dvh max-h-dvh flex-col overflow-hidden bg-sidebar p-0 text-foreground",
+          "flex h-dvh max-h-dvh flex-col gap-0 overflow-hidden bg-sidebar p-0 text-foreground",
           contentClassName,
+          classNames?.content,
         )}
         style={style}
       >
-        <SheetHeader className="shrink-0 border-b border-border px-6 py-4 gap-1">
-          <SheetTitle className="text-sm font-semibold text-foreground">{title}</SheetTitle>
-          {description && (
-            <SheetDescription className="text-xs text-muted-foreground">{description}</SheetDescription>
+        <SheetHeader
+          className={cn(
+            "shrink-0 border-b border-border p-0",
+            responsiveSectionPadding,
+            classNames?.header,
           )}
+        >
+          <div className="flex min-w-0 items-center gap-2 lg:gap-3 xl:gap-3 2xl:gap-4">
+            <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <Icon className="size-4 text-primary" />
+            </div>
+            <div className="min-w-0">
+              <SheetTitle className="truncate text-sm font-semibold text-foreground">{title}</SheetTitle>
+              {description && (
+                <SheetDescription className="truncate text-xs text-muted-foreground">
+                  {description}
+                </SheetDescription>
+              )}
+            </div>
+          </div>
         </SheetHeader>
         <NajmScroll axis="y" className="min-h-0 flex-1">
-          <div className={cn("px-2", bodyClassName)}>
+          <div
+            data-slot="sheet-body"
+            className={cn(responsiveSectionPadding, bodyClassName, classNames?.body)}
+          >
             {children}
           </div>
         </NajmScroll>
         {footer && (
-          <div className="shrink-0 border-t border-border px-6 py-3">{footer}</div>
+          <div
+            data-slot="sheet-footer"
+            className={cn(
+              "shrink-0 border-t border-border",
+              responsiveSectionPadding,
+              classNames?.footer,
+            )}
+          >
+            {footer}
+          </div>
         )}
       </SheetContent>
     </Sheet>

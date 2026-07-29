@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Input, NSheet } from 'najm-kit';
+import { FolderInput } from 'lucide-react';
 import type { MoveState } from '../types';
 
 interface Props {
@@ -13,6 +14,7 @@ export function MoveSheet({ state, onChange, onSubmit, onClose }: Props) {
   const count = state?.paths.length ?? 0;
   return (
     <NSheet
+      icon={FolderInput}
       open={!!state}
       onOpenChange={(v) => { if (!v && state && !state.busy) onClose(); }}
       title={`Move ${count} item${count === 1 ? '' : 's'}`}

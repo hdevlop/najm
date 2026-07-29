@@ -59,6 +59,7 @@ export function FilePropertiesSheet({ file, onClose }: FilePropertiesSheetProps)
 
   return (
     <NSheet
+      icon={FileText}
       open={!!file}
       onOpenChange={(open) => { if (!open) onClose(); }}
       title="Properties"

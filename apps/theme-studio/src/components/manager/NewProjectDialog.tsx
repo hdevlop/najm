@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { FormInput, NAlert, NButton, NForm, NSheet } from 'najm-kit';
-import { Loader2 } from 'lucide-react';
+import { FolderPlus, Loader2 } from 'lucide-react';
 import { INITIAL_THEME_ACCENTS, type CreateProjectInput } from '@/app/use-projects';
 import { DEFAULT_PRESET, PRESETS } from '@/theme/presets';
 
@@ -88,6 +88,7 @@ export function NewProjectDialog({
 
   return (
     <NSheet
+      icon={FolderPlus}
       open={open}
       onOpenChange={(nextOpen) => {
         if (!busy) onOpenChange(nextOpen);

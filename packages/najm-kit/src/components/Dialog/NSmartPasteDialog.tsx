@@ -77,6 +77,7 @@ export function NSmartPasteDialog({
 
   return (
     <NSheet
+      icon={Merge}
       open={open}
       onOpenChange={(o) => { if (!o) handleCancel(); }}
       title={title}

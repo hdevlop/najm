@@ -886,6 +886,7 @@ function DashboardPreview({
       </div>
 
       <NSheet
+        icon={Palette}
         open={customizerOpen}
         onOpenChange={setCustomizerOpen}
         title="Customize theme"

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Button, Input, NSheet } from 'najm-kit';
+import { Pencil } from 'lucide-react';
 import type { RenameState } from '../types';
 
 interface Props {
@@ -12,6 +13,7 @@ interface Props {
 export function RenameSheet({ state, onChange, onSubmit, onClose }: Props) {
   return (
     <NSheet
+      icon={Pencil}
       open={!!state}
       onOpenChange={(v) => { if (!v && state && !state.busy) onClose(); }}
       title="Rename"
