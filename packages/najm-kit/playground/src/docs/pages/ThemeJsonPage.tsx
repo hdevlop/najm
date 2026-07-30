@@ -690,7 +690,7 @@ function MetricCard({
   icon: React.ElementType;
 }) {
   return (
-    <NCard className="bg-card/90 p-4 shadow-sm" >
+    <NCard className="bg-card/90 shadow-sm" >
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-xs font-medium text-muted-foreground">{title}</p>

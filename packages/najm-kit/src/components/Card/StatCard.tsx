@@ -115,7 +115,7 @@ function DefaultCard({
       onClick={onClick}
       bordered={bordered}
       className={cn(
-        "group p-2 lg:p-3 xl:p-4 2xl:p-5 transition-colors",
+        "group p-2 lg:p-3 2xl:p-4 transition-colors",
         onClick && "cursor-pointer hover:border-border/60 hover:bg-accent/40",
         className,
       )}

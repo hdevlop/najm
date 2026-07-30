@@ -240,7 +240,7 @@ export function NCard({
       style={recipeStyle}
       className={cn(
         mediaLayout ? mediaRootClasses(mediaLayout) : "flex flex-col",
-        !mediaLayout && !noPadding && "p-2 lg:p-3 xl:p-4 2xl:p-5 gap-3",
+        !mediaLayout && !noPadding && "p-2 lg:p-3 2xl:p-4 gap-3",
         mediaLayout && noPadding && "p-0",
         embedded && "rounded-none bg-transparent shadow-none",
         surfaceBorderClasses(embedded ? false : bordered),

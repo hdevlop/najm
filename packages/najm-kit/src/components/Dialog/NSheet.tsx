@@ -39,7 +39,7 @@ export interface NSheetProps {
   footer?: ReactNode;
 }
 
-const responsiveSectionPadding = "px-3 py-3 lg:px-3 xl:px-4 2xl:px-5";
+const responsiveSectionPadding = "px-3 py-3 lg:px-3 2xl:px-4";
 
 /**
  * Standardized studio sheet primitive.

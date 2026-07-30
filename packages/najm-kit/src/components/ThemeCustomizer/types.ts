@@ -58,8 +58,13 @@ export interface NThemeCustomizerLabels {
   pageGutter: React.ReactNode;
   sectionGap: React.ReactNode;
   pageHeaderCard: React.ReactNode;
+  sidebarSections: React.ReactNode;
+  sidebarNoSections: React.ReactNode;
   sidebarSectionLabels: React.ReactNode;
   sidebarSectionSeparators: React.ReactNode;
+  sidebarExpandedWidth: React.ReactNode;
+  sidebarCollapsedWidth: React.ReactNode;
+  sidebarMobileWidth: React.ReactNode;
   tableHeaderColor: React.ReactNode;
   tableHeaderTextColor: React.ReactNode;
   tableBorderColor: React.ReactNode;

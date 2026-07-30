@@ -1,10 +1,12 @@
 import * as React from "react";
 import { cn } from "../../lib/cn";
 import { ColorPickerInput } from "../inputs/ColorPickerInput";
+import { MultiSelectInput } from "../inputs/MultiSelectInput";
 import { SelectInput } from "../inputs/SelectInput";
+import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronUp } from "lucide-react";
 import { CustomizerField } from "./CustomizerField";
 import {
   COMPONENT_BORDER_WIDTH_VALUES,
@@ -29,8 +31,13 @@ export interface ThemeCustomizerComponentsLayoutTabLabels {
   pageGutter: React.ReactNode;
   sectionGap: React.ReactNode;
   pageHeaderCard: React.ReactNode;
+  sidebarSections: React.ReactNode;
+  sidebarNoSections: React.ReactNode;
   sidebarSectionLabels: React.ReactNode;
   sidebarSectionSeparators: React.ReactNode;
+  sidebarExpandedWidth: React.ReactNode;
+  sidebarCollapsedWidth: React.ReactNode;
+  sidebarMobileWidth: React.ReactNode;
   tableHeaderColor: React.ReactNode;
   tableHeaderTextColor: React.ReactNode;
   tableBorderColor: React.ReactNode;
@@ -71,7 +78,7 @@ export function ThemeCustomizerComponentsLayoutTab({
 
   const handleResetComponentField = (
     component: NajmComponentName,
-    key: "card" | "showSectionLabels" | "showSectionSeparators" | "headerColor" | "headerTextColor" | "borderColor" | "borderWidth",
+    key: "card" | "showSectionLabels" | "showSectionSeparators" | "expandedWidth" | "collapsedWidth" | "mobileWidth" | "headerColor" | "headerTextColor" | "borderColor" | "borderWidth",
   ) => {
     const factory = factoryComponents[component];
     if (!factory || factory[key] === undefined) {
@@ -209,38 +216,154 @@ export function ThemeCustomizerComponentsLayoutTab({
       </Section>
 
       <Section title={labels.sidebarSubsection} disabled={disabled}>
-        <SwitchField
-          label={labels.sidebarSectionLabels}
-          checked={Boolean(components.sidebar?.showSectionLabels)}
-          onChange={(next) =>
-            onChange(setComponentField(value, "sidebar", "showSectionLabels", next))
-          }
+        <div className="grid grid-cols-2 gap-3">
+          {([
+            ["expandedWidth", labels.sidebarExpandedWidth, 240],
+            ["collapsedWidth", labels.sidebarCollapsedWidth, 64],
+            ["mobileWidth", labels.sidebarMobileWidth, 240],
+          ] as const).map(([key, label, placeholder]) => {
+            const current = components.sidebar?.[key];
+            const factory = factoryComponents.sidebar?.[key];
+            const inputId = `najm-sidebar-${key}`;
+            const changeWidth = (delta: number) => {
+              if (disabled) return;
+              const next = Math.max(
+                0,
+                (typeof current === "number" ? current : placeholder) + delta,
+              );
+              onChange(setComponentField(value, "sidebar", key, next));
+            };
+            const handleStepKeyDown = (
+              event: React.KeyboardEvent<SVGSVGElement>,
+              delta: number,
+            ) => {
+              if (event.key !== "Enter" && event.key !== " ") return;
+              event.preventDefault();
+              changeWidth(delta);
+            };
+
+            return (
+              <CustomizerField
+                key={key}
+                label={label}
+                htmlFor={inputId}
+                className={key === "mobileWidth" ? "col-span-2" : undefined}
+                onReset={
+                  current !== factory
+                    ? () => handleResetComponentField("sidebar", key)
+                    : undefined
+                }
+                resetLabel={labels.resetField}
+                resetAriaLabel={`${labels.resetField} ${labelText(label)}`.trim()}
+                disabled={disabled}
+              >
+                <div className="relative h-9 overflow-hidden rounded-md border border-input bg-card shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
+                  <Input
+                    id={inputId}
+                    type="number"
+                    min={0}
+                    step={1}
+                    value={typeof current === "number" ? current : ""}
+                    placeholder={String(placeholder)}
+                    onInput={(event) => {
+                      const raw = event.currentTarget.value;
+                      const next = raw === "" ? undefined : Number(raw);
+                      if (next !== undefined && (!Number.isFinite(next) || next < 0)) return;
+                      onChange(setComponentField(value, "sidebar", key, next));
+                    }}
+                    disabled={disabled}
+                    aria-label={labelText(label) || key}
+                    className="h-full rounded-none border-0 bg-transparent px-3 pr-14 text-sm shadow-none [appearance:textfield] focus-visible:ring-0 [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  />
+                  <span className="pointer-events-none absolute inset-y-0 right-5 flex w-7 items-center justify-center text-xs text-muted-foreground">
+                    px
+                  </span>
+                  <div className="absolute inset-y-0 right-0.5 flex w-6 flex-col items-center justify-center gap-0">
+                    <ChevronUp
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      aria-disabled={disabled}
+                      aria-label={`Increase ${labelText(label) || key}`}
+                      onClick={() => changeWidth(1)}
+                      onKeyDown={(event) => handleStepKeyDown(event, 1)}
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                    />
+                    <ChevronDown
+                      role="button"
+                      tabIndex={disabled ? -1 : 0}
+                      aria-disabled={disabled}
+                      aria-label={`Decrease ${labelText(label) || key}`}
+                      onClick={() => changeWidth(-1)}
+                      onKeyDown={(event) => handleStepKeyDown(event, -1)}
+                      className="h-4 w-4 shrink-0 cursor-pointer rounded-sm text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring aria-disabled:pointer-events-none aria-disabled:opacity-50"
+                    />
+                  </div>
+                </div>
+              </CustomizerField>
+            );
+          })}
+        </div>
+        <CustomizerField
+          label={labels.sidebarSections}
           onReset={
             components.sidebar?.showSectionLabels !==
-            factoryComponents.sidebar?.showSectionLabels
-              ? () => handleResetComponentField("sidebar", "showSectionLabels")
-              : undefined
-          }
-          resetLabel={labels.resetField}
-          resetAriaLabel={`${labels.resetField} ${labelText(labels.sidebarSectionLabels)}`.trim()}
-          disabled={disabled}
-        />
-        <SwitchField
-          label={labels.sidebarSectionSeparators}
-          checked={Boolean(components.sidebar?.showSectionSeparators)}
-          onChange={(next) =>
-            onChange(setComponentField(value, "sidebar", "showSectionSeparators", next))
-          }
-          onReset={
+              factoryComponents.sidebar?.showSectionLabels ||
             components.sidebar?.showSectionSeparators !==
-            factoryComponents.sidebar?.showSectionSeparators
-              ? () => handleResetComponentField("sidebar", "showSectionSeparators")
+              factoryComponents.sidebar?.showSectionSeparators
+              ? () => {
+                  const withLabels = setComponentField(
+                    value,
+                    "sidebar",
+                    "showSectionLabels",
+                    factoryComponents.sidebar?.showSectionLabels,
+                  );
+                  onChange(
+                    setComponentField(
+                      withLabels,
+                      "sidebar",
+                      "showSectionSeparators",
+                      factoryComponents.sidebar?.showSectionSeparators,
+                    ),
+                  );
+                }
               : undefined
           }
           resetLabel={labels.resetField}
-          resetAriaLabel={`${labels.resetField} ${labelText(labels.sidebarSectionSeparators)}`.trim()}
+          resetAriaLabel={`${labels.resetField} ${labelText(labels.sidebarSections)}`.trim()}
           disabled={disabled}
-        />
+        >
+          <MultiSelectInput
+            value={[
+              ...(components.sidebar?.showSectionLabels ? ["labels"] : []),
+              ...(components.sidebar?.showSectionSeparators ? ["separators"] : []),
+            ]}
+            onChange={(selected) => {
+              const withLabels = setComponentField(
+                value,
+                "sidebar",
+                "showSectionLabels",
+                selected.includes("labels"),
+              );
+              onChange(
+                setComponentField(
+                  withLabels,
+                  "sidebar",
+                  "showSectionSeparators",
+                  selected.includes("separators"),
+                ),
+              );
+            }}
+            items={[
+              { value: "labels", label: labelText(labels.sidebarSectionLabels) },
+              { value: "separators", label: labelText(labels.sidebarSectionSeparators) },
+            ]}
+            placeholder={labelText(labels.sidebarNoSections)}
+            ariaLabel={labelText(labels.sidebarSections)}
+            showSearch={false}
+            maxDisplay={2}
+            disabled={disabled}
+          />
+        </CustomizerField>
       </Section>
 
       {showTableColors && <CollapsibleSection title={labels.tableSubsection} disabled={disabled}>
@@ -447,7 +570,7 @@ function CollapsibleSection({
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="overflow-hidden data-[state=open]:animate-in data-[state=closed]:animate-out">
-        <div className={cn("flex flex-col  px-3 ", disabled && "pointer-events-none opacity-60")}>
+        <div className={cn("flex flex-col gap-3 p-3", disabled && "pointer-events-none opacity-60")}>
           {children}
         </div>
       </CollapsibleContent>

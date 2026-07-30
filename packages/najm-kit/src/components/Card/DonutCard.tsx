@@ -200,9 +200,9 @@ export function NDonutCard({
         aria-label={accessibleLabel}
         className={cn(
           isHorizontal
-            ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-5 p-2 lg:p-3 xl:p-4 2xl:p-5"
+            ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-5 p-2 lg:p-3 2xl:p-4"
             : cn(
-                "flex flex-col items-center p-2 lg:p-3 xl:p-4 2xl:p-5",
+                "flex flex-col items-center p-2 lg:p-3 2xl:p-4",
                 isCompact ? "gap-2" : "gap-4",
               ),
           classNames?.content,

@@ -9,7 +9,7 @@ import { getIconColorProps, resolveIcon } from "./utils";
 import { ChevronUp, ChevronDown, X } from "lucide-react";
 import type { MultiSelectInputProps } from "./types";
 
-export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder = "Select items...", value = [], onChange, icon, showIcon = true, iconColor, items, className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, searchPlaceholder = "Search...", emptyMessage = "No items found.", maxDisplay = 3, showSearch = true }) => {
+export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ ariaLabel, placeholder = "Select items...", value = [], onChange, icon, showIcon = true, iconColor, items, className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, searchPlaceholder = "Search...", emptyMessage = "No items found.", maxDisplay = 3, showSearch = true }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const pointerDismissedRef = React.useRef(false);
@@ -38,6 +38,7 @@ export const MultiSelectInput: React.FC<MultiSelectInputProps> = ({ placeholder 
           bordered={bordered}
           borderColor={borderColor}
           role="combobox"
+          aria-label={ariaLabel}
           tabIndex={disabled ? -1 : 0}
           aria-expanded={open}
           className={cn(

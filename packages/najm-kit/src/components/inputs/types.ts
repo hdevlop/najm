@@ -93,6 +93,7 @@ export interface MultiSelectInputProps extends BaseProps {
   value: string[];
   onChange: (value: string[]) => void;
   items: (string | SelectItemType)[];
+  ariaLabel?: string;
   placeholder?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;

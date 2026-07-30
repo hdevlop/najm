@@ -175,7 +175,7 @@ export function NPageHeader({
       <div
         data-slot="page-header-main"
         className={cn(
-          "relative grid min-h-12 grid-cols-[minmax(2.75rem,1fr)_minmax(0,auto)_minmax(2.75rem,1fr)] items-center gap-2 lg:px-3 xl:px-4 2xl:px-5",
+          "relative grid min-h-12 grid-cols-[minmax(2.75rem,1fr)_minmax(0,auto)_minmax(2.75rem,1fr)] items-center gap-2 px-2 lg:px-3 2xl:px-4",
           breakpointClasses.main,
           breakpointClasses.minH,
           headerClassName

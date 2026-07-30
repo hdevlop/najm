@@ -28,7 +28,13 @@ function buildConfig(): NajmDesignConfig {
       scale: "default",
     },
     components: {
-      sidebar: { showSectionLabels: true, showSectionSeparators: true },
+      sidebar: {
+        showSectionLabels: true,
+        showSectionSeparators: true,
+        expandedWidth: 240,
+        collapsedWidth: 64,
+        mobileWidth: 300,
+      },
       input: { borderWidth: "1px" },
     },
     layout: { pageGutter: "16px", sectionGap: "16px" },
@@ -229,7 +235,13 @@ describe("NThemeCustomizer - direct mode (showTabs=false, tabs=['theme'])", () =
       layout: { pageGutter: "48px", sectionGap: "48px" },
       components: {
         ...(factory.components ?? {}),
-        sidebar: { showSectionLabels: false, showSectionSeparators: false },
+        sidebar: {
+          showSectionLabels: false,
+          showSectionSeparators: false,
+          expandedWidth: 280,
+          collapsedWidth: 72,
+          mobileWidth: 320,
+        },
       },
     };
 
@@ -260,6 +272,59 @@ describe("NThemeCustomizer - direct mode (showTabs=false, tabs=['theme'])", () =
     );
     expect(next.components?.sidebar?.showSectionSeparators).toBe(
       factory.components?.sidebar?.showSectionSeparators,
+    );
+    expect(next.components?.sidebar?.expandedWidth).toBe(
+      factory.components?.sidebar?.expandedWidth,
+    );
+    expect(next.components?.sidebar?.collapsedWidth).toBe(
+      factory.components?.sidebar?.collapsedWidth,
+    );
+    expect(next.components?.sidebar?.mobileWidth).toBe(
+      factory.components?.sidebar?.mobileWidth,
+    );
+  });
+
+  test("edits sidebar expanded, collapsed, and mobile widths", () => {
+    const onChange = jest.fn();
+    const { getByLabelText } = renderCustomizer({
+      tabs: ["theme"],
+      showTabs: false,
+      onChange,
+    });
+
+    fireEvent.input(getByLabelText("Expanded width"), {
+      target: { value: "280" },
+    });
+    fireEvent.input(getByLabelText("Collapsed width"), {
+      target: { value: "72" },
+    });
+    fireEvent.input(getByLabelText("Mobile width"), {
+      target: { value: "320" },
+    });
+
+    expect(onChange).toHaveBeenNthCalledWith(
+      1,
+      expect.objectContaining({
+        components: expect.objectContaining({
+          sidebar: expect.objectContaining({ expandedWidth: 280 }),
+        }),
+      }),
+    );
+    expect(onChange).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        components: expect.objectContaining({
+          sidebar: expect.objectContaining({ collapsedWidth: 72 }),
+        }),
+      }),
+    );
+    expect(onChange).toHaveBeenNthCalledWith(
+      3,
+      expect.objectContaining({
+        components: expect.objectContaining({
+          sidebar: expect.objectContaining({ mobileWidth: 320 }),
+        }),
+      }),
     );
   });
 });
