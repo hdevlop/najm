@@ -97,7 +97,7 @@ const responsiveClasses = {
     minH: "md:min-h-14",
   },
   lg: {
-    main: "lg:flex lg:justify-between lg:px-4",
+    main: "lg:flex lg:justify-between lg:px-3 2xl:px-4",
     identity: "lg:col-start-auto lg:row-start-auto lg:justify-self-auto",
     controls: "lg:col-start-auto lg:row-start-auto lg:justify-self-auto",
     fullActions: "lg:flex",

@@ -1,6 +1,6 @@
 {
   "name": "najm-kit",
-  "version": "2.1.45",
+  "version": "2.1.46",
   "license": "MIT",
   "type": "module",
   "description": "Reusable React UI component package for Najm framework",
