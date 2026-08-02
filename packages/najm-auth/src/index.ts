@@ -52,6 +52,7 @@ export * from './ownership';
 export * from './shared';
 export * from './tokens';
 export * from './users';
+export * from './credentialSetup';
 
 // Database schema aggregation
 export { authSchema } from './schema';
@@ -61,6 +62,7 @@ export {
   usersTable,
   rolesTable,
   tokensTable,
+  credentialSetupSessionsTable,
   permissionsTable,
   rolePermissionsTable,
   oauthAccountsTable,
@@ -81,6 +83,8 @@ export type {
   NewRoleEntity,
   Token,
   NewToken,
+  CredentialSetupSession,
+  NewCredentialSetupSession,
   Permission,
   NewPermission,
   RolePermission,

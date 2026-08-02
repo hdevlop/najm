@@ -95,6 +95,24 @@ export const tokensTable = sqliteTable('tokens', {
 }));
 
 /**
+ * Short-lived, purpose-bound browser sessions for sensitive credential setup.
+ * Only a SHA-256 token hash is persisted; the opaque token lives in an
+ * HttpOnly browser-session cookie and can be consumed exactly once.
+ */
+export const credentialSetupSessionsTable = sqliteTable('credential_setup_sessions', {
+  ...baseFields(16),
+  userId: text('user_id').references(() => usersTable.id, { onDelete: 'cascade' }).notNull(),
+  purpose: text('purpose').notNull(),
+  tokenHash: text('token_hash').notNull().unique(),
+  expiresAt: text('expires_at').notNull(),
+  consumedAt: text('consumed_at'),
+  revokedAt: text('revoked_at'),
+}, (table) => ({
+  userPurposeIdx: index('credential_setup_sessions_user_purpose_idx').on(table.userId, table.purpose),
+  expiresAtIdx: index('credential_setup_sessions_expires_at_idx').on(table.expiresAt),
+}));
+
+/**
  * Junction table for many-to-many relationship between roles and permissions
  */
 export const rolePermissionsTable = sqliteTable('role_permissions', {
@@ -114,6 +132,7 @@ export const authSchema = {
   users: usersTable,
   oauthAccounts: oauthAccountsTable,
   tokens: tokensTable,
+  credentialSetupSessions: credentialSetupSessionsTable,
   roles: rolesTable,
   permissions: permissionsTable,
   rolePermissions: rolePermissionsTable,
@@ -137,6 +156,9 @@ export type NewPermission = typeof permissionsTable.$inferInsert;
 
 export type Token = typeof tokensTable.$inferSelect;
 export type NewToken = typeof tokensTable.$inferInsert;
+
+export type CredentialSetupSession = typeof credentialSetupSessionsTable.$inferSelect;
+export type NewCredentialSetupSession = typeof credentialSetupSessionsTable.$inferInsert;
 
 export type RolePermission = typeof rolePermissionsTable.$inferSelect;
 export type NewRolePermission = typeof rolePermissionsTable.$inferInsert;

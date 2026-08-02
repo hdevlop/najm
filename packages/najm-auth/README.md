@@ -45,7 +45,7 @@ export const products = sqliteTable('products', {
 
 // Combined schema (always include authSchema)
 export const schema = {
-  ...authSchema,  // users, roles, permissions, tokens, rolePermissions
+  ...authSchema,  // includes users, tokens, and credentialSetupSessions
   products,
 };
 
@@ -726,6 +726,51 @@ async resetPassword(token: string, newPassword: string) {
   await this.tokenService.blacklistCurrentToken(token);
 }
 ```
+
+### Purpose-Bound Credential Setup
+
+Use `CredentialSetupService` when valid credentials should open only a
+short-lived setup flow, not a complete application session. The default auth
+schema includes the durable `credential_setup_sessions` table for PostgreSQL
+and SQLite; generate and apply a consumer migration after upgrading.
+
+```typescript
+import { AuthService, CredentialSetupService } from 'najm-auth';
+
+const options = {
+  purpose: 'password-setup',
+  cookieName: 'my-app.password-setup',
+  ttlMs: 10 * 60 * 1000,
+};
+
+// Verify the password without minting access/refresh tokens.
+const user = await authService.verifyCredentials({ identifier, password });
+
+// Or narrowly accept only an unverified pending account with one exact role.
+const pendingSponsor = await authService.verifyPendingCredentials(
+  { identifier, password },
+  'sponsor',
+);
+
+if (await appRequiresPasswordSetup(user.id)) {
+  // Revokes normal sessions and writes only an HttpOnly, SameSite=Strict,
+  // browser-session cookie. The database stores only its SHA-256 hash.
+  return credentialSetup.begin(user.id, options);
+}
+
+return authService.establishSession(user);
+
+// Complete an app-owned mutation in the same transaction as one-time
+// consumption. If the callback fails, token consumption rolls back.
+await credentialSetup.consume(options, async ({ userId }) => {
+  await replaceApplicationCredential(userId, newCredential);
+});
+```
+
+Setup tokens are bound to a server-owned purpose, expire automatically, are
+replaced when the same user starts that purpose again, and can be cancelled or
+consumed exactly once. `require()` validates the current setup cookie without
+consuming it; `cancel()` revokes it and clears the cookie.
 
 ### Session Management
 

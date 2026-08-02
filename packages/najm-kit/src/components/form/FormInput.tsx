@@ -1,6 +1,6 @@
 import React from "react";
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
-import { TextInput, NumberInput, PasswordInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, SwitchInput, CheckboxInput, CheckboxGroupInput, FileInput, ImageInput, AvatarInput, DateInput, StarRatingInput, ColorArrayInput, EmojiInput, LangInput, PhoneInput, TimeInput, TimeZoneInput, SliderInput } from "../inputs";
+import { TextInput, NumberInput, PasswordInput, OtpInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, SwitchInput, CheckboxInput, CheckboxGroupInput, FileInput, ImageInput, AvatarInput, DateInput, StarRatingInput, ColorArrayInput, EmojiInput, LangInput, PhoneInput, TimeInput, TimeZoneInput, SliderInput } from "../inputs";
 import { useFormContext } from "react-hook-form";
 import { usePrefix } from "./PrefixContext";
 import { useVariantPreset, useBordered } from "./VariantContext";
@@ -23,6 +23,7 @@ const Inputs: Record<string, React.ComponentType<any>> = {
   text: TextInput,
   number: NumberInput,
   password: PasswordInput,
+  otp: OtpInput,
   textarea: TextAreaInput,
   date: DateInput,
   file: FileInput,

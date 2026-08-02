@@ -13,6 +13,54 @@ const activeUser = {
 };
 
 describe('login identifier resolution', () => {
+  test('can verify credentials without establishing a normal session', async () => {
+    const { service, established } = authService({
+      findByEmailInsensitive: async () => activeUser,
+    });
+
+    await expect(service.verifyCredentials({
+      identifier: 'alice@example.test',
+      password: 'StrongPass123',
+    })).resolves.toMatchObject({ id: 'user-1', role: 'operator' });
+    expect(established.count).toBe(0);
+  });
+
+  test('can narrowly verify pending credentials for one exact role', async () => {
+    const pendingSponsor = {
+      ...activeUser,
+      status: 'pending',
+      emailVerified: false,
+      role: 'sponsor',
+    };
+    const { service, established } = authService({
+      findByEmailInsensitive: async () => pendingSponsor,
+    });
+
+    await expect(service.verifyPendingCredentials({
+      identifier: 'alice@example.test',
+      password: 'StrongPass123',
+    }, 'sponsor')).resolves.toMatchObject({ id: 'user-1', role: 'sponsor' });
+    expect(established.count).toBe(0);
+  });
+
+  test('pending verification rejects active, verified, or different-role accounts', async () => {
+    for (const candidate of [
+      activeUser,
+      { ...activeUser, status: 'pending', emailVerified: false, role: 'operator' },
+      { ...activeUser, status: 'pending', emailVerified: true, role: 'sponsor' },
+    ]) {
+      const { service, established } = authService({
+        findByEmailInsensitive: async () => candidate,
+      });
+
+      await expect(service.verifyPendingCredentials({
+        identifier: 'alice@example.test',
+        password: 'StrongPass123',
+      }, 'sponsor')).rejects.toBeDefined();
+      expect(established.count).toBe(0);
+    }
+  });
+
   test('normalizes email identifiers case-insensitively', async () => {
     const lookups: string[] = [];
     const { service } = authService({
@@ -73,6 +121,7 @@ function authService(overrides: {
   findByEmail?: (email: string) => Promise<any>;
   findByPhone?: (phone: string) => Promise<any>;
 } = {}) {
+  const established = { count: 0 };
   const userService = {
     findByEmailInsensitive: overrides.findByEmailInsensitive ?? (async () => undefined),
     findByEmail: overrides.findByEmail ?? (async () => undefined),
@@ -82,11 +131,14 @@ function authService(overrides: {
     setLockout: async () => undefined,
   };
   const authSessionService = {
-    establish: async (user: Record<string, unknown>) => ({
-      accessToken: 'access',
-      refreshToken: 'refresh',
-      user,
-    }),
+    establish: async (user: Record<string, unknown>) => {
+      established.count += 1;
+      return {
+        accessToken: 'access',
+        refreshToken: 'refresh',
+        user,
+      };
+    },
   };
   const service = new AuthService(
     {} as never,
@@ -103,5 +155,5 @@ function authService(overrides: {
     requireVerifiedEmail: false,
   };
   (service as any).t = (key: string) => key;
-  return { service };
+  return { service, established };
 }

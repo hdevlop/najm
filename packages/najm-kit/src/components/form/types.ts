@@ -1,6 +1,6 @@
 import type { SubmitHandler, UseFormProps, UseFormReturn } from "react-hook-form";
 import type { ZodTypeAny, TypeOf } from "zod";
-import type { TextInputProps, NumberInputProps, PasswordInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, AvatarInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeZoneInputProps, SliderInputProps } from "../inputs/types";
+import type { TextInputProps, NumberInputProps, PasswordInputProps, OtpInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, AvatarInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeZoneInputProps, SliderInputProps } from "../inputs/types";
 import type { FormSlotClassNames, FormVariant } from "./VariantContext";
 import type { NIconSource } from "../Icon";
 
@@ -43,6 +43,7 @@ type InputTypeMap = {
   text: FormInputSpecificProps<TextInputProps>;
   number: FormInputSpecificProps<NumberInputProps>;
   password: FormInputSpecificProps<PasswordInputProps>;
+  otp: FormInputSpecificProps<OtpInputProps>;
   textarea: FormInputSpecificProps<TextAreaInputProps>;
   select: FormInputSpecificProps<SelectInputProps>;
   combobox: FormInputSpecificProps<ComboboxInputProps>;

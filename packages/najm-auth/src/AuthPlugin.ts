@@ -23,6 +23,7 @@ import { rateLimit } from 'najm-rate';
 import { email } from 'najm-email';
 import { AUTH_LOCALES } from './locales';
 import { OAUTH_MODULE } from './oauth';
+import { CREDENTIAL_SETUP_MODULE } from './credentialSetup';
 
 const DEFAULT_JWT = {
   accessSecret: process.env.JWT_ACCESS_SECRET || '',
@@ -177,6 +178,7 @@ export const auth = (config?: AuthPluginConfig) =>
       RoleModule,
       PermissionModule,
       TokenModule,
+      CREDENTIAL_SETUP_MODULE,
       ScopeContext,
     )
     .config(AUTH_CONFIG, resolveAuthConfig(config))

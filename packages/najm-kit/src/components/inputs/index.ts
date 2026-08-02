@@ -2,6 +2,7 @@ export { BaseInput } from "./BaseInput";
 export { TextInput } from "./TextInput";
 export { NumberInput } from "./NumberInput";
 export { PasswordInput } from "./PasswordInput";
+export { OtpInput } from "./OtpInput";
 export { TextAreaInput } from "./TextAreaInput";
 export { SelectInput } from "./SelectInput";
 export { ComboboxInput } from "./ComboboxInput";
@@ -31,6 +32,7 @@ export type {
   TextInputProps,
   NumberInputProps,
   PasswordInputProps,
+  OtpInputProps,
   TextAreaInputProps,
   SelectInputProps,
   ComboboxInputProps,

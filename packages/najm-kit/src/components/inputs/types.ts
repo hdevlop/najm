@@ -222,6 +222,23 @@ export interface ImageInputProps extends BaseProps {
   disabled?: boolean;
 }
 
+export interface OtpInputProps extends BaseProps {
+  value: string;
+  onChange: (value: string) => void;
+  /** Number of one-character cells. */
+  length?: number;
+  /** Restrict the code to decimal digits. */
+  numeric?: boolean;
+  ariaLabel?: string;
+  digitAriaLabel?: (position: number, length: number) => string;
+  autoFocus?: boolean;
+  autoComplete?: React.HTMLInputAutoCompleteAttribute;
+  disabled?: boolean;
+  readOnly?: boolean;
+  inputClassName?: string;
+  onComplete?: (value: string) => void;
+}
+
 export type AvatarInputRadius = "none" | "sm" | "md" | "lg" | "xl" | "2xl" | "full";
 
 /** ImageInput options with avatar-specific radius defaults. */

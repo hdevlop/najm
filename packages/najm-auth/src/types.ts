@@ -131,6 +131,8 @@ export interface AuthConfig {
 export interface AuthSchema {
   users: any;
   tokens: any;
+  /** Durable one-time browser sessions used by CredentialSetupService. */
+  credentialSetupSessions?: any;
   roles: any;
   permissions: any;
   rolePermissions: any;

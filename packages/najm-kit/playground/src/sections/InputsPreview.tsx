@@ -3,6 +3,7 @@ import {
   TextInput,
   NumberInput,
   PasswordInput,
+  OtpInput,
   TextAreaInput,
   SelectInput,
   SwitchInput,
@@ -35,6 +36,7 @@ export default function InputsPreview() {
   const [text, setText] = useState("");
   const [number, setNumber] = useState(0);
   const [password, setPassword] = useState("");
+  const [otp, setOtp] = useState("");
   const [textarea, setTextarea] = useState("");
   const [select, setSelect] = useState("");
   const [switchVal, setSwitchVal] = useState(false);
@@ -81,6 +83,10 @@ export default function InputsPreview() {
         <div>
           <label className="text-sm font-medium mb-1 block">Password</label>
           <PasswordInput value={password} onChange={setPassword} placeholder="Enter password" />
+        </div>
+        <div>
+          <label className="text-sm font-medium mb-1 block">One-time code</label>
+          <OtpInput value={otp} onChange={setOtp} ariaLabel="One-time code" />
         </div>
         <div>
           <label className="text-sm font-medium mb-1 block">Textarea</label>

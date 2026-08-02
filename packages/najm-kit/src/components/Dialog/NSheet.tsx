@@ -75,7 +75,7 @@ export function NSheet({
         side={side}
         portalClassName={portal}
         className={cn(
-          "flex h-dvh max-h-dvh flex-col gap-0 overflow-hidden bg-sidebar p-0 text-foreground",
+          "flex h-dvh max-h-dvh flex-col gap-0 overflow-hidden bg-background p-0 text-foreground",
           contentClassName,
           classNames?.content,
         )}

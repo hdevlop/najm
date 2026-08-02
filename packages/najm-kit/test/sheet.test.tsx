@@ -21,6 +21,8 @@ describe("NSheet responsive spacing", () => {
 
     const sheet = getByRole("dialog");
     expect(sheet.className).toContain("gap-0");
+    expect(sheet.className).toContain("bg-background");
+    expect(sheet.className).not.toContain("bg-sidebar");
     expect(sheet.querySelector('[data-slot="sheet-header"] svg')).toBeDefined();
     const sections = [
       sheet.querySelector('[data-slot="sheet-header"]'),
@@ -32,7 +34,7 @@ describe("NSheet responsive spacing", () => {
       expect(section?.className).toContain("px-3");
       expect(section?.className).toContain("py-3");
       expect(section?.className).toContain("xl:px-4");
-      expect(section?.className).toContain("2xl:px-5");
+      expect(section?.className).toContain("2xl:px-4");
     }
   });
 

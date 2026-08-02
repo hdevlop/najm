@@ -160,6 +160,38 @@ export class AuthService {
   }
 
   async loginUser(body: LoginDto): Promise<TokenPair & { user: SanitizedUser }> {
+    const user = await this.verifyCredentials(body);
+    return this.establishSession(user);
+  }
+
+  /**
+   * Verify credentials and account policy without minting access/refresh
+   * tokens or writing normal auth cookies. Sensitive onboarding flows can use
+   * this before issuing a purpose-bound CredentialSetupService session.
+   */
+  async verifyCredentials(body: LoginDto): Promise<SanitizedUser> {
+    return this.verifyCredentialsForPolicy(body, { kind: 'active' });
+  }
+
+  /**
+   * Verify a pending, unverified account for one exact application role.
+   * This deliberately does not establish a normal auth session. Applications
+   * should exchange the result for a short-lived, purpose-bound setup session.
+   */
+  async verifyPendingCredentials(body: LoginDto, expectedRole: string): Promise<SanitizedUser> {
+    if (!expectedRole.trim()) {
+      Err(this.t('errors.invalidCredentials'), 401);
+    }
+    return this.verifyCredentialsForPolicy(body, {
+      kind: 'pending',
+      expectedRole: expectedRole.trim().toLowerCase(),
+    });
+  }
+
+  private async verifyCredentialsForPolicy(
+    body: LoginDto,
+    policy: { kind: 'active' } | { kind: 'pending'; expectedRole: string },
+  ): Promise<SanitizedUser> {
     const password = body.password;
     const rawIdentifier = 'identifier' in body ? body.identifier : body.email;
     const identifier = normalizeAuthIdentifier(rawIdentifier);
@@ -199,12 +231,19 @@ export class AuthService {
       Err(this.t('errors.invalidCredentials'), 401);
     }
 
-    if (user.status !== 'active') {
-      Err(this.t('errors.accountInactive'), 403);
-    }
+    if (policy.kind === 'pending') {
+      const role = typeof user.role === 'string' ? user.role.toLowerCase() : '';
+      if (user.status !== 'pending' || user.emailVerified || role !== policy.expectedRole) {
+        Err(this.t('errors.invalidCredentials'), 401);
+      }
+    } else {
+      if (user.status !== 'active') {
+        Err(this.t('errors.accountInactive'), 403);
+      }
 
-    if (this.config.requireVerifiedEmail && !user.emailVerified) {
-      Err(this.t('errors.emailNotVerified'), 403);
+      if (this.config.requireVerifiedEmail && !user.emailVerified) {
+        Err(this.t('errors.emailNotVerified'), 403);
+      }
     }
 
     if ((user.failedLoginAttempts ?? 0) > 0 || user.lockoutUntil) {
@@ -212,12 +251,17 @@ export class AuthService {
     }
 
     const { password: _, failedLoginAttempts: __, lockoutUntil: ___, ...sanitized } = user;
+    return sanitized;
+  }
+
+  /** Establish a complete normal auth session for an already verified user. */
+  async establishSession(user: SanitizedUser): Promise<TokenPair & { user: SanitizedUser }> {
     this.authSessionService ??= new AuthSessionService(
       this.tokenService,
       this.userService,
       this.cookieManager,
     );
-    return this.authSessionService.establish(sanitized);
+    return this.authSessionService.establish(user);
   }
 
   async refreshTokens(): Promise<TokenPair> {
