@@ -2,6 +2,7 @@ import { describe, test, expect, afterEach } from 'bun:test';
 import { Err, Server } from 'najm-core';
 import { Post, Get, Put } from 'najm-core';
 import { Body, Params, Query, Headers } from 'najm-core';
+import { VALIDATION_CODES } from 'najm-core';
 import { validation } from '../src/ValidationPlugin';
 import { Validate } from '../src/decorator';
 import { z } from 'zod';
@@ -522,13 +523,22 @@ describe('Validation Plugin - Configuration', () => {
     const res = await fetch(`http://localhost:${port}/test`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'invalid' }),
+      body: JSON.stringify({ email: 'invalid', name: 'John Doe', password: 'SecurePass123' }),
     });
 
     expect(res.status).toBe(400);
     const body = await res.json();
-    expect(body.customError).toBe(true);
-    expect(body.validationTarget).toBe('body');
+    // A configured formatter remains authoritative: the additive default
+    // contract (code/message) must NOT be injected on top of the custom body.
+    expect(body).toEqual({
+      customError: true,
+      validationTarget: 'body',
+      fieldErrors: ['email'],
+    });
+    expect(body).not.toHaveProperty('code');
+    expect(body).not.toHaveProperty('message');
+    expect(body).not.toHaveProperty('error');
+    expect(body).not.toHaveProperty('issues');
   });
 });
 
@@ -873,6 +883,292 @@ describe('Validation Plugin - Edge Cases', () => {
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(body.received.anything).toBe('goes');
+  });
+});
+
+// ============================================================================
+// DEFAULT ERROR CONTRACT (additive code + top-level message)
+// ============================================================================
+
+const CinSchema = z.object({
+  cin: z.string().min(8, 'CIN must be at least 8 characters'),
+});
+
+describe('Validation Plugin - Default Error Contract', () => {
+  test('a single invalid field returns the complete default response with code and message', async () => {
+    const port = getPort();
+
+    @Controller('/test')
+    class TestController {
+      @Post('/')
+      @Validate(CreateUserSchema)
+      create(@Body() data: any) {
+        return data;
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(validation())
+      .load(TestController);
+
+    await server.listen(port);
+
+    const res = await fetch(`http://localhost:${port}/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'invalid-email',
+        name: 'John Doe',
+        password: 'SecurePass123',
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+
+    // Complete default HTTP response shape (additive code + message).
+    expect(body.error).toBe('Validation Error');
+    expect(body.code).toBe(VALIDATION_CODES.BODY);
+    expect(body.target).toBe('body');
+    expect(Array.isArray(body.issues)).toBe(true);
+    expect(body.issues).toHaveLength(1);
+
+    // Top-level message mirrors the first (and only) issue message.
+    expect(body.message).toBe(body.issues[0].message);
+
+    // Zod v4 issue shape: path + code preserved.
+    expect(body.issues[0].path).toEqual(['email']);
+    expect(body.issues[0].code).toBe('invalid_format');
+    expect(typeof body.issues[0].message).toBe('string');
+    expect(body.issues[0].message.length).toBeGreaterThan(0);
+  });
+
+  test('multiple invalid fields keep all issues ordered and the first drives the message', async () => {
+    const port = getPort();
+
+    @Controller('/test')
+    class TestController {
+      @Post('/')
+      @Validate(CreateUserSchema)
+      create(@Body() data: any) {
+        return data;
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(validation())
+      .load(TestController);
+
+    await server.listen(port);
+
+    const res = await fetch(`http://localhost:${port}/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'invalid',
+        name: 'J',
+        password: 'short',
+      }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+
+    expect(body.code).toBe(VALIDATION_CODES.BODY);
+    expect(body.target).toBe('body');
+    expect(body.issues).toHaveLength(3);
+
+    // The first issue controls the top-level message; later issues remain.
+    expect(body.message).toBe(body.issues[0].message);
+    expect(body.issues[0].path).toEqual(['email']);
+    expect(body.issues[1].path).toEqual(['name']);
+    expect(body.issues[2].path).toEqual(['password']);
+    expect(body.issues[0].code).toBe('invalid_format');
+    expect(body.issues[1].code).toBe('too_small');
+    expect(body.issues[2].code).toBe('too_small');
+  });
+
+  test('a custom Zod schema message surfaces as the stable top-level message', async () => {
+    const port = getPort();
+
+    @Controller('/applicant')
+    class ApplicantController {
+      @Post('/')
+      @Validate(CinSchema)
+      submit(@Body() data: any) {
+        return data;
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(validation())
+      .load(ApplicantController);
+
+    await server.listen(port);
+
+    const res = await fetch(`http://localhost:${port}/applicant`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ cin: '123' }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+
+    expect(body.code).toBe(VALIDATION_CODES.BODY);
+    expect(body.target).toBe('body');
+    expect(body.message).toBe('CIN must be at least 8 characters');
+    expect(body.issues).toHaveLength(1);
+    expect(body.issues[0]).toEqual({
+      path: ['cin'],
+      message: 'CIN must be at least 8 characters',
+      code: 'too_small',
+    });
+  });
+
+  test('a configured errorStatus: 422 keeps the stable body code', async () => {
+    const port = getPort();
+
+    @Controller('/test')
+    class TestController {
+      @Post('/')
+      @Validate({
+        body: CreateUserSchema,
+        errorStatus: 422,
+      })
+      create(@Body() data: any) {
+        return data;
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(validation())
+      .load(TestController);
+
+    await server.listen(port);
+
+    const res = await fetch(`http://localhost:${port}/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'invalid', name: 'John', password: 'SecurePass123' }),
+    });
+
+    expect(res.status).toBe(422);
+    const body = await res.json();
+    // Additive contract fields are present alongside the non-400 status.
+    expect(body.code).toBe(VALIDATION_CODES.BODY);
+    expect(body.target).toBe('body');
+    expect(body.message).toBe(body.issues[0].message);
+  });
+
+  test('params, query, and headers errors expose their correct stable target codes', async () => {
+    const port = getPort();
+
+    @Controller('/multi')
+    class MultiController {
+      @Put('/:id')
+      @Validate({
+        params: UserParamsSchema,
+        query: UserQuerySchema,
+        headers: HeadersSchema,
+      })
+      update(
+        @Params('id') id: string,
+        @Query() query: any,
+        @Headers() headers: any
+      ) {
+        return { id, query, headers };
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(validation())
+      .load(MultiController);
+
+    await server.listen(port);
+
+    // Invalid UUID param -> VALIDATION_PARAMS
+    const paramsRes = await fetch(
+      `http://localhost:${port}/multi/not-a-uuid?limit=5`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      },
+    );
+    expect(paramsRes.status).toBe(400);
+    const paramsBody = await paramsRes.json();
+    expect(paramsBody.code).toBe(VALIDATION_CODES.PARAMS);
+    expect(paramsBody.target).toBe('params');
+    expect(typeof paramsBody.message).toBe('string');
+    expect(paramsBody.message).toBe(paramsBody.issues[0].message);
+
+    // Invalid query (limit > 100) with a valid UUID -> VALIDATION_QUERY
+    const queryRes = await fetch(
+      `http://localhost:${port}/multi/550e8400-e29b-41d4-a716-446655440000?limit=200`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      },
+    );
+    expect(queryRes.status).toBe(400);
+    const queryBody = await queryRes.json();
+    expect(queryBody.code).toBe(VALIDATION_CODES.QUERY);
+    expect(queryBody.target).toBe('query');
+    expect(queryBody.message).toBe(queryBody.issues[0].message);
+
+    // Missing header with a valid UUID and query -> VALIDATION_HEADERS
+    const headersRes = await fetch(
+      `http://localhost:${port}/multi/550e8400-e29b-41d4-a716-446655440000?limit=5`,
+      {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      },
+    );
+    expect(headersRes.status).toBe(400);
+    const headersBody = await headersRes.json();
+    expect(headersBody.code).toBe(VALIDATION_CODES.HEADERS);
+    expect(headersBody.target).toBe('headers');
+    expect(headersBody.message).toBe(headersBody.issues[0].message);
+  });
+
+  test('preserves backward-compatible fields after the additive change', async () => {
+    const port = getPort();
+
+    @Controller('/test')
+    class TestController {
+      @Post('/')
+      @Validate(CreateUserSchema)
+      create(@Body() data: any) {
+        return data;
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(validation())
+      .load(TestController);
+
+    await server.listen(port);
+
+    const res = await fetch(`http://localhost:${port}/test`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: 'bad', name: 'JD', password: 'longenough' }),
+    });
+
+    expect(res.status).toBe(400);
+    const body = await res.json();
+
+    // Legacy fields remain (backward compatible).
+    expect(body.error).toBe('Validation Error');
+    expect(body.target).toBe('body');
+    expect(Array.isArray(body.issues)).toBe(true);
+    expect(body.issues.length).toBeGreaterThan(0);
+    // New additive fields are present.
+    expect(body.code).toBe(VALIDATION_CODES.BODY);
+    expect(typeof body.message).toBe('string');
   });
 });
 

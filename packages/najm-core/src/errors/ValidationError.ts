@@ -48,8 +48,12 @@ class ValidationErrorImpl extends BaseError {
   }
 
   override toJSON(): Record<string, any> {
+    const message =
+      this.issues.length > 0 ? this.issues[0].message : this.message;
     return {
       error: 'Validation Error',
+      code: this.code,
+      message,
       target: this.target,
       issues: this.issues,
     };
