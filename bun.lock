@@ -197,7 +197,7 @@
     },
     "packages/najm-auth": {
       "name": "najm-auth",
-      "version": "2.0.7",
+      "version": "2.0.13",
       "dependencies": {
         "bcryptjs": "^3.0.2",
         "jose": "^6.1.3",
@@ -445,19 +445,29 @@
       "name": "najm-i18n",
       "version": "2.0.2",
       "devDependencies": {
+        "@testing-library/react": "^16",
+        "@types/react": "^19",
+        "@types/react-dom": "^19",
+        "happy-dom": "^20.11.1",
         "najm-core": "workspace:*",
+        "react": ">=18",
+        "react-dom": ">=18",
         "rimraf": "^6.0.1",
         "typescript": "^5.7.3",
       },
       "peerDependencies": {
         "hono": "^4.0.0",
         "najm-core": "workspace:*",
+        "react": ">=18",
         "reflect-metadata": "^0.2.0",
       },
+      "optionalPeers": [
+        "react",
+      ],
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.1.23",
+      "version": "2.1.47",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",

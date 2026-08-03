@@ -165,6 +165,42 @@ new Server()
   .listen(3000);
 ```
 
+## React Usage
+
+Use the optional `najm-i18n/react` entry point in client-rendered React trees.
+The provider updates subscribed components immediately; persistence can happen
+asynchronously through `onLanguageChange`.
+
+```tsx
+import { I18nProvider, useTranslation } from 'najm-i18n/react';
+
+function LanguageButton() {
+  const { t, changeLanguage } = useTranslation();
+
+  return (
+    <button onClick={() => void changeLanguage('fr')}>
+      {t('language.french')}
+    </button>
+  );
+}
+
+export function App() {
+  return (
+    <I18nProvider
+      translations={translations}
+      initialLanguage="en"
+      onLanguageChange={(language) => saveLanguage(language)}
+    >
+      <LanguageButton />
+    </I18nProvider>
+  );
+}
+```
+
+The root `najm-i18n` entry remains server-safe and exposes the imperative
+`t`, `translate`, and `createTranslator` APIs. React is an optional peer and is
+loaded only through `najm-i18n/react`.
+
 ## Usage
 
 ### 1. Direct Translation Function

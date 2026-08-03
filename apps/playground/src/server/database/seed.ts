@@ -1,21 +1,10 @@
 import 'reflect-metadata';
 import { hash } from 'bcryptjs';
-import { Server } from 'najm-api';
+import { Server } from 'najm-core';
 import { SeedService } from 'najm-database';
 import { authSeed } from 'najm-auth';
 
-import {
-  authConfig,
-  cookiesConfig,
-  corsConfig,
-  databaseConfig,
-  eventsConfig,
-  i18nConfig,
-  rateLimitConfig,
-  validationConfig,
-} from '../config/plugins';
-import * as modulesModule from '../modules';
-import * as listenersModule from '../listeners';
+import { databaseConfig } from '../config/database';
 
 const productRowsTemplate = [
   {
@@ -335,16 +324,8 @@ async function seed() {
 
   try {
     server = await new Server({ isolated: true })
-      .use(corsConfig())
       .use(databaseConfig())
-      .use(i18nConfig())
-      .use(validationConfig())
-      .use(rateLimitConfig())
-      .use(cookiesConfig())
-      .use(eventsConfig())
-      .use(authConfig())
       .base('/api')
-      .load(modulesModule, listenersModule)
       .log('🌱 Seeding playground database...')
       .init();
 

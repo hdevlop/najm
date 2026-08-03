@@ -1,6 +1,6 @@
 {
   "name": "najm-i18n",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "license": "MIT",
   "description": "I18n .",
   "type": "module",
@@ -15,6 +15,12 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
+    "./react": {
+      "types": "./dist/react.d.ts",
+      "import": "./dist/react.mjs",
+      "default": "./dist/react.mjs"
+    },
+    "./package.json": "./package.json",
     "./*": {
       "types": "./src/*.ts",
       "import": "./src/*.ts",
@@ -29,13 +35,25 @@
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "devDependencies": {
+    "@testing-library/react": "^16",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "happy-dom": "^20.11.1",
     "najm-core": "workspace:*",
+    "react": ">=18",
+    "react-dom": ">=18",
     "typescript": "^5.7.3",
     "rimraf": "^6.0.1"
   },
   "peerDependencies": {
     "hono": "^4.0.0",
     "najm-core": "workspace:*",
+    "react": ">=18",
     "reflect-metadata": "^0.2.0"
+  },
+  "peerDependenciesMeta": {
+    "react": {
+      "optional": true
+    }
   }
 }

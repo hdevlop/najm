@@ -41,8 +41,11 @@ export interface I18nDecoratorOptions {
 
 export type I18nPluginConfig = boolean | I18nOptions | null | undefined;
 
+export type TranslationValue = string | number | boolean | null | undefined;
+export type TranslationParams = Record<string, TranslationValue>;
+
 // Translation function type
-export type TFn = (key: string, params?: Record<string, any>) => string;
+export type TFn = (key: string, params?: TranslationParams) => string;
 
 // ============================================================================
 // INJECTION TYPES

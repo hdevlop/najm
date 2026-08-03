@@ -7,6 +7,7 @@ import { I18N_CONFIG, I18N_CONTRIBUTIONS, I18N_SERVICE, LANG_META } from './toke
 import type { I18nPluginConfig, I18nOptions, Translations } from './types';
 import { CONTEXT } from 'najm-core';
 import { registerI18n } from './t';
+import { translate } from './translator';
 
 // Dangerous keys for prototype pollution protection
 const DANGEROUS_KEYS = new Set(['__proto__', 'constructor', 'prototype']);
@@ -367,25 +368,9 @@ export class I18nService {
    }
 
    private translate(key: string, language: string, params?: Record<string, any>): string {
-      const langTranslations =
-         this.translations[language] || this.translations[this.defaultLanguage] || {};
-
-      let translation = this.getNestedValue(langTranslations, key) || key;
-
-      if (params) {
-         for (const [param, value] of Object.entries(params)) {
-            translation = translation.replace(
-               new RegExp(`{{${param}}}`, 'g'),
-               String(value)
-            );
-         }
-      }
-
-      return translation;
-   }
-
-   private getNestedValue(obj: any, path: string): any {
-      return path.split('.').reduce((current, key) => current?.[key], obj);
+      return translate(this.translations, language, key, params, {
+         defaultLanguage: this.defaultLanguage,
+      });
    }
 
    // ============================================================================

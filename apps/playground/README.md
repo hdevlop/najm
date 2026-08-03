@@ -48,14 +48,17 @@ Then open:
 
 ## Environment setup
 
-Create `apps/playground/.env` with values like:
+Copy `apps/playground/.env.example` to `apps/playground/.env`, then replace the
+secret placeholders and add your Google OAuth client credentials:
 
 ```env
 PORT=3000
 DATABASE_URL=./playground.db
+FRONTEND_URL=http://localhost:3000
 
 JWT_ACCESS_SECRET=replace-with-secure-random-string
 JWT_REFRESH_SECRET=replace-with-secure-random-string
+NAJM_ENCRYPTION_KEY=replace-with-a-base64-or-hex-encoded-32-byte-key
 JWT_ACCESS_EXPIRES_IN=15m
 JWT_REFRESH_EXPIRES_IN=7d
 
@@ -75,6 +78,8 @@ Notes:
 - `PORT` can be a string; Najm now parses it internally in `server.listen(...)`.
 - `EMAIL_PROVIDER=console` is useful for local auth/password-reset flows.
 - Google login is enabled when both Google credential variables are set.
+- Register `http://localhost:3000/api/auth/oauth/google/callback` exactly as an
+  authorized redirect URI on the Google Web application OAuth client.
 
 ## MCP support (HTTP + stdio)
 

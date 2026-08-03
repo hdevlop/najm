@@ -1,7 +1,10 @@
 import { defineConfig } from 'tsup';
 
 export default defineConfig({
-  entry: ['src/index.ts'],
+  entry: {
+    index: 'src/index.ts',
+    react: 'src/react.ts',
+  },
   format: ['esm'],
   dts: {
     compilerOptions: {
@@ -17,7 +20,7 @@ export default defineConfig({
   outExtension: () => ({ js: '.mjs' }),
   bundle: true,
   skipNodeModulesBundle: true,
-  external: ['reflect-metadata'],
+  external: ['react', 'reflect-metadata'],
   esbuildOptions(options) {
     options.keepNames = true;
   },
