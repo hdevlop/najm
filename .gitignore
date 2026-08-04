@@ -125,6 +125,9 @@ out
 .nuxt
 dist
 
+# Pack output for scripts/publish-package.ts (tarball + sidecar commit)
+dist-publish/
+
 # Gatsby files
 
 # Comment in the public line in if your project uses Gatsby and not Next.js

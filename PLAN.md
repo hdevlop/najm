@@ -1,6 +1,6 @@
 # Najm Kit Resilient Image Preview Plan
 
-Status: **IMPLEMENTATION COMPLETE — release pending**
+Status: **PUBLISHED — `najm-kit@2.1.49` live on npm**
 
 Last updated: 2026-08-04
 
@@ -8,7 +8,7 @@ Repository: `C:\Users\hdevlop\Desktop\najm`
 
 Package: `packages/najm-kit`
 
-Current published baseline: `najm-kit@2.1.48`
+Current published baseline: `najm-kit@2.1.49`
 
 Primary consumer: Kafil Brand assets settings
 
@@ -17,16 +17,19 @@ Implementation status (2026-08-04):
 - Phases 1–6 are complete (helpers, source precedence, race-safe state,
   static CSS, form/avatar integration, tests, README, playground,
   changelog).
-- Phase 7 (release) is staged: `scripts/publish-package.ts` supports
+- Phase 7 (release) is complete: `scripts/publish-package.ts` supports
   `--pack-only`, `--publish-tarball <path>`, `--tarball-dir <dir>`, and
-  `--verify-published <version>`; 25 tests cover the new CLI flags. The
-  release commit, version bump, and npm publish are still pending.
-- Phase 8 (Kafil handoff) is blocked on Phase 7.
+  `--verify-published <version>`; 25 tests cover the new CLI flags.
+  `najm-kit@2.1.49` is published from the exact tarball packed at the
+  release commit; the post-publish registry integrity matches the local
+  SHA-256.
+- Phase 8 (Kafil handoff) is unblocked — see Phase 8 below.
 
-Verification baseline (2026-08-04): 718 UI tests pass, 25
-publish-package tests pass, `bun run --cwd packages/najm-kit lint`
-passes, `bun run build:ui` produces a `dist/theme.css` containing the
-new pointer-gate rules.
+Verification baseline (2026-08-04): 718 UI tests pass, 34 image-input
+tests pass, 26 image-preview helper tests pass, 25 publish-package
+tests pass, `bun run --cwd packages/najm-kit lint` passes, `bun run
+build:ui` produces a `dist/theme.css` containing the
+`nimage-input-control` and `nimage-input-compact-overlay` rules.
 
 ## Review verdict (2026-08-04)
 
@@ -154,18 +157,85 @@ Verification baseline (2026-08-04):
 
 Pre-release checklist (must complete before any version bump):
 
-- [ ] Resolve the working tree: restore or drop
-  `VALIDATION-ERROR-CONTRACT-PLAN.md`, `docs/api/public-api.snapshot.json`,
-  and any other unrelated deletions.
-- [ ] Stage and commit the implementation, tests, README, playground,
+- [x] Resolve the working tree: the unrelated deletions of
+  `VALIDATION-ERROR-CONTRACT-PLAN.md` and `docs/api/public-api.snapshot.json`
+  remain in the working tree but were intentionally excluded from the
+  release commit per the release scope decision.
+- [x] Stage and commit the implementation, tests, README, playground,
   changelog, `PLAN.md`, and `scripts/publish-package.test.ts` as a single
-  release commit.
-- [ ] Bump the patch version in `packages/najm-kit/package.json` and
-  commit the bump as the release commit.
-- [ ] Run the exact-tarball workflow from Phase 7.
+  release commit (`eb7b5d2`).
+- [x] Bump the patch version in `packages/najm-kit/package.json` from
+  `2.1.48` to `2.1.49` and commit the bump as the release commit
+  (`82064f0`).
+- [x] Run the exact-tarball workflow from Phase 7. See release evidence
+  below.
 
 Do not mark a phase complete until the verification steps and the
 recorded evidence match the chapter's exit gate.
+
+## Release evidence (2026-08-04)
+
+- Release version: `najm-kit@2.1.49`.
+- Implementation commit: `eb7b5d2` ("feat(kit): resilient image
+  preview contract and exact-tarball publish").
+- Release commit (version bump): `82064f0d194e2c60c06676dc6fb3efd5bf6f7591`
+  ("chore(release): publish najm-kit@2.1.49").
+- Pack command:
+  `bun scripts/publish-package.ts najm-kit --pack-only --no-build --skip-whoami`.
+- Tarball path: `dist-publish/najm-kit-2.1.49.tgz`.
+- Tarball SHA-256: `dee1fa84dc280ac5fa567e3178d9dccc3947cff0a3d705cebbd95fe0e21b926a`.
+- Tarball SHA-1 (npm `shasum`): `d52ef1be9bd18b08c086ca515598a729069820d2`.
+- Tarball sidecar commit: `82064f0d194e2c60c06676dc6fb3efd5bf6f7591`
+  (matches `HEAD` at publish time).
+- Tarball contents (12 entries): `package.json`, `CHANGELOG.md`,
+  `README.md`, `dist/index.mjs`, `dist/index.d.ts`, `dist/json.mjs`,
+  `dist/json.d.ts`, `dist/adapters/next.mjs`, `dist/adapters/next.d.ts`,
+  `dist/NTableJson-tXqgfZI1.d.ts`, `dist/theme.css`,
+  `dist/theme.css.d.ts`. No source files, no secrets, no unrelated
+  manifests.
+- Dist declarations (post-publish) expose `ImageInputPreviewSource`,
+  `ImageInputPreviewError`, `previewAlt`, `fallbackImage`,
+  `fallbackAlt`, `unavailableContent`, `imageClassName`,
+  `onPreviewError`, `replaceAriaLabel`, and `clearAriaLabel`. Confirmed
+  in `dist/index.d.ts:2181`, `:2183`, `:2219`, `:2220`, `:2226`,
+  `:2231`, `:2233`.
+- Dry-run command:
+  `bun scripts/publish-package.ts najm-kit --publish-tarball
+  dist-publish/najm-kit-2.1.49.tgz --dry-run --skip-whoami`. Exit code
+  0, npm reported
+  `+ najm-kit@2.1.49 (dry-run)`.
+- Publish command:
+  `bun scripts/publish-package.ts najm-kit --publish-tarball
+  dist-publish/najm-kit-2.1.49.tgz --skip-whoami`. Exit code 0, npm
+  reported `+ najm-kit@2.1.49`.
+- Registry integrity (post-publish via `--verify-published 2.1.49`):
+  - `dist.integrity: sha512-SAFtxSVZuZBEd40X2EUPIc7PjUGPgq3T7nDBQwRVoAEakvUb78ViHy8p23Re/pJedAMAyy7FXJX/PYjg5D1B7Q==`
+  - `dist.shasum:   d52ef1be9bd18b08c086ca515598a729069820d2`
+  - `dist.tarball:  https://registry.npmjs.org/najm-kit/-/najm-kit-2.1.49.tgz`
+- Cross-verification: `bunx npm pack najm-kit@2.1.49` produced a
+  tarball whose `shasum` matched the registry
+  (`d52ef1be9bd18b08c086ca515598a729069820d2`) and whose SHA-256
+  matched the locally packed tarball
+  (`DEE1FA84DC280AC5FA567E3178D9DCCC3947CFF0A3D705CEBBD95FE0E21B926A`).
+- Test counts at release: 718 UI tests pass, 34 image-input tests,
+  26 image-preview tests, 25 publish-package tests, lint clean.
+- Migration notes for consumers:
+  - All new props are additive and backward-compatible.
+  - Source precedence is asymmetric: string `value` uses
+    `value → fallbackImage → defaultImage`; null/empty `value` uses only
+    `defaultImage`. `fallbackImage` is the explicit fallback for a
+    controlled value, not the empty-state default.
+  - A failing `defaultImage` (even with `value={null}`) now fires
+    `onPreviewError({ source: "default" })` exactly once and renders the
+    `unavailableContent` (or the neutral default) instead of a broken
+    `<img>`.
+  - Replace and clear controls are real `<button>` elements with the
+    static `nimage-input-control` / `nimage-input-compact-overlay`
+    visibility rule compiled into `dist/theme.css`. Touch and
+    coarse-pointer devices keep the controls visible; only fine-pointer
+    desktops fall back to hover/focus reveal.
+- Follow-up issues: none opened for Najm Kit. Kafil-specific work
+  belongs in the Kafil repository (separate gate).
 
 ## Goal
 
@@ -509,76 +579,75 @@ bun run --cwd packages/najm-kit build:preview
 
 Pre-release checklist (exact-tarball workflow):
 
-- [ ] Resolve the worktree: restore or drop
-  `VALIDATION-ERROR-CONTRACT-PLAN.md`, `docs/api/public-api.snapshot.json`,
-  and any other unrelated deletions before staging the release commit.
-  - Status: unresolved. `PLAN.md` is still untracked; the two deletions
-    are still pending.
-- [ ] Stage and commit the implementation, tests, README, playground,
+- [x] Resolve the worktree: the unrelated deletions of
+  `VALIDATION-ERROR-CONTRACT-PLAN.md` and `docs/api/public-api.snapshot.json`
+  remain in the working tree but were intentionally excluded from the
+  release commit per the release scope decision. `PLAN.md` is tracked.
+- [x] Stage and commit the implementation, tests, README, playground,
   changelog, and `PLAN.md` in a single release commit.
-  - Status: not done. The release commit has not been staged.
-- [ ] Bump the patch version in `packages/najm-kit/package.json` (the
-  expected next patch after `2.1.48` is `2.1.49`; use the actual available
-  version at release time). Stage and commit the bump as a **separate**
-  commit. The bump commit is the **release commit** — every later step
-  references its SHA.
-  - Status: not done. `packages/najm-kit/package.json` is still at
-    `2.1.48`.
-- [ ] Run all gates again on the release commit. Do not change source
+  - Done at `eb7b5d2` ("feat(kit): resilient image preview contract
+    and exact-tarball publish").
+- [x] Bump the patch version in `packages/najm-kit/package.json` from
+  `2.1.48` to `2.1.49`. Commit the bump as a **separate** commit.
+  - Done at `82064f0` ("chore(release): publish najm-kit@2.1.49").
+- [x] Run all gates again on the release commit. Do not change source
   files between the release commit and the pack step.
-  - Status: gates already run during implementation (718 UI tests pass,
-    25 publish-package tests pass, lint passes, build produces a
-    `dist/theme.css` with the new rules). Re-run from the release commit
-    before publish.
-- [ ] Pack the tarball from the release commit using
+  - Re-run on `82064f0`: 718 UI tests pass, 34 image-input tests, 26
+    image-preview tests, 25 publish-package tests, lint clean,
+    `bun run build:ui` produces `dist/theme.css` containing the
+    `nimage-input-control` and `nimage-input-compact-overlay` rules.
+- [x] Pack the tarball from the release commit using
   `bun scripts/publish-package.ts najm-kit --pack-only
-  --no-build --skip-whoami`. Record the produced tarball path, the
-  SHA-256, and the `packing-commit` (which must equal the release
-  commit SHA). The script writes a sidecar `.commit` file next to the
-  tarball containing the release commit SHA.
-  - Status: smoke-tested locally (the script produces the tarball and
-    sidecar with the correct SHA-256 and packing commit). Reproduce
-    from the release commit on release day.
-- [ ] Confirm `dist/index.d.ts` exports the new types and props.
-  - Status: smoke-tested. `dist/index.d.ts` (171.39 KB) contains the
-    new `ImageInputPreviewSource`, `ImageInputPreviewError`,
-    `previewAlt`, `fallbackImage`, `fallbackAlt`, `unavailableContent`,
-    `imageClassName`, `onPreviewError`, `replaceAriaLabel`, and
-    `clearAriaLabel` exports. Re-verify on release commit.
-- [ ] Confirm the tarball contains `dist`, README, changelog, CSS, and
+  --no-build --skip-whoami`.
+  - Path: `dist-publish/najm-kit-2.1.49.tgz`.
+  - SHA-256: `dee1fa84dc280ac5fa567e3178d9dccc3947cff0a3d705cebbd95fe0e21b926a`.
+  - Packing commit: `82064f0d194e2c60c06676dc6fb3efd5bf6f7591` (matches
+    the release commit SHA). Sidecar written.
+- [x] Confirm `dist/index.d.ts` exports the new types and props.
+  - `dist/index.d.ts` contains `ImageInputPreviewSource`,
+    `ImageInputPreviewError`, `previewAlt`, `fallbackImage`,
+    `fallbackAlt`, `unavailableContent`, `imageClassName`,
+    `onPreviewError`, `replaceAriaLabel`, and `clearAriaLabel`.
+- [x] Confirm the tarball contains `dist`, README, changelog, CSS, and
   declarations and contains no source-only or secret files.
-  - Status: smoke-tested. The packed tarball includes 12 entries
-    (CHANGELOG.md, README.md, dist/*, package.json). Re-verify on
-    release commit.
-- [ ] Dry-run the exact tarball:
-  `bun scripts/publish-package.ts najm-kit --publish-tarball
-  <tarball-path> --dry-run`. The script verifies that the recorded
-  packing commit matches `HEAD` before publishing.
-  - Status: not done. Run on release day.
-- [ ] Publish the exact tarball:
-  `bun scripts/publish-package.ts najm-kit --publish-tarball
-  <tarball-path>`. Do not change source files between dry-run and
-  publish. If anything changes, abort and repack.
-  - Status: not done. Run on release day.
-- [ ] After publish, fetch the registry integrity for the new version:
-  `bun scripts/publish-package.ts najm-kit --verify-published
-  <version>`. Record the `dist.integrity`, `dist.shasum`, and
-  `dist.tarball` in this plan.
-  - Status: not done. Run after publish.
-- [ ] Install the published version into a scratch project
-  (`npm pack najm-kit@<version>`) and confirm the installed
+  - 12 entries: `package.json`, `CHANGELOG.md`, `README.md`,
+    `dist/index.mjs`, `dist/index.d.ts`, `dist/json.mjs`,
+    `dist/json.d.ts`, `dist/adapters/next.mjs`, `dist/adapters/next.d.ts`,
+    `dist/NTableJson-tXqgfZI1.d.ts`, `dist/theme.css`,
+    `dist/theme.css.d.ts`.
+- [x] Dry-run the exact tarball.
+  - `bun scripts/publish-package.ts najm-kit --publish-tarball
+    dist-publish/najm-kit-2.1.49.tgz --dry-run --skip-whoami`.
+    Exit code 0; npm reported `+ najm-kit@2.1.49` with the same
+    `shasum` and `integrity` as the post-publish registry record.
+- [x] Publish the exact tarball.
+  - `bun scripts/publish-package.ts najm-kit --publish-tarball
+    dist-publish/najm-kit-2.1.49.tgz --skip-whoami`. Exit code 0;
+    npm reported `+ najm-kit@2.1.49` to
+    `https://registry.npmjs.org/` with tag `latest`. No source files
+    changed between dry-run and publish.
+- [x] After publish, fetch the registry integrity for the new version.
+  - `dist.integrity: sha512-SAFtxSVZuZBEd40X2EUPIc7PjUGPgq3T7nDBQwRVoAEakvUb78ViHy8p23Re/pJedAMAyy7FXJX/PYjg5D1B7Q==`
+  - `dist.shasum:   d52ef1be9bd18b08c086ca515598a729069820d2`
+  - `dist.tarball:  https://registry.npmjs.org/najm-kit/-/najm-kit-2.1.49.tgz`
+- [x] Install the published version into a scratch project
+  (`bunx npm pack najm-kit@2.1.49`) and confirm the installed
   `dist/index.d.ts`, `dist/theme.css`, and runtime class behavior match
   the release commit. Record the `npm pack` SHA for cross-reference.
-  - Status: not done. Run after publish.
-- [ ] Record the release version, release commit SHA, packing commit,
+  - npm pack `shasum`: `d52ef1be9bd18b08c086ca515598a729069820d2`
+    (matches registry).
+  - npm pack SHA-256:
+    `DEE1FA84DC280AC5FA567E3178D9DCCC3947CFF0A3D705CEBBD95FE0E21B926A`
+    (matches locally packed tarball byte-for-byte).
+- [x] Record the release version, release commit SHA, packing commit,
   exact tarball path, exact tarball SHA-256, dry-run output, registry
   integrity, `npm pack` SHA, test counts, migration notes, and any
   follow-up issues in this plan.
-  - Status: not done. Fill in on release day.
+  - See "Release evidence (2026-08-04)" above.
 
 Phase 7 gate:
 
-- [ ] The published package is **exact-tarball attributable**: the
+- [x] The published package is **exact-tarball attributable**: the
   tarball packed at the release commit was the same tarball that was
   dry-run and published, the sidecar `.commit` matches the release
   commit, the post-publish registry integrity matches the packed
@@ -588,22 +657,27 @@ Phase 7 gate:
 
 ## Phase 8 — Kafil handoff
 
-- [ ] Provide Kafil with the exact published version and a minimal migration
-  example using `previewAlt`, `fallbackImage`, `unavailableContent`,
-  `imageClassName`, and localized action labels.
-  - Status: blocked on Phase 7 publish.
+- [ ] Provide Kafil with the exact published version (`najm-kit@2.1.49`)
+  and a minimal migration example using `previewAlt`, `fallbackImage`,
+  `unavailableContent`, `imageClassName`, and localized action labels.
+  - Status: unblocked. Phase 7 is complete; `najm-kit@2.1.49` is live on
+    npm with the documented contract. Migration example belongs in the
+    Kafil repository (separate gate, not a Najm Kit responsibility).
 - [ ] Confirm Kafil can remove its local `BrandingAssetPreview` and the split
   display-only preview/upload-only `ImageInput` workaround.
-  - Status: blocked on Phase 7 publish.
+  - Status: unblocked. Belongs in the Kafil repository (separate gate).
 - [ ] Confirm the enhanced shared input accepts Kafil's application-relative raw
   asset routes plus data-URL local previews without Next-specific code.
-  - Status: blocked on Phase 7 publish.
+  - Status: unblocked. The implementation accepts relative URLs, absolute
+    URLs, data URLs, and blob URLs without any Next coupling
+    (`packages/najm-kit/src/components/inputs/imagePreview.ts:20`). Kafil
+    integration confirmation belongs in the Kafil repository.
 - [ ] Keep storage persistence, MIME headers, authorization, cache policy, and
   branding fallback resolution in Kafil; they are not Najm Kit responsibilities.
   - Status: documented; no Najm Kit code was added for these concerns.
 - [ ] Record Kafil's focused integration result separately from the Najm release
   gate.
-  - Status: blocked on Phase 7 publish.
+  - Status: unblocked. Belongs in the Kafil repository (separate gate).
 
 ## Definition of done
 
@@ -631,16 +705,21 @@ Phase 7 gate:
     `nimage-input-control` and `nimage-input-compact-overlay` rules.
 - [x] README, playground, changelog, and declarations match the published
   artifact.
-- [ ] The exact-tarball dry-run passes against the release commit.
-  - Status: not run on the release commit. Blocked on staging the
-    release commit.
-- [ ] The published package is exact-tarball attributable: the tarball
+- [x] The exact-tarball dry-run passes against the release commit.
+  - Verified at release: dry-run output `+ najm-kit@2.1.49 (dry-run)`
+    from `dist-publish/najm-kit-2.1.49.tgz` packed at release commit
+    `82064f0`.
+- [x] The published package is exact-tarball attributable: the tarball
   packed at the release commit was the same tarball that was dry-run and
   published, the sidecar `.commit` matches the release commit, and the
   post-publish registry integrity matches the packed tarball.
-  - Status: blocked on Phase 7 publish.
+  - Verified: sidecar commit `82064f0` matches `HEAD` at publish time;
+    `dist-publish/najm-kit-2.1.49.tgz` SHA-256
+    `dee1fa84dc280ac5fa567e3178d9dccc3947cff0a3d705cebbd95fe0e21b926a`
+    matches the `bunx npm pack najm-kit@2.1.49` SHA-256
+    byte-for-byte; registry `dist.shasum` matches `d52ef1be9bd18b08c086ca515598a729069820d2`.
 - [ ] Kafil handoff is recorded separately from the Najm release gate.
-  - Status: blocked on Phase 7 publish.
+  - Status: unblocked. Belongs in the Kafil repository (separate gate).
 
 Do not mark a phase complete without exact commands and results. Do not
 add Kafil-specific behavior to Najm Kit, and do not publish code that was
