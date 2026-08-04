@@ -24,6 +24,20 @@ class MockImage {
   set src(value: string) {
     this.#src = value;
     if (!value) return;
+    const shouldFail =
+      typeof failingImageSrc === "string"
+        ? failingImageSrc === value
+        : failingImageSrc instanceof RegExp
+        ? failingImageSrc.test(value)
+        : false;
+    if (shouldFail) {
+      failingImageSrc = null;
+      this.complete = false;
+      this.naturalWidth = 0;
+      this.onerror?.();
+      for (const cb of this.#listeners.error ?? []) cb();
+      return;
+    }
     this.complete = true;
     this.naturalWidth = 1;
     this.onload?.();
@@ -33,7 +47,42 @@ class MockImage {
     return this.#src;
   }
 }
+
+let failingImageSrc: string | RegExp | null = null;
+(globalThis as any).__najmFailNextImage = (match: string | RegExp) => {
+  failingImageSrc = match;
+};
+(globalThis as any).__najmResetImageMock = () => {
+  failingImageSrc = null;
+};
 (win as any).Image = MockImage;
+
+class MockFileReader {
+  onloadend: ((this: MockFileReader, ev: ProgressEvent) => void) | null = null;
+  onerror: ((this: MockFileReader, ev: ProgressEvent) => void) | null = null;
+  result: string | ArrayBuffer | null = null;
+  error: Error | null = null;
+  readyState = 0;
+  readAsDataURL(blob: Blob) {
+    this.result = `data:${(blob as any).type || ""};base64,test`;
+    this.readyState = 2;
+    this.onloadend?.call(this, {} as ProgressEvent);
+  }
+  readAsText() {
+    this.result = "";
+    this.readyState = 2;
+    this.onloadend?.call(this, {} as ProgressEvent);
+  }
+  abort() {
+    this.readyState = 2;
+    this.error = new Error("aborted");
+  }
+  addEventListener() {}
+  removeEventListener() {}
+  dispatchEvent() {
+    return true;
+  }
+}
 
 const globals: Record<string, any> = {
   window: win,
@@ -61,6 +110,11 @@ const globals: Record<string, any> = {
   FocusEvent: win.FocusEvent,
   InputEvent: win.InputEvent,
   PointerEvent: win.PointerEvent,
+  Blob: win.Blob,
+  File: win.File,
+  FileReader: MockFileReader,
+  FormData: win.FormData,
+  URL: win.URL,
   ResizeObserver: class ResizeObserver {
     observe() {}
     unobserve() {}

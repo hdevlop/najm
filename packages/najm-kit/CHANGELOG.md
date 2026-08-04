@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+### ImageInput and AvatarInput
+
+- Add `previewAlt`, `fallbackImage`, `fallbackAlt`, `unavailableContent`,
+  `imageClassName`, `onPreviewError`, `replaceAriaLabel`, and `clearAriaLabel`
+  to `ImageInputProps`. `AvatarInput` forwards every new prop unchanged.
+- Preview sources resolve in this priority order: `value`, `fallbackImage`,
+  `defaultImage`. Candidate URLs are deduplicated so a failing primary URL is
+  never retried through multiple stages. When every candidate fails, the
+  broken `<img>` is unmounted and `unavailableContent` (or a neutral default)
+  is rendered in its place.
+- `imageVersion` is appended safely to relative, absolute, queried, and
+  fragmented URLs. `data:`, `blob:`, `javascript:`, and `file:` URLs are
+  left unchanged.
+- Expose `data-image-input-state="empty" | "preview" | "fallback" | "unavailable"`
+  on the preview container for styling, testing, and consumer diagnostics.
+- File selection is race-safe: stale `FileReader` completions cannot replace
+  a newer value. Object URLs created by the component are tracked so
+  consumer-owned blob URLs are never revoked.
+- Replace and clear controls are real `<button>` elements, are reachable
+  with the keyboard, and stay visible on touch and coarse-pointer devices.
+  Only on `(hover: hover) and (pointer: fine)` desktops do the controls fall
+  back to a hover/focus reveal. `focus-visible` always restores visibility.
+- Use logical positioning (`end-*`) so the clear button works correctly in
+  RTL layouts.
+- Re-export `ImageInputPreviewSource` and `ImageInputPreviewError` from
+  `najm-kit/components/inputs` and the package root.
+
 ## 2.1.48 - 2026-08-04
 
 - Keep responsive card row actions visible on phone, tablet, and touch input,

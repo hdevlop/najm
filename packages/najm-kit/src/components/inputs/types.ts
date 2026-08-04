@@ -190,6 +190,13 @@ export interface TimeZoneInputProps extends Omit<ComboboxInputProps, "items"> {
   items?: SelectItemType[];
 }
 
+export type ImageInputPreviewSource = "value" | "fallback" | "default";
+
+export interface ImageInputPreviewError {
+  source: ImageInputPreviewSource;
+  src: string;
+}
+
 export interface ImageInputProps extends BaseProps {
   value: File | string | null;
   onChange: (file: File | null) => void;
@@ -204,6 +211,8 @@ export interface ImageInputProps extends BaseProps {
   previewStyle?: CSSProperties;
   /** Class applied to the empty and replace-overlay content inside the preview. */
   contentClassName?: string;
+  /** Class applied to the preview <img> element to control object-fit / sizing. */
+  imageClassName?: string;
   showPreview?: boolean;
   previewPosition?: "top" | "bottom" | "left" | "right";
   allowClear?: boolean;
@@ -220,6 +229,27 @@ export interface ImageInputProps extends BaseProps {
   trigger?: "icon" | "button" | "both";
   buttonLabel?: string;
   disabled?: boolean;
+
+  /** Accessible name for the primary preview image. Falls back to `replaceTitle`. */
+  previewAlt?: string;
+  /** Accessible name for the fallback/default preview image. Falls back to `previewAlt`. */
+  fallbackAlt?: string;
+  /**
+   * URL tried when the primary `value` fails to load.
+   * The same URL is never attempted twice, so a failing primary cannot loop.
+   */
+  fallbackImage?: string | null;
+  /**
+   * Rendered inside the preview area when every candidate URL has failed.
+   * When omitted, a small neutral unavailable state is rendered instead.
+   */
+  unavailableContent?: React.ReactNode;
+  /** Fires once for every URL that failed to load, with its source. */
+  onPreviewError?: (error: ImageInputPreviewError) => void;
+  /** Accessible name for the replace (re-upload) control. */
+  replaceAriaLabel?: string;
+  /** Accessible name for the clear control. */
+  clearAriaLabel?: string;
 }
 
 export interface OtpInputProps extends BaseProps {

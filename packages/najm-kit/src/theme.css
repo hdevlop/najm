@@ -330,6 +330,45 @@ input:autofill {
   }
 }
 
+/* ImageInput controls (clear button and replace overlay) stay visible on touch
+   and coarse-pointer devices. Only on fine-pointer desktops do they fall back to
+   a hover/focus reveal. Keyboard focus always restores visibility. The rule
+   below ships in dist/theme.css via scripts/build-css.mjs so the JSX only needs
+   to reference the static class names. */
+.nimage-input-control {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nimage-input-control {
+    opacity: 0;
+  }
+
+  .group\/image:hover .nimage-input-control,
+  .group\/image:focus-within .nimage-input-control,
+  .nimage-input-control:focus,
+  .nimage-input-control:focus-visible {
+    opacity: 1;
+  }
+}
+
+.nimage-input-compact-overlay {
+  opacity: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .nimage-input-compact-overlay {
+    opacity: 0;
+  }
+
+  .group\/image:hover .nimage-input-compact-overlay,
+  .group\/image:focus-within .nimage-input-compact-overlay,
+  .nimage-input-compact-overlay:focus,
+  .nimage-input-compact-overlay:focus-visible {
+    opacity: 1;
+  }
+}
+
 /* OverlayScrollbars theme used by the <NajmScroll> component — a thin,
    translucent slate bar that floats over content with no reserved space.
    Keep this selector more specific than OverlayScrollbars' appended

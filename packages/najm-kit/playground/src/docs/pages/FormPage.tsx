@@ -664,7 +664,7 @@ import { NForm, AvatarFormInput, NButton } from 'najm-kit';
 
       <Example
         title="Image input"
-        description="FormInput type='image' renders the ImageInput with preview, hover overlay, and clear button — pass previewClassName to control dimensions and switch to the dropzone layout. Use trigger='icon' | 'button' | 'both' to pick the affordance, uploadIcon to swap the dropzone icon, and title/subtitle to customize the prompt copy."
+        description="FormInput type='image' renders the ImageInput with a resilient preview: use previewAlt for localized alt text, fallbackImage for a URL tried after the primary fails, and unavailableContent to replace a broken preview. The replace and clear controls are real buttons, are always visible on touch and coarse-pointer devices, and are revealed on hover and focus for fine-pointer desktops. Pass previewClassName to control dimensions and switch to the dropzone layout. Use trigger='icon' | 'button' | 'both' to pick the affordance, uploadIcon to swap the dropzone icon, and title/subtitle to customize the prompt copy."
         previewHeight="h-[820px]"
         noPad
         center={false}

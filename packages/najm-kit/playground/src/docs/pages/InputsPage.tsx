@@ -832,6 +832,49 @@ function ImageInputSection() {
           </Field>
         </PreviewBox>
       </Example>
+
+      <Example title="Resilient Preview And Fallback" center={false} previewHeight="h-72" code={`<ImageInput
+  value="https://broken.example.com/missing.png"
+  onChange={() => {}}
+  previewAlt="Workspace logo"
+  fallbackImage="https://placehold.co/96x96/0f172a/ffffff?text=N"
+  fallbackAlt="Default logo"
+  unavailableContent={<span>Logo unavailable</span>}
+  imageClassName="object-contain"
+  imageSize="md"
+/>
+
+<ImageInput
+  value="https://placehold.co/96x96/0f172a/ffffff?text=N"
+  onChange={() => {}}
+  previewAlt="Workspace logo"
+  imageClassName="object-cover"
+  imageSize="md"
+/>`}>
+        <PreviewGrid>
+          <Field label="Broken primary with fallback">
+            <ImageInput
+              value="https://broken.example.com/missing.png"
+              onChange={() => {}}
+              previewAlt="Workspace logo"
+              fallbackImage="https://placehold.co/96x96/0f172a/ffffff?text=N"
+              fallbackAlt="Default logo"
+              unavailableContent={<span>Logo unavailable</span>}
+              imageClassName="object-contain"
+              imageSize="md"
+            />
+          </Field>
+          <Field label="Contain vs cover">
+            <ImageInput
+              value="https://placehold.co/96x96/0f172a/ffffff?text=N"
+              onChange={() => {}}
+              previewAlt="Workspace logo"
+              imageClassName="object-cover"
+              imageSize="md"
+            />
+          </Field>
+        </PreviewGrid>
+      </Example>
     </ComponentPage>
   );
 }

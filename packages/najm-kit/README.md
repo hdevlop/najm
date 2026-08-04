@@ -141,11 +141,79 @@ import { Form, FormInput, useNForm } from 'najm-kit';
 | Category | Components |
 |----------|-----------|
 | Actions | NButton, IconButton, toggleVariants |
-| Forms | Input, Textarea, Label, Select, Checkbox, RadioGroup, Switch, DateInput, FileInput |
+| Forms | Input, Textarea, Label, Select, Checkbox, RadioGroup, Switch, DateInput, FileInput, ImageInput, AvatarInput |
 | Feedback | Alert, Badge, Progress, Spinner, Toast |
 | Layout | Card, Sheet, Dialog, Popover, DropdownMenu, Tabs |
 | Data | Table (NTable), StatCard, DetailList |
 | Overlays | Command palette, Tooltip, Toast |
+
+## ImageInput and AvatarInput
+
+`ImageInput` and `AvatarInput` ship with a resilient preview contract so
+consumers do not need to wrap them with application-specific preview
+components.
+
+Source precedence:
+
+- When `value` is a non-empty string URL, candidates are tried in order:
+  1. `value` is the primary preview source.
+  2. If the primary source fails, `fallbackImage` is tried when supplied.
+  3. `defaultImage` is the last-resort fallback.
+- When `value` is `null` or empty, only `defaultImage` is tracked. The
+  `fallbackImage` is intentionally not used in the empty state — a null
+  `value` is the consumer's empty-state signal, and only the configured
+  default participates in the failed-default → unavailable transition.
+  If `defaultImage` itself fails, `onPreviewError({ source: "default" })`
+  fires and the unavailable state is rendered.
+
+Candidate URLs are deduplicated so the same failing URL is never retried
+through multiple stages. When every candidate fails, the broken `<img>` is
+unmounted and `unavailableContent` (or a neutral default) is rendered in its
+place. A `data-image-input-state="empty" | "preview" | "fallback" | "unavailable"`
+marker is exposed for styling, testing, and consumer diagnostics.
+
+Candidate URLs are deduplicated so the same failing URL is never retried
+through multiple stages. When every candidate fails, the broken `<img>` is
+unmounted and `unavailableContent` (or a neutral default) is rendered in its
+place. A `data-image-input-state="empty" | "preview" | "fallback" | "unavailable"`
+marker is exposed for styling, testing, and consumer diagnostics.
+
+```tsx
+import { ImageInput } from "najm-kit";
+
+<ImageInput
+  value="https://cdn.example.com/avatar.png"
+  onChange={setAvatar}
+  previewAlt="Workspace logo"
+  fallbackImage="/assets/logo-default.png"
+  fallbackAlt="Default workspace logo"
+  unavailableContent={<span>Logo unavailable</span>}
+  imageClassName="object-contain"
+  imageVersion={cacheBustVersion}
+  replaceAriaLabel="Replace workspace logo"
+  clearAriaLabel="Remove workspace logo"
+  onPreviewError={(err) => log(err)}
+/>
+```
+
+Key behaviors:
+
+- The replace and clear controls are real `<button>` elements, are reachable
+  with the keyboard (`Enter` and `Space` activate them once), and stay
+  visible on touch and coarse-pointer devices. Only on `(hover: hover) and
+  (pointer: fine)` desktops do the controls fall back to a hover/focus
+  reveal. `focus-visible` always restores visibility.
+- Positioning uses logical properties (`end-*`) so the clear button works
+  correctly in RTL layouts.
+- `imageVersion` is appended safely to relative, absolute, queried, and
+  fragmented URLs. `data:`, `blob:`, `javascript:`, and `file:` URLs are
+  left unchanged.
+- File selection is race-safe: stale `FileReader` completions cannot replace
+  a newer value, and object URLs created by the component are tracked so
+  consumer-owned blob URLs are never revoked.
+
+`AvatarInput` forwards every preview and accessibility prop unchanged while
+preserving its circular, size, fill, and camera-icon defaults.
 
 ## Hooks
 

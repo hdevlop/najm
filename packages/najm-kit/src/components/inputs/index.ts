@@ -44,6 +44,8 @@ export type {
   DateInputProps,
   FileInputProps,
   ImageInputProps,
+  ImageInputPreviewError,
+  ImageInputPreviewSource,
   AvatarInputProps,
   AvatarInputRadius,
   StarRatingInputProps,

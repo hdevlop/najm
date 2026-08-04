@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import React from "react";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import { Camera } from "lucide-react";
 import { AvatarInput } from "../src/components/inputs/AvatarInput";
 import { AvatarFormInput } from "../src/components/form/AvatarFormInput";
@@ -9,7 +9,7 @@ import { NForm } from "../src/components/form/NForm";
 describe("AvatarInput", () => {
   test("uses circular ImageInput defaults", () => {
     const { container } = render(<AvatarInput value={null} onChange={() => {}} />);
-    const preview = container.querySelector(".group");
+    const preview = container.querySelector("[data-image-input-state]");
 
     expect(preview?.className).toContain("size-24");
     expect(preview?.className).toContain("rounded-full");
@@ -28,7 +28,7 @@ describe("AvatarInput", () => {
         subtitle="PNG only"
       />,
     );
-    const preview = container.querySelector(".group");
+    const preview = container.querySelector("[data-image-input-state]");
 
     expect(preview?.className).toContain("h-36");
     expect(preview?.className).toContain("w-40");
@@ -42,26 +42,26 @@ describe("AvatarInput", () => {
       <AvatarInput value={null} onChange={() => {}} radius="none" />,
     );
 
-    expect(container.querySelector(".group")?.className).toContain("rounded-none");
+    expect(container.querySelector("[data-image-input-state]")?.className).toContain("rounded-none");
 
     rerender(
       <AvatarInput value={null} onChange={() => {}} radius="xl" />,
     );
 
-    expect(container.querySelector(".group")?.className).toContain("rounded-xl");
+    expect(container.querySelector("[data-image-input-state]")?.className).toContain("rounded-xl");
 
     rerender(
       <AvatarInput value={null} onChange={() => {}} radius="full" />,
     );
 
-    expect(container.querySelector(".group")?.className).toContain("rounded-full");
+    expect(container.querySelector("[data-image-input-state]")?.className).toContain("rounded-full");
   });
 
   test("accepts an exact pixel size", () => {
     const { container } = render(
       <AvatarInput value={null} onChange={() => {}} size={118} />,
     );
-    const preview = container.querySelector<HTMLElement>(".group");
+    const preview = container.querySelector<HTMLElement>("[data-image-input-state]");
 
     expect(preview?.style.width).toBe("118px");
     expect(preview?.style.height).toBe("118px");
@@ -72,7 +72,7 @@ describe("AvatarInput", () => {
       <AvatarInput value={null} onChange={() => {}} fill />,
     );
     const root = container.firstElementChild;
-    const preview = container.querySelector(".group");
+    const preview = container.querySelector("[data-image-input-state]");
 
     expect(root?.className).toContain("flex-1");
     expect(root?.className).toContain("w-full");
@@ -89,5 +89,29 @@ describe("AvatarInput", () => {
     const item = container.querySelector('[data-slot="form-item"]');
     expect(item?.className).toContain("h-full");
     expect(item?.className).toContain("w-full");
+  });
+
+  test("forwards previewAlt, fallbackImage, and unavailableContent props", () => {
+    const { container } = render(
+      <AvatarInput
+        value="https://broken.example.com/missing.png"
+        onChange={() => {}}
+        previewAlt="Avatar preview"
+        fallbackImage="https://cdn.example.com/default.png"
+        unavailableContent={<span data-testid="fallback-text">Avatar unavailable</span>}
+        onPreviewError={() => {}}
+      />,
+    );
+
+    const preview = container.querySelector("[data-image-input-state]");
+    expect(preview).not.toBeNull();
+
+    let img = container.querySelector("img");
+    fireEvent.error(img!);
+    img = container.querySelector("img");
+    fireEvent.error(img!);
+
+    expect(container.textContent).toContain("Avatar unavailable");
+    expect(container.querySelector('[data-testid="fallback-text"]')).not.toBeNull();
   });
 });
