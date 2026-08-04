@@ -5,10 +5,8 @@ import { NajmScroll } from "../ui/scroll";
 import { flexRender } from "@tanstack/react-table";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { surfaceBorderClasses } from "../../theme/borders";
-import { useNajmComponentStyle } from "../../theme/design-provider";
-import { resolveRadiusValue } from "../../theme/design-types";
 import { useTableStore } from "./TableContext";
+import { useTableSurfaceAppearance } from "./tableSurface";
 import { resolveHiddenBelowClass } from "./responsiveColumns";
 import {
   DEFAULT_TABLE_BORDER_COLOR,
@@ -58,15 +56,6 @@ function EditableCell({ cell, onCellEdit }: { cell: any; onCellEdit: (row: any, 
 }
 
 export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
-  const recipe = useNajmComponentStyle("table");
-  const recipeRadius = resolveRadiusValue(recipe?.radius);
-  const recipeStyle: React.CSSProperties | undefined =
-    recipeRadius || recipe?.borderWidth
-      ? {
-          ...(recipeRadius ? { borderRadius: recipeRadius } : {}),
-          ...(recipe?.borderWidth ? { borderWidth: recipe.borderWidth } : {}),
-        }
-      : undefined;
   const table = useTableStore.use.table();
   const storeIsTableView = useTableStore.use.isTableView();
   const columns = useTableStore.use.columns();
@@ -83,13 +72,6 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
     backgroundColor: resolvedHeaderColor,
     color: resolvedHeaderTextColor,
   };
-  const contentStyle: React.CSSProperties | undefined =
-    recipeStyle || tableBorderColor
-      ? {
-          ...(recipeStyle ?? {}),
-          ...(tableBorderColor ? { borderColor: resolvedBorderColor } : {}),
-        }
-      : undefined;
   const rowBorderStyle: React.CSSProperties | undefined = tableBorderColor
     ? { borderColor: resolvedBorderColor }
     : undefined;
@@ -104,6 +86,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   const showContent = useTableStore.use.showContent();
   const classNames = useTableStore.use.classNames();
   const bordered = useTableStore.use.bordered();
+  const surface = useTableSurfaceAppearance(bordered, tableBorderColor);
   const showCheckbox = useTableStore.use.showCheckbox();
   const selectedRowId = useTableStore.use.selectedRowId();
   const renderSubRow = useTableStore.use.renderSubRow();
@@ -135,11 +118,11 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
       axis="both"
       data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
       className={cn(
-        "min-h-0 flex-1 overflow-hidden rounded-md bg-card",
-        bordered === true ? surfaceBorderClasses(true) : "shadow-sm",
+        "min-h-0 flex-1 overflow-hidden rounded-md",
+        surface.className,
         classNames?.content
       )}
-      style={contentStyle}
+      style={surface.style}
       onContextMenu={handleBackgroundContextMenu}
     >
       <Table>

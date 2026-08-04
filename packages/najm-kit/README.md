@@ -216,3 +216,69 @@ pure helper is exported as `filterResponsiveColumns`. The literal class
 map is also exported as `hiddenBelowClasses`, and
 `resolveHiddenBelowClass(breakpoint)` returns the class for a single
 breakpoint or `undefined` when no breakpoint is set.
+
+## NTable responsive cards, loading, and pagination
+
+Responsive row actions are visible by default on phone, tablet, and coarse or
+non-hover pointers. Fine-pointer desktop layouts may reveal them on hover, but
+keyboard focus always reveals the action. Applications still decide which menu
+items exist through `menu`, `onView`, `onEdit`, and `onDelete`; visibility does
+not grant an action or replace server authorization.
+
+When `dynamicHeight` is enabled, table and card loading skeletons measure the
+available body. Table rows use the same header/row geometry as dynamic page
+sizing, while cards measure the active grid columns, card height, and gap. The
+loading surface also follows the loaded `bordered`, design recipe, radius,
+border color, shadow, and `classNames.content`/`classNames.cards` contract.
+
+Use `cardPagination` to choose pagination presentation whenever the effective
+rendered mode is cards:
+
+- `{ mode: "paged" }` (the default) preserves existing pagination.
+- `{ mode: "all" }` renders every row already supplied and hides the footer.
+- `{ mode: "load-more", ... }` renders every supplied row and provides a
+  guarded, keyboard-operable Load more/Retry control with polite loading,
+  appended-result, and end-of-list announcements.
+
+`showPagination={false}` remains an absolute presentation override and hides
+both numbered controls and Load more. In table mode, existing controlled and
+manual server pagination remains unchanged.
+
+```tsx
+import { NTable, type NTableCardPagination } from "najm-kit";
+
+const cardPagination: NTableCardPagination = {
+  mode: "load-more",
+  hasNextPage: query.hasNextPage,
+  loadingMore: query.isFetchingNextPage,
+  loadMoreError: query.isFetchNextPageError
+    ? "The next page could not be loaded."
+    : undefined,
+  onLoadMore: () => query.fetchNextPage(),
+  loadMoreLabel: "Load more",
+  loadingMoreLabel: "Loading more...",
+  retryLabel: "Retry",
+  endLabel: "No more results.",
+};
+
+<NTable
+  data={query.data?.pages.flatMap((page) => page.rows) ?? []}
+  columns={columns}
+  getRowId={(row) => row.id}
+  renderCard={ResultCard}
+  cardPagination={cardPagination}
+/>
+```
+
+The application owns the query, cursor/offset, accumulated pages, cache
+invalidation, search/filter/sort semantics, authorization, and privacy
+projection. Najm Kit never imports React Query, calls an endpoint, invents a
+page size, or treats supplied rows as proof that every database row is loaded.
+Client sorting and filtering cover the rows currently supplied unless the
+application implements matching server-side behavior.
+
+For a responsive screen that uses current-page data in desktop table mode and
+accumulated pages in card mode, keep those two query shapes in the application
+and pass the appropriate `data`. Crossing the `<640px` responsive-card
+breakpoint does not overwrite the user's chosen view, pagination position,
+sorting, filters, expansion, or row selection.

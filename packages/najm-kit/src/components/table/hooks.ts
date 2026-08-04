@@ -7,8 +7,9 @@ import { useTableStore } from "./TableContext";
 import { filterResponsiveColumns } from "./responsiveColumns";
 
 const ROW_HEIGHT = 56;
-const MIN_ROWS = 5;
 const DEFAULT_TABLE_HEADER_HEIGHT = 48;
+const DEFAULT_CARD_HEIGHT = 176;
+const DEFAULT_CARD_GAP = 12;
 const ROOT_SECTION_GAP_COUNT = 2;
 
 export function useStoreSync(props: any) {
@@ -121,19 +122,45 @@ export function calculateDynamicPageSize(input: CalculateDynamicPageSizeInput): 
   return Math.max(1, Math.floor(availableRowsHeight / rowHeight));
 }
 
-export function useDynamicPageSize(containerRef: React.RefObject<HTMLDivElement | null>) {
+export interface CalculateCardSkeletonCountInput {
+  bodyHeight: number;
+  columnCount: number;
+  cardHeight?: number;
+  gap?: number;
+}
+
+export function calculateCardSkeletonCount(input: CalculateCardSkeletonCountInput): number {
+  const columns = Math.max(1, Math.floor(input.columnCount));
+  const cardHeight = Math.max(1, input.cardHeight ?? DEFAULT_CARD_HEIGHT);
+  const gap = Math.max(0, input.gap ?? DEFAULT_CARD_GAP);
+  if (input.bodyHeight <= 0) return columns;
+  const rows = Math.max(1, Math.ceil((input.bodyHeight + gap) / (cardHeight + gap)));
+  return rows * columns;
+}
+
+function fallbackCardColumns(width: number): number {
+  if (width >= 1280) return 4;
+  if (width >= 1024) return 3;
+  if (width >= 640) return 2;
+  return 1;
+}
+
+export function useDynamicPageSize(
+  containerRef: React.RefObject<HTMLDivElement | null>,
+  effectiveViewMode?: TableState["viewMode"],
+) {
   const dynamicHeight = useTableStore.use.dynamicHeight();
-  const viewMode = useTableStore.use.viewMode();
+  const viewMode = useTableStore.use.effectiveViewMode();
   const manualPagination = useTableStore.use.manualPagination();
   const isLoading = useTableStore.use.isLoading();
   const error = useTableStore.use.error();
   const hasNoData = useTableStore.use.hasNoData();
   const isFilteredEmpty = useTableStore.use.isFilteredEmpty();
   const syncWithProps = useTableStore.use.syncWithProps();
+  const lastMeasurementRef = useRef("");
 
   useLayoutEffect(() => {
-    // Skip dynamic page sizing when manualPagination is enabled (parent owns page size)
-    if (!dynamicHeight || !containerRef.current || viewMode !== "table" || manualPagination) return;
+    if (!dynamicHeight || !containerRef.current) return;
 
     const calculatePageSize = () => {
       const container = containerRef.current;
@@ -141,8 +168,13 @@ export function useDynamicPageSize(containerRef: React.RefObject<HTMLDivElement 
 
       const bodyEl = container.querySelector<HTMLElement>("[data-ntable-body]");
       const tableHeaderEl = container.querySelector<HTMLElement>("[data-ntable-table-header]");
+      const loadingHeaderEl = container.querySelector<HTMLElement>("[data-ntable-loading-header]");
+      const cardsGridEl = container.querySelector<HTMLElement>(
+        "[data-ntable-loading-cards-grid], [data-ntable-cards-grid]",
+      );
 
       let bodyHeight = bodyEl?.clientHeight ?? 0;
+      const bodyWidth = bodyEl?.clientWidth ?? container.clientWidth ?? 0;
 
       // Fallback: subtract measured header/pagination from root if body slot is
       // not yet measurable (e.g. before the first layout pass).
@@ -155,10 +187,39 @@ export function useDynamicPageSize(containerRef: React.RefObject<HTMLDivElement 
         bodyHeight = rootHeight - headerHeight - paginationHeight - gap * ROOT_SECTION_GAP_COUNT;
       }
 
+      if (loadingHeaderEl && bodyEl) {
+        const bodyStyles = window.getComputedStyle(bodyEl);
+        const bodyGap = Number.parseFloat(bodyStyles.rowGap || (bodyStyles as any).gap || "0") || 0;
+        bodyHeight = Math.max(0, bodyHeight - loadingHeaderEl.offsetHeight - bodyGap);
+      }
+
       const tableHeaderHeight = tableHeaderEl?.offsetHeight ?? DEFAULT_TABLE_HEADER_HEIGHT;
       const newPageSize = calculateDynamicPageSize({ bodyHeight, tableHeaderHeight });
       const calculatedMaxHeight = tableHeaderHeight + newPageSize * ROW_HEIGHT;
-      syncWithProps({ calculatedPageSize: newPageSize, maxHeight: calculatedMaxHeight });
+      const gridStyles = cardsGridEl ? window.getComputedStyle(cardsGridEl) : null;
+      const gridTemplateColumns = gridStyles?.gridTemplateColumns;
+      const gridColumns = gridTemplateColumns && gridTemplateColumns !== "none"
+        ? gridTemplateColumns.split(" ").filter(Boolean).length
+        : 0;
+      const cardColumnCount = gridColumns || fallbackCardColumns(bodyWidth);
+      const cardGap = Number.parseFloat(gridStyles?.rowGap || gridStyles?.gap || "") || DEFAULT_CARD_GAP;
+      const firstCard = cardsGridEl?.querySelector<HTMLElement>("[data-ntable-loading-card], [data-row]");
+      const cardRowHeight = firstCard?.offsetHeight || firstCard?.getBoundingClientRect().height || DEFAULT_CARD_HEIGHT;
+      const updates = {
+        ...(!manualPagination ? { calculatedPageSize: newPageSize, maxHeight: calculatedMaxHeight } : {}),
+        skeletonRowCount: newPageSize,
+        bodyWidth,
+        bodyHeight,
+        tableHeaderHeight,
+        cardColumnCount,
+        cardRowHeight,
+        cardGap,
+      };
+      const fingerprint = JSON.stringify(updates);
+      if (fingerprint !== lastMeasurementRef.current) {
+        lastMeasurementRef.current = fingerprint;
+        syncWithProps(updates);
+      }
     };
 
     calculatePageSize();
@@ -169,13 +230,16 @@ export function useDynamicPageSize(containerRef: React.RefObject<HTMLDivElement 
     container.querySelectorAll<HTMLElement>(
       "[data-ntable-header], [data-ntable-body], [data-ntable-pagination], [data-ntable-table-header]"
     ).forEach((el) => resizeObserver.observe(el));
+    container.querySelectorAll<HTMLElement>(
+      "[data-ntable-loading-header], [data-ntable-loading-cards-grid], [data-ntable-loading-card], [data-ntable-cards-grid]"
+    ).forEach((el) => resizeObserver.observe(el));
     if (container.parentElement) resizeObserver.observe(container.parentElement);
 
     return () => resizeObserver.disconnect();
-  }, [dynamicHeight, viewMode, containerRef, syncWithProps, manualPagination, isLoading, error, hasNoData, isFilteredEmpty]);
+  }, [dynamicHeight, effectiveViewMode, viewMode, containerRef, syncWithProps, manualPagination, isLoading, error, hasNoData, isFilteredEmpty]);
 }
 
-export function useTable() {
+export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
   const [sorting, setSorting] = useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
@@ -193,6 +257,8 @@ export function useTable() {
   const CardComponent = useTableStore.use.CardComponent();
   const dynamicHeight = useTableStore.use.dynamicHeight();
   const viewMode = useTableStore.use.viewMode();
+  const effectiveViewMode = useTableStore.use.effectiveViewMode();
+  const cardPagination = useTableStore.use.cardPagination();
   const calculatedPageSize = useTableStore.use.calculatedPageSize();
   const syncWithProps = useTableStore.use.syncWithProps();
   const onStateChange = useTableStore.use.onStateChange();
@@ -316,6 +382,8 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
   // TanStack receives store pagination as controlled state via state.pagination.
   // Store default is always { pageIndex: 0, pageSize: 10 }, so this is never undefined.
   const hasExpansion = Boolean(renderSubRow || userGetRowCanExpand);
+  const renderedMode = effectiveViewModeOverride ?? effectiveViewMode ?? viewMode;
+  const renderAllSuppliedRows = renderedMode === "cards" && cardPagination.mode !== "paged";
   const tableConfig: any = {
     data, columns: finalColumns,
     state: { sorting: isSortingControlled ? storeSorting : sorting, columnFilters, columnVisibility, rowSelection: storeRowSelection ?? {}, globalFilter, pagination: storePagination, expanded: storeExpanded ?? {} },
@@ -331,7 +399,7 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getExpandedRowModel: getExpandedRowModel(),
-    manualPagination,
+    manualPagination: manualPagination || renderAllSuppliedRows,
     pageCount,
     rowCount,
   };
@@ -355,9 +423,11 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
   useLayoutEffect(() => {
     // Do not auto-change page size when manualPagination is enabled (parent owns page size)
     if (manualPagination) return;
-    if (dynamicHeight && viewMode === "table") table.setPageSize(calculatedPageSize);
-    if (viewMode === "cards") table.setPageSize(data.length || 9999);
-  }, [calculatedPageSize, dynamicHeight, viewMode, table, data.length, manualPagination]); // table stable, calculatedPageSize/dynamicHeight/viewMode/data drive re-runs
+    if (dynamicHeight && renderedMode === "table") table.setPageSize(calculatedPageSize);
+    if (viewMode === "cards" && cardPagination.mode === "paged") {
+      table.setPageSize(data.length || 9999);
+    }
+  }, [calculatedPageSize, dynamicHeight, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination]); // table stable, layout/data drive re-runs
 
   return { table, finalColumns, sorting, setSorting, columnFilters, setColumnFilters, columnVisibility, setColumnVisibility, globalFilter, setGlobalFilter };
 }

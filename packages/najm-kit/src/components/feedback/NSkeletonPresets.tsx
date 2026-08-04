@@ -6,7 +6,7 @@ interface SkeletonProps extends React.ComponentProps<"div"> {}
 export function NSkeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
-      className={cn('animate-pulse rounded-md bg-accent', className)}
+      className={cn('animate-pulse rounded-md bg-accent motion-reduce:animate-none', className)}
       aria-hidden="true"
       {...props}
     />

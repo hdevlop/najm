@@ -1,10 +1,120 @@
 import React from "react";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Loader2 } from "lucide-react";
 import { Button } from "../Button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useTableStore } from "./TableContext";
 import { cn } from "../../lib/cn";
 import type { NTableClassNames } from "./store";
+import type { NTableLoadMorePagination as NTableLoadMorePaginationContract } from "./paginationContract";
+
+function CardLoadMorePagination({
+  config,
+  rowCount,
+  bordered,
+  className,
+}: {
+  config: NTableLoadMorePaginationContract;
+  rowCount: number;
+  bordered?: boolean;
+  className?: string;
+}) {
+  const [internalPending, setInternalPending] = React.useState(false);
+  const [internalError, setInternalError] = React.useState<React.ReactNode>(null);
+  const [announcement, setAnnouncement] = React.useState("");
+  const buttonRef = React.useRef<HTMLButtonElement>(null);
+  const pendingRef = React.useRef(false);
+  const restoreFocusRef = React.useRef(false);
+  const previousRowCountRef = React.useRef(rowCount);
+  const errorId = React.useId();
+  const pending = Boolean(config.loadingMore || internalPending);
+  const error = config.loadMoreError ?? internalError;
+
+  React.useEffect(() => {
+    const previous = previousRowCountRef.current;
+    if (rowCount > previous) {
+      const appended = rowCount - previous;
+      setAnnouncement(
+        config.itemsLoadedLabel?.(appended)
+          ?? `${appended} more ${appended === 1 ? "item" : "items"} loaded.`,
+      );
+    }
+    previousRowCountRef.current = rowCount;
+  }, [config.itemsLoadedLabel, rowCount]);
+
+  React.useEffect(() => {
+    if (pending || !restoreFocusRef.current) return;
+    restoreFocusRef.current = false;
+    const frame = requestAnimationFrame(() => buttonRef.current?.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [pending]);
+
+  const loadMore = async () => {
+    if (pendingRef.current || pending || (!config.hasNextPage && !error)) return;
+    pendingRef.current = true;
+    restoreFocusRef.current = document.activeElement === buttonRef.current;
+    setInternalPending(true);
+    setInternalError(null);
+    const loadingAnnouncement = config.loadingMoreLabel ?? "Loading more items...";
+    setAnnouncement(loadingAnnouncement);
+    try {
+      await config.onLoadMore();
+    } catch {
+      setInternalError(config.loadMoreErrorLabel ?? "Couldn't load more items.");
+      setAnnouncement("");
+    } finally {
+      pendingRef.current = false;
+      setInternalPending(false);
+      setAnnouncement((current) => current === loadingAnnouncement ? "" : current);
+    }
+  };
+
+  if (!config.hasNextPage && !pending && !error) {
+    return (
+      <div
+        data-ntable-load-more-end
+        role="status"
+        aria-live="polite"
+        className={cn("py-2 text-center text-sm text-muted-foreground", className)}
+      >
+        {config.endLabel ?? "No more items."}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      data-ntable-load-more
+      className={cn("flex min-w-0 flex-col items-center gap-2 py-2", className)}
+    >
+      {error ? (
+        <div id={errorId} role="alert" className="text-center text-sm text-destructive">
+          {error === true ? config.loadMoreErrorLabel ?? "Couldn't load more items." : error}
+        </div>
+      ) : null}
+      <Button
+        ref={buttonRef}
+        type="button"
+        bordered={bordered}
+        variant="outline"
+        autoLoading={false}
+        disabled={pending}
+        aria-describedby={error ? errorId : undefined}
+        aria-busy={pending ? "true" : undefined}
+        onClick={loadMore}
+      >
+        {pending ? <Loader2 aria-hidden="true" className="h-4 w-4 animate-spin motion-reduce:animate-none" /> : null}
+        {pending
+          ? config.loadingMoreLabel ?? "Loading more..."
+          : error
+            ? config.retryLabel ?? "Retry"
+            : config.loadMoreLabel ?? "Load more"}
+      </Button>
+      <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+        {announcement}
+      </span>
+    </div>
+  );
+}
 
 export function NTablePagination() {
   const table = useTableStore.use.table();
@@ -12,7 +122,9 @@ export function NTablePagination() {
   const showContent = useTableStore.use.showContent();
   const pageSizeOptions = useTableStore.use.pageSizeOptions();
   const classNames = useTableStore.use.classNames() as NTableClassNames | undefined;
-  const viewMode = useTableStore.use.viewMode();
+  const effectiveViewMode = useTableStore.use.effectiveViewMode();
+  const cardPagination = useTableStore.use.cardPagination();
+  const data = useTableStore.use.data();
   const pagination = useTableStore.use.pagination();
   const manualPagination = useTableStore.use.manualPagination();
   const pageCount = useTableStore.use.pageCount();
@@ -21,7 +133,20 @@ export function NTablePagination() {
   const isPaginationControlled = useTableStore.use.isPaginationControlled();
   const bordered = useTableStore.use.bordered();
 
-  if (!table || !showContent || !showPagination || viewMode === "json" || viewMode === "files") return null;
+  if (!table || !showContent || !showPagination || effectiveViewMode === "json" || effectiveViewMode === "files") return null;
+
+  if (effectiveViewMode === "cards" && cardPagination.mode === "all") return null;
+
+  if (effectiveViewMode === "cards" && cardPagination.mode === "load-more") {
+    return (
+      <CardLoadMorePagination
+        config={cardPagination}
+        rowCount={data.length}
+        bordered={bordered}
+        className={classNames?.pagination}
+      />
+    );
+  }
 
   const filteredRows = table.getFilteredRowModel().rows;
   const selectedRows = table.getFilteredSelectedRowModel().rows;

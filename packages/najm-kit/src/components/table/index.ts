@@ -1,4 +1,4 @@
-export { NTable, type NTableProps, type NTableState, type NTableClassNames, type TableHeaderColor, type NTableMenu, type NTableMenuProp, type NTableColumnDef, type NTableColumnMeta, type NTableColumnBreakpoint } from "./NTable";
+export { NTable, type NTableProps, type NTableState, type NTableClassNames, type TableHeaderColor, type NTableMenu, type NTableMenuProp, type NTableColumnDef, type NTableColumnMeta, type NTableColumnBreakpoint, type NTableCardPagination, type NTableLoadMorePagination } from "./NTable";
 export { NTableContent } from "./NTableContent";
 export { NTableCards } from "./NTableCards";
 export { NTablePagination } from "./NTablePagination";

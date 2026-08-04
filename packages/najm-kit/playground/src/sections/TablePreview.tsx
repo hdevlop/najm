@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import type { ColumnDef, Row } from "@tanstack/react-table";
-import { NTable, Badge, NButton } from "najm-kit";
+import { NTable, Badge, type NTableCardPagination } from "najm-kit";
 import { User, Mail, Shield, Calendar } from "lucide-react";
 
 // ── Data ──────────────────────────────────────────────────────────────────────
@@ -32,6 +32,17 @@ const MEMBERS: Member[] = [
   { id: "14", name: "Noah Garcia",     email: "noah@example.com",    role: "Member", status: "Inactive", joined: "Jul 25, 2024", department: "Engineering" },
   { id: "15", name: "Olivia Brown",    email: "olivia@example.com",  role: "Viewer", status: "Active",   joined: "Aug 1, 2024",  department: "Marketing" },
 ];
+
+const ALL_MEMBERS: Member[] = Array.from({ length: 125 }, (_, index) => {
+  const source = MEMBERS[index % MEMBERS.length]!;
+  const id = String(index + 1);
+  return {
+    ...source,
+    id,
+    name: `${source.name} ${id}`,
+    email: `member-${id}@example.com`,
+  };
+});
 
 // ── Columns ───────────────────────────────────────────────────────────────────
 
@@ -196,11 +207,17 @@ function RadioGroup<T extends string>({
 
 type TableState = "normal" | "loading" | "error" | "empty";
 type Density = "compact" | "comfortable" | "spacious";
+type CardPaginationMode = "paged" | "all" | "load-more";
 
 export default function TablePreview() {
   // State controls
   const [tableState, setTableState] = useState<TableState>("normal");
   const [density, setDensity] = useState<Density>("comfortable");
+  const [cardPaginationMode, setCardPaginationMode] = useState<CardPaginationMode>("load-more");
+  const [visibleMembers, setVisibleMembers] = useState(25);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [failNextLoad, setFailNextLoad] = useState(false);
+  const [loadRequests, setLoadRequests] = useState(0);
 
   // UI feature toggles
   const [showPagination, setShowPagination] = useState(true);
@@ -216,7 +233,33 @@ export default function TablePreview() {
   const [enableView, setEnableView] = useState(false);
   const [enableCards, setEnableCards] = useState(true);
 
-  const data = tableState === "empty" ? [] : MEMBERS;
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    setLoadRequests((count) => count + 1);
+    await new Promise((resolve) => setTimeout(resolve, 700));
+    setLoadingMore(false);
+    if (failNextLoad) {
+      setFailNextLoad(false);
+      throw new Error("Simulated page failure. Retry keeps the existing cards.");
+    }
+    setVisibleMembers((count) => Math.min(count + 25, ALL_MEMBERS.length));
+  };
+
+  const cardPagination: NTableCardPagination = cardPaginationMode === "load-more"
+    ? {
+        mode: "load-more",
+        hasNextPage: visibleMembers < ALL_MEMBERS.length,
+        loadingMore,
+        onLoadMore: loadMore,
+        endLabel: "All 125 members loaded.",
+      }
+    : { mode: cardPaginationMode };
+
+  const sourceData = cardPaginationMode === "load-more"
+    ? ALL_MEMBERS.slice(0, visibleMembers)
+    : ALL_MEMBERS;
+  const data = tableState === "empty" ? [] : sourceData;
 
   return (
     <div className="space-y-4">
@@ -242,6 +285,17 @@ export default function TablePreview() {
             value={density}
             onChange={setDensity}
           />
+
+          <RadioGroup
+            label="Card pagination"
+            options={["paged", "all", "load-more"] as CardPaginationMode[]}
+            value={cardPaginationMode}
+            onChange={(mode) => {
+              setCardPaginationMode(mode);
+              setVisibleMembers(25);
+              setLoadRequests(0);
+            }}
+          />
         </div>
 
         <div className="h-px bg-border" />
@@ -254,7 +308,12 @@ export default function TablePreview() {
           <Toggle label="Add Button"        value={showAddButton}        onChange={setShowAddButton} />
           <Toggle label="View Toggle"       value={showViewToggle}       onChange={setShowViewToggle} />
           <Toggle label="Cards Mode"        value={enableCards}          onChange={setEnableCards} />
+          <Toggle label="Fail next load"    value={failNextLoad}         onChange={setFailNextLoad} />
         </div>
+
+        <p className="text-xs text-muted-foreground">
+          Supplied rows: {data.length} / 125. Load-more requests: {loadRequests}. The 700ms delay makes pending protection visible.
+        </p>
 
         <div className="h-px bg-border" />
 
@@ -288,6 +347,7 @@ export default function TablePreview() {
           onCreate={showAddButton ? () => console.log("create") : undefined}
           pageSizeOptions={[5, 10, 15]}
           defaultPagination={{ pageIndex: 0, pageSize: 10 }}
+          cardPagination={cardPagination}
           dynamicHeight={false}
         />
       </div>

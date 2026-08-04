@@ -311,6 +311,25 @@ input:autofill {
   display: none;
 }
 
+/* Responsive table actions stay discoverable on touch and tablet layouts.
+   Fine-pointer desktops may keep the quieter hover/focus reveal treatment. */
+.ntable-card-action {
+  opacity: 1;
+}
+
+@media (min-width: 64rem) and (hover: hover) and (pointer: fine) {
+  .ntable-card-action {
+    opacity: 0;
+  }
+
+  .group:hover > .ntable-card-action,
+  .group:focus-within > .ntable-card-action,
+  .ntable-card-action:focus,
+  .ntable-card-action:focus-within {
+    opacity: 1;
+  }
+}
+
 /* OverlayScrollbars theme used by the <NajmScroll> component — a thin,
    translucent slate bar that floats over content with no reserved space.
    Keep this selector more specific than OverlayScrollbars' appended

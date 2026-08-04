@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
 import { Eye, Inbox, Pencil, Plus, SearchX, Trash2 } from "lucide-react";
 import type { ColumnDef, Row, SortingState, ColumnFiltersState, VisibilityState, RowSelectionState, ExpandedState } from "@tanstack/react-table";
 import { TableStoreContext } from "./TableContext";
@@ -19,9 +19,11 @@ import type { ComponentType } from "react";
 import type { ViewMode, CustomModeRenderers, NTableClassNames as NTableClassNamesAlias } from "./store";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import type { NTableColumnDef } from "./responsiveColumns";
+import type { NTableCardPagination } from "./paginationContract";
 export type { NTableClassNames } from "./store";
 export type { TableHeaderColor } from "./tableColors";
 export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint } from "./responsiveColumns";
+export type { NTableCardPagination, NTableLoadMorePagination } from "./paginationContract";
 
 export interface NTableState {
   sorting: SortingState;
@@ -91,6 +93,8 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   pagination?: { pageIndex: number; pageSize: number };
   defaultPagination?: { pageIndex: number; pageSize: number };
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void;
+  /** Pagination presentation used whenever NTable is actually rendering cards. */
+  cardPagination?: NTableCardPagination;
   // Row selection
   rowSelection?: RowSelectionState;
   defaultRowSelection?: RowSelectionState;
@@ -202,7 +206,11 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
   const renderCustomMode = useTableStore.use.renderCustomMode();
 
   // Mobile viewport detection
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(() => (
+    typeof window !== "undefined" && typeof window.matchMedia === "function"
+      ? window.matchMedia("(max-width: 639px)").matches
+      : false
+  ));
   useEffect(() => {
     if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
     const mql = window.matchMedia("(max-width: 639px)");
@@ -212,20 +220,25 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
     return () => mql.removeEventListener("change", handler);
   }, []);
 
-  useDynamicPageSize(containerRef);
-  useTable();
+  // Resolve effective mode: userMode=json always shows json; userMode=table+mobile+responsiveCards+CardComponent → cards
+  const effectiveMode: ViewMode = (() => {
+    if (viewMode === "json") return "json";
+    if (isMobile && responsiveCards && CardComponent) return "cards";
+    return viewMode;
+  })();
+
+  const syncWithProps = useTableStore.use.syncWithProps();
+  useLayoutEffect(() => {
+    syncWithProps({ isMobile, effectiveViewMode: effectiveMode });
+  }, [effectiveMode, isMobile, syncWithProps]);
+
+  useDynamicPageSize(containerRef, effectiveMode);
+  useTable(effectiveMode);
   useTableKeyboard({
     scopeRef: containerRef,
     contextMenuClose: props.contextMenuClose,
     contextMenuOpen: props.contextMenuOpen,
   });
-
-  // Resolve effective mode: userMode=json always shows json; userMode=table+mobile+responsiveCards+CardComponent → cards
-  const effectiveMode = (() => {
-    if (viewMode === "json") return "json";
-    if (isMobile && responsiveCards && CardComponent) return "cards";
-    return viewMode;
-  })();
 
   // Resolution order: loading → error → filtered-empty → empty → content
   const showFilteredEmpty = isFilteredEmpty && !isLoading && !error;
@@ -462,6 +475,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     pagination: props.pagination,
     defaultPagination: props.defaultPagination,
     onPaginationChange: props.onPaginationChange ?? null,
+    cardPagination: props.cardPagination ?? { mode: "paged" },
     // Row selection
     rowSelection: props.rowSelection,
     defaultRowSelection: props.defaultRowSelection,

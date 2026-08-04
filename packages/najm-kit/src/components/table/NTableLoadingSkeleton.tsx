@@ -1,12 +1,12 @@
 import React from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
-import { Card } from "../ui/card";
 import { NSkeleton } from "../feedback/NSkeletonPresets";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import { NajmScroll } from "../ui/scroll";
-import { surfaceBorderClasses } from "../../theme/borders";
 import { filterResponsiveColumns, resolveHiddenBelowClass } from "./responsiveColumns";
+import { calculateCardSkeletonCount } from "./hooks";
+import { useTableSurfaceAppearance } from "./tableSurface";
 
 const DEFAULT_ROWS = 6;
 const DEFAULT_CARD_COUNT = 16;
@@ -81,7 +81,7 @@ function NTableHeaderSkeleton() {
   );
 }
 
-export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }) {
+export function NTableLoadingSkeleton({ rows }: { rows?: number }) {
   const rawColumns = useTableStore.use.columns() as any[];
   const responsiveColumns = React.useMemo(() => filterResponsiveColumns(rawColumns), [rawColumns]);
   const columns = responsiveColumns as any[];
@@ -89,10 +89,16 @@ export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }
   const headerClassName = useTableStore.use.headerClassName();
   const classNames = useTableStore.use.classNames();
   const dynamicHeight = useTableStore.use.dynamicHeight();
+  const bordered = useTableStore.use.bordered();
+  const borderColor = useTableStore.use.borderColor();
+  const surface = useTableSurfaceAppearance(bordered, borderColor);
+  const bodyHeight = useTableStore.use.bodyHeight();
+  const skeletonRowCount = useTableStore.use.skeletonRowCount();
   const renderSubRow = useTableStore.use.renderSubRow();
   const userGetRowCanExpand = useTableStore.use.getRowCanExpand();
   const hasExpansion = Boolean(renderSubRow || userGetRowCanExpand);
   const loadingText = useTableStore.use.loadingText() as string;
+  const rowCount = rows ?? (dynamicHeight && bodyHeight > 0 ? skeletonRowCount : DEFAULT_ROWS);
 
   const renderHeaderLabel = (header: unknown) =>
     typeof header === "string" ? header : null;
@@ -100,16 +106,20 @@ export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       <NTableHeaderSkeleton />
-      <Card
+      <div
         data-testid="ntable-loading-skeleton"
+        data-ntable-loading-row-count={rowCount}
+        data-bordered={surface.bordered === false ? "false" : surface.bordered ? "true" : undefined}
         aria-busy="true"
         aria-label={loadingText}
-        className={cn("rounded-md p-0 border", dynamicHeight ? "overflow-hidden" : "najm-overlay-scroll", classNames?.content)}
+        role="status"
+        style={surface.style}
+        className={cn("min-h-0 flex-1 rounded-md p-0", surface.className, dynamicHeight ? "overflow-hidden" : "najm-overlay-scroll", classNames?.content)}
       >
         <span className="sr-only">{loadingText}</span>
-        <div className={dynamicHeight ? "najm-overlay-scroll" : undefined}>
+        <div aria-hidden="true" className={dynamicHeight ? "najm-overlay-scroll h-full" : undefined}>
           <Table>
-            <TableHeader className={cn(headerClassName, dynamicHeight && "sticky top-0 z-10", classNames?.tableHeader)}>
+            <TableHeader data-ntable-table-header className={cn(headerClassName, "sticky top-0 z-10", classNames?.tableHeader)}>
               <TableRow className="hover:bg-muted/30">
                 {showCheckbox && <TableHead aria-label="Select column" className="w-10 text-foreground h-12" />}
                 {hasExpansion && <TableHead aria-label="Expand column" className="w-10 text-foreground h-12" />}
@@ -125,7 +135,7 @@ export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }
               </TableRow>
             </TableHeader>
             <TableBody>
-              {Array.from({ length: rows }).map((_, r) => (
+              {Array.from({ length: rowCount }).map((_, r) => (
                 <TableRow key={`skeleton-${r}`}>
                   {showCheckbox && (
                     <TableCell className="h-14 w-10">
@@ -151,7 +161,7 @@ export function NTableLoadingSkeleton({ rows = DEFAULT_ROWS }: { rows?: number }
             </TableBody>
           </Table>
         </div>
-      </Card>
+      </div>
     </div>
   );
 }
@@ -168,23 +178,52 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
   );
   const classNames = useTableStore.use.classNames();
   const bordered = useTableStore.use.bordered();
-  const calculatedPageSize = useTableStore.use.calculatedPageSize();
-  const pagination = useTableStore.use.pagination();
-  const cardCount = rows ?? Math.max(1, calculatedPageSize || pagination?.pageSize || DEFAULT_CARD_COUNT);
+  const borderColor = useTableStore.use.borderColor();
+  const surface = useTableSurfaceAppearance(bordered, borderColor);
+  const dynamicHeight = useTableStore.use.dynamicHeight();
+  const bodyHeight = useTableStore.use.bodyHeight();
+  const cardColumnCount = useTableStore.use.cardColumnCount();
+  const cardRowHeight = useTableStore.use.cardRowHeight();
+  const cardGap = useTableStore.use.cardGap();
+  const loadingText = useTableStore.use.loadingText() as string;
+  const cardCount = rows ?? (
+    dynamicHeight && bodyHeight > 0
+      ? calculateCardSkeletonCount({
+          bodyHeight,
+          columnCount: cardColumnCount,
+          cardHeight: cardRowHeight,
+          gap: cardGap,
+        })
+      : DEFAULT_CARD_COUNT
+  );
+  const defaultContainerClass = "grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+  const containerClass = classNames?.cards ?? defaultContainerClass;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
       {hasHeaderSkeleton && <NTableHeaderSkeleton />}
-      <NajmScroll axis="y" className="min-h-0 flex-1 overflow-hidden">
+      <NajmScroll
+        axis="y"
+        aria-busy="true"
+        aria-label={loadingText}
+        role="status"
+        className="min-h-0 flex-1 overflow-hidden"
+      >
+        <span className="sr-only">{loadingText}</span>
         <div
           data-testid="ntable-cards-loading-skeleton"
-          aria-busy="true"
-          className={cn("grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", classNames?.cards)}
+          data-ntable-loading-cards-grid
+          data-ntable-loading-card-count={cardCount}
+          aria-hidden="true"
+          className={cn(containerClass)}
         >
           {Array.from({ length: cardCount }).map((_, index) => (
-            <Card
+            <div
               key={index}
-              className={cn("rounded-lg bg-card p-3 shadow-none sm:p-4", surfaceBorderClasses(bordered))}
+              data-ntable-loading-card
+              data-bordered={surface.bordered === false ? "false" : surface.bordered ? "true" : undefined}
+              style={surface.style}
+              className={cn("rounded-lg p-3 sm:p-4", surface.className)}
             >
               <div
                 data-ntable-loading-card-layout="responsive-avatar"
@@ -225,7 +264,7 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
                   ))}
                 </div>
               </div>
-            </Card>
+            </div>
           ))}
         </div>
       </NajmScroll>

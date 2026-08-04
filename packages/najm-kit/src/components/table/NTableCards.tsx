@@ -36,6 +36,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const showContent = useTableStore.use.showContent();
   const classNames = useTableStore.use.classNames();
   const bordered = useTableStore.use.bordered();
+  const borderColor = useTableStore.use.borderColor();
   const renderSubRow = useTableStore.use.renderSubRow();
   const userGetRowCanExpand = useTableStore.use.getRowCanExpand();
 
@@ -81,7 +82,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
 
   return (
     <NajmScroll axis="y" className="min-h-0 flex-1 overflow-hidden">
-    <div className={cn(containerClass)} onContextMenu={handleContainerContextMenu}>
+    <div data-ntable-cards-grid className={cn(containerClass)} onContextMenu={handleContainerContextMenu}>
       {rows.map((row) => {
         const noShell = Boolean((row.original as any)?.__smsNoShell);
         const hasExpansion = Boolean(renderSubRow || userGetRowCanExpand);
@@ -115,7 +116,8 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
                     e.stopPropagation();
                     openRowMenu(e, row.original);
                   }}
-                  className="absolute top-2 right-2 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-muted-foreground opacity-0 transition-all duration-200 hover:bg-muted/50 hover:text-foreground group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
+                  data-ntable-card-action
+                  className="ntable-card-action absolute end-2 top-2 z-10 flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-muted-foreground transition-all duration-200 hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </button>
@@ -148,6 +150,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
             openRowMenu={openRowMenu}
             menuButton={menuButton}
             bordered={bordered}
+            borderColor={borderColor}
             className={rowClassName || undefined}
           >
             <CardComponent

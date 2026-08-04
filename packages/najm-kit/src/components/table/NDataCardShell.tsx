@@ -3,9 +3,7 @@ import { Checkbox } from "../ui/checkbox";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "../ui/dropdown-menu";
 import { Eye, Edit, Trash2, MoreVertical, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
-import { surfaceBorderClasses } from "../../theme/borders";
-import { useNajmComponentStyle } from "../../theme/design-provider";
-import { resolveRadiusValue } from "../../theme/design-types";
+import { useTableSurfaceAppearance } from "./tableSurface";
 import type { Row } from "@tanstack/react-table";
 
 export interface NDataCardShellActions {
@@ -26,18 +24,11 @@ export interface NDataCardShellProps {
   openRowMenu?: ((e: React.MouseEvent, row: any) => void) | null;
   menuButton?: boolean;
   bordered?: boolean;
+  borderColor?: string;
 }
 
-export function NDataCardShell({ row, onClick, onContextMenu, actions, children, className, showCheckbox = true, selectedRowId, openRowMenu, menuButton, bordered }: NDataCardShellProps) {
-  const recipe = useNajmComponentStyle("table");
-  const recipeRadius = resolveRadiusValue(recipe?.radius);
-  const recipeStyle: React.CSSProperties | undefined =
-    recipeRadius || recipe?.borderWidth
-      ? {
-          ...(recipeRadius ? { borderRadius: recipeRadius } : {}),
-          ...(recipe?.borderWidth ? { borderWidth: recipe.borderWidth } : {}),
-        }
-      : undefined;
+export function NDataCardShell({ row, onClick, onContextMenu, actions, children, className, showCheckbox = true, selectedRowId, openRowMenu, menuButton, bordered, borderColor }: NDataCardShellProps) {
+  const surface = useTableSurfaceAppearance(bordered, borderColor);
   const canExpand = row.getCanExpand();
   const isExpanded = canExpand && row.getIsExpanded();
   const isSelected = row.getIsSelected();
@@ -52,10 +43,10 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
       data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
       onClick={onClick}
       onContextMenu={onContextMenu}
-      style={recipeStyle}
+      style={surface.style}
       className={cn(
         "relative group w-full rounded-lg bg-card text-card-foreground overflow-hidden",
-        surfaceBorderClasses(bordered),
+        surface.className,
         isActive && (bordered ? "border-primary" : "ring-2 ring-primary ring-offset-1 ring-offset-background"),
         onClick && "cursor-pointer",
         className
@@ -75,7 +66,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
 
       {/* Actions: MoreVertical menu button or legacy dropdown */}
       {useMenuButton ? (
-        <div className="absolute top-2 right-2 h-auto z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100">
+        <div data-ntable-card-action className="ntable-card-action absolute end-2 top-2 z-10 h-auto transition-opacity duration-200">
           <button
             type="button"
             aria-label="Row actions"
@@ -83,13 +74,13 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
               e.stopPropagation();
               openRowMenu!(e, row.original);
             }}
-            className="flex h-7 w-7 p-0 rounded-md cursor-pointer justify-center items-center text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md p-0 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
           >
             <MoreVertical className="h-4 w-4" />
           </button>
         </div>
       ) : actions && (actions.onView || actions.onEdit || actions.onDelete) ? (
-        <div className="absolute top-2 right-2 h-auto z-10 opacity-0 transition-opacity duration-200 group-hover:opacity-100 focus-within:opacity-100">
+        <div data-ntable-card-action className="ntable-card-action absolute end-2 top-2 z-10 h-auto transition-opacity duration-200">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <div

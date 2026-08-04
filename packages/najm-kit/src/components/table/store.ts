@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { StoreApi, UseBoundStore } from "zustand";
 import { type ComponentType, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import type { ExpandedState, SortingState } from "@tanstack/react-table";
+import type { NTableCardPagination } from "./paginationContract";
 
 export interface NTableClassNames {
   root?: string;
@@ -78,7 +79,14 @@ export interface TableState {
   addButtonText: string;
   pageSizeOptions: number[];
   calculatedPageSize: number;
+  skeletonRowCount: number;
   maxHeight: number | null;
+  bodyWidth: number;
+  bodyHeight: number;
+  tableHeaderHeight: number;
+  cardColumnCount: number;
+  cardRowHeight: number;
+  cardGap: number;
   syncWithProps: (updates: Partial<TableState>) => void;
   // JSON mode
   jsonValue: unknown;
@@ -125,6 +133,8 @@ export interface TableState {
   // Responsive cards
   responsiveCards: boolean;
   isMobile: boolean;
+  effectiveViewMode: ViewMode;
+  cardPagination: NTableCardPagination;
   // Empty states
   isEmpty: boolean | undefined;
   isFilteredEmpty: boolean;
@@ -178,7 +188,8 @@ export const createTableStore = () => {
     onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
     CardComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,
     noResultsText: "No results.", filterPlaceholder: "", loadingText: "Loading...", noDataText: "No data available", addButtonText: "",
-    pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, maxHeight: null,
+    pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, skeletonRowCount: 6, maxHeight: null,
+    bodyWidth: 0, bodyHeight: 0, tableHeaderHeight: 48, cardColumnCount: 1, cardRowHeight: 0, cardGap: 12,
     // JSON mode
     jsonValue: undefined,
     jsonColors: null,
@@ -248,6 +259,8 @@ export const createTableStore = () => {
     // Responsive cards
     responsiveCards: true,
     isMobile: false,
+    effectiveViewMode: "table" as ViewMode,
+    cardPagination: { mode: "paged" },
     // Empty states
     isEmpty: undefined,
     isFilteredEmpty: false,

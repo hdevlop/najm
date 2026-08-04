@@ -82,4 +82,85 @@ describe("NTable responsive loading skeleton", () => {
     expect(details.className).toContain("sm:col-span-full");
     expect(details.className).toContain("sm:bg-muted/50");
   });
+
+  test("table loading uses the same borderless shadow surface contract as loaded content", () => {
+    const props = {
+      columns,
+      dynamicHeight: false,
+      showPagination: false,
+      showCheckbox: false,
+      showAddButton: false,
+      showViewToggle: false,
+      bordered: false,
+      borderColor: "red",
+      classNames: { content: "consumer-content" },
+    } as const;
+    const { container, rerender } = render(<NTable<Row> {...props} data={[]} loading />);
+
+    const loadingSurface = container.querySelector('[data-testid="ntable-loading-skeleton"]') as HTMLElement;
+    expect(loadingSurface.className).toContain("border-0");
+    expect(loadingSurface.className).toContain("shadow-sm");
+    expect(loadingSurface.className).toContain("consumer-content");
+    expect(loadingSurface.style.borderColor).toBe("");
+    expect(loadingSurface.querySelector('table')?.closest('[aria-hidden="true"]')).toBeTruthy();
+
+    rerender(
+      <NTable<Row>
+        {...props}
+        data={[{ id: "1", name: "One", guardian: "Guardian", status: "active" }]}
+      />,
+    );
+    const loadedSurface = container.querySelector('[data-ntable-body] [data-bordered="false"]') as HTMLElement;
+    expect(loadedSurface.className).toContain("border-0");
+    expect(loadedSurface.className).toContain("shadow-sm");
+    expect(loadedSurface.className).toContain("consumer-content");
+    expect(loadedSurface.style.borderColor).toBe("");
+  });
+
+  test("card loading has one named busy region and respects a consumer grid override", () => {
+    const { container } = render(
+      <NTable<Row>
+        data={[]}
+        columns={columns}
+        loading
+        loadingText="Loading families"
+        renderCard={CardRenderer as any}
+        defaultMode="cards"
+        dynamicHeight={false}
+        showPagination={false}
+        showCheckbox={false}
+        showAddButton={false}
+        showViewToggle={false}
+        classNames={{ cards: "grid grid-cols-5 gap-4 custom-card-grid" }}
+      />,
+    );
+
+    const busyRegions = container.querySelectorAll('[aria-busy="true"]');
+    expect(busyRegions).toHaveLength(1);
+    expect(busyRegions[0]?.getAttribute("aria-label")).toBe("Loading families");
+    const grid = container.querySelector("[data-ntable-loading-cards-grid]") as HTMLElement;
+    expect(grid.getAttribute("aria-hidden")).toBe("true");
+    expect(grid.className).toContain("grid-cols-5");
+    expect(grid.className).not.toContain("xl:grid-cols-4");
+    expect(grid.querySelectorAll("[data-ntable-loading-card]")).toHaveLength(16);
+  });
+
+  test("explicit bordered loading uses the shared themed border without a fallback shadow", () => {
+    const { container } = render(
+      <NTable<Row>
+        data={[]}
+        columns={columns}
+        loading
+        bordered
+        dynamicHeight={false}
+        showPagination={false}
+        showCheckbox={false}
+        showAddButton={false}
+        showViewToggle={false}
+      />,
+    );
+    const surface = container.querySelector('[data-testid="ntable-loading-skeleton"]') as HTMLElement;
+    expect(surface.className).toContain("najm-border");
+    expect(surface.className).not.toContain("shadow-sm");
+  });
 });

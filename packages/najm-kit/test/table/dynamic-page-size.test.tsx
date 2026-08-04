@@ -1,7 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
 import { render } from "@testing-library/react";
-import { calculateDynamicPageSize } from "../../src/components/table/hooks";
+import { calculateCardSkeletonCount, calculateDynamicPageSize } from "../../src/components/table/hooks";
 import { useDynamicPageSize } from "../../src/components/table/hooks";
 import { TableStoreContext } from "../../src/components/table/TableContext";
 import { createTableStore, type TableStore } from "../../src/components/table/store";
@@ -108,5 +108,13 @@ describe("calculateDynamicPageSize", () => {
 
     expect(store.getState().calculatedPageSize).toBe(10);
     expect(store.getState().maxHeight).toBeNull();
+    expect(store.getState().skeletonRowCount).toBe(8);
+  });
+
+  test("calculates complete card-grid rows for one through four columns", () => {
+    expect(calculateCardSkeletonCount({ bodyHeight: 500, columnCount: 1, cardHeight: 160, gap: 12 })).toBe(3);
+    expect(calculateCardSkeletonCount({ bodyHeight: 500, columnCount: 2, cardHeight: 160, gap: 12 })).toBe(6);
+    expect(calculateCardSkeletonCount({ bodyHeight: 500, columnCount: 3, cardHeight: 160, gap: 12 })).toBe(9);
+    expect(calculateCardSkeletonCount({ bodyHeight: 500, columnCount: 4, cardHeight: 160, gap: 12 })).toBe(12);
   });
 });
