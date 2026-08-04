@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.1.49 - 2026-08-04
 
 ### ImageInput and AvatarInput
 
