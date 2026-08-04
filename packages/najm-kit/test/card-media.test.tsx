@@ -12,6 +12,25 @@ import {
 import { NCardInfo, NCardSection } from "../src/components/Card/SectionCard";
 
 describe("NCard media layouts", () => {
+  test("ordinary cards expose header, content, and footer directly under the card", () => {
+    const { container } = render(
+      <NCard title="Accountability">
+        <p>Monthly activity</p>
+        <NCardFooter>Updated today</NCardFooter>
+      </NCard>,
+    );
+
+    const root = container.querySelector('[data-slot="card"]') as HTMLElement;
+    const header = container.querySelector('[data-slot="card-header"]');
+    const content = container.querySelector('[data-slot="card-content"]');
+    const footer = container.querySelector('[data-slot="card-footer"]');
+
+    expect(container.querySelector('[data-slot="card-body"]')).toBeNull();
+    expect(header?.parentElement).toBe(root);
+    expect(content?.parentElement).toBe(root);
+    expect(footer?.parentElement).toBe(root);
+  });
+
   test("image media defaults to side on mobile and top on desktop", () => {
     const { container } = render(
       <NCard title="Ahmed & Fatima">

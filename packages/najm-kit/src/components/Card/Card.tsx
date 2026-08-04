@@ -144,6 +144,24 @@ function mediaRootClasses(layout: ResolvedMediaLayout) {
   return "grid grid-cols-[auto_minmax(0,1fr)] gap-3 p-3 sm:flex sm:flex-col sm:p-4";
 }
 
+function CardMediaBody({
+  children,
+  className,
+  grouped,
+}: Readonly<{
+  children: React.ReactNode;
+  className?: string;
+  grouped: boolean;
+}>) {
+  if (!grouped) return <>{children}</>;
+
+  return (
+    <div data-slot="card-body" className={className}>
+      {children}
+    </div>
+  );
+}
+
 // NCard
 
 export function NCard({
@@ -272,12 +290,10 @@ export function NCard({
         </div>
       ) : null}
 
-      <div
-        data-slot="card-body"
+      <CardMediaBody
+        grouped={compactSideBody}
         className={cn(
-          compactSideBody
-            ? "col-start-2 row-start-1 flex min-w-0 flex-col gap-2 self-start"
-            : "contents",
+          "col-start-2 row-start-1 flex min-w-0 flex-col gap-2 self-start",
           (responsiveAvatarBody || responsiveImageBody) && "sm:contents",
         )}
       >
@@ -371,7 +387,7 @@ export function NCard({
             {footerSlot}
           </CardFooter>
         ) : null}
-      </div>
+      </CardMediaBody>
     </CardPrimitive>
   );
 }

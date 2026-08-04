@@ -543,7 +543,7 @@ describe("NDonutCard", () => {
       />,
     );
     const donutCard = container.querySelector("[data-slot='donut-card']") as HTMLElement;
-    const ncard = donutCard.parentElement?.parentElement?.parentElement;
+    const ncard = donutCard.closest("[data-slot='card']");
     const ncardClass = (ncard && (ncard as HTMLElement).className) || "";
     expect(ncardClass).not.toContain("h-full");
 
@@ -557,7 +557,7 @@ describe("NDonutCard", () => {
       />,
     );
     const donutCard2 = container.querySelector("[data-slot='donut-card']") as HTMLElement;
-    const tallCard = donutCard2.parentElement?.parentElement?.parentElement;
+    const tallCard = donutCard2.closest("[data-slot='card']");
     const tallClass = (tallCard && (tallCard as HTMLElement).className) || "";
     expect(tallClass).toContain("h-full");
   });
