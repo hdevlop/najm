@@ -83,6 +83,10 @@ export interface ComboboxInputProps extends BaseProps {
   placeholder?: string;
   searchPlaceholder?: string;
   emptyMessage?: string;
+  loading?: boolean;
+  loadingMessage?: string;
+  onSearchChange?: (query: string) => void;
+  shouldFilter?: boolean;
   icon?: InputIcon;
   showIcon?: boolean;
   disabled?: boolean;

@@ -382,7 +382,7 @@
     },
     "packages/najm-database": {
       "name": "najm-database",
-      "version": "2.0.3",
+      "version": "2.0.2",
       "devDependencies": {
         "najm-core": "workspace:*",
         "tsup": "^8.0.0",
@@ -443,7 +443,7 @@
     },
     "packages/najm-i18n": {
       "name": "najm-i18n",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "devDependencies": {
         "@testing-library/react": "^16",
         "@types/react": "^19",
@@ -467,7 +467,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.1.47",
+      "version": "2.1.54",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",

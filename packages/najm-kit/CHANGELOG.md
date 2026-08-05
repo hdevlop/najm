@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.1.54
+
+- Added controlled remote-search and loading-state props to `ComboboxInput` and `FormInput type="combobox"` while preserving client filtering by default.
+
 ## 2.1.53 - 2026-08-05
 
 - Add typed `NBarChart`, `NLineChart`, `NPieChart`, and `NStatusBreakdown`

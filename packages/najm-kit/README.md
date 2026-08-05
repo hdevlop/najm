@@ -388,3 +388,10 @@ const data = [
   ]}
 />
 ```
+
+### Server-backed combobox search
+
+`ComboboxInput` and `FormInput type="combobox"` can delegate filtering to a
+server by setting `shouldFilter={false}` and handling `onSearchChange`. Use
+`loading` and `loadingMessage` while replacement options are being fetched.
+Client-side filtering remains the default.

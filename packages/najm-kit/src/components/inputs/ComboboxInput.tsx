@@ -7,7 +7,7 @@ import { BaseInput } from "./BaseInput";
 import { getIconColorProps, resolveIcon } from "./utils";
 import type { ComboboxInputProps, SelectItemType } from "./types";
 
-export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Select...", searchPlaceholder = "Search...", emptyMessage = "No results found.", value, onChange, icon, showIcon = true, iconColor, items = [], className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, allowFreeText = false }) => {
+export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Select...", searchPlaceholder = "Search...", emptyMessage = "No results found.", loading = false, loadingMessage = "Loading...", onSearchChange, shouldFilter = true, value, onChange, icon, showIcon = true, iconColor, items = [], className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, allowFreeText = false }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const pointerDismissedRef = React.useRef(false);
@@ -26,10 +26,22 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
     onChange(next);
     setOpen(false);
     setQuery("");
+    onSearchChange?.("");
+  };
+
+  const updateQuery = (next: string) => {
+    setQuery(next);
+    onSearchChange?.(next);
   };
 
   return (
-    <Popover open={open} onOpenChange={(o) => { setOpen(o); if (!o) setQuery(""); }}>
+    <Popover open={open} onOpenChange={(o) => {
+      setOpen(o);
+      if (!o) {
+        setQuery("");
+        onSearchChange?.("");
+      }
+    }}>
       <PopoverTrigger asChild disabled={disabled}>
         <BaseInput
           ref={triggerRef}
@@ -63,12 +75,12 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
           triggerRef.current?.blur();
         }}
       >
-        <Command>
+        <Command shouldFilter={shouldFilter}>
           <CommandInput
             placeholder={searchPlaceholder}
             className="h-9"
             value={query}
-            onValueChange={setQuery}
+            onValueChange={updateQuery}
             onKeyDown={(e) => {
               if (e.key === "Enter" && showFreeTextOption) {
                 e.preventDefault();
@@ -77,7 +89,7 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
             }}
           />
           <CommandList>
-            <CommandEmpty>{emptyMessage}</CommandEmpty>
+            <CommandEmpty>{loading ? loadingMessage : emptyMessage}</CommandEmpty>
             <CommandGroup>
               {showFreeTextOption && (
                 <CommandItem key="__free_text__" value={trimmedQuery} onSelect={() => commit(trimmedQuery)} className="cursor-pointer">
