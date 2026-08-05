@@ -1,6 +1,10 @@
 # Changelog
 
-## 2.1.54
+## 2.1.56
+
+- Honor `showIcon` on NTable `select` and `combobox` filters. The leading filter icon is still shown by default; pass `showIcon: false` on a filter to hide it.
+
+## 2.1.55
 
 - Added controlled remote-search and loading-state props to `ComboboxInput` and `FormInput type="combobox"` while preserving client filtering by default.
 

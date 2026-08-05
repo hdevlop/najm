@@ -95,7 +95,7 @@ function RenderFilter({ filter, mobilePrimary = false }: { filter: any; mobilePr
           searchPlaceholder={filter.searchPlaceholder}
           emptyMessage={filter.emptyMessage}
           icon="filter"
-          showIcon
+          showIcon={filter.showIcon ?? true}
           disabled={filter.disabled}
           bordered={bordered}
           className="w-full"
@@ -109,7 +109,7 @@ function RenderFilter({ filter, mobilePrimary = false }: { filter: any; mobilePr
         items={filter.options || []}
         placeholder={filter.placeholder}
         icon="filter"
-        showIcon
+        showIcon={filter.showIcon ?? true}
         disabled={filter.disabled}
         bordered={bordered}
         className="w-full"
