@@ -3,6 +3,7 @@ import { cn } from "../../lib/cn";
 import { ArrowDownRight, ArrowUpRight } from "lucide-react";
 import { NIcon, type NIconSource } from "../Icon";
 import { NCard } from "./Card";
+import { NStatCardSkeleton } from "../feedback/NSkeletonPresets";
 
 export type NStatCardVariant = "default" | "usage" | "compact";
 
@@ -26,6 +27,8 @@ interface BaseProps {
   bordered?: boolean;
   className?: string;
   classNames?: NStatCardClassNames;
+  loading?: boolean;
+  loadingLabel?: string;
 }
 
 // ── default variant (RAG / WA style) ──────────────────────────
@@ -277,6 +280,13 @@ function CompactCard({ icon, label, value, unit, iconColor, onClick, bordered, c
 // ─────────────────────────────────────────────────────────────
 
 export function NStatCard(props: NStatCardProps) {
+  if (props.loading) {
+    return (
+      <div aria-busy="true" aria-label={props.loadingLabel ?? "Loading"} className={props.className} role="status">
+        <NStatCardSkeleton />
+      </div>
+    );
+  }
   if (props.variant === "usage") return <UsageCard {...props} />;
   if (props.variant === "compact") return <CompactCard {...props} />;
   return <DefaultCard {...(props as DefaultProps)} />;

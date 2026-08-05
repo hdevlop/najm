@@ -21,6 +21,38 @@ describe("NDonutCard", () => {
     expect(NDonutCard).toBeDefined();
   });
 
+  test("uses theme palette colors when item colors are omitted and cycles after five", () => {
+    const { container } = render(
+      <NDonutCard
+        title="Theme palette"
+        items={Array.from({ length: 6 }, (_, index) => ({ id: String(index), label: String(index), value: 1 }))}
+        valueFormatter={currency}
+      />,
+    );
+    const style = container.querySelector("[data-slot='donut-ring']")?.getAttribute("style") ?? "";
+    expect(style).toContain("var(--chart-1)");
+    expect(style).toContain("var(--chart-5)");
+    expect(style.match(/var\(--chart-1\)/g)?.length).toBe(2);
+  });
+
+  test("supports preset and custom shrinkable ring sizes", () => {
+    const { container, rerender } = render(
+      <NDonutCard title="Sized" items={items} size="sm" valueFormatter={currency} />,
+    );
+    const ring = container.querySelector("[data-slot='donut-ring']") as HTMLElement;
+    expect(ring.getAttribute("style")).toContain("112px");
+    expect(ring.getAttribute("style")).toContain("max-width: 100%");
+    rerender(<NDonutCard title="Sized" items={items} size={88} valueFormatter={currency} />);
+    expect(ring.getAttribute("style")).toContain("88px");
+  });
+
+  test("renders an accessible shape-matched loading state", () => {
+    const { getByRole } = render(
+      <NDonutCard title="Loading donut" items={[]} loading loadingLabel="Loading budget" valueFormatter={currency} />,
+    );
+    expect(getByRole("status", { name: "Loading budget" }).getAttribute("aria-busy")).toBe("true");
+  });
+
   test("default variant calculates total from positive items", () => {
     const { getByText } = render(
       <NDonutCard
@@ -138,7 +170,7 @@ describe("NDonutCard", () => {
     );
     const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
     expect(card.getAttribute("data-variant")).toBe("default");
-    expect(card.getAttribute("data-layout")).toBe("vertical");
+    expect(card.getAttribute("data-layout")).toBe("auto");
     const ring = container.querySelector("[data-slot='donut-ring']") as HTMLElement;
     const ringStyle = ring.getAttribute("style")!;
     expect(ringStyle).toContain("144px");
@@ -184,6 +216,134 @@ describe("NDonutCard", () => {
     expect(ringStyle).toContain("96px");
     const centerValue = container.querySelector("[data-slot='donut-center-value']") as HTMLElement;
     expect(centerValue.className).toContain("text-xs");
+  });
+
+  test("default auto layout is horizontal on mobile and vertical from md", () => {
+    const { container } = render(
+      <NDonutCard
+        title="Auto"
+        items={items}
+        valueFormatter={currency}
+      />,
+    );
+    const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
+    expect(card.getAttribute("data-layout")).toBe("auto");
+    expect(card.className).toContain("flex");
+    expect(card.className).toContain("items-center");
+    expect(card.className).toContain("gap-4");
+    expect(card.className).toContain("md:flex-col");
+    expect(card.className).not.toContain("grid");
+    expect(card.className).not.toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(card.className).not.toContain("@container");
+    expect(card.className).not.toContain("@min-[16rem]");
+
+    const legend = container.querySelector("[data-slot='donut-legend']") as HTMLElement;
+    expect(legend.className).toContain("ms-auto");
+    expect(legend.className).toContain("md:ms-0");
+    expect(legend.className).toContain("md:w-full");
+    expect(legend.className).toContain("md:flex-col");
+  });
+
+  test("auto legend stacks each value below its label with ms-4 indent", () => {
+    const { container } = render(
+      <NDonutCard
+        title="Auto"
+        items={items}
+        valueFormatter={currency}
+      />,
+    );
+    const legend = container.querySelector("[data-slot='donut-legend']") as HTMLElement;
+    expect(legend.className).toContain("ms-auto");
+    expect(legend.className).toContain("shrink-0");
+    expect(legend.className).toContain("space-y-3");
+    expect(legend.className).toContain("md:w-full");
+    expect(legend.className).toContain("md:flex-col");
+    expect(legend.className).toContain("md:gap-1.5");
+    expect(legend.className).toContain("md:space-y-0");
+    expect(legend.className).not.toContain("@container");
+    expect(legend.className).not.toContain("@min-[16rem]");
+
+    const legendItems = container.querySelectorAll("[data-slot='donut-legend-item']");
+    expect(legendItems.length).toBe(items.length);
+
+    const firstItemLabelRow = legendItems[0].querySelector(":scope > div") as HTMLElement;
+    expect(firstItemLabelRow.className).toContain("flex");
+    expect(firstItemLabelRow.className).toContain("items-center");
+    expect(firstItemLabelRow.className).toContain("gap-2");
+    expect(firstItemLabelRow.className).not.toContain("flex-col");
+    expect(firstItemLabelRow.className).toContain("md:min-w-0");
+
+    expect((legendItems[0] as HTMLElement).className).toContain("md:justify-between");
+
+    const labelSpan = firstItemLabelRow.querySelectorAll(":scope > span")[1] as HTMLElement;
+    expect(labelSpan.className).toContain("flex-1");
+    expect(labelSpan.className).toContain("truncate");
+    expect(labelSpan.className).toContain("min-w-0");
+
+    const valueSpan = legendItems[0].querySelector(":scope > span") as HTMLElement;
+    expect(valueSpan.className).toContain("ms-4");
+    expect(valueSpan.className).toContain("block");
+    expect(valueSpan.className).toContain("whitespace-nowrap");
+    expect(valueSpan.className).toContain("tabular-nums");
+    expect(valueSpan.className).toContain("font-semibold");
+    expect(valueSpan.className).toContain("md:ms-0");
+  });
+
+  test("auto compact legend uses compact text sizes for label and value", () => {
+    const { container } = render(
+      <NDonutCard
+        title="AutoCompact"
+        items={items}
+        valueFormatter={currency}
+        variant="compact"
+      />,
+    );
+    const legendItems = container.querySelectorAll("[data-slot='donut-legend-item']");
+    const firstItemLabelRow = legendItems[0].querySelector(":scope > div") as HTMLElement;
+    expect(firstItemLabelRow.className).toContain("items-center");
+
+    const labelSpan = firstItemLabelRow.querySelectorAll(":scope > span")[1] as HTMLElement;
+    expect(labelSpan.className).toContain("text-[11px]");
+    expect(labelSpan.className).toContain("flex-1");
+
+    const valueSpan = legendItems[0].querySelector(":scope > span") as HTMLElement;
+    expect(valueSpan.className).toContain("text-[11px]");
+    expect(valueSpan.className).toContain("ms-4");
+    expect(valueSpan.className).toContain("font-semibold");
+  });
+
+  test("explicit layout=\"vertical\" overrides auto and stays vertical at all sizes", () => {
+    const { container } = render(
+      <NDonutCard
+        title="ForcedVertical"
+        items={items}
+        valueFormatter={currency}
+        layout="vertical"
+      />,
+    );
+    const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
+    expect(card.getAttribute("data-layout")).toBe("vertical");
+    expect(card.className).not.toContain("grid");
+    expect(card.className).not.toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(card.className).not.toContain("sm:flex-col");
+    expect(card.className).toContain("flex-col");
+    expect(card.className).toContain("items-center");
+  });
+
+  test("explicit layout=\"horizontal\" overrides auto and stays horizontal at all sizes", () => {
+    const { container } = render(
+      <NDonutCard
+        title="ForcedHorizontal"
+        items={items}
+        valueFormatter={currency}
+        layout="horizontal"
+      />,
+    );
+    const card = container.querySelector("[data-slot='donut-card']") as HTMLElement;
+    expect(card.getAttribute("data-layout")).toBe("horizontal");
+    expect(card.className).toContain("grid");
+    expect(card.className).toContain("grid-cols-[auto_minmax(0,1fr)]");
+    expect(card.className).not.toContain("sm:flex-col");
   });
 
   test("centerIcon replaces total text", () => {
@@ -406,7 +566,7 @@ describe("NDonutCard", () => {
     ).toBe(0);
   });
 
-  test("compact legend uses vertical 3-row layout, not wrap", () => {
+  test("compact legend stacks items vertically with space-y and no wrap", () => {
     const { container } = render(
       <NDonutCard
         title="Compact"
@@ -416,7 +576,7 @@ describe("NDonutCard", () => {
       />,
     );
     const legend = container.querySelector("[data-slot='donut-legend']") as HTMLElement;
-    expect(legend.className).toContain("flex-col");
+    expect(legend.className).toContain("space-y-3");
     expect(legend.className).not.toContain("flex-wrap");
   });
 

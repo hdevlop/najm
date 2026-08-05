@@ -2,9 +2,11 @@ import React, { useMemo } from "react";
 import { cn } from "../../lib/cn";
 import { NIcon, type NIconSource } from "../Icon";
 import { NCard, NCardFooter } from "./Card";
+import { NSkeletonDonut } from "../feedback/NSkeletonPresets";
+import type { NChartSize } from "../Chart/types";
 
 export type NDonutCardVariant = "compact" | "default";
-export type NDonutCardLayout = "vertical" | "horizontal";
+export type NDonutCardLayout = "auto" | "vertical" | "horizontal";
 export type NDonutCardLegendMarker = "dot" | "icon" | "none";
 export type NDonutCardCenterOrientation = "column" | "row";
 
@@ -12,7 +14,7 @@ export interface NDonutCardItem {
   id: string;
   label: React.ReactNode;
   value: number;
-  color: string;
+  color?: string;
   icon?: NIconSource;
 }
 
@@ -44,18 +46,34 @@ export interface NDonutCardProps {
   emptyLabel?: React.ReactNode;
   footer?: React.ReactNode;
   variant?: NDonutCardVariant;
+  /** Ring diameter preset or an exact pixel diameter. Custom values are clamped to 64-480px. */
+  size?: NChartSize;
+  /** `"auto"` is horizontal on mobile and switches to vertical from the `md` breakpoint. */
   layout?: NDonutCardLayout;
   legendMarker?: NDonutCardLegendMarker;
   centerOrientation?: NDonutCardCenterOrientation;
   percentageFormatter?: (ratio: number) => React.ReactNode;
   className?: string;
   classNames?: NDonutCardClassNames;
+  loading?: boolean;
+  loadingLabel?: string;
 }
 
 const SIZE = {
   compact: { ring: 96, center: 72 },
   default: { ring: 144, center: 112 },
 } as const;
+
+const SIZE_PRESETS = { sm: 112, md: 160, lg: 208 } as const;
+
+function resolveRingSize(size: NChartSize | undefined, fallback: number) {
+  if (typeof size === "number") return Math.min(480, Math.max(64, size));
+  return size ? SIZE_PRESETS[size] : fallback;
+}
+
+function chartColor(index: number, override?: string) {
+  return override ?? `var(--chart-${(index % 5) + 1})`;
+}
 
 function normalizeValue(v: number): number {
   if (!Number.isFinite(v) || v <= 0) return 0;
@@ -69,11 +87,11 @@ function buildConicGradient(
   if (total <= 0) return undefined;
   let running = 0;
   const stops: string[] = [];
-  for (const item of items) {
+  for (const [index, item] of items.entries()) {
     const v = normalizeValue(item.value);
     if (v <= 0) continue;
     const pct = v / total;
-    stops.push(`${item.color} ${running}turn ${running + pct}turn`);
+    stops.push(`${chartColor(index, item.color)} ${running}turn ${running + pct}turn`);
     running += pct;
   }
   if (stops.length === 0) return undefined;
@@ -139,12 +157,15 @@ export function NDonutCard({
   emptyLabel,
   footer,
   variant = "default",
-  layout = "vertical",
+  size,
+  layout = "auto",
   legendMarker = "dot",
   centerOrientation = "column",
   percentageFormatter,
   className,
   classNames,
+  loading = false,
+  loadingLabel = "Loading",
 }: NDonutCardProps) {
   const computedTotal = useMemo(
     () => items.reduce((sum, item) => sum + normalizeValue(item.value), 0),
@@ -157,8 +178,9 @@ export function NDonutCard({
   );
   const normalized = useMemo(
     () =>
-      items.map((item) => ({
+      items.map((item, index) => ({
         ...item,
+        color: chartColor(index, item.color),
         value: normalizeValue(item.value),
         ratio: computedTotal > 0 ? normalizeValue(item.value) / computedTotal : 0,
       })),
@@ -166,22 +188,41 @@ export function NDonutCard({
   );
 
   const sz = SIZE[variant];
+  const ringSize = resolveRingSize(size, sz.ring);
   const isTitleString = typeof title === "string";
   const accessibleLabel = isTitleString ? title : ariaLabel;
   const isCompact = variant === "compact";
+  const isAuto = layout === "auto";
   const isHorizontal = layout === "horizontal";
   const isCenterRow = centerOrientation === "row";
 
   const ringStyle: React.CSSProperties = {
-    width: sz.ring,
-    height: sz.ring,
+    width: ringSize,
+    maxWidth: "100%",
+    aspectRatio: "1 / 1",
   };
   if (gradient) ringStyle.background = gradient;
 
   const centerStyle: React.CSSProperties = {
-    width: sz.center,
-    height: sz.center,
+    width: `${(sz.center / sz.ring) * 100}%`,
+    aspectRatio: "1 / 1",
   };
+
+  if (loading) {
+    return (
+      <NCard
+        title={title}
+        icon={icon}
+        iconColor={iconColor}
+        bordered
+        className={cn(className, classNames?.root)}
+      >
+        <div aria-busy="true" aria-label={loadingLabel} role="status">
+          <NSkeletonDonut />
+        </div>
+      </NCard>
+    );
+  }
 
   return (
     <NCard
@@ -199,17 +240,22 @@ export function NDonutCard({
         role="group"
         aria-label={accessibleLabel}
         className={cn(
-          isHorizontal
-            ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-5 p-2 lg:p-3 2xl:p-4"
-            : cn(
-                "flex flex-col items-center p-2 lg:p-3 2xl:p-4",
-                isCompact ? "gap-2" : "gap-4",
-              ),
+          isAuto
+            ? "flex w-full items-center gap-4 p-2 sm:p-3 md:flex-col lg:p-4"
+            : isHorizontal
+              ? "grid grid-cols-[auto_minmax(0,1fr)] items-center gap-5 p-2 lg:p-3 2xl:p-4"
+              : cn(
+                  "flex flex-col items-center p-2 lg:p-3 2xl:p-4",
+                  isCompact ? "gap-2" : "gap-4",
+                ),
           classNames?.content,
         )}
       >
         <div
-          className={cn("flex flex-col items-center gap-2", isHorizontal && "shrink-0")}
+          className={cn(
+            "flex flex-col items-center gap-2",
+            (isHorizontal || isAuto) && "shrink-0",
+          )}
         >
           <div
             data-slot="donut-ring"
@@ -304,9 +350,13 @@ export function NDonutCard({
         <div
           data-slot="donut-legend"
           className={cn(
-            "flex flex-col gap-1.5 w-full",
-            isCompact && "gap-1",
-            isHorizontal && "min-w-0 flex-1 gap-2 pt-0.5",
+            isAuto
+              ? "ms-auto shrink-0 space-y-3 md:ms-0 md:flex md:w-full md:shrink md:flex-col md:gap-1.5 md:space-y-0"
+              : cn(
+                  "flex flex-col gap-1.5 w-full",
+                  isCompact && "gap-1",
+                  isHorizontal && "min-w-0 flex-1 gap-2 pt-0.5",
+                ),
             classNames?.legend,
           )}
         >
@@ -314,9 +364,46 @@ export function NDonutCard({
             <div
               key={item.id}
               data-slot="donut-legend-item"
-              className={cn(classNames?.legendItem)}
+              className={cn(
+                isAuto && "md:flex md:items-center md:justify-between md:gap-2",
+                classNames?.legendItem,
+              )}
             >
-              {isHorizontal ? (
+              {isAuto ? (
+                <>
+                  <div className="flex items-center gap-2 md:min-w-0">
+                    <LegendMarker
+                      className={cn(classNames?.legendMarker)}
+                      color={item.color}
+                      icon={item.icon}
+                      mode={legendMarker}
+                    />
+                    <span
+                      className={cn(
+                        "min-w-0 flex-1 truncate text-muted-foreground",
+                        isCompact ? "text-[11px]" : "text-xs sm:text-sm",
+                        classNames?.legendLabel,
+                      )}
+                    >
+                      {item.label}
+                    </span>
+                  </div>
+                  <span
+                    className={cn(
+                      "ms-4 block whitespace-nowrap tabular-nums text-foreground font-semibold md:ms-0",
+                      isCompact ? "text-[11px]" : "text-xs sm:text-sm",
+                      classNames?.legendValue,
+                    )}
+                  >
+                    {valueFormatter(item.value)}
+                    {percentageFormatter ? (
+                      <span className="ml-1 text-[11px] font-normal text-muted-foreground sm:ml-0.5">
+                        {percentageFormatter(item.ratio)}
+                      </span>
+                    ) : null}
+                  </span>
+                </>
+              ) : isHorizontal ? (
                 <div className="flex items-start gap-2">
                   <LegendMarker
                     className={cn("mt-0.5", classNames?.legendMarker)}

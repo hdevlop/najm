@@ -346,7 +346,7 @@ export function NCard({
 
         <CardContent
           className={cn(
-            "m-0 flex min-w-0 flex-1 flex-col gap-2 p-0",
+            "m-0 flex min-w-0 flex-col gap-2 p-0",
             sideBody && "col-start-2",
             headerBody && "col-span-full",
             responsiveAvatarBody && "col-start-2 sm:col-span-full",

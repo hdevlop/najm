@@ -141,6 +141,14 @@ describe("Root barrel import", () => {
     expect(najmUI.NDonutCard).toBeDefined();
   });
 
+  test("exports chart components", () => {
+    expect(najmUI.NBarChart).toBeDefined();
+    expect(najmUI.NLineChart).toBeDefined();
+    expect(najmUI.NPieChart).toBeDefined();
+    expect(najmUI.NStatusBreakdown).toBeDefined();
+    expect(najmUI.NChartSkeleton).toBeDefined();
+  });
+
   test("exports card media and information components", () => {
     expect(najmUI.NCardMedia).toBeDefined();
     expect(najmUI.NCardSection).toBeDefined();

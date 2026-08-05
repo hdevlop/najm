@@ -1,5 +1,20 @@
 # Changelog
 
+## 2.1.53 - 2026-08-05
+
+- Add typed `NBarChart`, `NLineChart`, `NPieChart`, and `NStatusBreakdown`
+  components with caller-formatted generic data, accessible summaries, empty
+  states, responsive RTL-safe layouts, and shape-matched loading skeletons.
+- Default chart colors to the live `--chart-1` through `--chart-5` theme
+  variables, cycle deterministically after five items, and retain explicit
+  per-series/item color overrides.
+- Add preset and numeric chart diameter contracts to `NPieChart` and
+  `NDonutCard`, including narrow-container shrinking without clipped legends.
+- Make `NDonutCard` item colors optional and add accessible loading states to
+  `NDonutCard` and `NStatCard`.
+- Add public API tests, component tests, README guidance, and playground
+  examples for the chart and loading contracts.
+
 ## 2.1.49 - 2026-08-04
 
 ### ImageInput and AvatarInput

@@ -350,3 +350,41 @@ accumulated pages in card mode, keep those two query shapes in the application
 and pass the appropriate `data`. Crossing the `<640px` responsive-card
 breakpoint does not overwrite the user's chosen view, pagination position,
 sorting, filters, expansion, or row selection.
+
+## Theme-backed charts
+
+`NBarChart`, `NLineChart`, `NPieChart`, and `NStatusBreakdown` accept generic
+caller-formatted data and use `--chart-1` through `--chart-5` by default.
+Colors repeat deterministically after the fifth series or item; set `color` on
+an exceptional series/item to override that one value. Each chart accepts
+`loading`/`loadingLabel` and renders an accessible shape-matched skeleton.
+`NPieChart` and `NDonutCard` accept `size="sm" | "md" | "lg"` or a numeric
+pixel diameter and shrink within narrow containers.
+
+```tsx
+import { NBarChart, NPieChart } from "najm-kit";
+
+const data = [
+  { id: "jan", label: "Jan", values: { received: 12, refunded: 2 } },
+  { id: "feb", label: "Feb", values: { received: 18, refunded: 1 } },
+];
+
+<NBarChart
+  title="Monthly activity"
+  data={data}
+  series={[
+    { id: "received", label: "Received" },
+    { id: "refunded", label: "Refunded" },
+  ]}
+  valueFormatter={(value) => `${value} MAD`}
+/>
+
+<NPieChart
+  title="Status"
+  size={132}
+  items={[
+    { id: "active", label: "Active", value: 8 },
+    { id: "pending", label: "Pending", value: 3 },
+  ]}
+/>
+```
