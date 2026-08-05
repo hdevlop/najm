@@ -23,7 +23,7 @@ import type { NTableCardPagination } from "./paginationContract";
 export type { NTableClassNames } from "./store";
 export type { TableHeaderColor } from "./tableColors";
 export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint } from "./responsiveColumns";
-export type { NTableCardPagination, NTableLoadMorePagination } from "./paginationContract";
+export type { NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination } from "./paginationContract";
 
 export interface NTableState {
   sorting: SortingState;

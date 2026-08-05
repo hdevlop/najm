@@ -93,7 +93,7 @@ describe("calculateDynamicPageSize", () => {
     expect(store.getState().maxHeight).toBe(48 + 8 * 56);
   });
 
-  test("useDynamicPageSize leaves manual pagination unchanged", async () => {
+  test("useDynamicPageSize measures manual pagination but does not constrain it", async () => {
     const store = createTableStore();
     store.getState().syncWithProps({
       dynamicHeight: true,
@@ -106,9 +106,33 @@ describe("calculateDynamicPageSize", () => {
     renderWithStore(store);
     await new Promise((resolve) => setTimeout(resolve, 0));
 
-    expect(store.getState().calculatedPageSize).toBe(10);
+    // The measurement is published so a server-paginated table can fill its
+    // container; useTable reports it through onPaginationChange rather than
+    // mutating the table, so the consumer still owns fetching.
+    expect(store.getState().calculatedPageSize).toBe(8);
+    // maxHeight stays caller-owned under manual pagination.
     expect(store.getState().maxHeight).toBeNull();
     expect(store.getState().skeletonRowCount).toBe(8);
+  });
+
+  test("publishes a card page size under manual pagination", async () => {
+    const store = createTableStore();
+    store.getState().syncWithProps({
+      dynamicHeight: true,
+      viewMode: "cards",
+      manualPagination: true,
+      cardRowHeight: 176,
+      cardGap: 12,
+    });
+
+    renderWithStore(store);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    // Column count is measured from the rendered grid, not from props. This
+    // harness renders no cards grid and has zero width, so it falls back to a
+    // single column: bodyHeight 500 → floor((500+12)/188) = 2 whole rows × 1.
+    // The floor semantics themselves are covered in infinite-continuation.
+    expect(store.getState().calculatedCardPageSize).toBe(2);
   });
 
   test("calculates complete card-grid rows for one through four columns", () => {

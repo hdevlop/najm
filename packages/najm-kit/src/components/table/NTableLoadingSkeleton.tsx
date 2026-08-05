@@ -11,6 +11,68 @@ import { useTableSurfaceAppearance } from "./tableSurface";
 const DEFAULT_ROWS = 6;
 const DEFAULT_CARD_COUNT = 16;
 
+export interface NTableCardSkeletonSurface {
+  bordered?: boolean;
+  className?: string;
+  style?: React.CSSProperties;
+}
+
+/**
+ * One card-shaped placeholder. Shared by the full-list loading skeleton and by
+ * the infinite continuation tail, so an appended page is shaped like the cards
+ * it becomes rather than like a generic spinner.
+ */
+export function NTableCardSkeleton({ surface }: { surface: NTableCardSkeletonSurface }) {
+  return (
+    <div
+      data-ntable-loading-card
+      data-bordered={surface.bordered === false ? "false" : surface.bordered ? "true" : undefined}
+      style={surface.style}
+      className={cn("rounded-lg p-3 sm:p-4", surface.className)}
+    >
+      <div
+        data-ntable-loading-card-layout="responsive-avatar"
+        className="grid grid-cols-[80px_minmax(0,1fr)] gap-3 sm:grid-cols-[72px_minmax(0,1fr)]"
+      >
+        <div className="col-start-1 row-start-1 flex items-start justify-center sm:justify-start">
+          <NSkeleton
+            data-ntable-loading-card-avatar
+            className="size-20 shrink-0 rounded-full sm:size-16"
+          />
+        </div>
+
+        <div className="col-start-2 row-start-1 flex min-w-0 items-start justify-between gap-3">
+          <div className="min-w-0 flex-1 space-y-2">
+            <NSkeleton className="h-5 w-36 max-w-full" />
+            <NSkeleton className="hidden h-3 w-16 sm:block" />
+          </div>
+          <NSkeleton
+            data-ntable-loading-card-status
+            className="hidden h-6 w-14 shrink-0 rounded-full sm:block"
+          />
+        </div>
+
+        <div
+          data-ntable-loading-card-details
+          className="col-start-2 row-start-2 space-y-1 sm:col-span-full sm:col-start-1 sm:space-y-2 sm:rounded-lg sm:bg-muted/50 sm:p-3"
+        >
+          {Array.from({ length: 3 }).map((_, detailIndex) => (
+            <div key={detailIndex} className="flex items-center gap-1.5 sm:gap-2">
+              <NSkeleton className="size-3.5 shrink-0 rounded-sm sm:size-4" />
+              <NSkeleton
+                className={cn(
+                  "h-3 max-w-full sm:h-4",
+                  detailIndex === 0 ? "w-full" : detailIndex === 1 ? "w-4/5" : "w-3/4",
+                )}
+              />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NTableHeaderSkeleton() {
   const filters = useTableStore.use.filters() as any[];
   const showViewToggle = useTableStore.use.showViewToggle();
@@ -218,53 +280,7 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
           className={cn(containerClass)}
         >
           {Array.from({ length: cardCount }).map((_, index) => (
-            <div
-              key={index}
-              data-ntable-loading-card
-              data-bordered={surface.bordered === false ? "false" : surface.bordered ? "true" : undefined}
-              style={surface.style}
-              className={cn("rounded-lg p-3 sm:p-4", surface.className)}
-            >
-              <div
-                data-ntable-loading-card-layout="responsive-avatar"
-                className="grid grid-cols-[80px_minmax(0,1fr)] gap-3 sm:grid-cols-[72px_minmax(0,1fr)]"
-              >
-                <div className="col-start-1 row-start-1 flex items-start justify-center sm:justify-start">
-                  <NSkeleton
-                    data-ntable-loading-card-avatar
-                    className="size-20 shrink-0 rounded-full sm:size-16"
-                  />
-                </div>
-
-                <div className="col-start-2 row-start-1 flex min-w-0 items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <NSkeleton className="h-5 w-36 max-w-full" />
-                    <NSkeleton className="hidden h-3 w-16 sm:block" />
-                  </div>
-                  <NSkeleton
-                    data-ntable-loading-card-status
-                    className="hidden h-6 w-14 shrink-0 rounded-full sm:block"
-                  />
-                </div>
-
-                <div
-                  data-ntable-loading-card-details
-                  className="col-start-2 row-start-2 space-y-1 sm:col-span-full sm:col-start-1 sm:space-y-2 sm:rounded-lg sm:bg-muted/50 sm:p-3"
-                >
-                  {Array.from({ length: 3 }).map((_, detailIndex) => (
-                    <div key={detailIndex} className="flex items-center gap-1.5 sm:gap-2">
-                      <NSkeleton className="size-3.5 shrink-0 rounded-sm sm:size-4" />
-                      <NSkeleton
-                        className={cn(
-                          "h-3 max-w-full sm:h-4",
-                          detailIndex === 0 ? "w-full" : detailIndex === 1 ? "w-4/5" : "w-3/4",
-                        )}
-                      />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <NTableCardSkeleton key={index} surface={surface} />
           ))}
         </div>
       </NajmScroll>

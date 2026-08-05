@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.0
+
+- Added `cardPagination` mode `infinite`: card lists continue on scroll instead of behind a button. No control and no end-of-list element render while the list is healthy. The continuation button appears only after an append failure, as the retry target.
+- Infinite continuation is owned by `NTableCards`, so the sentinel lives inside the card list's own `NajmScroll` viewport and uses it as the observer root. An appending page renders shaped card placeholders at the grid tail rather than a spinner in a fixed strip, and the polite `aria-live` announcement of appended row counts is preserved.
+- `cardPagination: { mode: "all" }` is now honored in table mode as well as cards: every supplied row renders and no pagination controls are shown.
+- `dynamicHeight` now takes effect under `manualPagination`. The measured page size is reported through the ordinary `onPaginationChange` callback, debounced, so server-paginated tables fill their container while the consumer keeps ownership of fetching. `maxHeight` stays caller-owned under manual pagination, and no page size is reported before the first measurement.
+- Added `calculateCardPageSize`, floored to whole card rows, published as `calculatedCardPageSize`. A card grid page no longer ends in a ragged partial row. This deliberately differs from `calculateCardSkeletonCount`, which ceils because overfilling placeholders is harmless.
+- Removed the deprecated `baseUrl` compiler option from the package tsconfig; `paths` resolves relative to the config file.
+
 ## 2.1.56
 
 - Honor `showIcon` on NTable `select` and `combobox` filters. The leading filter icon is still shown by default; pass `showIcon: false` on a filter to hide it.

@@ -2,7 +2,11 @@ import React, { useCallback } from "react";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import { NDataCardShell } from "./NDataCardShell";
+import { NTableCardSkeleton } from "./NTableLoadingSkeleton";
 import { NajmScroll } from "../ui/scroll";
+import { Button } from "../Button";
+import { useTableSurfaceAppearance } from "./tableSurface";
+import { useCardContinuation } from "./useCardContinuation";
 import { MoreVertical } from "lucide-react";
 
 const ROW_CONTEXT_HANDLED = "__ntableRowContextHandled";
@@ -39,6 +43,17 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const borderColor = useTableStore.use.borderColor();
   const renderSubRow = useTableStore.use.renderSubRow();
   const userGetRowCanExpand = useTableStore.use.getRowCanExpand();
+  const cardPagination = useTableStore.use.cardPagination();
+  const cardColumnCount = useTableStore.use.cardColumnCount();
+  const surface = useTableSurfaceAppearance(bordered, borderColor);
+
+  const viewportRef = React.useRef<HTMLElement | null>(null);
+  const continuationConfig = cardPagination.mode === "infinite" ? cardPagination : null;
+  const continuation = useCardContinuation({
+    config: continuationConfig,
+    rowCount: table?.getRowModel().rows.length ?? 0,
+    viewportRef,
+  });
 
   const handleContainerContextMenu = useCallback((e: React.MouseEvent) => {
     if (isRowContextHandled(e)) return;
@@ -81,7 +96,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const actions = !menuButton && (onView || onEdit || onDelete) ? { onView, onEdit, onDelete } : undefined;
 
   return (
-    <NajmScroll axis="y" className="min-h-0 flex-1 overflow-hidden">
+    <NajmScroll axis="y" viewportRef={viewportRef} className="min-h-0 flex-1 overflow-hidden">
     <div data-ntable-cards-grid className={cn(containerClass)} onContextMenu={handleContainerContextMenu}>
       {rows.map((row) => {
         const noShell = Boolean((row.original as any)?.__smsNoShell);
@@ -164,7 +179,40 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
           </NDataCardShell>
         );
       })}
+      {continuation.pending
+        ? Array.from({ length: Math.max(1, cardColumnCount || 1) }).map((_, index) => (
+            <NTableCardSkeleton key={`ntable-continuation-skeleton-${index}`} surface={surface} />
+          ))
+        : null}
     </div>
+    {continuation.error ? (
+      <div
+        data-ntable-cards-continuation-error
+        className="flex flex-col items-center gap-2 py-3"
+      >
+        <div role="alert" className="text-center text-sm text-destructive">
+          {continuation.error === true
+            ? continuationConfig?.loadMoreErrorLabel ?? "Couldn't load more items."
+            : continuation.error}
+        </div>
+        <Button
+          type="button"
+          bordered={bordered}
+          variant="outline"
+          autoLoading={false}
+          disabled={continuation.pending}
+          onClick={continuation.retry}
+        >
+          {continuationConfig?.retryLabel ?? "Retry"}
+        </Button>
+      </div>
+    ) : null}
+    {continuation.active ? (
+      <div ref={continuation.sentinelRef} data-ntable-cards-sentinel aria-hidden="true" />
+    ) : null}
+    <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {continuation.announcement}
+    </span>
     </NajmScroll>
   );
 }

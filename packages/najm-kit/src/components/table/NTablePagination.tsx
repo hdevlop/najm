@@ -135,7 +135,12 @@ export function NTablePagination() {
 
   if (!table || !showContent || !showPagination || effectiveViewMode === "json" || effectiveViewMode === "files") return null;
 
-  if (effectiveViewMode === "cards" && cardPagination.mode === "all") return null;
+  // `all` renders the whole supplied set in either view mode, so there is
+  // nothing left to page through.
+  if (cardPagination.mode === "all") return null;
+
+  // Infinite continuation is owned by NTableCards, inside the scroll viewport.
+  if (effectiveViewMode === "cards" && cardPagination.mode === "infinite") return null;
 
   if (effectiveViewMode === "cards" && cardPagination.mode === "load-more") {
     return (

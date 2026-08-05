@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useLayoutEffect, useRef, useCallback, type RefObject } from "react";
+import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback, type RefObject } from "react";
 import { TableActionCell } from "./TableActionCell";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, getExpandedRowModel, SortingState, ColumnFiltersState, VisibilityState, RowSelectionState, ExpandedState } from "@tanstack/react-table";
 import { createTableStore, type TableState } from "./store";
@@ -11,6 +11,7 @@ const DEFAULT_TABLE_HEADER_HEIGHT = 48;
 const DEFAULT_CARD_HEIGHT = 176;
 const DEFAULT_CARD_GAP = 12;
 const ROOT_SECTION_GAP_COUNT = 2;
+const DYNAMIC_PAGE_SIZE_DEBOUNCE_MS = 200;
 
 export function useStoreSync(props: any) {
   const storeRef = useRef<ReturnType<typeof createTableStore> | null>(null);
@@ -138,6 +139,22 @@ export function calculateCardSkeletonCount(input: CalculateCardSkeletonCountInpu
   return rows * columns;
 }
 
+/**
+ * Page size for a card grid: whole card rows only.
+ *
+ * Deliberately floors, unlike `calculateCardSkeletonCount`, which ceils.
+ * Overfilling is harmless for placeholders but a page sized past the container
+ * pushes a partial row out of view and reintroduces an inner scrollbar.
+ */
+export function calculateCardPageSize(input: CalculateCardSkeletonCountInput): number {
+  const columns = Math.max(1, input.columnCount || 1);
+  const cardHeight = Math.max(1, input.cardHeight ?? DEFAULT_CARD_HEIGHT);
+  const gap = Math.max(0, input.gap ?? DEFAULT_CARD_GAP);
+  if (input.bodyHeight <= 0) return columns;
+  const rows = Math.max(1, Math.floor((input.bodyHeight + gap) / (cardHeight + gap)));
+  return rows * columns;
+}
+
 function fallbackCardColumns(width: number): number {
   if (width >= 1280) return 4;
   if (width >= 1024) return 3;
@@ -205,8 +222,19 @@ export function useDynamicPageSize(
       const cardGap = Number.parseFloat(gridStyles?.rowGap || gridStyles?.gap || "") || DEFAULT_CARD_GAP;
       const firstCard = cardsGridEl?.querySelector<HTMLElement>("[data-ntable-loading-card], [data-row]");
       const cardRowHeight = firstCard?.offsetHeight || firstCard?.getBoundingClientRect().height || DEFAULT_CARD_HEIGHT;
+      const cardPageSize = calculateCardPageSize({
+        bodyHeight,
+        columnCount: cardColumnCount,
+        cardHeight: cardRowHeight,
+        gap: cardGap,
+      });
       const updates = {
-        ...(!manualPagination ? { calculatedPageSize: newPageSize, maxHeight: calculatedMaxHeight } : {}),
+        // Measured page sizes are published in both pagination modes. Manual
+        // pagination consumes them through onPaginationChange rather than by
+        // mutating the table directly, so the consumer still owns fetching.
+        calculatedPageSize: newPageSize,
+        calculatedCardPageSize: cardPageSize,
+        ...(!manualPagination ? { maxHeight: calculatedMaxHeight } : {}),
         skeletonRowCount: newPageSize,
         bodyWidth,
         bodyHeight,
@@ -260,6 +288,8 @@ export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
   const effectiveViewMode = useTableStore.use.effectiveViewMode();
   const cardPagination = useTableStore.use.cardPagination();
   const calculatedPageSize = useTableStore.use.calculatedPageSize();
+  const calculatedCardPageSize = useTableStore.use.calculatedCardPageSize();
+  const measuredBodyHeight = useTableStore.use.bodyHeight();
   const syncWithProps = useTableStore.use.syncWithProps();
   const onStateChange = useTableStore.use.onStateChange();
   const getRowId = useTableStore.use.getRowId();
@@ -383,7 +413,10 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
   // Store default is always { pageIndex: 0, pageSize: 10 }, so this is never undefined.
   const hasExpansion = Boolean(renderSubRow || userGetRowCanExpand);
   const renderedMode = effectiveViewModeOverride ?? effectiveViewMode ?? viewMode;
-  const renderAllSuppliedRows = renderedMode === "cards" && cardPagination.mode !== "paged";
+  // `all` renders the supplied set whole in either view mode; the continuation
+  // modes only apply while cards are rendered.
+  const renderAllSuppliedRows = cardPagination.mode === "all"
+    || (renderedMode === "cards" && cardPagination.mode !== "paged");
   const tableConfig: any = {
     data, columns: finalColumns,
     state: { sorting: isSortingControlled ? storeSorting : sorting, columnFilters, columnVisibility, rowSelection: storeRowSelection ?? {}, globalFilter, pagination: storePagination, expanded: storeExpanded ?? {} },
@@ -421,13 +454,45 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
   }, [table]); // table is stable; syncWithProps reference is stable
 
   useLayoutEffect(() => {
-    // Do not auto-change page size when manualPagination is enabled (parent owns page size)
+    // Under manual pagination the parent owns page size; it is notified below
+    // instead of being mutated here.
     if (manualPagination) return;
     if (dynamicHeight && renderedMode === "table") table.setPageSize(calculatedPageSize);
     if (viewMode === "cards" && cardPagination.mode === "paged") {
       table.setPageSize(data.length || 9999);
     }
   }, [calculatedPageSize, dynamicHeight, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination]); // table stable, layout/data drive re-runs
+
+  // Server-paginated tables still fill their container: report the measured
+  // page size through the ordinary pagination callback, debounced so a window
+  // resize cannot issue a request per animation frame.
+  const dynamicPageSizeTarget = renderedMode === "cards" ? calculatedCardPageSize : calculatedPageSize;
+  const lastRequestedDynamicSizeRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!manualPagination || !dynamicHeight) return;
+    if (cardPagination.mode !== "paged") return;
+    // An unmeasured container yields a floor of one row. Reporting that would
+    // ask the server for a single-row page before the first layout pass.
+    if (measuredBodyHeight <= 0) return;
+    if (!dynamicPageSizeTarget || dynamicPageSizeTarget < 1) return;
+    if (dynamicPageSizeTarget === storePagination.pageSize) return;
+    // A consumer that clamps or ignores the request must not be asked again.
+    if (lastRequestedDynamicSizeRef.current === dynamicPageSizeTarget) return;
+    const timer = setTimeout(() => {
+      lastRequestedDynamicSizeRef.current = dynamicPageSizeTarget;
+      setPagination({ pageIndex: storePagination.pageIndex, pageSize: dynamicPageSizeTarget });
+    }, DYNAMIC_PAGE_SIZE_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [
+    manualPagination,
+    dynamicHeight,
+    cardPagination.mode,
+    measuredBodyHeight,
+    dynamicPageSizeTarget,
+    storePagination.pageIndex,
+    storePagination.pageSize,
+    setPagination,
+  ]);
 
   return { table, finalColumns, sorting, setSorting, columnFilters, setColumnFilters, columnVisibility, setColumnVisibility, globalFilter, setGlobalFilter };
 }
