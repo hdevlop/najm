@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.2.1
+
+- Fixed a regression in 2.2.0: the dynamic page size reported under `manualPagination` could oscillate. Card row height is measured from rendered cards, so it grows as images decode; feeding that back into the page size refetched, re-rendered, re-measured, and refetched again. A list visibly settled from one page size to another with the loading skeleton flashing twice. The report is now allowed once per container geometry, which does not depend on the rows inside it, so it terminates. A resize still re-arms it, and the debounce still waits for the measurement to settle before reporting.
+
 ## 2.2.0
 
 - Added `cardPagination` mode `infinite`: card lists continue on scroll instead of behind a button. No control and no end-of-list element render while the list is healthy. The continuation button appears only after an append failure, as the retry target.

@@ -290,6 +290,7 @@ export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
   const calculatedPageSize = useTableStore.use.calculatedPageSize();
   const calculatedCardPageSize = useTableStore.use.calculatedCardPageSize();
   const measuredBodyHeight = useTableStore.use.bodyHeight();
+  const measuredBodyWidth = useTableStore.use.bodyWidth();
   const syncWithProps = useTableStore.use.syncWithProps();
   const onStateChange = useTableStore.use.onStateChange();
   const getRowId = useTableStore.use.getRowId();
@@ -467,7 +468,13 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
   // page size through the ordinary pagination callback, debounced so a window
   // resize cannot issue a request per animation frame.
   const dynamicPageSizeTarget = renderedMode === "cards" ? calculatedCardPageSize : calculatedPageSize;
-  const lastRequestedDynamicSizeRef = useRef<number | null>(null);
+  // Keyed on container geometry only. Card row height is measured from rendered
+  // cards, so it shrinks and grows as images decode; feeding that back into the
+  // page size would refetch, re-render, re-measure, and refetch again. The
+  // container's own box does not depend on the rows inside it, so one report per
+  // box terminates. A resize legitimately changes the key and re-arms it.
+  const geometryKey = `${renderedMode}:${measuredBodyWidth}x${measuredBodyHeight}`;
+  const reportedGeometryRef = useRef<string | null>(null);
   useEffect(() => {
     if (!manualPagination || !dynamicHeight) return;
     if (cardPagination.mode !== "paged") return;
@@ -476,10 +483,11 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     if (measuredBodyHeight <= 0) return;
     if (!dynamicPageSizeTarget || dynamicPageSizeTarget < 1) return;
     if (dynamicPageSizeTarget === storePagination.pageSize) return;
-    // A consumer that clamps or ignores the request must not be asked again.
-    if (lastRequestedDynamicSizeRef.current === dynamicPageSizeTarget) return;
+    if (reportedGeometryRef.current === geometryKey) return;
+    // The timer restarts whenever the target moves, so this settles on the
+    // measurement the container ends up with rather than the first one seen.
     const timer = setTimeout(() => {
-      lastRequestedDynamicSizeRef.current = dynamicPageSizeTarget;
+      reportedGeometryRef.current = geometryKey;
       setPagination({ pageIndex: storePagination.pageIndex, pageSize: dynamicPageSizeTarget });
     }, DYNAMIC_PAGE_SIZE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
@@ -488,6 +496,7 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     dynamicHeight,
     cardPagination.mode,
     measuredBodyHeight,
+    geometryKey,
     dynamicPageSizeTarget,
     storePagination.pageIndex,
     storePagination.pageSize,
