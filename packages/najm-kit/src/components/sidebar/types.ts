@@ -45,8 +45,18 @@ export interface SidebarWidths {
   mobile?: SidebarWidth;
 }
 
+/**
+ * Render-prop form of `logo`. Receives the state the sidebar actually resolved,
+ * including `autoCollapseAt`, so consumers stop approximating it with their own
+ * responsive classes.
+ */
+export type SidebarLogoRender = (state: {
+  collapsed: boolean;
+  isMobile: boolean;
+}) => ReactNode;
+
 export interface SidebarProps {
-  logo?: ReactNode;
+  logo?: ReactNode | SidebarLogoRender;
   navItems?: NavItem[];
   activePath?: string;
   isActive?: (item: NavItem, activePath: string) => boolean;

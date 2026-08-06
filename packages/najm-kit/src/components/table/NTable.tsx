@@ -19,11 +19,15 @@ import type { ComponentType } from "react";
 import type { ViewMode, CustomModeRenderers, NTableClassNames as NTableClassNamesAlias } from "./store";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import type { NTableColumnDef } from "./responsiveColumns";
-import type { NTableCardPagination } from "./paginationContract";
+import type {
+  NTableCardPagination,
+  NTablePaginationLabels,
+  NTablePaginationVariant,
+} from "./paginationContract";
 export type { NTableClassNames } from "./store";
 export type { TableHeaderColor } from "./tableColors";
 export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint } from "./responsiveColumns";
-export type { NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination } from "./paginationContract";
+export type { NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels } from "./paginationContract";
 
 export interface NTableState {
   sorting: SortingState;
@@ -116,11 +120,28 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   manualPagination?: boolean;
   pageCount?: number;
   rowCount?: number;
+  /**
+   * Whether another server page exists, for a list whose endpoint reports no
+   * result total. Supply it *instead of* `pageCount`, never a `pageCount`
+   * synthesized from it: the numbered bar then covers the pages known to exist
+   * and carries a trailing `…` for the rest, and the last-page jump is dropped
+   * because there is no known last page. Ignored when `pageCount` is given —
+   * a real total already says everything this does.
+   */
+  hasNextPage?: boolean;
   pagination?: { pageIndex: number; pageSize: number };
   defaultPagination?: { pageIndex: number; pageSize: number };
   onPaginationChange?: (pagination: { pageIndex: number; pageSize: number }) => void;
   /** Pagination presentation used whenever NTable is actually rendering cards. */
   cardPagination?: NTableCardPagination;
+  /**
+   * How the page controls present position. Defaults to `"numbered"`, which
+   * falls back to `"compact"` on its own when the page count is not
+   * trustworthy. Pass `"compact"` for the `Page X of Y` text everywhere.
+   */
+  paginationVariant?: NTablePaginationVariant;
+  /** Accessible names and visible copy for the page controls. */
+  paginationLabels?: NTablePaginationLabels;
   // Row selection
   rowSelection?: RowSelectionState;
   defaultRowSelection?: RowSelectionState;
@@ -538,10 +559,13 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     manualPagination: props.manualPagination ?? false,
     pageCount: props.pageCount,
     rowCount: props.rowCount,
+    hasNextPage: props.hasNextPage,
     pagination: props.pagination,
     defaultPagination: props.defaultPagination,
     onPaginationChange: props.onPaginationChange ?? null,
     cardPagination: props.cardPagination ?? { mode: "paged" },
+    paginationVariant: props.paginationVariant ?? "numbered",
+    paginationLabels: props.paginationLabels ?? {},
     // Row selection
     rowSelection: props.rowSelection,
     defaultRowSelection: props.defaultRowSelection,

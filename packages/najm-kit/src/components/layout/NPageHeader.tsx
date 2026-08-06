@@ -5,6 +5,7 @@ import { Button } from "../Button";
 import { surfaceBorderClasses } from "../../theme/borders";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
+import { useNSidebar } from "../sidebar/NSidebarContext";
 
 interface PageHeaderSlotProps {
   children: ReactNode;
@@ -117,7 +118,7 @@ export function NPageHeader({
   compactActions,
   filters,
   top,
-  mobileBreakpoint = 'md',
+  mobileBreakpoint: mobileBreakpointProp,
   onSidebarOpen,
   sidebarTriggerLabel = "Open sidebar",
   sidebarTriggerClassName,
@@ -130,6 +131,14 @@ export function NPageHeader({
 }: NPageHeaderProps) {
   const [internalSearch, setInternalSearch] = useState('');
   const recipe = useNajmComponentStyle("pageHeader");
+  /**
+   * Inside an `NSidebarProvider` the trigger and the breakpoint wire themselves
+   * up, so a header nested anywhere in the page no longer has to be handed the
+   * sidebar's opener. Explicit props still win.
+   */
+  const sidebar = useNSidebar();
+  const resolvedOnSidebarOpen = onSidebarOpen ?? sidebar?.openMobile;
+  const mobileBreakpoint = mobileBreakpointProp ?? sidebar?.mobileBreakpoint ?? 'md';
   const searchValue = search?.value ?? internalSearch;
   const handleSearchChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setInternalSearch(e.currentTarget.value);
@@ -150,9 +159,27 @@ export function NPageHeader({
 
   const isCard = card ?? recipe?.card ?? (bordered === true);
   const recipeRadius = resolveRadiusValue(recipe?.radius);
+  /**
+   * A non-card header is a full-bleed top bar, so it cancels the page padding
+   * NPageLayout published. Without this it floats below and inside that
+   * padding, and its bottom rule never meets the sidebar header's.
+   *
+   * These are inline rather than Tailwind utilities on purpose: a published
+   * component cannot rely on the consumer's Tailwind build generating an
+   * arbitrary class that only ever appears inside this package's bundle. The
+   * `0px` fallbacks keep the header inert outside NPageLayout.
+   */
+  const bleedStyle: React.CSSProperties | undefined = isCard
+    ? undefined
+    : {
+        marginTop: "calc(var(--najm-section-gap, 0px) * -1)",
+        marginInline: "calc(var(--najm-page-gutter, 0px) * -1)",
+      };
+
   const recipeStyle: React.CSSProperties | undefined =
-    recipeRadius || recipe?.borderWidth
+    recipeRadius || recipe?.borderWidth || bleedStyle
       ? {
+          ...bleedStyle,
           ...(recipeRadius ? { borderRadius: recipeRadius } : {}),
           ...(recipe?.borderWidth ? { borderWidth: recipe.borderWidth } : {}),
         }
@@ -167,7 +194,10 @@ export function NPageHeader({
       className={cn(
         isCard
           ? cn("rounded-xl bg-card text-card-foreground shadow-none", surfaceBorderClasses(true))
-          : cn("border-b bg-background text-foreground", surfaceBorderClasses(true, 'bottom').replace('najm-border-b', 'najm-border-b')),
+          : cn(
+              "border-b bg-background text-foreground",
+              surfaceBorderClasses(true, 'bottom').replace('najm-border-b', 'najm-border-b'),
+            ),
         className
       )}
     >
@@ -175,18 +205,19 @@ export function NPageHeader({
       <div
         data-slot="page-header-main"
         className={cn(
-          "relative grid min-h-12 grid-cols-[minmax(2.75rem,1fr)_minmax(0,auto)_minmax(2.75rem,1fr)] items-center gap-2 px-2 lg:px-3 2xl:px-4",
+          // min-h-14 matches NSidebarHeader so the two bottom rules line up.
+          "relative grid min-h-14 grid-cols-[minmax(2.75rem,1fr)_minmax(0,auto)_minmax(2.75rem,1fr)] items-center gap-2 px-2 lg:px-3 2xl:px-4",
           breakpointClasses.main,
           breakpointClasses.minH,
           headerClassName
         )}
       >
-        {onSidebarOpen && (
+        {resolvedOnSidebarOpen && (
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            onClick={onSidebarOpen}
+            onClick={resolvedOnSidebarOpen}
             aria-label={sidebarTriggerLabel}
             data-slot="page-header-sidebar-trigger"
             className={cn(

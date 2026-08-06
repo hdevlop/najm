@@ -20,11 +20,19 @@ export function NPageLayout({
     <Comp
       className={cn("flex min-w-0 flex-col", className)}
       style={{
+        /**
+         * Published so descendants can cancel the page padding exactly. A
+         * full-bleed child (a non-card NPageHeader) cannot guess these: the
+         * design config resolves them to literals, not to the `--page-gutter`
+         * / `--section-gap` fallbacks.
+         */
+        "--najm-page-gutter": pageGutter,
+        "--najm-section-gap": sectionGap,
         gap: sectionGap,
         paddingInline: pageGutter,
         paddingBlock: sectionGap,
         ...style,
-      }}
+      } as React.CSSProperties}
       {...props}
     />
   );

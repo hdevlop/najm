@@ -2,7 +2,11 @@ import { create } from "zustand";
 import { StoreApi, UseBoundStore } from "zustand";
 import { type ComponentType, type ReactNode, type MouseEvent as ReactMouseEvent } from "react";
 import type { ExpandedState, SortingState } from "@tanstack/react-table";
-import type { NTableCardPagination } from "./paginationContract";
+import type {
+  NTableCardPagination,
+  NTablePaginationLabels,
+  NTablePaginationVariant,
+} from "./paginationContract";
 
 export interface NTableClassNames {
   root?: string;
@@ -111,10 +115,15 @@ export interface TableState {
   setViewMode: (mode: ViewMode) => void;
   // Track if we've ever synced viewMode from props (to avoid resetting user-selected mode)
   hasSyncedFromProps: boolean;
+  // Pagination presentation
+  paginationVariant: NTablePaginationVariant;
+  paginationLabels: NTablePaginationLabels;
   // Server-side pagination
   manualPagination: boolean;
   pageCount: number | undefined;
   rowCount: number | undefined;
+  /** Another server page exists, for a result whose total is unknown. */
+  hasNextPage: boolean | undefined;
   pagination: { pageIndex: number; pageSize: number };
   isPaginationControlled: boolean;
   onPaginationChange: ((pagination: { pageIndex: number; pageSize: number }) => void) | null;
@@ -217,6 +226,7 @@ export const createTableStore = (seed?: Partial<TableState>) => {
     CardComponent: null, CardSkeletonComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,
     noResultsText: "No results.", filterPlaceholder: "", loadingText: "Loading...", noDataText: "No data available", addButtonText: "",
     pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, calculatedCardPageSize: 0, hasMeasuredLayout: false, skeletonRowCount: 6, maxHeight: null,
+    paginationVariant: "numbered" as NTablePaginationVariant, paginationLabels: {},
     bodyWidth: 0, bodyHeight: 0, tableHeaderHeight: 48, cardColumnCount: 1, cardRowHeight: 0, cardGap: 12,
     // JSON mode
     jsonValue: undefined,
@@ -247,6 +257,7 @@ export const createTableStore = (seed?: Partial<TableState>) => {
     manualPagination: false,
     pageCount: undefined,
     rowCount: undefined,
+    hasNextPage: undefined,
     pagination: { pageIndex: 0, pageSize: 10 },
     isPaginationControlled: false,
     onPaginationChange: null,

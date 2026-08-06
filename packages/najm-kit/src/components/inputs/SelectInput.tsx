@@ -12,8 +12,20 @@ function renderItems(items: (string | SelectItemType)[]) {
   return items.map((item) => {
     const value = typeof item === "string" ? item : item.value;
     const label = typeof item === "string" ? item : item.label;
+    const itemIcon = typeof item === "string" ? undefined : item.icon;
     const internalValue = value === "" ? EMPTY_VALUE : value;
-    return <SelectItem key={internalValue} value={internalValue}>{label}</SelectItem>;
+    return (
+      <SelectItem key={internalValue} value={internalValue}>
+        {itemIcon ? (
+          <span className="flex min-w-0 items-center gap-2">
+            {resolveIcon(itemIcon)}
+            <span className="truncate">{label}</span>
+          </span>
+        ) : (
+          label
+        )}
+      </SelectItem>
+    );
   });
 }
 

@@ -75,6 +75,57 @@ export interface NThemeCustomizerLabels {
   options: Partial<NThemeCustomizerOptionLabels>;
 }
 
+/** A named design the host has stored somewhere and can restore later. */
+export interface NThemePreset {
+  id: string;
+  name: string;
+  design: NajmDesignConfig;
+  /** Marks a preset the host ships rather than one the user created. */
+  isBuiltIn?: boolean;
+}
+
+export type NThemePresetsStatus = "idle" | "loading" | "error";
+
+export interface NThemePresetsLabels {
+  title: React.ReactNode;
+  description: React.ReactNode;
+  empty: React.ReactNode;
+  loadError: React.ReactNode;
+  select: React.ReactNode;
+  selectPlaceholder: React.ReactNode;
+  /** Row that restores the host's currently stored design. */
+  savedOption: React.ReactNode;
+  saveCurrent: React.ReactNode;
+  saveTitle: React.ReactNode;
+  saveDescription: React.ReactNode;
+  saveAction: React.ReactNode;
+  nameLabel: React.ReactNode;
+  namePlaceholder: React.ReactNode;
+  delete: React.ReactNode;
+  deleteTitle: React.ReactNode;
+  /** Supports a `{name}` placeholder. */
+  deleteDescription: React.ReactNode;
+  cancel: React.ReactNode;
+}
+
+export interface NThemePresetsProps {
+  presets: readonly NThemePreset[];
+  /** `null` means the host's stored design is showing, not a preset. */
+  selectedPresetId?: string | null;
+  /** Shown as the first row so the user can drop a preview. Omit to hide it. */
+  savedDesign?: NajmDesignConfig;
+  status?: NThemePresetsStatus;
+  /** Receives `null` when the user picks the stored-design row. */
+  onSelect: (preset: NThemePreset | null) => void;
+  /** Omit to hide the save control. */
+  onSave?: (name: string) => void | Promise<void>;
+  /** Omit to hide every delete control. */
+  onDelete?: (preset: NThemePreset) => void | Promise<void>;
+  labels: NThemePresetsLabels;
+  disabled?: boolean;
+  className?: string;
+}
+
 export interface NThemeCustomizerProps {
   value: NajmDesignConfig;
   factoryValue: NajmDesignConfig;
@@ -102,6 +153,24 @@ export interface NThemeCustomizerProps {
   tabs?: readonly NThemeCustomizerTab[];
   fontOptions?: readonly NThemeCustomizerFontOption[];
   labels?: Partial<NThemeCustomizerLabels>;
+  /**
+   * Saved designs offered above the editor. Provide this plus `onPresetSelect`
+   * to render the picker; the customizer stays presentational and never stores
+   * a preset itself.
+   */
+  presets?: readonly NThemePreset[];
+  selectedPresetId?: string | null;
+  presetsStatus?: NThemePresetsStatus;
+  /**
+   * The design the host currently has stored, offered as the "current saved
+   * theme" row so a preview can be dropped. Defaults to `factoryValue`, which
+   * is only correct when the host has not persisted anything of its own.
+   */
+  savedDesign?: NajmDesignConfig;
+  onPresetSelect?: (preset: NThemePreset | null) => void;
+  onPresetSave?: (name: string) => void | Promise<void>;
+  onPresetDelete?: (preset: NThemePreset) => void | Promise<void>;
+  presetLabels?: Partial<NThemePresetsLabels>;
   disabled?: boolean;
   className?: string;
 }

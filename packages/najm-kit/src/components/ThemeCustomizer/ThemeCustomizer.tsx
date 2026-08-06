@@ -11,7 +11,8 @@ import {
   resetThemeSection,
   resetTypographySection,
 } from "./theme-customizer-config";
-import { DEFAULT_LABELS } from "./theme-customizer-meta";
+import { DEFAULT_LABELS, DEFAULT_PRESET_LABELS } from "./theme-customizer-meta";
+import { NThemePresets } from "./NThemePresets";
 import { useNajmThemeMode } from "../../theme/provider";
 import {
   normalizeThemeFileName,
@@ -82,6 +83,14 @@ export function NThemeCustomizer({
   tabs,
   fontOptions,
   labels,
+  presets,
+  selectedPresetId = null,
+  presetsStatus = "idle",
+  savedDesign,
+  onPresetSelect,
+  onPresetSave,
+  onPresetDelete,
+  presetLabels,
   disabled = false,
   className,
 }: NThemeCustomizerProps) {
@@ -306,6 +315,22 @@ export function NThemeCustomizer({
 
   const directContent = items[0]?.content ?? themeContent;
 
+  // The picker only renders when the host actually supplies saved designs.
+  const presetsContent =
+    presets && onPresetSelect ? (
+      <NThemePresets
+        presets={presets}
+        selectedPresetId={selectedPresetId}
+        savedDesign={savedDesign ?? factoryValue}
+        status={presetsStatus}
+        onSelect={onPresetSelect}
+        onSave={onPresetSave}
+        onDelete={onPresetDelete}
+        disabled={disabled}
+        labels={{ ...DEFAULT_PRESET_LABELS, ...presetLabels }}
+      />
+    ) : null;
+
   return (
     <div
       data-najm-theme-customizer=""
@@ -315,6 +340,8 @@ export function NThemeCustomizer({
         className,
       )}
     >
+      {presetsContent}
+
       {showTabs ? (
         <NTabs
           items={items}

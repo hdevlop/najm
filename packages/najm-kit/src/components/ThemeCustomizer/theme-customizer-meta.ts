@@ -165,6 +165,26 @@ export const DEFAULT_LABELS: Record<string, string> = {
   inputBorderWidth: "Input border width",
 };
 
+export const DEFAULT_PRESET_LABELS = {
+  title: "Saved themes",
+  description: "Pick a theme to preview it. Nothing is stored until you save.",
+  empty: "No saved themes yet. Save the current one to start a library.",
+  loadError: "We could not load the saved themes.",
+  select: "Saved theme",
+  selectPlaceholder: "Choose a theme to preview",
+  savedOption: "Current saved theme",
+  saveCurrent: "Save current theme",
+  saveTitle: "Save the current theme",
+  saveDescription: "Give this design a name so you can apply it again later.",
+  saveAction: "Save",
+  nameLabel: "Theme name",
+  namePlaceholder: "For example: Midnight",
+  delete: "Delete",
+  deleteTitle: "Delete this saved theme?",
+  deleteDescription: "{name} will be removed. The stored theme is unchanged.",
+  cancel: "Cancel",
+} as const;
+
 export const DEFAULT_OPTION_LABELS = {
   scale: {
     compact: "Compact",

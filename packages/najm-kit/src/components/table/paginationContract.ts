@@ -1,5 +1,57 @@
 import type { ReactNode } from "react";
 
+/**
+ * How the page controls present position within the result.
+ *
+ * `numbered` renders a windowed list of page buttons. `compact` renders the
+ * `Page X of Y` text with first/previous/next/last controls.
+ *
+ * `numbered` needs a trustworthy page count. Under `manualPagination` that
+ * means the application must pass a `pageCount` derived from a real result
+ * total, or — when its endpoint reports no total — pass `hasNextPage` and no
+ * `pageCount` at all, which renders the unbounded bar described on the NTable
+ * prop. With neither, the bar falls back to `compact` on its own rather than
+ * inviting clicks on pages that may not exist.
+ *
+ * What it must never be handed is a `pageCount` that is really a lower bound,
+ * such as `pageIndex + 2`. That reads as a two-page result on page one and a
+ * three-page result on page two, so the bar grows a number per click with
+ * nothing to say why. NTable warns in development when it catches a count
+ * moving in lockstep with the page index.
+ */
+export type NTablePaginationVariant = "numbered" | "compact";
+
+/**
+ * Accessible names and visible copy for the page controls.
+ *
+ * Every field is optional and falls back to English. Supply them to localize —
+ * the numbered variant is mostly digits, but its controls still need names.
+ */
+export interface NTablePaginationLabels {
+  /** Labels the rows-per-page select. Defaults to `"Rows/page"`. */
+  rowsPerPage?: string;
+  /** Accessible name of the whole page control group. Defaults to `"Pagination"`. */
+  pagination?: string;
+  /** Accessible name for one page button, given a 1-based page. */
+  goToPage?: (page: number) => string;
+  /** Accessible name of the current page button, given a 1-based page. */
+  currentPage?: (page: number) => string;
+  firstPage?: string;
+  previousPage?: string;
+  nextPage?: string;
+  lastPage?: string;
+  /** The `compact` variant's position text, given 1-based values. */
+  pageOf?: (page: number, pageCount: number) => string;
+  /**
+   * The position text when the result has no known total, given the 1-based
+   * page. Defaults to `"Page X"` — there is no `of Y` to state, and repeating
+   * the moving lower bound there would be the same lie the numbered bar avoids.
+   */
+  pageOfUnknown?: (page: number) => string;
+  /** The selection summary, given selected and total row counts. */
+  rowsSelected?: (selected: number, total: number) => string;
+}
+
 export interface NTableLoadMorePagination {
   /** Render the supplied rows as one card list with an explicit continuation control. */
   mode: "load-more";

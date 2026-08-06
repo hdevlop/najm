@@ -7,8 +7,10 @@ export { NSidebarSection } from './NSidebarSection';
 export { NSidebarItem } from './NSidebarItem';
 export { NSidebarFooter } from './NSidebarFooter';
 export { NSidebarMobile } from './NSidebarMobile';
+export { NSidebarProvider, useNSidebar } from './NSidebarContext';
 
 // All types from single source
+export type { NSidebarContextValue } from './NSidebarContext';
 export type {
   NSidebarHeaderProps,
   NSidebarLogoProps,

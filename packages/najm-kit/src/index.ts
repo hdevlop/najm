@@ -2,6 +2,10 @@
 export { NajmThemeProvider, useNajmAppearance, useNajmThemeMode } from "./theme/provider";
 export { NThemeCustomizer } from "./components/ThemeCustomizer";
 export {
+  NThemePresets,
+  NAJM_SAVED_THEME_VALUE,
+} from "./components/ThemeCustomizer";
+export {
   DEFAULT_THEME_FILE_NAME,
   normalizeThemeFileName,
   parseThemeFile,
@@ -12,6 +16,10 @@ export type {
   NThemeCustomizerTab,
   NThemeCustomizerFontOption,
   NThemeCustomizerLabels,
+  NThemePreset,
+  NThemePresetsLabels,
+  NThemePresetsProps,
+  NThemePresetsStatus,
 } from "./components/ThemeCustomizer";
 export { defineNajmThemeConfig, parseNajmThemeConfig, stringifyNajmThemeConfig } from "./theme/config";
 export type { NajmThemeProviderProps, NajmThemeConfig, NajmThemeTokens, NajmMode, NajmAccent, NajmPreset, NajmAppearance } from "./theme/types";
@@ -153,8 +161,8 @@ export { NForm, FormInput, AvatarFormInput, NFormSectionHeader, RepeatingFields,
 export type { FormInputBackground, FormInputProps, FormProps, AvatarFormInputProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./components/form";
 
 // Table
-export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses } from "./components/table";
-export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp, NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination } from "./components/table";
+export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses, buildPageItems, NTableDefaultsProvider, useNTableDefaults } from "./components/table";
+export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp, NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels, NTablePageItem, NTableDefaults } from "./components/table";
 export type { NDataCardShellProps, NDataCardShellActions } from "./components/table";
 export type { NTableCardRootProps, NFileBrowserProps, NFileBrowserCardProps, NFileBrowserRenderThumbProps, FileNode, FileBrowserMode, BuildDefaultFileColumnsOptions } from "./components/table";
 
@@ -175,6 +183,7 @@ export { NSidebarContent } from "./components/sidebar/NSidebarContent";
 export { NSidebarSection } from "./components/sidebar/NSidebarSection";
 export { NSidebarFooter } from "./components/sidebar/NSidebarFooter";
 export { NSidebarMobile } from "./components/sidebar/NSidebarMobile";
+export { NSidebarProvider, useNSidebar } from "./components/sidebar/NSidebarContext";
 export type {
   NSidebarHeaderProps,
   NSidebarLogoProps,
@@ -182,10 +191,12 @@ export type {
   NSidebarSectionProps,
   NSidebarFooterProps,
   NSidebarMobileProps,
+  NSidebarContextValue,
 } from "./components/sidebar";
 
 // Layout
 export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageLayout, NPageHeader, NPageHeaderActions, NPageHeaderCompactActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet, NGrid, NGridItem } from "./components/layout";
+export type { SidebarLogoRender } from "./components/sidebar/types";
 export type { SidebarProps, SidebarItemProps, LinkComponentType,   NavItem,
   NavItemGroup,
   NAppShellClassNames,

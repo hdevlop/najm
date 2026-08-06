@@ -9,6 +9,7 @@ import { NSidebarLogo } from "./NSidebarLogo";
 import { NSidebarContent } from "./NSidebarContent";
 import { NSidebarFooter } from "./NSidebarFooter";
 import { NSidebarMobile } from "./NSidebarMobile";
+import { useNSidebar } from "./NSidebarContext";
 import type { NavItem, NavItemGroup, SidebarProps, SidebarWidth } from "./types";
 
 export type { SidebarProps } from "./types";
@@ -121,7 +122,7 @@ export function NSidebar({
   footer,
   className,
   classNames,
-  mobileBreakpoint = 'md',
+  mobileBreakpoint: mobileBreakpointProp,
   autoCollapseAt,
   mobileOpen: mobileOpenProp,
   defaultMobileOpen = false,
@@ -146,22 +147,43 @@ export function NSidebar({
   const recipe = useNajmComponentStyle("sidebar");
   const [_mobileOpen, _setMobileOpen] = useState(defaultMobileOpen);
   const [_collapsed, _setCollapsed] = useState(defaultCollapsed);
-  const isControlled = mobileOpenProp !== undefined;
-  const mobileOpen = isControlled ? mobileOpenProp : _mobileOpen;
-  const collapsed = collapsedProp ?? _collapsed;
+
+  /**
+   * State precedence is explicit prop → surrounding `NSidebarProvider` →
+   * internal state. Props keep winning so every existing controlled consumer
+   * behaves exactly as before, and the internal fallback keeps the standalone
+   * sidebar working with no provider at all.
+   */
+  const sidebar = useNSidebar();
+  const isMobileControlled = mobileOpenProp !== undefined;
+  const isCollapsedControlled = collapsedProp !== undefined;
+  const mobileOpen = isMobileControlled
+    ? mobileOpenProp
+    : sidebar?.mobileOpen ?? _mobileOpen;
+  const collapsed = isCollapsedControlled
+    ? collapsedProp
+    : sidebar?.collapsed ?? _collapsed;
+  const mobileBreakpoint = mobileBreakpointProp ?? sidebar?.mobileBreakpoint ?? 'md';
+
   const autoCollapsed = useAutoCollapsed(autoCollapseAt);
   const desktopCollapsed = collapsed || autoCollapsed;
   const setMobileOpen = (open: boolean) => {
-    if (!isControlled) _setMobileOpen(open);
+    if (!isMobileControlled) {
+      if (sidebar) sidebar.setMobileOpen(open);
+      else _setMobileOpen(open);
+    }
     onMobileOpenChange?.(open);
   };
   const [railDragging, setRailDragging] = useState(false);
   const suppressRailClickRef = useRef(false);
   const setCollapsedState = useCallback((next: boolean) => {
     if (next === collapsed) return;
-    if (collapsedProp === undefined) _setCollapsed(next);
+    if (!isCollapsedControlled) {
+      if (sidebar) sidebar.setCollapsed(next);
+      else _setCollapsed(next);
+    }
     onCollapsedChange?.(next);
-  }, [collapsed, collapsedProp, onCollapsedChange]);
+  }, [collapsed, isCollapsedControlled, sidebar, onCollapsedChange]);
   const handleToggleCollapsed = useCallback(() => {
     setCollapsedState(!collapsed);
   }, [collapsed, setCollapsedState]);
@@ -248,8 +270,15 @@ export function NSidebar({
   const mobileDefaultLogoContent = logoIcon || logoTitle || logoSubtitle
     ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={false} />
     : null;
-  const desktopHeaderContent = logo ?? desktopDefaultLogoContent;
-  const mobileHeaderContent = logo ?? mobileDefaultLogoContent;
+  // The render-prop form is handed the resolved collapsed state — including
+  // `autoCollapseAt` — so consumers no longer have to approximate it in CSS.
+  const renderLogo = (isMobile: boolean) =>
+    typeof logo === "function"
+      ? logo({ collapsed: isMobile ? false : desktopCollapsed, isMobile })
+      : logo;
+
+  const desktopHeaderContent = renderLogo(false) ?? desktopDefaultLogoContent;
+  const mobileHeaderContent = renderLogo(true) ?? mobileDefaultLogoContent;
 
   const contentProps = {
     groups,
