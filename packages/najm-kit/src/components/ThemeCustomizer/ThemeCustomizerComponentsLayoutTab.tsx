@@ -78,7 +78,7 @@ export function ThemeCustomizerComponentsLayoutTab({
 
   const handleResetComponentField = (
     component: NajmComponentName,
-    key: "card" | "showSectionLabels" | "showSectionSeparators" | "expandedWidth" | "collapsedWidth" | "mobileWidth" | "headerColor" | "headerTextColor" | "borderColor" | "borderWidth",
+    key: "card" | "headerColor" | "headerTextColor" | "borderColor",
   ) => {
     const factory = factoryComponents[component];
     if (!factory || factory[key] === undefined) {
@@ -223,7 +223,6 @@ export function ThemeCustomizerComponentsLayoutTab({
             ["mobileWidth", labels.sidebarMobileWidth, 240],
           ] as const).map(([key, label, placeholder]) => {
             const current = components.sidebar?.[key];
-            const factory = factoryComponents.sidebar?.[key];
             const inputId = `najm-sidebar-${key}`;
             const changeWidth = (delta: number) => {
               if (disabled) return;
@@ -248,13 +247,6 @@ export function ThemeCustomizerComponentsLayoutTab({
                 label={label}
                 htmlFor={inputId}
                 className={key === "mobileWidth" ? "col-span-2" : undefined}
-                onReset={
-                  current !== factory
-                    ? () => handleResetComponentField("sidebar", key)
-                    : undefined
-                }
-                resetLabel={labels.resetField}
-                resetAriaLabel={`${labels.resetField} ${labelText(label)}`.trim()}
                 disabled={disabled}
               >
                 <div className="relative h-9 overflow-hidden rounded-md border border-input bg-card shadow-xs transition-[color,box-shadow] focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50">
@@ -305,31 +297,6 @@ export function ThemeCustomizerComponentsLayoutTab({
         </div>
         <CustomizerField
           label={labels.sidebarSections}
-          onReset={
-            components.sidebar?.showSectionLabels !==
-              factoryComponents.sidebar?.showSectionLabels ||
-            components.sidebar?.showSectionSeparators !==
-              factoryComponents.sidebar?.showSectionSeparators
-              ? () => {
-                  const withLabels = setComponentField(
-                    value,
-                    "sidebar",
-                    "showSectionLabels",
-                    factoryComponents.sidebar?.showSectionLabels,
-                  );
-                  onChange(
-                    setComponentField(
-                      withLabels,
-                      "sidebar",
-                      "showSectionSeparators",
-                      factoryComponents.sidebar?.showSectionSeparators,
-                    ),
-                  );
-                }
-              : undefined
-          }
-          resetLabel={labels.resetField}
-          resetAriaLabel={`${labels.resetField} ${labelText(labels.sidebarSections)}`.trim()}
           disabled={disabled}
         >
           <MultiSelectInput
