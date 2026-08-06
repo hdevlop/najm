@@ -133,7 +133,19 @@ export function NTablePagination() {
   const isPaginationControlled = useTableStore.use.isPaginationControlled();
   const bordered = useTableStore.use.bordered();
 
-  if (!table || !showContent || !showPagination || effectiveViewMode === "json" || effectiveViewMode === "files") return null;
+  // Deliberately not gated on `table`.
+  //
+  // The bar is the last piece of chrome between the body and the bottom of the
+  // container, so the body is measured against it — and the measurement runs in
+  // a layout effect on the first commit, which is earlier than the table
+  // instance can reach the store. Returning null there makes the body one bar
+  // taller than it will ever be again, the page size lands a row over, and it
+  // visibly corrects the moment the bar appears. Everything below falls back to
+  // store state so the bar can render its real height with no table at all.
+  //
+  // `showPagination` already accounts for content and for a first load, where
+  // the bar renders to reserve its height and NTable hides it.
+  if (!showPagination || effectiveViewMode === "json" || effectiveViewMode === "files") return null;
 
   // `all` renders the whole supplied set in either view mode, so there is
   // nothing left to page through.
@@ -153,11 +165,15 @@ export function NTablePagination() {
     );
   }
 
-  const filteredRows = table.getFilteredRowModel().rows;
-  const selectedRows = table.getFilteredSelectedRowModel().rows;
-  const { pageIndex, pageSize } = table.getState().pagination;
+  // Without a table there are no rows to count and no row model to ask; the
+  // store's pagination is the same value the table would report anyway.
+  const filteredRows = table ? table.getFilteredRowModel().rows : [];
+  const selectedRows = table ? table.getFilteredSelectedRowModel().rows : [];
+  const { pageIndex, pageSize } = table ? table.getState().pagination : pagination;
   // For manual pagination, use server pageCount if provided; otherwise fall back to TanStack's count
-  const effectivePageCount = manualPagination && pageCount !== undefined ? pageCount : table.getPageCount();
+  const effectivePageCount = manualPagination && pageCount !== undefined
+    ? pageCount
+    : (table ? table.getPageCount() : 1);
 
   const currentPagination = pagination ?? { pageIndex, pageSize };
   const currentPageSizeOptions = pageSizeOptions.includes(pageSize)
@@ -205,10 +221,10 @@ export function NTablePagination() {
         )}
         <div className="text-sm font-medium text-foreground">Page {pageIndex + 1} of {effectivePageCount}</div>
         <div className="flex items-center gap-2">
-          <Button bordered={bordered} variant="outline" className="hidden h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70 lg:flex" aria-label="First page" onClick={() => navigate("first")} disabled={!table.getCanPreviousPage?.() || pageIndex === 0}><ChevronsLeft className="h-4 w-4" /></Button>
-          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70" aria-label="Previous" onClick={() => navigate("prev")} disabled={!table.getCanPreviousPage?.() || pageIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
-          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70" aria-label="Next" onClick={() => navigate("next")} disabled={!table.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronRight className="h-4 w-4" /></Button>
-          <Button bordered={bordered} variant="outline" className="hidden h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70 lg:flex" aria-label="Last page" onClick={() => navigate("last")} disabled={!table.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronsRight className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="hidden h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70 lg:flex" aria-label="First page" onClick={() => navigate("first")} disabled={!table?.getCanPreviousPage?.() || pageIndex === 0}><ChevronsLeft className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70" aria-label="Previous" onClick={() => navigate("prev")} disabled={!table?.getCanPreviousPage?.() || pageIndex === 0}><ChevronLeft className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70" aria-label="Next" onClick={() => navigate("next")} disabled={!table?.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronRight className="h-4 w-4" /></Button>
+          <Button bordered={bordered} variant="outline" className="hidden h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70 lg:flex" aria-label="Last page" onClick={() => navigate("last")} disabled={!table?.getCanNextPage?.() || pageIndex >= effectivePageCount - 1}><ChevronsRight className="h-4 w-4" /></Button>
         </div>
       </div>
       <div className="min-w-0 flex-none whitespace-nowrap text-sm text-muted-foreground max-sm:hidden">

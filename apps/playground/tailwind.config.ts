@@ -5,6 +5,13 @@ const config: Config = {
   content: [
     './app/**/*.{ts,tsx}',
     './src/**/*.{ts,tsx}',
+    // najm-kit styles its components with Tailwind utilities and ships no
+    // stylesheet containing them, so a build that does not scan the package
+    // drops every one of them: `h-12` header cells collapse to their text
+    // height, `sr-only` stops hiding anything, responsive widths never apply.
+    // Without this the playground renders a different component than a real
+    // consumer does, which makes it useless for judging layout.
+    '../../packages/najm-kit/src/**/*.{ts,tsx}',
     '../../packages/najm-chatbot/src/react/**/*.{ts,tsx}',
   ],
   theme: {

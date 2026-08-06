@@ -78,14 +78,17 @@ export function useCardContinuation({
 
   React.useEffect(() => {
     const previous = previousRowCountRef.current;
-    if (rowCount > previous) {
-      const appended = rowCount - previous;
-      setAnnouncement(
-        configRef.current?.itemsLoadedLabel?.(appended)
-          ?? `${appended} more ${appended === 1 ? "item" : "items"} loaded.`,
-      );
-    }
     previousRowCountRef.current = rowCount;
+    // Only a continuation appends rows. In any other mode a changing row count
+    // is ordinary paging or filtering, and announcing "N more items loaded"
+    // would be wrong as well as noisy.
+    if (!configRef.current) return;
+    if (rowCount <= previous) return;
+    const appended = rowCount - previous;
+    setAnnouncement(
+      configRef.current.itemsLoadedLabel?.(appended)
+        ?? `${appended} more ${appended === 1 ? "item" : "items"} loaded.`,
+    );
   }, [rowCount]);
 
   React.useEffect(() => {

@@ -9,7 +9,45 @@ import { calculateCardSkeletonCount } from "./hooks";
 import { useTableSurfaceAppearance } from "./tableSurface";
 
 const DEFAULT_ROWS = 6;
-const DEFAULT_CARD_COUNT = 16;
+/**
+ * Rows drawn before the container has been measured.
+ *
+ * Must be a constant. Deriving it from `window.innerHeight` gets the count
+ * right but breaks hydration: the server has no viewport, so it renders one
+ * number and the client renders another, and React discards and re-renders the
+ * whole tree. A wrong-but-stable count is cheaper than a right-but-mismatched
+ * one, and the layout effect corrects it before paint.
+ */
+const UNMEASURED_DYNAMIC_ROWS = 12;
+/**
+ * Used until the container has been measured, which cannot happen during server
+ * rendering. Deliberately generous: the skeleton scrolls inside an
+ * `overflow-hidden` viewport, so extra placeholders are clipped and cost
+ * nothing, whereas too few leave an obviously short skeleton that visibly
+ * grows once the first measurement lands.
+ */
+const DEFAULT_CARD_COUNT = 48;
+
+/**
+ * Visually hidden, without depending on the consumer's CSS.
+ *
+ * `sr-only` is a Tailwind utility, and najm-kit's stylesheet does not ship one:
+ * a consumer whose build does not scan this package renders the class as a
+ * no-op and the loading text becomes a visible line above the table — which
+ * makes the skeleton exactly one line taller than the content that replaces it.
+ * Announcement text is not worth a layout dependency, so it carries its own.
+ */
+const VISUALLY_HIDDEN: React.CSSProperties = {
+  position: "absolute",
+  width: 1,
+  height: 1,
+  margin: -1,
+  padding: 0,
+  overflow: "hidden",
+  clip: "rect(0,0,0,0)",
+  whiteSpace: "nowrap",
+  borderWidth: 0,
+};
 
 export interface NTableCardSkeletonSurface {
   bordered?: boolean;
@@ -73,75 +111,15 @@ export function NTableCardSkeleton({ surface }: { surface: NTableCardSkeletonSur
   );
 }
 
-function NTableHeaderSkeleton() {
-  const filters = useTableStore.use.filters() as any[];
-  const showViewToggle = useTableStore.use.showViewToggle();
-  const showColumnVisibility = useTableStore.use.showColumnVisibility();
-  const showAddButton = useTableStore.use.showAddButton();
-  const hasHeaderSlot = Boolean(useTableStore.use.headerSlot());
-  const hasToolbar = Boolean(useTableStore.use.renderToolbar());
-  const filterCount = Math.min(Math.max(filters?.length ?? 0, 1), 3);
-  const hasActions = showViewToggle || showColumnVisibility || showAddButton || hasHeaderSlot || hasToolbar;
-  const hasSettings = showViewToggle || showColumnVisibility || hasHeaderSlot || hasToolbar;
-
-  if (!filters?.length && !hasActions) return null;
-
-  return (
-    <div
-      data-ntable-loading-header
-      className="flex shrink-0 flex-wrap items-center justify-between gap-2"
-    >
-      {filters?.length ? (
-        <div
-          data-ntable-loading-desktop-filters
-          className="hidden min-w-0 flex-1 flex-wrap gap-2 md:flex"
-        >
-          {Array.from({ length: filterCount }).map((_, index) => (
-            <NSkeleton
-              key={index}
-              className={cn("h-10 w-full rounded-lg", index < 2 ? "max-w-64" : "max-w-48")}
-            />
-          ))}
-        </div>
-      ) : (
-        <span className="hidden min-w-0 flex-1 md:block" />
-      )}
-
-      <div
-        data-ntable-loading-mobile-toolbar
-        className="flex w-full min-w-0 items-center gap-2 md:hidden"
-      >
-        {filters?.length ? (
-          <NSkeleton
-            data-ntable-loading-mobile-primary
-            className="h-10 min-w-0 flex-1 rounded-lg"
-          />
-        ) : null}
-        {filters?.length > 1 ? (
-          <NSkeleton
-            data-ntable-loading-mobile-filter-button
-            className="h-10 w-10 shrink-0 rounded-lg"
-          />
-        ) : null}
-        {showAddButton ? (
-          <NSkeleton
-            data-ntable-loading-mobile-add-button
-            className="h-10 w-10 shrink-0 rounded-lg"
-          />
-        ) : null}
-      </div>
-
-      {hasActions && (
-        <div className="hidden shrink-0 gap-2 md:flex">
-          {hasSettings && (
-            <NSkeleton className="h-10 w-10 rounded-lg" />
-          )}
-          {showAddButton && <NSkeleton className="h-10 w-10 rounded-lg" />}
-        </div>
-      )}
-    </div>
-  );
-}
+/*
+ * There is deliberately no header skeleton here.
+ *
+ * The real `NTableHeader` renders throughout a load, so a placeholder header
+ * would either double it up or — worse — stand in for it at a different height.
+ * The toolbar is the one piece of chrome whose height the body is measured
+ * against, so it has to be the same element before and after the rows arrive,
+ * not a look-alike matched to it pixel by pixel.
+ */
 
 export function NTableLoadingSkeleton({ rows }: { rows?: number }) {
   const rawColumns = useTableStore.use.columns() as any[];
@@ -160,14 +138,19 @@ export function NTableLoadingSkeleton({ rows }: { rows?: number }) {
   const userGetRowCanExpand = useTableStore.use.getRowCanExpand();
   const hasExpansion = Boolean(renderSubRow || userGetRowCanExpand);
   const loadingText = useTableStore.use.loadingText() as string;
-  const rowCount = rows ?? (dynamicHeight && bodyHeight > 0 ? skeletonRowCount : DEFAULT_ROWS);
+  const rowCount = rows ?? (
+    dynamicHeight
+      ? (bodyHeight > 0 ? skeletonRowCount : UNMEASURED_DYNAMIC_ROWS)
+      : DEFAULT_ROWS
+  );
 
   const renderHeaderLabel = (header: unknown) =>
     typeof header === "string" ? header : null;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      <NTableHeaderSkeleton />
+      {/* The real NTableHeader renders during loading; a second, differently
+          sized header here would double it up and move the body again. */}
       <div
         data-testid="ntable-loading-skeleton"
         data-ntable-loading-row-count={rowCount}
@@ -176,11 +159,23 @@ export function NTableLoadingSkeleton({ rows }: { rows?: number }) {
         aria-label={loadingText}
         role="status"
         style={surface.style}
-        className={cn("min-h-0 flex-1 rounded-md p-0", surface.className, dynamicHeight ? "overflow-hidden" : "najm-overlay-scroll", classNames?.content)}
+        className={cn(
+          "min-h-0 rounded-md p-0",
+          surface.className,
+          // Sizes to its rows for the same reason `NTableContent` does, and it
+          // has to match: the skeleton draws exactly the row count the real
+          // table will render, so a box that fills its container here and hugs
+          // its rows there would visibly resize the instant the rows arrive —
+          // the one thing this whole layout is meant to avoid.
+          dynamicHeight ? "max-h-full shrink overflow-hidden" : "flex-1 najm-overlay-scroll",
+          classNames?.content,
+        )}
       >
-        <span className="sr-only">{loadingText}</span>
-        <div aria-hidden="true" className={dynamicHeight ? "najm-overlay-scroll h-full" : undefined}>
-          <Table>
+        <span style={VISUALLY_HIDDEN}>{loadingText}</span>
+        <div aria-hidden="true" className={dynamicHeight ? "najm-overlay-scroll" : undefined}>
+          {/* Matches `NTableContent`: same layout algorithm, same widths, so
+              the columns do not shift when the rows replace the placeholders. */}
+          <Table className="table-fixed">
             <TableHeader data-ntable-table-header className={cn(headerClassName, "sticky top-0 z-10", classNames?.tableHeader)}>
               <TableRow className="hover:bg-muted/30">
                 {showCheckbox && <TableHead aria-label="Select column" className="w-10 text-foreground h-12" />}
@@ -229,15 +224,6 @@ export function NTableLoadingSkeleton({ rows }: { rows?: number }) {
 }
 
 export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
-  const filters = useTableStore.use.filters() as any[];
-  const showViewToggle = useTableStore.use.showViewToggle();
-  const showColumnVisibility = useTableStore.use.showColumnVisibility();
-  const showAddButton = useTableStore.use.showAddButton();
-  const hasHeaderSlot = Boolean(useTableStore.use.headerSlot());
-  const hasToolbar = Boolean(useTableStore.use.renderToolbar());
-  const hasHeaderSkeleton = Boolean(
-    filters?.length || showViewToggle || showColumnVisibility || showAddButton || hasHeaderSlot || hasToolbar
-  );
   const classNames = useTableStore.use.classNames();
   const bordered = useTableStore.use.bordered();
   const borderColor = useTableStore.use.borderColor();
@@ -248,6 +234,7 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
   const cardRowHeight = useTableStore.use.cardRowHeight();
   const cardGap = useTableStore.use.cardGap();
   const loadingText = useTableStore.use.loadingText() as string;
+  const CardSkeletonComponent = useTableStore.use.CardSkeletonComponent();
   const cardCount = rows ?? (
     dynamicHeight && bodyHeight > 0
       ? calculateCardSkeletonCount({
@@ -263,7 +250,6 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-2">
-      {hasHeaderSkeleton && <NTableHeaderSkeleton />}
       <NajmScroll
         axis="y"
         aria-busy="true"
@@ -271,7 +257,7 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
         role="status"
         className="min-h-0 flex-1 overflow-hidden"
       >
-        <span className="sr-only">{loadingText}</span>
+        <span style={VISUALLY_HIDDEN}>{loadingText}</span>
         <div
           data-testid="ntable-cards-loading-skeleton"
           data-ntable-loading-cards-grid
@@ -280,7 +266,11 @@ export function NTableCardsLoadingSkeleton({ rows }: { rows?: number }) {
           className={cn(containerClass)}
         >
           {Array.from({ length: cardCount }).map((_, index) => (
-            <NTableCardSkeleton key={index} surface={surface} />
+            CardSkeletonComponent
+              // Wrapped so the consumer's placeholder does not have to know
+              // about the attribute the card-height measurement looks for.
+              ? <div key={index} data-ntable-loading-card><CardSkeletonComponent /></div>
+              : <NTableCardSkeleton key={index} surface={surface} />
           ))}
         </div>
       </NajmScroll>

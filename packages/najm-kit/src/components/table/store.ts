@@ -43,8 +43,12 @@ export interface TableState {
   hasData: boolean;
   hasControls: boolean;
   hasNoData: boolean;
+  /** Loading while rows are already on screen: a refresh, not a first load. */
+  isRefreshing: boolean;
   dynamicHeight: boolean;
   CardComponent: ComponentType<any> | null;
+  /** Placeholder shaped like `CardComponent`; see `renderCardSkeleton`. */
+  CardSkeletonComponent: ComponentType<any> | null;
   className: string;
   classNames: NTableClassNames;
   bordered?: boolean;
@@ -81,6 +85,8 @@ export interface TableState {
   calculatedPageSize: number;
   /** Whole card rows that fit the measured body, multiplied by the column count. */
   calculatedCardPageSize: number;
+  /** True once a real layout measurement has replaced the seeded defaults. */
+  hasMeasuredLayout: boolean;
   skeletonRowCount: number;
   maxHeight: number | null;
   bodyWidth: number;
@@ -167,8 +173,18 @@ const computeFlags = (state: Partial<TableState>): Partial<TableState> => {
     state.onView || state.onEdit || state.onDelete
   );
   const hasControls = Boolean(state.showColumnVisibility || state.showAddButton || state.showViewToggle);
-  const showContent = !state.isLoading && !state.error && !hasNoData && !isFilteredEmpty;
-  return { hasData, hasNoData, isTableView, isCardView, isJsonView, isFilesView, isCustomMode, hasActions, hasControls, showContent, showPagination: state.showPagination && showContent };
+  // A reload that already has rows on screen is a refresh, not a first load.
+  // Tearing the rows down for a skeleton makes a background refetch — a page
+  // size correction, a filter change, a poll — look like a full navigation.
+  // Keep the rows and mark the region busy; the skeleton is for an empty table.
+  const isRefreshing = Boolean(state.isLoading) && hasData;
+  const showContent = !state.error && !hasNoData && !isFilteredEmpty && (!state.isLoading || hasData);
+  return { hasData, hasNoData, isTableView, isCardView, isJsonView, isFilesView, isCustomMode, hasActions, hasControls, isRefreshing, showContent,
+    // Rendered during a first load too, so the bar occupies its height while
+    // the skeleton is up. Without it the body is one bar taller than it will be
+    // once rows arrive, the measured page size is one row too many, and that
+    // row is visibly removed the moment the table loads.
+    showPagination: state.showPagination && (showContent || Boolean(state.isLoading)) };
 };
 
 type WithSelectors<S> = S extends { getState: () => infer T } ? S & { use: { [K in keyof T]: () => T[K] } } : never;
@@ -182,15 +198,25 @@ const createSelectors = <S extends UseBoundStore<StoreApi<object>>>(_store: S) =
   return store;
 };
 
-export const createTableStore = () => {
-  const store = create<TableState>((set, get) => ({
+/**
+ * `seed` becomes part of the store's *initial* state rather than a `set()` call
+ * made after creation. Zustand serves `getInitialState()` as the snapshot for
+ * server rendering and for the hydration render, so anything applied after
+ * creation is invisible on the first paint: `isLoading` would read false while
+ * the caller passed true (rendering the empty state instead of the skeleton),
+ * and `manualPagination` would read false long enough for layout effects to
+ * push a default page size back to a consumer that owns pagination.
+ */
+export const createTableStore = (seed?: Partial<TableState>) => {
+  const store = create<TableState>((set, get) => {
+    const defaults = ({
     table: null, data: [], columns: [], filters: [], isLoading: false, error: null, viewMode: "table" as ViewMode,
     showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: true, dynamicHeight: true,
-    showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true,
+    showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true, isRefreshing: false,
     onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
-    CardComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,
+    CardComponent: null, CardSkeletonComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,
     noResultsText: "No results.", filterPlaceholder: "", loadingText: "Loading...", noDataText: "No data available", addButtonText: "",
-    pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, calculatedCardPageSize: 0, skeletonRowCount: 6, maxHeight: null,
+    pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, calculatedCardPageSize: 0, hasMeasuredLayout: false, skeletonRowCount: 6, maxHeight: null,
     bodyWidth: 0, bodyHeight: 0, tableHeaderHeight: 48, cardColumnCount: 1, cardRowHeight: 0, cardGap: 12,
     // JSON mode
     jsonValue: undefined,
@@ -293,6 +319,19 @@ export const createTableStore = () => {
       const flags = computeFlags(mergedState);
       set({ ...updates, ...flags, hasSyncedFromProps, hasSyncedPaginationFromProps, hasSyncedRowSelectionFromProps, hasSyncedExpandedFromProps, hasSyncedSortingFromProps });
     },
-  }));
+    } as unknown) as TableState;
+
+    if (!seed) return defaults;
+    const merged = {
+      ...defaults,
+      ...seed,
+      hasSyncedFromProps: "viewMode" in seed,
+      hasSyncedPaginationFromProps: "pagination" in seed,
+      hasSyncedRowSelectionFromProps: "rowSelection" in seed,
+      hasSyncedExpandedFromProps: "expanded" in seed,
+      hasSyncedSortingFromProps: "sorting" in seed,
+    } as TableState;
+    return { ...merged, ...computeFlags(merged) } as TableState;
+  });
   return createSelectors(store);
 };

@@ -23,7 +23,17 @@ function CardRenderer() {
 }
 
 describe("NTable responsive loading skeleton", () => {
-  test("matches the compact mobile toolbar and keeps desktop filters", () => {
+  /*
+   * There is no toolbar skeleton any more, and that is the point.
+   *
+   * A placeholder toolbar has to be matched to the real one pixel for pixel, or
+   * swapping them moves the body underneath and the measured page size changes
+   * with it. Rendering the real toolbar throughout the load makes the two
+   * heights equal by construction. The loading state still has to show the
+   * right controls at both breakpoints, which is what this checks — now against
+   * the real toolbar rather than a copy of it.
+   */
+  test("shows the real toolbar at both breakpoints while loading", () => {
     const { container } = render(
       <NTable<Row>
         data={[]}
@@ -43,13 +53,15 @@ describe("NTable responsive loading skeleton", () => {
       />,
     );
 
-    const mobile = container.querySelector("[data-ntable-loading-mobile-toolbar]") as HTMLElement;
-    expect(mobile.querySelector("[data-ntable-loading-mobile-primary]")).toBeTruthy();
-    expect(mobile.querySelector("[data-ntable-loading-mobile-filter-button]")).toBeTruthy();
-    expect(mobile.querySelector("[data-ntable-loading-mobile-add-button]")).toBeTruthy();
+    const mobile = container.querySelector("[data-ntable-mobile-toolbar]") as HTMLElement;
+    expect(mobile).toBeTruthy();
+    expect(mobile.querySelector("[data-ntable-mobile-primary-filter]")).toBeTruthy();
 
-    const desktop = container.querySelector("[data-ntable-loading-desktop-filters]") as HTMLElement;
+    const desktop = container.querySelector("[data-ntable-desktop-filters]") as HTMLElement;
     expect(desktop.children).toHaveLength(3);
+
+    // No second, differently sized header inside the skeleton.
+    expect(container.querySelector("[data-ntable-loading-header]")).toBeNull();
   });
 
   test("uses a compact mobile avatar card and expanded desktop details", () => {
@@ -142,7 +154,71 @@ describe("NTable responsive loading skeleton", () => {
     expect(grid.getAttribute("aria-hidden")).toBe("true");
     expect(grid.className).toContain("grid-cols-5");
     expect(grid.className).not.toContain("xl:grid-cols-4");
-    expect(grid.querySelectorAll("[data-ntable-loading-card]")).toHaveLength(16);
+    // Unmeasured fallback. Deliberately generous: the skeleton is clipped by an
+    // overflow-hidden viewport, so surplus placeholders are free, while too few
+    // leave a visibly short skeleton that grows once measurement lands.
+    expect(grid.querySelectorAll("[data-ntable-loading-card]")).toHaveLength(48);
+  });
+
+  test("responsiveSkeleton emits both shapes and lets CSS pick", () => {
+    // A viewport-derived view mode is unknowable on the server, so the first
+    // paint would otherwise always be the card shape and correct itself after
+    // hydration. Both shapes ship; the media query decides.
+    const { container } = render(
+      <NTable<Row>
+        data={[]}
+        columns={columns}
+        loading
+        responsiveSkeleton
+        renderCard={CardRenderer as any}
+        dynamicHeight={false}
+        showPagination={false}
+        showCheckbox={false}
+      />,
+    );
+
+    const table = container.querySelector('[data-ntable-skeleton-variant="table"]') as HTMLElement;
+    const cards = container.querySelector('[data-ntable-skeleton-variant="cards"]') as HTMLElement;
+    expect(table).toBeTruthy();
+    expect(cards).toBeTruthy();
+    // Complementary at the same breakpoint: exactly one is ever laid out.
+    expect(table.className).toContain("hidden");
+    expect(table.className).toContain("lg:flex");
+    expect(cards.className).toContain("flex");
+    expect(cards.className).toContain("lg:hidden");
+    expect(table.querySelector('[data-testid="ntable-loading-skeleton"]')).toBeTruthy();
+    expect(cards.querySelector('[data-testid="ntable-cards-loading-skeleton"]')).toBeTruthy();
+  });
+
+  test("renderCardSkeleton replaces the placeholder and stays measurable", () => {
+    function ProductShapedSkeleton() {
+      return <div data-testid="product-skeleton" style={{ height: 260 }} />;
+    }
+
+    const { container } = render(
+      <NTable<Row>
+        data={[]}
+        columns={columns}
+        loading
+        renderCard={CardRenderer as any}
+        renderCardSkeleton={ProductShapedSkeleton}
+        defaultMode="cards"
+        dynamicHeight={false}
+        showPagination={false}
+        showCheckbox={false}
+        showAddButton={false}
+        showViewToggle={false}
+      />,
+    );
+
+    const grid = container.querySelector("[data-ntable-loading-cards-grid]") as HTMLElement;
+    expect(grid.querySelectorAll('[data-testid="product-skeleton"]').length).toBeGreaterThan(0);
+    // The built-in avatar placeholder must not also render.
+    expect(grid.querySelector("[data-ntable-loading-card-avatar]")).toBeNull();
+    // Card-height measurement keys off this attribute, so the consumer's
+    // placeholder has to carry it without the consumer knowing that.
+    const measured = grid.querySelectorAll("[data-ntable-loading-card]");
+    expect(measured.length).toBe(grid.querySelectorAll('[data-testid="product-skeleton"]').length);
   });
 
   test("explicit bordered loading uses the shared themed border without a fallback shadow", () => {

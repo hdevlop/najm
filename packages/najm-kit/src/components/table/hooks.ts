@@ -11,7 +11,19 @@ const DEFAULT_TABLE_HEADER_HEIGHT = 48;
 const DEFAULT_CARD_HEIGHT = 176;
 const DEFAULT_CARD_GAP = 12;
 const ROOT_SECTION_GAP_COUNT = 2;
-const DYNAMIC_PAGE_SIZE_DEBOUNCE_MS = 200;
+/**
+ * Long enough to outlast a card growing as its image decodes. Reporting before
+ * the content settles measures a short card, fits too many rows, and leaves the
+ * grid overflowing its container.
+ */
+const DYNAMIC_PAGE_SIZE_DEBOUNCE_MS = 800;
+/**
+ * A very late image can still change the fit after the first report. Allow one
+ * correction per container, then stop, so this can never become a loop.
+ */
+const MAX_PAGE_SIZE_REPORTS_PER_GEOMETRY = 2;
+/** Container growth smaller than this is layout noise, not a resize. */
+const GEOMETRY_BUCKET_PX = 32;
 
 export function useStoreSync(props: any) {
   const storeRef = useRef<ReturnType<typeof createTableStore> | null>(null);
@@ -22,7 +34,6 @@ export function useStoreSync(props: any) {
   const isSortingControlled = props.sorting !== undefined;
 
   if (!storeRef.current) {
-    storeRef.current = createTableStore();
     // Seed pagination from props.pagination (controlled) or props.defaultPagination (uncontrolled)
     // before useTable reads it in the same render pass. Only include pagination in the initial
     // syncData when a value is actually provided, so hasSyncedPaginationFromProps is not falsely set.
@@ -47,7 +58,10 @@ export function useStoreSync(props: any) {
     delete syncSnapshot.defaultSorting;
     if (props.sorting !== undefined) syncSnapshot.sorting = props.sorting;
     else if (props.defaultSorting !== undefined) syncSnapshot.sorting = props.defaultSorting;
-    storeRef.current.getState().syncWithProps(syncSnapshot);
+    // Passed as initial state, not applied afterwards: zustand serves the
+    // initial state as the server and hydration snapshot, so a post-creation
+    // set() would leave the first paint reading raw defaults.
+    storeRef.current = createTableStore(syncSnapshot);
   }
 
   useLayoutEffect(() => {
@@ -183,12 +197,27 @@ export function useDynamicPageSize(
       const container = containerRef.current;
       if (!container) return;
 
+      // The empty and error states deliberately hide the toolbar and the
+      // pagination bar, so the body measures taller then than it ever will with
+      // rows in it. Measuring in that state produces a page size for a layout
+      // the table is only passing through — and that page size is still in
+      // force when rows arrive, which is exactly what makes the first page
+      // correct itself a moment after it renders. A list that empties and
+      // refills passes through here every time. Loading is not one of these
+      // states: the skeleton is an overlay and the chrome stays put, so a first
+      // load measures the same geometry the rows will land in.
+      if (error || (hasNoData && !isFilteredEmpty && !isLoading)) return;
+
       const bodyEl = container.querySelector<HTMLElement>("[data-ntable-body]");
       const tableHeaderEl = container.querySelector<HTMLElement>("[data-ntable-table-header]");
-      const loadingHeaderEl = container.querySelector<HTMLElement>("[data-ntable-loading-header]");
-      const cardsGridEl = container.querySelector<HTMLElement>(
-        "[data-ntable-loading-cards-grid], [data-ntable-cards-grid]",
-      );
+      // `responsiveSkeleton` emits both shapes and hides one in CSS, so take
+      // the grid that is actually laid out. A `display: none` grid reports zero
+      // for every box measurement and would poison the card height.
+      const cardsGridEl = Array.from(
+        container.querySelectorAll<HTMLElement>(
+          "[data-ntable-loading-cards-grid], [data-ntable-cards-grid]",
+        ),
+      ).find((el) => el.clientHeight > 0 || el.clientWidth > 0) ?? null;
 
       let bodyHeight = bodyEl?.clientHeight ?? 0;
       const bodyWidth = bodyEl?.clientWidth ?? container.clientWidth ?? 0;
@@ -204,12 +233,9 @@ export function useDynamicPageSize(
         bodyHeight = rootHeight - headerHeight - paginationHeight - gap * ROOT_SECTION_GAP_COUNT;
       }
 
-      if (loadingHeaderEl && bodyEl) {
-        const bodyStyles = window.getComputedStyle(bodyEl);
-        const bodyGap = Number.parseFloat(bodyStyles.rowGap || (bodyStyles as any).gap || "0") || 0;
-        bodyHeight = Math.max(0, bodyHeight - loadingHeaderEl.offsetHeight - bodyGap);
-      }
-
+      // Nothing is subtracted for the loading state: the skeleton is an overlay
+      // and takes no space, so the body measured during a load is the body the
+      // rows will occupy.
       const tableHeaderHeight = tableHeaderEl?.offsetHeight ?? DEFAULT_TABLE_HEADER_HEIGHT;
       const newPageSize = calculateDynamicPageSize({ bodyHeight, tableHeaderHeight });
       const calculatedMaxHeight = tableHeaderHeight + newPageSize * ROW_HEIGHT;
@@ -234,6 +260,9 @@ export function useDynamicPageSize(
         // mutating the table directly, so the consumer still owns fetching.
         calculatedPageSize: newPageSize,
         calculatedCardPageSize: cardPageSize,
+        // Distinguishes a real measurement from the seeded defaults, so a page
+        // size is never reported before the container has been measured.
+        hasMeasuredLayout: bodyHeight > 0,
         ...(!manualPagination ? { maxHeight: calculatedMaxHeight } : {}),
         skeletonRowCount: newPageSize,
         bodyWidth,
@@ -259,7 +288,7 @@ export function useDynamicPageSize(
       "[data-ntable-header], [data-ntable-body], [data-ntable-pagination], [data-ntable-table-header]"
     ).forEach((el) => resizeObserver.observe(el));
     container.querySelectorAll<HTMLElement>(
-      "[data-ntable-loading-header], [data-ntable-loading-cards-grid], [data-ntable-loading-card], [data-ntable-cards-grid]"
+      "[data-ntable-loading-cards-grid], [data-ntable-loading-card], [data-ntable-cards-grid]"
     ).forEach((el) => resizeObserver.observe(el));
     if (container.parentElement) resizeObserver.observe(container.parentElement);
 
@@ -291,14 +320,18 @@ export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
   const calculatedCardPageSize = useTableStore.use.calculatedCardPageSize();
   const measuredBodyHeight = useTableStore.use.bodyHeight();
   const measuredBodyWidth = useTableStore.use.bodyWidth();
+  const hasMeasuredLayout = useTableStore.use.hasMeasuredLayout();
   const syncWithProps = useTableStore.use.syncWithProps();
   const onStateChange = useTableStore.use.onStateChange();
   const getRowId = useTableStore.use.getRowId();
   // Server-side pagination
   const manualPagination = useTableStore.use.manualPagination();
+  /** Rows on screen. Distinguishes a first load from a resize. */
+  const hasDataRows = useTableStore.use.hasData();
   const pageCount = useTableStore.use.pageCount();
   const rowCount = useTableStore.use.rowCount();
   const storePagination = useTableStore.use.pagination();
+  const isPaginationControlled = useTableStore.use.isPaginationControlled();
   const setPagination = useTableStore.use.setPagination();
   // Row selection - store-driven
   const storeRowSelection = useTableStore.use.rowSelection();
@@ -448,58 +481,126 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
 
   const table = useReactTable(tableConfig);
 
-// Sync table reference to store in useLayoutEffect (not during render) so
-  // TablePagination and other consumers can access the table in the same render pass.
+  // The table instance is published on the first render, not from an effect.
+  //
+  // Half the shell is gated on it: `NTablePagination` returns null without a
+  // table, the real `<thead>` lives in `NTableContent`, and every column filter
+  // resolves through it. Publishing it from a layout effect means the first
+  // commit — the one `useDynamicPageSize` measures — has no pagination bar and
+  // no header row, so the body measures tall by exactly that chrome and the
+  // page size lands one row over. Seeding during render is safe here: the
+  // subscribers are children of this component and have not rendered yet, so
+  // the write lands before they first read.
+  const hasSeededTableRef = useRef(false);
+  if (!hasSeededTableRef.current) {
+    hasSeededTableRef.current = true;
+    syncWithProps({ table });
+  }
   useLayoutEffect(() => {
     syncWithProps({ table });
   }, [table]); // table is stable; syncWithProps reference is stable
 
   useLayoutEffect(() => {
-    // Under manual pagination the parent owns page size; it is notified below
-    // instead of being mutated here.
-    if (manualPagination) return;
+    // Never mutate pagination the caller owns. `manualPagination` alone is not
+    // enough: it can still read false on an early pass while the store settles,
+    // and mutating the table here calls straight through to the consumer's
+    // onPaginationChange, overriding the pageSize they passed in. A controlled
+    // `pagination` prop is the durable signal. The measured size is reported
+    // below instead.
+    if (manualPagination || isPaginationControlled) return;
     if (dynamicHeight && renderedMode === "table") table.setPageSize(calculatedPageSize);
     if (viewMode === "cards" && cardPagination.mode === "paged") {
       table.setPageSize(data.length || 9999);
     }
-  }, [calculatedPageSize, dynamicHeight, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination]); // table stable, layout/data drive re-runs
+  }, [calculatedPageSize, dynamicHeight, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination, isPaginationControlled]); // table stable, layout/data drive re-runs
 
   // Server-paginated tables still fill their container: report the measured
   // page size through the ordinary pagination callback, debounced so a window
   // resize cannot issue a request per animation frame.
   const dynamicPageSizeTarget = renderedMode === "cards" ? calculatedCardPageSize : calculatedPageSize;
-  // Keyed on container geometry only. Card row height is measured from rendered
-  // cards, so it shrinks and grows as images decode; feeding that back into the
-  // page size would refetch, re-render, re-measure, and refetch again. The
-  // container's own box does not depend on the rows inside it, so one report per
-  // box terminates. A resize legitimately changes the key and re-arms it.
-  const geometryKey = `${renderedMode}:${measuredBodyWidth}x${measuredBodyHeight}`;
-  const reportedGeometryRef = useRef<string | null>(null);
-  useEffect(() => {
+  /*
+   * Reporting a measured page size to a server-paginated consumer refetches, so
+   * every extra report is a wasted request and a visible skeleton. Three things
+   * made this fire repeatedly on one mount:
+   *
+   * 1. `calculatedPageSize` has a non-zero store default, so a report could be
+   *    sent before anything had actually been measured. `hasMeasuredLayout`
+   *    gates on a real measurement instead of on a plausible-looking default.
+   * 2. The view mode settles after the first paint. Keying on it meant a report
+   *    in table mode, then a second one once cards resolved. The key ignores the
+   *    mode; the debounce below outlives the transition, and the target is read
+   *    at fire time, so the settled mode wins.
+   * 3. Card height is measured from rendered cards and grows as images decode,
+   *    which nudges the container by a pixel or two. Geometry is bucketed so
+   *    only a real resize re-arms a report.
+   *
+   * The timer restarts on every dependency change, so a report is sent once the
+   * measurement has been quiet for the debounce window rather than on the first
+   * value seen.
+   */
+  const geometryKey = `${Math.round(measuredBodyWidth / GEOMETRY_BUCKET_PX)}x`
+    + `${Math.round(measuredBodyHeight / GEOMETRY_BUCKET_PX)}`;
+  const reportedGeometryRef = useRef<{ key: string; count: number; target: number } | null>(null);
+  useLayoutEffect(() => {
     if (!manualPagination || !dynamicHeight) return;
     if (cardPagination.mode !== "paged") return;
-    // An unmeasured container yields a floor of one row. Reporting that would
-    // ask the server for a single-row page before the first layout pass.
-    if (measuredBodyHeight <= 0) return;
+    if (!hasMeasuredLayout || measuredBodyHeight <= 0) return;
     if (!dynamicPageSizeTarget || dynamicPageSizeTarget < 1) return;
     if (dynamicPageSizeTarget === storePagination.pageSize) return;
-    if (reportedGeometryRef.current === geometryKey) return;
-    // The timer restarts whenever the target moves, so this settles on the
-    // measurement the container ends up with rather than the first one seen.
-    const timer = setTimeout(() => {
-      reportedGeometryRef.current = geometryKey;
+    const reported = reportedGeometryRef.current;
+    // Saying the same thing twice is not a second report. The effect re-runs
+    // many times over one load, and while the caller has not applied the size
+    // yet the target still differs from the store on every one of them — so
+    // without this, repeated identical commits burn the whole budget below and
+    // the report that matters is refused.
+    if (reported?.key === geometryKey && reported.target === dynamicPageSizeTarget) return;
+    if (reported?.key === geometryKey && reported.count >= MAX_PAGE_SIZE_REPORTS_PER_GEOMETRY) return;
+    const commit = () => {
+      const current = reportedGeometryRef.current;
+      reportedGeometryRef.current = current?.key === geometryKey
+        ? { key: geometryKey, count: current.count + 1, target: dynamicPageSizeTarget }
+        : { key: geometryKey, count: 1, target: dynamicPageSizeTarget };
       setPagination({ pageIndex: storePagination.pageIndex, pageSize: dynamicPageSizeTarget });
-    }, DYNAMIC_PAGE_SIZE_DEBOUNCE_MS);
+    };
+
+    // A table with no rows yet is a first load, and it always commits
+    // synchronously. `reported` alone is not a good enough test for "first":
+    // one earlier report — including one for a geometry that no longer exists —
+    // consumes the fast path for the whole mount, and every report after it
+    // waits out the debounce while the caller renders at its seeded page size.
+    // The debounce exists for resizes, which by definition happen with rows on
+    // screen, so gating on emptiness leaves that behaviour untouched.
+    if (!hasDataRows) {
+      commit();
+      return;
+    }
+
+    // The first report is committed synchronously, before the browser paints.
+    // Measurement already runs in a layout effect, but deferring the report by
+    // even one task lets a frame paint at the seeded page size — a skeleton or
+    // a cached list rendering 25 rows, clipped to whatever fits, then snapping
+    // to the 12 that belong there. Committing here means the only page size
+    // ever painted is the measured one.
+    if (!reported) {
+      commit();
+      return;
+    }
+
+    // Later reports are resizes. The debounce is what keeps a window drag from
+    // reporting a new page size every animation frame.
+    const timer = setTimeout(commit, DYNAMIC_PAGE_SIZE_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   }, [
     manualPagination,
     dynamicHeight,
     cardPagination.mode,
+    hasMeasuredLayout,
     measuredBodyHeight,
     geometryKey,
     dynamicPageSizeTarget,
     storePagination.pageIndex,
     storePagination.pageSize,
+    hasDataRows,
     setPagination,
   ]);
 

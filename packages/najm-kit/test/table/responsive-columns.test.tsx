@@ -57,6 +57,17 @@ function renderTable(
   );
 }
 
+/**
+ * Responsive hiding is expressed as whole class tokens (`hidden`,
+ * `md:table-cell`), so it has to be asserted on tokens. A substring check
+ * matches unrelated utilities that merely contain the word — `overflow-hidden`
+ * reads as "hidden" and fails a test about responsive visibility.
+ */
+function hasResponsiveHiding(className: string): boolean {
+  const tokens = className.split(/\s+/).filter(Boolean);
+  return tokens.includes("hidden") || tokens.some((token) => token.endsWith(":table-cell"));
+}
+
 describe("NTable responsive column helper", () => {
   describe("filterResponsiveColumns", () => {
     test("omitted visible and visible: true include the column", () => {
@@ -179,7 +190,9 @@ describe("NTable responsive columns integration", () => {
       { accessorKey: "name", header: "Name" },
       { accessorKey: "email", header: "Email", meta: { visible: false } },
     ];
-    const { container } = renderTable(columns, { loading: true });
+    // Empty data, because loading with rows present is a refresh that keeps
+    // the rows rather than rendering skeleton markup.
+    const { container } = renderTable(columns, { data: [], loading: true });
     await new Promise((r) => setTimeout(r, 50));
     const headers = Array.from(container.querySelectorAll("thead th"));
     const headerTexts = headers.map((h) => h.textContent?.trim());
@@ -225,8 +238,7 @@ describe("NTable responsive columns integration", () => {
     const nameHeaders = Array.from(container.querySelectorAll("thead th")).filter(
       (h) => h.textContent?.trim() === "Name",
     );
-    expect(nameHeaders[0].className).not.toContain("hidden ");
-    expect(nameHeaders[0].className).not.toContain("table-cell");
+    expect(hasResponsiveHiding(nameHeaders[0].className)).toBe(false);
   });
 
   test("a different column remains unaffected by a sibling's hiddenBelow", async () => {
@@ -240,8 +252,7 @@ describe("NTable responsive columns integration", () => {
     const guardianHeaders = Array.from(container.querySelectorAll("thead th")).filter(
       (h) => h.textContent?.trim() === "Guardian",
     );
-    expect(guardianHeaders[0].className).not.toContain("table-cell");
-    expect(guardianHeaders[0].className).not.toContain("hidden ");
+    expect(hasResponsiveHiding(guardianHeaders[0].className)).toBe(false);
   });
 
   test("loading skeleton headers and cells receive the same classes", async () => {
@@ -249,7 +260,9 @@ describe("NTable responsive columns integration", () => {
       { accessorKey: "name", header: "Name" },
       { accessorKey: "email", header: "Email", meta: { hiddenBelow: "lg" } },
     ];
-    const { container } = renderTable(columns, { loading: true });
+    // Empty data, because loading with rows present is a refresh that keeps
+    // the rows rather than rendering skeleton markup.
+    const { container } = renderTable(columns, { data: [], loading: true });
     await new Promise((r) => setTimeout(r, 50));
     const emailHeaders = Array.from(container.querySelectorAll("thead th")).filter(
       (h) => h.textContent?.trim() === "Email",

@@ -105,9 +105,12 @@ describe("NTable", () => {
     expect(queryText(container, "Something went wrong")).toBeTruthy();
   });
 
+  // A loading state with rows already on screen is a refresh, not a first
+  // load, so these pass empty data to exercise the skeleton path.
   test("renders custom renderLoading when loading", () => {
     const { container } = render(
       <TableWrapper
+        data={[]}
         loading={true}
         renderLoading={() => <div data-testid="custom-loading">Loading...</div>}
       />
@@ -118,8 +121,17 @@ describe("NTable", () => {
   });
 
   test("renders built-in loading state when loading and no renderLoading", () => {
-    const { container } = render(<TableWrapper loading={true} />);
+    const { container } = render(<TableWrapper data={[]} loading={true} />);
     expect(queryText(container, "Loading...")).toBeTruthy();
+  });
+
+  test("a reload with rows on screen keeps them instead of showing a skeleton", () => {
+    const { container } = render(<TableWrapper loading={true} />);
+    expect(container.querySelector("[data-testid='ntable-loading-skeleton']")).toBeNull();
+    expect(queryText(container, "Alice")).toBeTruthy();
+    const body = container.querySelector("[data-ntable-body]");
+    expect(body?.getAttribute("data-ntable-refreshing")).toBe("true");
+    expect(body?.getAttribute("aria-busy")).toBe("true");
   });
 
   test("uses getRowId for row identity", () => {
@@ -162,7 +174,16 @@ describe("NTable", () => {
     expect(container.querySelector(".custom-pag-class")).toBeTruthy();
   });
 
-  test("hides header (toolbar) during loading even with onCreate", () => {
+  /*
+   * The toolbar renders throughout a load, and that is load-bearing rather than
+   * cosmetic. `dynamicHeight` derives the page size from the body, and the body
+   * is what is left of the container once the toolbar and the pagination bar
+   * have taken their share. A toolbar that appears only when rows arrive makes
+   * the body measure taller while loading than it will ever be afterwards — by
+   * its own height plus a flex gap — so the measurement fits one row too many
+   * and drops it the moment the rows land. Hiding it again reintroduces that.
+   */
+  test("keeps the toolbar mounted during loading so the body keeps its height", () => {
     const { container } = render(
       <div style={{ height: 600 }}>
         <NTable
@@ -176,7 +197,12 @@ describe("NTable", () => {
         />
       </div>
     );
-    expect(container.querySelector("[data-ntable-header]")).toBeNull();
+    const header = container.querySelector("[data-ntable-header]");
+    expect(header).not.toBeNull();
+    // Mounted but inert — there is nothing to act on until rows exist. Opacity
+    // and pointer-events are used precisely because they cost no layout.
+    expect(header?.getAttribute("aria-busy")).toBe("true");
+    expect(header?.className).toContain("pointer-events-none");
   });
 
   test("hides header (toolbar) during error even with onCreate", () => {

@@ -33,6 +33,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const showCheckbox = useTableStore.use.showCheckbox();
   const selectedRowId = useTableStore.use.selectedRowId();
   const CardComponent = useTableStore.use.CardComponent();
+  const CardSkeletonComponent = useTableStore.use.CardSkeletonComponent();
   const storeIsCardView = useTableStore.use.isCardView();
   const isLoading = useTableStore.use.isLoading();
   const error = useTableStore.use.error();
@@ -84,7 +85,9 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
     }
   }, [table, onRowContextMenu, onBackgroundContextMenu]);
 
-  if (isLoading || error || hasNoData || !showContent || !table) return null;
+  // `showContent` already accounts for loading: it stays true through a reload
+  // that has rows, so a refresh keeps the cards instead of blanking them.
+  if (error || hasNoData || !showContent || !table) return null;
   const isCardView = effectiveMode ? effectiveMode === "cards" : storeIsCardView;
   if (!isCardView) return null;
 
@@ -181,7 +184,9 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
       })}
       {continuation.pending
         ? Array.from({ length: Math.max(1, cardColumnCount || 1) }).map((_, index) => (
-            <NTableCardSkeleton key={`ntable-continuation-skeleton-${index}`} surface={surface} />
+            CardSkeletonComponent
+              ? <CardSkeletonComponent key={`ntable-continuation-skeleton-${index}`} />
+              : <NTableCardSkeleton key={`ntable-continuation-skeleton-${index}`} surface={surface} />
           ))
         : null}
     </div>
@@ -210,9 +215,16 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
     {continuation.active ? (
       <div ref={continuation.sentinelRef} data-ntable-cards-sentinel aria-hidden="true" />
     ) : null}
-    <span className="sr-only" role="status" aria-live="polite" aria-atomic="true">
-      {continuation.announcement}
-    </span>
+    {continuationConfig ? (
+      <span
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only absolute -m-px h-px w-px overflow-hidden border-0 p-0 whitespace-nowrap [clip:rect(0,0,0,0)]"
+      >
+        {continuation.announcement}
+      </span>
+    ) : null}
     </NajmScroll>
   );
 }

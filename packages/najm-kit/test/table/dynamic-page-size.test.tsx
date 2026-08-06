@@ -44,6 +44,15 @@ function renderWithStore(store: TableStore) {
   );
 }
 
+/**
+ * An empty table that is not loading deliberately hides its toolbar and its
+ * pagination bar, and `useDynamicPageSize` refuses to measure that layout —
+ * the body is taller there than it will ever be with rows in it, and a page
+ * size taken from it is wrong the moment the rows arrive. These tests are about
+ * the measurement itself, so they describe a table that has something to show.
+ */
+const MEASURABLE_ROWS = [{ id: "1" }];
+
 describe("calculateDynamicPageSize", () => {
   test("returns at least 1 when body is empty", () => {
     expect(calculateDynamicPageSize({ bodyHeight: 0, tableHeaderHeight: 0 })).toBe(1);
@@ -84,7 +93,7 @@ describe("calculateDynamicPageSize", () => {
 
   test("useDynamicPageSize uses the measured body slot before root fallback", async () => {
     const store = createTableStore();
-    store.getState().syncWithProps({ dynamicHeight: true, viewMode: "table", manualPagination: false });
+    store.getState().syncWithProps({ dynamicHeight: true, viewMode: "table", manualPagination: false, data: MEASURABLE_ROWS });
 
     renderWithStore(store);
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -99,6 +108,7 @@ describe("calculateDynamicPageSize", () => {
       dynamicHeight: true,
       viewMode: "table",
       manualPagination: true,
+      data: MEASURABLE_ROWS,
       calculatedPageSize: 10,
       maxHeight: null,
     });
@@ -121,6 +131,7 @@ describe("calculateDynamicPageSize", () => {
       dynamicHeight: true,
       viewMode: "cards",
       manualPagination: true,
+      data: MEASURABLE_ROWS,
       cardRowHeight: 176,
       cardGap: 12,
     });

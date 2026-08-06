@@ -22,10 +22,24 @@ import {
   resolveTableColor,
 } from "./tableColors";
 
+/**
+ * Placeholder for a filter whose column cannot be resolved yet.
+ *
+ * The table instance reaches the store in a layout effect, so the first pass
+ * renders the toolbar before any column exists — and the container is measured
+ * in that pass. Returning `null` here collapses the toolbar to nothing, the
+ * body is measured one toolbar too tall, and the page size corrects itself the
+ * moment the controls appear. An inert control of the right height keeps the
+ * header the same size in every pass.
+ */
+function PendingFilter({ placeholder, icon, bordered }: { placeholder?: string; icon?: typeof Search; bordered?: boolean }) {
+  return <TextInput icon={icon} value="" onChange={() => {}} placeholder={placeholder} bordered={bordered} disabled />;
+}
+
 function SearchFilter({ placeholder }: { placeholder?: string }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
-  if (!table) return null;
+  if (!table) return <PendingFilter icon={Search} placeholder={placeholder ?? "Search…"} bordered={bordered} />;
   const value = (table.getState().globalFilter as string) ?? "";
   return <TextInput icon={Search} value={value} onChange={(v) => table.setGlobalFilter(v)} placeholder={placeholder ?? "Search…"} bordered={bordered} />;
 }
@@ -34,7 +48,7 @@ function TextFilter({ name, placeholder, icon }: { name: string; placeholder?: s
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
   const column = table?.getColumn?.(name);
-  if (!column) return null;
+  if (!column) return <PendingFilter icon={icon} placeholder={placeholder} bordered={bordered} />;
   return <TextInput icon={icon} value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value)} placeholder={placeholder} bordered={bordered} />;
 }
 
@@ -42,7 +56,7 @@ function SelectFilter({ name, options, placeholder, inputType }: { name: string;
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
   const column = table?.getColumn?.(name);
-  if (!column) return null;
+  if (!column) return <PendingFilter placeholder={placeholder || "Filter..."} bordered={bordered} />;
   const allOptions = [{ value: "__clear__", label: "All" }, ...options.map((o: any) => typeof o === "string" ? { value: o, label: o } : o)];
   const InputComponent = inputType === "combobox" ? ComboboxInput : SelectInput;
   return <InputComponent value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value === "" || value === "__clear__" ? undefined : value)} items={allOptions} placeholder={placeholder || "Filter..."} bordered={bordered} />;
@@ -121,7 +135,9 @@ function RenderFilter({ filter, mobilePrimary = false }: { filter: any; mobilePr
     return <TextFilter name={filter.name} placeholder={filter.placeholder} icon={mobilePrimary ? Search : undefined} />;
   }
 
-  if (!table) return null;
+  // `SelectFilter` renders an inert control of its own when the table is not
+  // ready, so bailing here would reintroduce the collapsing toolbar.
+  void table;
   return <SelectFilter name={filter.name} options={filter.options || []} placeholder={filter.placeholder} inputType={filter.type} />;
 }
 
@@ -129,7 +145,10 @@ function TableFilters() {
   const filters = useTableStore.use.filters();
   if (!filters?.length) return null;
   return (
-    <div data-ntable-desktop-filters className="hidden flex-1 min-w-0 flex-wrap items-center gap-2 md:flex">
+    // `min-h-10` is the height of one control row. Even if every filter inside
+    // resolves to nothing, the row cannot collapse and change what the body
+    // measures.
+    <div data-ntable-desktop-filters className="hidden min-h-10 flex-1 min-w-0 flex-wrap items-center gap-2 md:flex">
       {filters.map((filter: any) => (
         <div
           key={filter.name}
@@ -327,6 +346,7 @@ function TableToolbarSlot() {
 export function NTableHeader() {
   const hasControls = useTableStore.use.hasControls();
   const isLoading = useTableStore.use.isLoading();
+  const isRefreshing = useTableStore.use.isRefreshing();
   const error = useTableStore.use.error();
   const hasNoData = useTableStore.use.hasNoData();
   const isFilteredEmpty = useTableStore.use.isFilteredEmpty();
@@ -338,14 +358,33 @@ export function NTableHeader() {
   const showViewToggle = useTableStore.use.showViewToggle();
   const showColumnVisibility = useTableStore.use.showColumnVisibility();
 
-  const hideDataChrome = isLoading || error || (hasNoData && !isFilteredEmpty);
+  // The real toolbar renders during loading too. Swapping it for a placeholder
+  // of a different height moves the body underneath it — a two-line filter row
+  // replacing a one-line skeleton costs the body 96px, which is nearly two rows
+  // of page size, reported the instant the rows arrive. Rendering the real
+  // controls makes the header the same height before and after by construction,
+  // rather than by matching a placeholder to it pixel for pixel.
+  // `hasNoData` is true while loading too, where it means "nothing has arrived
+  // yet" rather than "this list is empty" — so it must not hide the toolbar, or
+  // the header is short during the skeleton and full once rows land, and the
+  // body loses that difference in height the moment they do.
+  const hideDataChrome = error || (hasNoData && !isFilteredEmpty && !isLoading);
+
+  // Present but not usable during a first load. The toolbar has to hold its
+  // height — that is the whole reason it renders here — so it cannot be removed
+  // or swapped for something shorter. Dimming costs no layout: `opacity` and
+  // `pointer-events` do not participate in it, so the body is measured against
+  // the same box either way. A refresh keeps its controls live, since the rows
+  // underneath are still real.
+  const isFirstLoad = Boolean(isLoading) && !isRefreshing;
+  const firstLoadChromeClass = isFirstLoad ? "pointer-events-none opacity-60" : undefined;
 
   if (isCustomMode) {
     if (!showViewToggle && !showColumnVisibility && !headerSlot && !hasControls) return null;
     if (hideDataChrome) return null;
     const justify = headerSlot ? "justify-between" : "justify-end";
     return (
-      <div data-ntable-header className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
+      <div data-ntable-header aria-busy={isFirstLoad ? "true" : undefined} className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, firstLoadChromeClass, classNames?.header)}>
         {headerSlot && <div className="flex min-w-0 flex-1 items-center gap-2">{headerSlot}</div>}
         {hasControls && <div className="flex gap-2 shrink-0"><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
       </div>
@@ -360,7 +399,7 @@ export function NTableHeader() {
   const justify = (hasControls || headerSlot || hasToolbar) ? "justify-between" : "justify-start";
 
   return (
-    <div data-ntable-header className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, classNames?.header)}>
+    <div data-ntable-header aria-busy={isFirstLoad ? "true" : undefined} className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, firstLoadChromeClass, classNames?.header)}>
       <TableFilters />
       <TableMobileToolbar />
       {headerSlot && <div className="ml-auto flex shrink-0 items-center gap-2">{headerSlot}</div>}

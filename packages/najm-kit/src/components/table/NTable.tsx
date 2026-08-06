@@ -69,6 +69,32 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
     'data-row'?: string;
     'data-row-id'?: string;
   }>;
+  /**
+   * A placeholder shaped like `renderCard`.
+   *
+   * The card page size is measured from whatever is on screen, and during a
+   * first load that is the skeleton. The built-in placeholder is an avatar row,
+   * so a consumer whose cards are a different height — a media card, say — gets
+   * a page size measured against a card it does not use, and the grid re-lays
+   * out once real cards arrive. Supplying a placeholder with the real card's
+   * geometry makes the first measurement the correct one.
+   */
+  renderCardSkeleton?: ComponentType<Record<string, never>>;
+  /**
+   * Emit both skeleton shapes and let a media query choose between them.
+   *
+   * A view mode derived from the viewport is unknowable on the server, so the
+   * server renders the card shape and the client corrects it after hydration —
+   * on a desktop table page that is a visible card skeleton followed by a table
+   * skeleton. No client-side detection can fix it, because the first paint is
+   * whatever the server sent. Rendering both and hiding one in CSS puts the
+   * right shape in that first paint. The skeleton is `aria-hidden` decoration,
+   * so the duplicate costs nothing to assistive technology.
+   *
+   * The breakpoint is `lg` (1024px), matching the point at which a table
+   * becomes usable.
+   */
+  responsiveSkeleton?: boolean;
   renderToolbar?: (state: NTableState) => React.ReactNode;
   renderEmpty?: () => React.ReactNode;
   renderError?: (error: any) => React.ReactNode;
@@ -188,12 +214,13 @@ function DefaultTableFilteredEmptyState() {
   );
 }
 
-function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilteredEmpty?: () => React.ReactNode; renderError?: (error: any) => React.ReactNode; renderLoading?: () => React.ReactNode; contextMenuClose?: () => void; contextMenuOpen?: boolean }) {
+function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilteredEmpty?: () => React.ReactNode; renderError?: (error: any) => React.ReactNode; renderLoading?: () => React.ReactNode; responsiveSkeleton?: boolean; contextMenuClose?: () => void; contextMenuOpen?: boolean }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const classNames = useTableStore.use.classNames?.() as NTableClassNamesAlias | undefined;
   const className = useTableStore.use.className();
   const dynamicHeight = useTableStore.use.dynamicHeight();
   const isLoading = useTableStore.use.isLoading();
+  const isRefreshing = useTableStore.use.isRefreshing();
   const error = useTableStore.use.error();
   const hasNoData = useTableStore.use.hasNoData();
   const noDataText = useTableStore.use.noDataText();
@@ -249,19 +276,46 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
   return (
     <div ref={containerRef} data-ntable-root className={cn("flex h-full min-h-0 flex-1 w-full flex-col gap-2 overflow-hidden", classNames?.root, className)}>
       <NTableHeader />
-      <div data-ntable-body className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+      <div
+        data-ntable-body
+        data-ntable-refreshing={isRefreshing ? "true" : undefined}
+        aria-busy={isRefreshing ? "true" : undefined}
+        className="relative flex min-h-0 flex-1 flex-col gap-2 overflow-hidden"
+      >
         {isCustomMode ? (
           customRenderer ? customRenderer() : null
         ) : (
           <>
-            {isLoading && (
-              props.renderLoading
-                ? <TableStateSlot>{props.renderLoading()}</TableStateSlot>
-                : effectiveMode === "table"
-                  ? <NTableLoadingSkeleton />
-                  : effectiveMode === "cards"
-                    ? <NTableCardsLoadingSkeleton />
-                    : <NTableLoadingSkeleton />
+            {isLoading && !isRefreshing && (
+              // Absolutely positioned, the way every grid that measures its own
+              // page size does it: AG Grid paints its loading state as an
+              // overlay, and MUI's DataGrid renders `GridOverlay` on top of the
+              // rows rather than in place of them. A skeleton that occupies a
+              // slot in the layout is a second layout — the one the container
+              // gets measured in — and the page size derived from it is a page
+              // size for a table that no longer exists once rows land. Taking
+              // the skeleton out of flow leaves exactly one layout to measure.
+              <div
+                data-ntable-loading-overlay
+                className="absolute inset-0 z-10 flex min-h-0 flex-col bg-background"
+              >
+                {props.renderLoading
+                  ? <TableStateSlot>{props.renderLoading()}</TableStateSlot>
+                  : props.responsiveSkeleton
+                    ? (
+                      <>
+                        <div data-ntable-skeleton-variant="table" className="hidden min-h-0 flex-1 flex-col lg:flex">
+                          <NTableLoadingSkeleton />
+                        </div>
+                        <div data-ntable-skeleton-variant="cards" className="flex min-h-0 flex-1 flex-col lg:hidden">
+                          <NTableCardsLoadingSkeleton />
+                        </div>
+                      </>
+                    )
+                    : effectiveMode === "cards"
+                      ? <NTableCardsLoadingSkeleton />
+                      : <NTableLoadingSkeleton />}
+              </div>
             )}
             {error && !isLoading && (
               <TableStateSlot>
@@ -284,7 +338,18 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
           </>
         )}
       </div>
-      <div data-ntable-pagination className="min-w-0 shrink-0 bg-background text-foreground">
+      <div
+        data-ntable-pagination
+        // Occupies its height during a first load but shows nothing: the row
+        // counts and page numbers are meaningless before any row exists, while
+        // the space they take has to be accounted for or the skeleton measures
+        // a body one bar too tall.
+        aria-hidden={isLoading && !isRefreshing ? "true" : undefined}
+        className={cn(
+          "min-w-0 shrink-0 bg-background text-foreground",
+          isLoading && !isRefreshing && "invisible",
+        )}
+      >
         <NTablePagination />
       </div>
     </div>
@@ -424,6 +489,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     mode,
     onModeChange: props.onModeChange,
     CardComponent: props.renderCard ?? null,
+    CardSkeletonComponent: props.renderCardSkeleton ?? null,
     className: props.className ?? "",
     classNames: props.classNames ?? {},
     bordered: props.bordered ?? (recipeBordered ? true : undefined),
@@ -505,6 +571,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
         renderFilteredEmpty={props.renderFilteredEmpty}
         renderError={props.renderError}
         renderLoading={props.renderLoading}
+        responsiveSkeleton={props.responsiveSkeleton}
         contextMenuClose={ctx.close}
         contextMenuOpen={ctx.isOpen}
       />

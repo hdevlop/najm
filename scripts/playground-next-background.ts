@@ -10,6 +10,15 @@ const pidFile = resolve(runtimeDir, 'playground-next.pid');
 const outLog = resolve(logDir, 'playground-next.out.log');
 const errLog = resolve(logDir, 'playground-next.err.log');
 const port = Number(process.env.PORT ?? 3000);
+/**
+ * `start:next` serves a production build, which inlines najm-kit at build time
+ * — fine for a stable demo, useless while iterating on the library, because a
+ * rebuilt `dist` is not picked up until the whole playground is rebuilt. Pass
+ * `--dev` (or `PLAYGROUND_NEXT_MODE=dev`) to run `next dev` instead, where a
+ * restart is enough.
+ */
+const devMode = process.argv.includes('--dev') || process.env.PLAYGROUND_NEXT_MODE === 'dev';
+const nextScript = devMode ? 'dev:next' : 'start:next';
 
 function ensureDirs() {
   mkdirSync(dirname(pidFile), { recursive: true });
@@ -87,7 +96,7 @@ function start() {
   const stdout = openSync(outLog, 'a');
   const stderr = openSync(errLog, 'a');
 
-  const child = spawn('bun', ['run', '--cwd', 'apps/playground', 'start:next'], {
+  const child = spawn('bun', ['run', '--cwd', 'apps/playground', nextScript], {
     cwd: root,
     detached: true,
     stdio: ['ignore', stdout, stderr],
@@ -99,7 +108,7 @@ function start() {
   closeSync(stderr);
   writeFileSync(pidFile, String(child.pid));
 
-  console.log(`started playground Next server with PID ${child.pid}`);
+  console.log(`started playground Next server (${devMode ? 'dev' : 'production'}) with PID ${child.pid}`);
   console.log('url: http://127.0.0.1:3000');
   console.log(`stdout: ${outLog}`);
   console.log(`stderr: ${errLog}`);
