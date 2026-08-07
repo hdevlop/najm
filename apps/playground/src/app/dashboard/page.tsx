@@ -5,5 +5,10 @@ export const dynamic = 'force-dynamic';
 
 export default async function DashboardPage() {
   const session = await auth.requireSession();
-  return <DashboardOverview user={session.user} />;
+  return (
+    <DashboardOverview
+      user={session.user}
+      permissions={session.permissions ?? session.user.permissions ?? []}
+    />
+  );
 }

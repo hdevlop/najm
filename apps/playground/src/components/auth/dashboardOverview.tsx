@@ -8,20 +8,22 @@ import { useDashboardSnapshotQuery } from '@/hooks/useDashboardSnapshotQuery';
 import type { DashboardSnapshot } from '@/services/api/types';
 import { ArrowRight, Package, ShoppingCart, CreditCard, Boxes } from 'lucide-react';
 
-export function DashboardOverview({ user }: { user: AuthUser | null }) {
-  const permissionCount = Array.isArray(user?.permissions)
-    ? user.permissions.filter((value): value is string => typeof value === 'string').length
-    : 0;
+export function DashboardOverview({
+  user,
+  permissions = [],
+}: {
+  user: AuthUser | null;
+  // Grants live on the session, not on session.user — read them from there or
+  // every permission-gated view below computes against an empty list.
+  permissions?: string[];
+}) {
   const role = typeof user?.role === 'string' && user.role ? user.role : 'member';
-  const permissions = Array.isArray(user?.permissions)
-    ? user.permissions.filter((value): value is string => typeof value === 'string')
-    : [];
   const dashboardQuery = useDashboardSnapshotQuery(user?.role, permissions);
 
   const stats = [
     { label: 'Email', value: user?.email ?? '-' },
     { label: 'Role', value: role },
-    { label: 'Permissions', value: String(permissionCount) },
+    { label: 'Permissions', value: String(permissions.length) },
   ];
 
   return (

@@ -57,7 +57,6 @@ export class WhatsAppChatbot {
           messages: [{
             id: msg.messageId,
             role: 'user' as const,
-            content: text,
             parts: [{ type: 'text' as const, text }],
           }],
           sessionKey: `wa:${from}`,

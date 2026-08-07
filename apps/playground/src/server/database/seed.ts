@@ -284,7 +284,7 @@ const authUserRows = [
   {
     id: '4d6fbc01-2893-4f57-82f1-9482ddff7ddd',
     email: 'admin@admin.com',
-    password: '12345678',
+    password: 'Admin123!',
     roleId: 'role_admin',
     emailVerified: true,
     status: 'active',
@@ -336,7 +336,7 @@ async function seed() {
         {
           ...authSeed({
             adminEmail: 'admin@admin.com',
-            adminPass: '12345678',
+            adminPass: 'Admin123!',
             permissions: [...authPermissionRows],
             additionalUsers: [
               {
@@ -533,7 +533,7 @@ async function seed() {
       .log(`🧾 Orders: ${ordersInserted} inserted, ${ordersExpected - ordersInserted} skipped`)
       .log(`🧩 Order Items: ${orderItemsInserted} inserted, ${orderItemsExpected - orderItemsInserted} skipped`)
       .log(`🛒 Cart Items: ${cartItemsInserted} inserted, ${cartItemsExpected - cartItemsInserted} skipped`)
-      .log('📝 Test users: admin@admin.com / 12345678 | user@test.com / User123!');
+      .log('📝 Test users: admin@admin.com / Admin123! | user@test.com / User123!');
   } catch (error) {
     if (server) {
       server.log('❌ Seed failed', error);
