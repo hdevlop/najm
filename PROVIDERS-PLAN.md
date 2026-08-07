@@ -4,10 +4,12 @@ Collapse the per-project React provider stack into one component shipped by
 `najm-kit`, so a new Najm app wires providers by passing props instead of
 copying files.
 
-Status: steps 1–3 of §10 implemented in this repo. Steps 4 (browser check),
-5 (publish) and 6–7 (Kafil) are open — Kafil lives in another repo, so
-everything in §4 below is unverified against source.
-Target package `najm-kit` (currently `2.6.3`).
+Status: **done.** `najm-kit@2.6.4` is published, the playground runs on it, and
+Kafil is migrated with its full gate green (lint, typecheck, 843 tests, build,
+`db:generate` reporting no schema change) plus a manual pass over four locales,
+RTL, and `/operator/settings` theme editing.
+
+Follow-ups this work opened are in §11.
 
 ---
 
@@ -218,13 +220,46 @@ bundle — 55.9 KB down to 19.2 KB.
 
 - `apps/web/src/providers/KafilDesignProvider.tsx` — absorbed entirely.
 - `apps/web/src/providers/KafilTableDefaultsProvider.tsx` — replaced by the
-  `t` + `paginationKeyPrefix` props. Kafil's keys are already
-  `common.pagination.*`, so the default prefix matches and no locale JSON moves.
+  `t` + `paginationKeyPrefix` props. The prefix matches Kafil's existing
+  `common.pagination.*`, but **the catalog still had to change** — see §4.1a.
 - `apps/web/src/providers/KafilPreferencesProvider.tsx` — replaced by
   `useNajmTheme` / `useNajmTimeZone`.
 
 Keep `KafilLanguageProvider`, `KafilAppearanceProvider`, `KafilBrandingProvider`,
 `QueryProvider`, and the three `app/api/ui-*` routes.
+
+### 4.1a Catalog alignment — the mismatch this plan originally missed
+
+An earlier draft claimed the prefix matched and "no locale JSON moves." That was
+read off Kafil's *provider*, not its *catalog*, and it was wrong on two of the
+eleven fields.
+
+`buildPaginationLabels` calls `t()` for every field unconditionally, and
+`najm-i18n`'s translator ends in `?? key` — a miss renders the key itself, with
+no fallback to the packaged English. Against `ui.common.pagination`, Kafil had:
+
+| Kit field | Kafil catalog | Effect if left alone |
+|---|---|---|
+| `pagination` | key was named `label` | `aria-label="common.pagination.pagination"` on every table's page nav, all four locales |
+| `pageOfUnknown` | absent entirely | `"common.pagination.pageOfUnknown"` as the position text on unbounded tables |
+
+The first is live on every list page. The second is latent — nothing in Kafil
+passes `unbounded` today — but `NTable` renders
+`labels.pageOfUnknown?.(…) ?? "Page N"`, and once the field is a function
+returning the key string, that `??` fallback can never fire again. It would
+surface the first time any list adopts unknown-total pagination, with nothing in
+the type system or the suite to announce it.
+
+Fixed by renaming `label` → `pagination` and adding `pageOfUnknown` in all four
+locale files. `common.pagination.label` had no other consumer, so the rename was
+safe. Note the locale-parity test would **not** have caught this: it compares
+against the *merged* dictionaries, and `mergeLocale(en, …)` backfills fr/ar/es
+from English, so a key missing everywhere is missing uniformly and passes.
+
+**The general rule for any adopting app:** the kit's field names are the catalog
+contract. Diff your `<prefix>.*` keys against `NTablePaginationLabels`'s eleven
+fields before deleting your own defaults provider — a per-app provider that maps
+keys by hand hides exactly this drift, which is why it survived here.
 
 ### 4.2 Call-site sweep
 
@@ -246,11 +281,48 @@ must be a single commit.
 provider must sit *below* appearance, with a small bridge:
 
 ```tsx
-function KafilUIBridge({ children }: Readonly<{ children: React.ReactNode }>) {
+function KafilUIBridge({ children, initialTheme, initialTimeZone }) {
   const { design } = useKafilAppearance();
-  return <NajmNextUIProvider design={design} className="min-h-full" {...prefs}>{children}</NajmNextUIProvider>;
+  const { t } = useKafilLanguage();
+
+  // The kit types its translator over `string`; Kafil's is keyed to its catalog
+  // union, and `strictFunctionTypes` will not narrow a parameter into it.
+  const translate = useCallback<NajmTranslate>(
+    (key, params) => t(key as TranslationKey, params),
+    [t],
+  );
+
+  return (
+    <NajmNextUIProvider
+      className="min-h-full"
+      design={design}
+      initialTheme={initialTheme}
+      initialTimeZone={initialTimeZone}
+      normalizeTimeZone={normalizeKafilTimeZone}
+      t={translate}
+    >
+      {children}
+    </NajmNextUIProvider>
+  );
 }
 ```
+
+The `translate` wrapper is the one unavoidable cast, and it is a consequence of
+`NajmTranslate` being structural: any app with a typed key union hits it. A
+one-line `useCallback` at the boundary is the right price for the kit not
+importing `najm-i18n`, but it is worth naming in the README so each adopter does
+not rediscover it.
+
+Two behaviour changes come with the swap, both acceptable and neither obvious:
+
+- **No same-value short circuit.** Kafil's setters returned early when the value
+  was unchanged; the kit always persists and refreshes. One redundant POST on a
+  no-op click.
+- **Optimistic ordering.** Kafil POSTed first and touched the DOM only on
+  success. The kit sets state and the `dark` class *before* awaiting
+  persistence, so a failed write leaves the UI flipped against a stale cookie
+  until the next full load. The rejection still reaches the caller, and both
+  call sites already surface it through `toast.error`.
 
 That moves preferences from **above** appearance to **below** it. Verify the
 move is safe by confirming neither `KafilAppearanceProvider` nor
@@ -402,14 +474,57 @@ Then repoint Kafil's root `overrides` for `najm-kit` and re-run the Kafil gate.
 | Playground work lands in the orphan file | §5 deletes `app/providers.tsx` first, so a misdirected edit fails loudly |
 | Duplicate context across the two entries | §3.4: `splitting: true`. Type checks and unit tests cannot catch this — only rendering `dist` does |
 | Toggle looks dead in an app with one palette | §5 step 5: the provider owns the class, the app owns what it means. Check for a `.dark` block before blaming the provider |
+| Catalog field names drift from the kit's | **Hit in Kafil.** §4.1a: `buildPaginationLabels` echoes missing keys and locale-parity cannot see it. Diff the eleven fields before deleting a hand-mapped defaults provider |
 
 ## 10. Order of work
 
-1. `najm-kit`: preferences context + pagination labels + `NajmUIProvider`, exports.
-2. `najm-kit/next`: `NajmNextUIProvider`, plus the optional `next` peer.
-3. Playground: delete `app/providers.tsx`, wire `src/providers/index.tsx`,
-   add the cookie route, add toggle + table.
-4. **Look at it in the browser.** Revise the API if step 3 was awkward.
-5. Publish (`bun run pub:ui`).
-6. Kafil: bump override, add the bridge, delete three providers, sweep call sites.
-7. Kafil gate + locale/RTL/theme-editor check.
+1. ~~`najm-kit`: preferences context + pagination labels + `NajmUIProvider`, exports.~~
+2. ~~`najm-kit/next`: `NajmNextUIProvider`, plus the optional `next` peer.~~
+3. ~~Playground: delete `app/providers.tsx`, wire `src/providers/index.tsx`,
+   add the cookie route, add toggle + table.~~
+4. **Look at it in the browser.** Revise the API if step 3 was awkward. — *not
+   done before step 5; see below.*
+5. ~~Publish (`bun run pub:ui`).~~ `najm-kit@2.6.4`.
+6. ~~Kafil: bump override, add the bridge, delete three providers, sweep call
+   sites.~~ Plus the §4.1a catalog fix, which was not in the original plan.
+7. ~~Kafil gate + locale/RTL/theme-editor check.~~ Both green; the manual pass
+   confirmed four locales, RTL, and `/operator/settings` theme editing.
+
+Step 4 was skipped rather than performed — 2.6.4 was published on the strength
+of the build, the test suite, and an inspection of the published tarball. That
+was enough to catch the duplicate-context bug, which is the one this plan warned
+type checks could not see. The rendered check happened afterwards, in both
+repos, and passed. Publishing first worked here; it is not the order to rely on.
+
+## 11. Follow-ups
+
+Ordered by what the next adopter hits first.
+
+1. **Warn on echoed pagination keys** (kit, small). §4.1a was found by hand and
+   nothing would have caught it: not `tsc`, not the suite, not locale parity.
+   In dev, have `buildPaginationLabels` warn once when `t(key) === key` — that
+   is the exact signature of a missing catalog entry under a `?? key`
+   translator, and it turns a silent aria-label regression into a console line.
+   This is the highest-value item here: it protects every future adoption, not
+   just the next one.
+
+2. **README the four adoption traps** (kit, small). §6 already committed to
+   documenting the endpoint request shape. Adoption added three more, each of
+   which cost real time once: the eleven-field catalog contract (§4.1a), the
+   `NajmTranslate` cast every typed-key app needs (§4.3), and the `.dark`
+   palette precondition (§5 step 5). Undocumented, a new project rediscovers
+   all four — which is most of what this plan set out to prevent.
+
+3. **Resolve the Auth/Query nesting divergence** (both apps, small). Named a
+   non-goal in §6 and still open: the playground nests Query outside Auth, Kafil
+   the reverse. Harmless while `najm-auth` holds no queries. Pick one, write
+   down why.
+
+4. **`najm-appearance`** (large, speculative). Tier B from §2 — the theme editor
+   and branding uploads, ~700 lines of client over ~3,355 of server module.
+   Only worth starting when a second project actually wants it; until then the
+   abstraction has one data point.
+
+Unrelated drift noticed in passing: Kafil's `AGENTS.md` §Roadmap points at a
+root `PAGINATION-PLAN.md` that does not exist, the same way it already documents
+`docs/plans/` links as dead.
