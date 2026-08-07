@@ -5,6 +5,7 @@ export default defineConfig({
   entry: {
     index: 'src/index.ts',
     'adapters/next': 'src/adapters/next.tsx',
+    'adapters/app': 'src/adapters/app.tsx',
     json: 'src/json/index.ts',
   },
   format: ['esm'],
@@ -33,6 +34,8 @@ export default defineConfig({
     'next/link',
     'next/image',
     'next/navigation',
+    'najm-i18n',
+    'najm-i18n/react',
     'lucide-react',
     'react-international-phone',
     'react-international-phone/style.css',
@@ -46,6 +49,28 @@ export default defineConfig({
     '@lezer/highlight',
   ],
   outExtension: () => ({ js: '.mjs' }),
+  // `adapters/app` is the one entry meant to be imported by a server
+  // component — an application's root layout mounts NajmAppProvider directly,
+  // and that import is the boundary into the client graph. esbuild strips
+  // module-level directives when bundling (it warns about exactly this), so the
+  // directive is restored here rather than written in the source.
+  //
+  // Only this entry. A `"use client"` on the root entry would drag genuinely
+  // server-safe exports (cn, the JSON parsers, formatters) into the client
+  // graph, and `adapters/next` already works for consumers who draw the
+  // boundary in their own file.
+  //
+  // Done as a post-build step and not a second tsup config: a separate config
+  // would emit its own copy of the shared chunks, which is the duplicate-React
+  // -context bug that `splitting: true` above exists to prevent.
+  async onSuccess() {
+    const { readFile, writeFile } = await import('node:fs/promises');
+    const target = resolve(__dirname, 'dist/adapters/app.mjs');
+    const source = await readFile(target, 'utf8');
+    if (!source.startsWith(`'use client'`)) {
+      await writeFile(target, `'use client';\n${source}`, 'utf8');
+    }
+  },
   esbuildPlugins: [
     {
       name: 'alias-plugin',

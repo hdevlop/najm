@@ -11,6 +11,7 @@ import {
   DEFAULT_PAGINATION_KEY_PREFIX,
 } from "../src/index";
 import { useNTableDefaults } from "../src/components/table";
+import { useNajmDesign } from "../src/theme/design-provider";
 import type { NajmDesignConfig } from "../src/theme/design-types";
 
 const design: NajmDesignConfig = { version: 1, theme: {}, components: {} };
@@ -204,5 +205,42 @@ describe("NajmUIProvider table defaults", () => {
     expect(getByTestId("go-to-page").textContent).toBe(
       "[common.pagination.goToPage]",
     );
+  });
+});
+
+describe("NajmUIProvider without a design config", () => {
+  test("renders and still serves preferences when `design` is omitted", () => {
+    const { getByTestId } = render(
+      <NajmUIProvider initialTheme="dark">
+        <ThemeProbe />
+      </NajmUIProvider>,
+    );
+
+    expect(getByTestId("theme").textContent).toBe("dark");
+  });
+
+  test("keeps one design identity across renders so tables below do not churn", () => {
+    // The empty default is shared rather than built per render: NajmDesignProvider
+    // memoizes on config.components/typography/layout, and a fresh literal would
+    // invalidate that memo on every render of the whole tree.
+    const seen = new Set<unknown>();
+
+    function DesignProbe() {
+      seen.add(useNajmDesign().components);
+      return null;
+    }
+
+    const { rerender } = render(
+      <NajmUIProvider>
+        <DesignProbe />
+      </NajmUIProvider>,
+    );
+    rerender(
+      <NajmUIProvider>
+        <DesignProbe />
+      </NajmUIProvider>,
+    );
+
+    expect(seen.size).toBe(1);
   });
 });

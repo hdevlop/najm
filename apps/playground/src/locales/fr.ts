@@ -5,6 +5,19 @@ export default {
     notFound: 'Ressource introuvable',
     unauthorized: 'Accès non autorisé',
     forbidden: 'Accès interdit',
+    pagination: {
+      rowsPerPage: 'Lignes/page',
+      pagination: 'Pagination',
+      goToPage: 'Aller à la page {{page}}',
+      currentPage: 'Page {{page}}, page actuelle',
+      firstPage: 'Première page',
+      previousPage: 'Page précédente',
+      nextPage: 'Page suivante',
+      lastPage: 'Dernière page',
+      pageOf: 'Page {{page}} sur {{pageCount}}',
+      pageOfUnknown: 'Page {{page}}',
+      rowsSelected: '{{selected}} sur {{total}} ligne(s) sélectionnée(s).',
+    },
   },
   auth: {
     errors: {

@@ -1,5 +1,6 @@
 'use client';
 
+import { useTranslation } from 'najm-i18n/react';
 import {
   NButton,
   NTable,
@@ -9,18 +10,22 @@ import {
 } from 'najm-kit';
 
 /**
- * Acceptance harness for `NajmUIProvider`.
+ * Acceptance harness for `NajmAppProvider`.
  *
- * Nothing here mounts a provider — the whole stack comes from `UIProvider` in
- * the root layout. Three things are being checked:
+ * Nothing here mounts a provider and this app authors no provider file for any
+ * of it — the whole stack is one component in the root layout. Four things are
+ * being checked:
  *
  * 1. `useNajmTheme().setTheme` flips the class, POSTs `/api/ui-theme`, and
  *    survives a reload, which only works if the cookie round trip is real.
  * 2. `useNajmTimeZone()` reads through the same provider.
- * 3. The `NTable` below inherits its pagination labels from the provider's
- *    table defaults. This app passes no `t`, so the packaged English should
- *    render — a key string appearing in the pagination bar means the label
- *    derivation leaked when it should have stayed undefined.
+ * 3. `changeLanguage` swaps the catalog *without* a router refresh, and the
+ *    table labels below re-render in the new language.
+ * 4. The `NTable` inherits its pagination labels from the catalog, derived by
+ *    the provider rather than passed in. A literal `common.pagination.*` string
+ *    in the pagination bar means a catalog field name does not match the kit's
+ *    — the failure this harness exists to make visible, since nothing in the
+ *    type system or the test suite can see it.
  */
 
 interface Row {
@@ -44,27 +49,44 @@ const columns: NTableColumnDef<Row>[] = [
 export default function UIProviderPage() {
   const { theme, setTheme } = useNajmTheme();
   const { timeZone } = useNajmTimeZone();
+  const { language, changeLanguage } = useTranslation();
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
       <header className="flex flex-col gap-2">
-        <h1 className="text-2xl font-semibold">NajmUIProvider</h1>
+        <h1 className="text-2xl font-semibold">NajmAppProvider</h1>
         <p className="text-muted-foreground text-sm">
-          Theme, design context and table defaults, all from the kit. Toggle the
-          theme and reload — it should come back the way you left it.
+          Language, theme, time zone, design and table defaults — one component
+          in the root layout, and this app writes no provider file for any of
+          it. Toggle either control and reload; both should come back the way
+          you left them.
         </p>
       </header>
 
-      <section className="flex items-center gap-4">
+      <section className="flex flex-wrap items-center gap-4">
         <NButton
           onClick={() => void setTheme(theme === 'dark' ? 'light' : 'dark')}
         >
           Switch to {theme === 'dark' ? 'light' : 'dark'}
         </NButton>
+        <NButton
+          variant="outline"
+          onClick={() => void changeLanguage(language === 'fr' ? 'en' : 'fr')}
+        >
+          Switch to {language === 'fr' ? 'English' : 'French'}
+        </NButton>
         <span className="text-muted-foreground text-sm">
-          theme: <code>{theme}</code> · time zone: <code>{timeZone}</code>
+          theme: <code>{theme}</code> · language: <code>{language}</code> · time
+          zone: <code>{timeZone}</code>
         </span>
       </section>
+
+      <p className="text-muted-foreground text-sm">
+        The pagination bar below should read{' '}
+        <code>{language === 'fr' ? 'Lignes/page' : 'Rows/page'}</code>. Anything
+        starting <code>common.pagination.</code> is a catalog field name that
+        does not match the kit&apos;s.
+      </p>
 
       {/*
         `dynamicHeight` defaults to true, which makes NTable measure its

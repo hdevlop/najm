@@ -5,6 +5,23 @@ export default {
     notFound: 'Resource not found',
     unauthorized: 'Unauthorized access',
     forbidden: 'Access forbidden',
+    // These field names are the kit's, one-for-one with NTablePaginationLabels.
+    // buildPaginationLabels calls t() for every one of them, and najm-i18n
+    // returns the key itself on a miss — so a field named anything else renders
+    // as a literal key string in the UI, with nothing to flag it.
+    pagination: {
+      rowsPerPage: 'Rows/page',
+      pagination: 'Pagination',
+      goToPage: 'Go to page {{page}}',
+      currentPage: 'Page {{page}}, current page',
+      firstPage: 'First page',
+      previousPage: 'Previous page',
+      nextPage: 'Next page',
+      lastPage: 'Last page',
+      pageOf: 'Page {{page}} of {{pageCount}}',
+      pageOfUnknown: 'Page {{page}}',
+      rowsSelected: '{{selected}} of {{total}} row(s) selected.',
+    },
   },
   auth: {
     errors: {

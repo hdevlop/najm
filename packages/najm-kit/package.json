@@ -27,6 +27,11 @@
       "import": "./dist/adapters/next.mjs",
       "default": "./dist/adapters/next.mjs"
     },
+    "./app": {
+      "types": "./dist/adapters/app.d.ts",
+      "import": "./dist/adapters/app.mjs",
+      "default": "./dist/adapters/app.mjs"
+    },
     "./package.json": "./package.json",
     "./json": {
       "types": "./dist/json.d.ts",
@@ -54,6 +59,7 @@
     "@hookform/resolvers": "^5",
     "zod": ">=4",
     "next": ">=14",
+    "najm-i18n": ">=2",
     "@uiw/react-codemirror": "^4.25.0",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.42.0",
@@ -65,6 +71,9 @@
   },
   "peerDependenciesMeta": {
     "next": {
+      "optional": true
+    },
+    "najm-i18n": {
       "optional": true
     },
     "@uiw/react-codemirror": {
@@ -147,6 +156,7 @@
     "@uiw/react-codemirror": "^4.25.0",
     "@vitejs/plugin-react": "^5.2.0",
     "happy-dom": "^20.11.1",
+    "najm-i18n": "workspace:*",
     "postcss": "^8.5.22",
     "react-hook-form": "^7",
     "rimraf": "^6",

@@ -1,11 +1,15 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import type { NajmMode } from 'najm-kit';
+import { NajmAppProvider } from 'najm-kit/app';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/index.css';
 import { auth } from '@/lib/auth';
-import { AppProviders } from '@/providers';
+import { translations, type Locale } from '@/locales';
+import { AuthProviderWrapper } from '@/providers/AuthProvider';
+import { QueryProvider } from '@/providers/QueryProvider';
 import { UI_THEME_COOKIE } from '@/app/api/ui-theme/route';
+import { UI_LANGUAGE_COOKIE } from '@/app/api/ui-language/route';
 
 export const metadata: Metadata = {
   title: 'Najm Playground',
@@ -29,17 +33,33 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const theme: NajmMode =
     cookieStore.get(UI_THEME_COOKIE)?.value === 'light' ? 'light' : 'dark';
+  const language = (
+    cookieStore.get(UI_LANGUAGE_COOKIE)?.value === 'fr' ? 'fr' : 'en'
+  ) satisfies Locale;
 
   return (
     <html
-      lang="en"
+      lang={language}
       className={theme === 'dark' ? 'dark' : undefined}
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
-        <AppProviders initialSession={session} initialTheme={theme}>
-          {children}
-        </AppProviders>
+        {/* Auth and react-query are the application's, mounted from its own
+            files. Everything below them — language, theme, time zone, design,
+            branding, NTable defaults — is one component from the kit, and this
+            app authors no provider file for any of it. */}
+        <QueryProvider>
+          <AuthProviderWrapper initialSession={session}>
+            <NajmAppProvider
+              translations={translations}
+              initialLanguage={language}
+              initialTheme={theme}
+              branding={{ appName: 'Najm Playground' }}
+            >
+              {children}
+            </NajmAppProvider>
+          </AuthProviderWrapper>
+        </QueryProvider>
         <Toaster />
       </body>
     </html>

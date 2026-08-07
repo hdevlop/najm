@@ -19,12 +19,29 @@ import {
 } from "./paginationLabels";
 import type { NajmTranslate } from "./paginationLabels";
 
+/**
+ * Shared so the identity is stable across renders — `NajmDesignProvider`
+ * memoizes on `config.components`, `config.typography` and `config.layout`, and
+ * a fresh literal here would invalidate that on every render of the tree.
+ */
+const EMPTY_DESIGN: NajmDesignConfig = Object.freeze({
+  version: 1,
+  theme: {},
+  components: {},
+}) as NajmDesignConfig;
+
 export interface NajmUIProviderProps
   extends Omit<NajmPreferencesProviderProps, "children"> {
   children: React.ReactNode;
 
-  /** The design config handed to `NajmDesignProvider`. */
-  design: NajmDesignConfig;
+  /**
+   * The design config handed to `NajmDesignProvider`.
+   *
+   * Optional, and deliberately so: an application with no runtime theme editor
+   * has nothing to put here, and requiring it was the only reason such an
+   * application still had to author a provider file just to hold a constant.
+   */
+  design?: NajmDesignConfig;
   /** Forwarded to `NajmDesignProvider`. */
   className?: string;
 
@@ -64,7 +81,7 @@ type UICoreProps = Pick<
  */
 function NajmUICore({
   children,
-  design,
+  design = EMPTY_DESIGN,
   className,
   t,
   paginationKeyPrefix = DEFAULT_PAGINATION_KEY_PREFIX,
