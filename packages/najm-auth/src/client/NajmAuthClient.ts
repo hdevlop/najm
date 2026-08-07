@@ -314,6 +314,17 @@ export class NajmAuthClient {
     return this._hydrated;
   }
 
+  /**
+   * A fresh client with the same config — unhydrated, and without tab sync.
+   *
+   * Server rendering needs one client per request. A single process serves
+   * every user, so the hydration latch on a shared client would otherwise pin
+   * every later render to the first request's session.
+   */
+  fork(): NajmAuthClient {
+    return new NajmAuthClient({ ...this.config, tabSync: false });
+  }
+
   // =========================================================================
   // Events
   // =========================================================================
@@ -409,6 +420,9 @@ export class NajmAuthClient {
 
   private scheduleRefresh(decoded: { exp?: number }): void {
     this.clearRefreshTimer();
+    // Only meaningful in a live tab. On a server it would hold one user's
+    // token in process memory and fire a credential-less refresh.
+    if (typeof window === 'undefined') return;
     const ttl = getTokenTTL(decoded as any);
     if (ttl <= 0) return;
 

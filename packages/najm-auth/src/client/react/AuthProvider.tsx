@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { AuthClientContext, useAuthClient } from './context';
 import { useAuth } from './useAuth';
 import type { NajmAuthClient, HydrateSession } from '../NajmAuthClient';
@@ -26,14 +26,23 @@ export function AuthProvider({
   initialSession,
   autoRefresh = true,
 }: AuthProviderProps) {
+  // One process serves every user on the server, so render against a
+  // per-request fork. A React instance is already request-scoped; the browser
+  // keeps the shared client, where one user per process is true.
+  const [active] = useState(() =>
+    typeof window === 'undefined' && initialSession !== undefined
+      ? client.fork()
+      : client,
+  );
+
   const hydrated = useRef(false);
   if (!hydrated.current && initialSession !== undefined) {
-    client.hydrate(initialSession);
+    active.hydrate(initialSession);
     hydrated.current = true;
   }
 
   return (
-    <AuthClientContext.Provider value={client}>
+    <AuthClientContext.Provider value={active}>
       {autoRefresh ? <AutoRefresh /> : null}
       {children}
     </AuthClientContext.Provider>
