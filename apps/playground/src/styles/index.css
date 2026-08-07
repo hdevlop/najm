@@ -5,8 +5,35 @@
 @tailwind components;
 @tailwind utilities;
 
+/*
+ * Two palettes, selected by the `dark` class on <html> (`darkMode: 'class'` in
+ * tailwind.config.ts). This file previously defined the dark values on :root
+ * alone, with no light variant — the app hardcoded `class="dark"` and was
+ * effectively untheme-able, so toggling the class changed nothing visible.
+ */
 @layer base {
   :root {
+    --background: 0 0% 100%;
+    --foreground: 240 10% 8%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 8%;
+    --primary: 160 84% 32%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 5% 96%;
+    --secondary-foreground: 240 6% 20%;
+    --muted: 240 5% 96%;
+    --muted-foreground: 240 4% 46%;
+    --accent: 240 5% 96%;
+    --accent-foreground: 240 10% 8%;
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 6% 90%;
+    --input: 240 6% 90%;
+    --ring: 160 84% 32%;
+    --radius: 0.625rem;
+  }
+
+  .dark {
     --background: 240 10% 4%;
     --foreground: 240 5% 96%;
     --card: 240 8% 8%;
@@ -24,7 +51,6 @@
     --border: 240 6% 15%;
     --input: 240 6% 15%;
     --ring: 160 84% 39%;
-    --radius: 0.625rem;
   }
 
   * {
