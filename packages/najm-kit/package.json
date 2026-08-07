@@ -53,6 +53,7 @@
     "react-hook-form": "^7",
     "@hookform/resolvers": "^5",
     "zod": ">=4",
+    "next": ">=14",
     "@uiw/react-codemirror": "^4.25.0",
     "@codemirror/state": "^6.6.0",
     "@codemirror/view": "^6.42.0",
@@ -63,6 +64,9 @@
     "@lezer/highlight": "^1.2.0"
   },
   "peerDependenciesMeta": {
+    "next": {
+      "optional": true
+    },
     "@uiw/react-codemirror": {
       "optional": true
     },

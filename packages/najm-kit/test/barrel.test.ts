@@ -292,6 +292,16 @@ describe("Root barrel import", () => {
     expect(typeof najmUI.avatarVariants).toBe("function");
   });
 
+  test("exports the UI providers", () => {
+    expect(najmUI.NajmUIProvider).toBeDefined();
+    expect(najmUI.NajmPreferencesProvider).toBeDefined();
+    expect(typeof najmUI.useNajmTheme).toBe("function");
+    expect(typeof najmUI.useNajmTimeZone).toBe("function");
+    expect(typeof najmUI.buildPaginationLabels).toBe("function");
+    expect(najmUI.DEFAULT_PAGINATION_KEY_PREFIX).toBe("common.pagination");
+    expect(najmUI.DEFAULT_TIME_ZONE).toBe("UTC");
+  });
+
   test("has no undefined component exports", () => {
     const names = Object.keys(najmUI);
     expect(names.length).toBeGreaterThan(50);

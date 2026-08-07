@@ -10,7 +10,13 @@ export default defineConfig({
   format: ['esm'],
   target: 'es2022',
   clean: true,
-  splitting: false,
+  // Required, not cosmetic. `adapters/next` and `index` both pull in
+  // src/providers, and without splitting each entry bundles its own copy of
+  // the module — including its own React context object. A NajmNextUIProvider
+  // from the /next entry would then publish to a context that useNajmTheme
+  // from the root entry never reads. Splitting gives both entries one shared
+  // chunk, so there is one context.
+  splitting: true,
   treeshake: true,
   dts: {
     compilerOptions: {

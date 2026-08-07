@@ -26,6 +26,25 @@ export type { NajmThemeProviderProps, NajmThemeConfig, NajmThemeTokens, NajmMode
 export { composePreset, resolvePreset } from "./theme/presets/compose";
 export { NajmDesignProvider, useNajmDesign, useNajmComponentStyle } from "./theme/design-provider";
 export type { NajmDesignProviderProps } from "./theme/design-provider";
+
+// Providers — see src/providers. Framework-agnostic on purpose; the Next
+// wiring lives in najm-kit/next.
+export {
+  NajmUIProvider,
+  NajmPreferencesProvider,
+  useNajmPreferencesContext,
+  useNajmTheme,
+  useNajmTimeZone,
+  buildPaginationLabels,
+  DEFAULT_TIME_ZONE,
+  DEFAULT_PAGINATION_KEY_PREFIX,
+} from "./providers";
+export type {
+  NajmUIProviderProps,
+  NajmPreferencesProviderProps,
+  NajmPreferencesContextValue,
+  NajmTranslate,
+} from "./providers";
 export { defineNajmDesignConfig, parseNajmDesignConfig, stringifyNajmDesignConfig, resolveVariantAlias } from "./theme/design-config";
 export { resolveRadiusValue, RADIUS_VALUE_MAP, NAJM_COMPONENT_NAMES } from "./theme/design-types";
 export type {

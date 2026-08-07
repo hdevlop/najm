@@ -23,6 +23,8 @@
 
 - `build` runs `tsup` then `node scripts/build-css.mjs`; do not call `tsup` alone when verifying published output.
 - `tsup.config.ts` emits ESM `.mjs` entries for `index`, `adapters/next`, and `json`, and treats React, Next, lucide, phone input, and CodeMirror packages as externals.
+- `splitting: true` is load-bearing, not a size optimization. `index` and `adapters/next` share `src/providers`, and without splitting each entry gets its own copy of the module and therefore its own React context object — `NajmNextUIProvider` from `najm-kit/next` would publish to a context that `useNajmTheme` from `najm-kit` never reads. Do not turn it off. The `dist/chunk-*.mjs` files it emits are part of the published output.
+- `next` is an optional peer dependency. Only `src/adapters/next.tsx` imports it, so the root entry stays installable without Next; keep it that way.
 - `scripts/build-css.mjs` does NOT compile Tailwind (the consumer's v4 build does). It assembles `src/theme.css` into `dist/theme.css`, writes `dist/theme.css.d.ts`, and appends OverlayScrollbars + `react-international-phone` CSS so the import is self-contained. The authored `@import "tw-animate-css"` must stay the first statement, so all inlined third-party CSS is appended after it.
 - If Tailwind class names are generated dynamically (e.g. `borders.ts`, `BaseInput.tsx`), add them to the `@source inline(...)` lines in `src/theme.css` or the consumer's build will not emit them.
 
