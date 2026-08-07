@@ -36,8 +36,32 @@ export interface NajmPreferencesProviderProps {
   onThemeChange?: (theme: NajmMode) => void | Promise<void>;
   /** Persist the new time zone. Rejections propagate to `setTimeZone`. */
   onTimeZoneChange?: (timeZone: string) => void | Promise<void>;
-  /** Sanitize a time zone before it is stored. Defaults to identity. */
+  /**
+   * Sanitize a time zone before it is stored.
+   *
+   * Defaults to an IANA check that falls back to `DEFAULT_TIME_ZONE`, which is
+   * what every application wanted from the callback it used to have to supply.
+   * Pass one to narrow further — a fixed set backing a picker, say.
+   */
   normalizeTimeZone?: (value: string) => string;
+}
+
+/**
+ * `Intl` rather than `Intl.supportedValuesOf('timeZone')`: that list omits
+ * aliases such as `Asia/Calcutta` which the formatter itself still accepts, and
+ * rejecting a zone the platform can format would be the wrong answer.
+ */
+function isValidTimeZone(value: string): boolean {
+  try {
+    new Intl.DateTimeFormat(undefined, { timeZone: value });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function defaultNormalizeTimeZone(value: string): string {
+  return isValidTimeZone(value) ? value : DEFAULT_TIME_ZONE;
 }
 
 function applyTheme(theme: NajmMode): void {
@@ -65,11 +89,11 @@ export function NajmPreferencesProvider({
   initialTimeZone = DEFAULT_TIME_ZONE,
   onThemeChange,
   onTimeZoneChange,
-  normalizeTimeZone,
+  normalizeTimeZone = defaultNormalizeTimeZone,
 }: NajmPreferencesProviderProps) {
   const [theme, setThemeState] = React.useState<NajmMode>(initialTheme);
   const [timeZone, setTimeZoneState] = React.useState<string>(() =>
-    normalizeTimeZone ? normalizeTimeZone(initialTimeZone) : initialTimeZone,
+    normalizeTimeZone(initialTimeZone),
   );
 
   // The callbacks are read through a ref so an inline arrow in the consumer
@@ -101,7 +125,7 @@ export function NajmPreferencesProvider({
   }, []);
 
   const setTimeZone = React.useCallback(async (next: string) => {
-    const normalized = normalizeRef.current ? normalizeRef.current(next) : next;
+    const normalized = normalizeRef.current(next);
     setTimeZoneState(normalized);
     applyTimeZone(normalized);
     await onTimeZoneChangeRef.current?.(normalized);

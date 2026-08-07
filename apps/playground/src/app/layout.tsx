@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import type { NajmMode } from 'najm-kit';
+import type { NajmDesignConfig, NajmMode } from 'najm-kit';
 import { NajmAppProvider } from 'najm-kit/app';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/index.css';
@@ -21,6 +21,18 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
+/**
+ * Stands in for the design an application would load from its own API. It is
+ * only the *seed* — `/ui-provider` edits it live through `useNajmDesignEditor`,
+ * which is the point: no provider file here owns design state.
+ */
+const DESIGN: NajmDesignConfig = {
+  version: 1,
+  theme: { accent: 'emerald', radius: '0.5rem' },
+  components: {},
+  typography: { scale: 'default' },
+};
+
 export default async function RootLayout({
   children,
 }: {
@@ -28,8 +40,6 @@ export default async function RootLayout({
 }) {
   const session = await auth.getSession().catch(() => null);
 
-  // Paint the theme server-side from the same cookie the provider is seeded
-  // with, so the first frame already matches and there is no flash to correct.
   const cookieStore = await cookies();
   const theme: NajmMode =
     cookieStore.get(UI_THEME_COOKIE)?.value === 'light' ? 'light' : 'dark';
@@ -44,17 +54,14 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
-        {/* Auth and react-query are the application's, mounted from its own
-            files. Everything below them — language, theme, time zone, design,
-            branding, NTable defaults — is one component from the kit, and this
-            app authors no provider file for any of it. */}
         <QueryProvider>
           <AuthProviderWrapper initialSession={session}>
             <NajmAppProvider
               translations={translations}
               initialLanguage={language}
               initialTheme={theme}
-              branding={{ appName: 'Najm Playground' }}
+              initialDesign={DESIGN}
+              appName="Najm Playground"
             >
               {children}
             </NajmAppProvider>

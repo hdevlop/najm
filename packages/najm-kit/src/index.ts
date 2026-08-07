@@ -31,6 +31,8 @@ export type { NajmDesignProviderProps } from "./theme/design-provider";
 // wiring lives in najm-kit/next.
 export {
   NajmUIProvider,
+  NajmDesignEditorProvider,
+  useNajmDesignEditor,
   NajmPreferencesProvider,
   useNajmPreferencesContext,
   useNajmTheme,
@@ -38,9 +40,12 @@ export {
   buildPaginationLabels,
   DEFAULT_TIME_ZONE,
   DEFAULT_PAGINATION_KEY_PREFIX,
+  EMPTY_DESIGN,
 } from "./providers";
 export type {
   NajmUIProviderProps,
+  NajmDesignEditorValue,
+  NajmDesignEditorProviderProps,
   NajmPreferencesProviderProps,
   NajmPreferencesContextValue,
   NajmTranslate,
@@ -111,7 +116,18 @@ export { Separator } from "./components/ui/separator";
 export { ScrollArea, type ScrollAreaProps } from "./components/ui/scroll-area";
 export { NajmScroll, type NajmScrollProps } from "./components/ui/scroll";
 export { NImage, type NImageProps } from "./components/ui/NImage";
-export { NBrandingProvider, useNBranding, type NBrandingValue } from "./components/branding";
+export {
+  NBrandingProvider,
+  NBrandingStateProvider,
+  normalizeBranding,
+  useNBranding,
+  useNBrandingEditor,
+  type NBrandingValue,
+  type NBrandingPayload,
+  type NBrandingInput,
+  type NBrandingEditorValue,
+  type NBrandingStateProviderProps,
+} from "./components/branding";
 export { NIcon } from "./components/Icon";
 export type { NIconProps, NIconSource } from "./components/Icon";
 export { Avatar, AvatarImage, AvatarFallback, AvatarStatus, AvatarGroup, avatarVariants } from "./components/ui/avatar";

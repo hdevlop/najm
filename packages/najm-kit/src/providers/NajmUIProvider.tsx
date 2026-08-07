@@ -1,5 +1,6 @@
 import * as React from "react";
 
+import { cn } from "../lib/cn";
 import { NajmDesignProvider } from "../theme/design-provider";
 import type { NajmDesignConfig } from "../theme/design-types";
 // Imported from the module rather than the `components/table` barrel: this file
@@ -18,31 +19,45 @@ import {
   DEFAULT_PAGINATION_KEY_PREFIX,
 } from "./paginationLabels";
 import type { NajmTranslate } from "./paginationLabels";
-
-/**
- * Shared so the identity is stable across renders — `NajmDesignProvider`
- * memoizes on `config.components`, `config.typography` and `config.layout`, and
- * a fresh literal here would invalidate that on every render of the tree.
- */
-const EMPTY_DESIGN: NajmDesignConfig = Object.freeze({
-  version: 1,
-  theme: {},
-  components: {},
-}) as NajmDesignConfig;
+import {
+  EMPTY_DESIGN,
+  NajmDesignEditorProvider,
+  useNajmDesignEditor,
+} from "./designEditor";
 
 export interface NajmUIProviderProps
   extends Omit<NajmPreferencesProviderProps, "children"> {
   children: React.ReactNode;
 
   /**
-   * The design config handed to `NajmDesignProvider`.
+   * The design config handed to `NajmDesignProvider`, owned by the application.
    *
    * Optional, and deliberately so: an application with no runtime theme editor
    * has nothing to put here, and requiring it was the only reason such an
    * application still had to author a provider file just to hold a constant.
+   *
+   * Prefer `initialDesign` for a theme editor. Passing `design` means the
+   * application holds the draft state itself, which is the file this provider
+   * exists to delete.
    */
   design?: NajmDesignConfig;
-  /** Forwarded to `NajmDesignProvider`. */
+  /**
+   * Seeds design state this provider owns from then on; ignored after mount.
+   * A theme editor drives it through `useNajmDesignEditor`.
+   */
+  initialDesign?: NajmDesignConfig;
+  /**
+   * Forwarded to `NajmDesignProvider`, merged over a `min-h-full` default.
+   *
+   * The default is not decoration. `NajmThemeProvider` renders a real `div`
+   * between the document body and the application, and a block box of
+   * automatic height severs any `h-full` chain below it — every application
+   * mounting this at the root was passing the same class back to repair that.
+   * It is inert where it is not needed: a percentage `min-height` against an
+   * auto-height parent imposes no constraint.
+   *
+   * Merged with `cn`, so a conflicting utility here still wins.
+   */
   className?: string;
 
   /**
@@ -64,12 +79,7 @@ export interface NajmUIProviderProps
 
 type UICoreProps = Pick<
   NajmUIProviderProps,
-  | "children"
-  | "design"
-  | "className"
-  | "t"
-  | "paginationKeyPrefix"
-  | "tableDefaults"
+  "children" | "className" | "t" | "paginationKeyPrefix" | "tableDefaults"
 >;
 
 /**
@@ -77,17 +87,18 @@ type UICoreProps = Pick<
  * table defaults derived from the translator.
  *
  * Split out so `NajmUIProvider` can decide whether to mount a preferences
- * provider without making that decision from inside a conditional hook.
+ * provider without making that decision from inside a conditional hook, and so
+ * the design context can read the editor state mounted just above it.
  */
 function NajmUICore({
   children,
-  design = EMPTY_DESIGN,
   className,
   t,
   paginationKeyPrefix = DEFAULT_PAGINATION_KEY_PREFIX,
   tableDefaults,
 }: UICoreProps) {
   const { theme } = useNajmTheme();
+  const design = useNajmDesignEditor()?.design ?? EMPTY_DESIGN;
 
   const defaults = React.useMemo<NTableDefaults>(() => {
     const translated = t
@@ -105,7 +116,11 @@ function NajmUICore({
   }, [t, paginationKeyPrefix, tableDefaults]);
 
   return (
-    <NajmDesignProvider config={design} mode={theme} className={className}>
+    <NajmDesignProvider
+      config={design}
+      mode={theme}
+      className={cn("min-h-full", className)}
+    >
       <NTableDefaultsProvider value={defaults}>
         {children}
       </NTableDefaultsProvider>
@@ -135,6 +150,7 @@ function NajmUICore({
 export function NajmUIProvider({
   children,
   design,
+  initialDesign,
   className,
   t,
   paginationKeyPrefix,
@@ -148,15 +164,16 @@ export function NajmUIProvider({
   const outerPreferences = useNajmPreferencesContext();
 
   const core = (
-    <NajmUICore
-      design={design}
-      className={className}
-      t={t}
-      paginationKeyPrefix={paginationKeyPrefix}
-      tableDefaults={tableDefaults}
-    >
-      {children}
-    </NajmUICore>
+    <NajmDesignEditorProvider design={design} initialDesign={initialDesign}>
+      <NajmUICore
+        className={className}
+        t={t}
+        paginationKeyPrefix={paginationKeyPrefix}
+        tableDefaults={tableDefaults}
+      >
+        {children}
+      </NajmUICore>
+    </NajmDesignEditorProvider>
   );
 
   if (outerPreferences) return core;

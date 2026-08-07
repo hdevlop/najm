@@ -1,6 +1,15 @@
 export { NajmUIProvider } from "./NajmUIProvider";
 export type { NajmUIProviderProps } from "./NajmUIProvider";
 export {
+  NajmDesignEditorProvider,
+  useNajmDesignEditor,
+  EMPTY_DESIGN,
+} from "./designEditor";
+export type {
+  NajmDesignEditorValue,
+  NajmDesignEditorProviderProps,
+} from "./designEditor";
+export {
   NajmPreferencesProvider,
   useNajmPreferencesContext,
   useNajmTheme,

@@ -4,7 +4,8 @@ import * as React from 'react';
 import { I18nProvider, useTranslation } from 'najm-i18n/react';
 import type { Translations } from 'najm-i18n';
 
-import { NBrandingProvider } from '../components/branding';
+import { NBrandingStateProvider } from '../components/branding';
+import type { NBrandingInput } from '../components/branding';
 import { NajmNextUIProvider } from './next';
 import type { NajmNextUIProviderProps } from './next';
 
@@ -36,14 +37,42 @@ export interface NajmAppProviderProps
    */
   languageEndpoint?: string;
 
-  branding?: NajmAppBranding;
+  /**
+   * The product name, used as the logo's `alt` and by the kit's chrome.
+   *
+   * Separate from `initialBranding` because it is a constant rather than
+   * something a branding editor swaps, and because it is the one mark no
+   * branding endpoint returns. An `appName` inside `initialBranding` wins.
+   */
+  appName?: string;
+
+  /**
+   * Controlled marks. Prefer `initialBranding` — passing this means the
+   * application holds the state itself, which is the file this provider exists
+   * to delete.
+   */
+  branding?: NBrandingInput;
+  /**
+   * Seeds marks this provider owns from then on; ignored after mount. A
+   * branding editor swaps them through `useNBrandingEditor`.
+   *
+   * Takes a branding endpoint's payload as-is — `sidebarLogoExpandedPath` and
+   * `sidebarLogoCollapsedPath` are read straight off it, and unrelated fields
+   * are ignored — so the application forwards its response rather than
+   * renaming two keys here.
+   */
+  initialBranding?: NBrandingInput;
 }
 
 const DEFAULT_LANGUAGE_ENDPOINT = '/api/ui-language';
 
 type InnerProps = Omit<
   NajmAppProviderProps,
-  'translations' | 'initialLanguage' | 'defaultLanguage' | 'languageEndpoint'
+  | 'translations'
+  | 'initialLanguage'
+  | 'defaultLanguage'
+  | 'languageEndpoint'
+  | 'appName'
 >;
 
 /**
@@ -54,32 +83,40 @@ type InnerProps = Omit<
  * point: it is the boundary that used to force every application to author a
  * bridge component of its own.
  */
-function NajmAppUI({ children, branding, ...props }: InnerProps) {
+function NajmAppUI({
+  children,
+  branding,
+  initialBranding,
+  ...props
+}: InnerProps) {
   const { t } = useTranslation();
 
   return (
     <NajmNextUIProvider t={t} {...props}>
-      <NBrandingProvider
-        appName={branding?.appName}
-        logoExpanded={branding?.logoExpanded}
-        logoCollapsed={branding?.logoCollapsed}
+      <NBrandingStateProvider
+        branding={branding}
+        initialBranding={initialBranding}
       >
         {children}
-      </NBrandingProvider>
+      </NBrandingStateProvider>
     </NajmNextUIProvider>
   );
 }
 
-function NajmAppNoI18n({ children, branding, ...props }: InnerProps) {
+function NajmAppNoI18n({
+  children,
+  branding,
+  initialBranding,
+  ...props
+}: InnerProps) {
   return (
     <NajmNextUIProvider {...props}>
-      <NBrandingProvider
-        appName={branding?.appName}
-        logoExpanded={branding?.logoExpanded}
-        logoCollapsed={branding?.logoCollapsed}
+      <NBrandingStateProvider
+        branding={branding}
+        initialBranding={initialBranding}
       >
         {children}
-      </NBrandingProvider>
+      </NBrandingStateProvider>
     </NajmNextUIProvider>
   );
 }
@@ -96,14 +133,20 @@ function NajmAppNoI18n({ children, branding, ...props }: InnerProps) {
  * and an application that wants different query policy should not have to fork
  * a provider to get it. Mount them above this, from their own packages.
  *
- * Design is optional. Applications that resolve a design config at runtime — a
- * theme editor — compute it above and pass it down; everything else omits it.
+ * Design and branding are optional, and both are *uncontrolled* through their
+ * `initial*` props: an application with a runtime theme or branding editor
+ * seeds them from the server once and drives them afterwards through
+ * `useNajmDesignEditor` and `useNBrandingEditor`, rather than holding a draft
+ * state machine of its own above this provider. The controlled `design` and
+ * `branding` props still work for applications that already do.
  */
 export function NajmAppProvider({
   translations,
   initialLanguage,
   defaultLanguage,
   languageEndpoint = DEFAULT_LANGUAGE_ENDPOINT,
+  appName,
+  initialBranding,
   ...props
 }: NajmAppProviderProps) {
   const persistLanguage = React.useCallback(
@@ -124,9 +167,14 @@ export function NajmAppProvider({
     [languageEndpoint],
   );
 
+  // Spread second so an `appName` inside the payload still wins. Only read at
+  // mount by `NBrandingStateProvider`, so a fresh object per render costs
+  // nothing.
+  const seeded = appName ? { appName, ...initialBranding } : initialBranding;
+
   // Without a catalog there is nothing for `I18nProvider` to serve, and
   // mounting it empty would shadow one an application had already placed above.
-  if (!translations) return <NajmAppNoI18n {...props} />;
+  if (!translations) return <NajmAppNoI18n {...props} initialBranding={seeded} />;
 
   return (
     <I18nProvider
@@ -135,7 +183,7 @@ export function NajmAppProvider({
       defaultLanguage={defaultLanguage}
       onLanguageChange={persistLanguage}
     >
-      <NajmAppUI {...props} />
+      <NajmAppUI {...props} initialBranding={seeded} />
     </I18nProvider>
   );
 }

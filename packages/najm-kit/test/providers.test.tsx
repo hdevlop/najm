@@ -149,6 +149,27 @@ describe("NajmUIProvider preferences", () => {
     expect(getByTestId("tz").textContent).toBe("UTC");
   });
 
+  test("keeps a real IANA zone with no normalizer supplied", () => {
+    const { getByTestId } = render(
+      <NajmUIProvider design={design} initialTimeZone="Africa/Casablanca">
+        <TimeZoneProbe />
+      </NajmUIProvider>,
+    );
+
+    expect(getByTestId("tz").textContent).toBe("Africa/Casablanca");
+  });
+
+  test("the default normalizer rejects a zone Intl cannot format", () => {
+    const { getByTestId } = render(
+      <NajmUIProvider design={design} initialTimeZone="Not/AZone">
+        <TimeZoneProbe />
+      </NajmUIProvider>,
+    );
+
+    // Falls back rather than throwing: a stale cookie must not break the page.
+    expect(getByTestId("tz").textContent).toBe("UTC");
+  });
+
   test("an outer NajmPreferencesProvider wins over the provider's own props", () => {
     const { getByTestId } = render(
       <NajmPreferencesProvider initialTheme="dark">
@@ -163,6 +184,44 @@ describe("NajmUIProvider preferences", () => {
 
   test("the hooks refuse to guess without a provider", () => {
     expect(() => render(<ThemeProbe />)).toThrow(/NajmUIProvider/);
+  });
+});
+
+describe("NajmUIProvider height chain", () => {
+  const themeDiv = (container: HTMLElement) =>
+    container.querySelector("[data-najm-theme]");
+
+  test("defaults to min-h-full, since the theme div would otherwise sever h-full", () => {
+    const { container } = render(
+      <NajmUIProvider design={design}>
+        <span />
+      </NajmUIProvider>,
+    );
+
+    expect(themeDiv(container)?.className).toBe("min-h-full");
+  });
+
+  test("merges a supplied className over the default", () => {
+    const { container } = render(
+      <NajmUIProvider design={design} className="bg-red-500">
+        <span />
+      </NajmUIProvider>,
+    );
+
+    expect(themeDiv(container)?.className).toContain("min-h-full");
+    expect(themeDiv(container)?.className).toContain("bg-red-500");
+  });
+
+  test("a conflicting height utility wins, so the default stays opt-out", () => {
+    const { container } = render(
+      <NajmUIProvider design={design} className="min-h-0">
+        <span />
+      </NajmUIProvider>,
+    );
+
+    // tailwind-merge, not concatenation — otherwise both land and source order
+    // decides, which the consumer cannot control.
+    expect(themeDiv(container)?.className).toBe("min-h-0");
   });
 });
 

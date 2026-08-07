@@ -1,58 +1,33 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap');
-@config '../../tailwind.config.ts';
-
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import 'tailwindcss';
+@import 'najm-kit/theme.css';
 
 /*
- * Two palettes, selected by the `dark` class on <html> (`darkMode: 'class'` in
- * tailwind.config.ts). This file previously defined the dark values on :root
- * alone, with no light variant — the app hardcoded `class="dark"` and was
- * effectively untheme-able, so toggling the class changed nothing visible.
+ * The palette comes from najm-kit. This file used to define its own tokens as
+ * HSL triplets and map them through `hsl(var(--x))` in a Tailwind v3 config,
+ * which silently broke every kit component: NajmThemeProvider writes *oklch*
+ * into those same variables at runtime, so `hsl(oklch(...))` came out invalid
+ * and anything painted with a semantic colour — `variant="default"` buttons
+ * most visibly — rendered with no fill. Kit consumers are Tailwind v4 and
+ * import the theme contract, so the playground has to be one too, or it is not
+ * showing what an application sees.
+ *
+ * The emerald identity is not lost, it just moved: the root layout seeds
+ * `initialDesign` with `theme.accent: 'emerald'`, and the provider writes the
+ * accent tokens. Which is the honest arrangement for a harness — the design
+ * config is the palette, not a stylesheet that happens to agree with it.
  */
+
+/*
+ * `theme.css` scans najm-kit/dist on its own. These cover this app plus the
+ * kit *source*, which is what renders when the kit is edited without a
+ * rebuild, and najm-chatbot's React surface, which nothing else scans.
+ */
+@source '../**/*.{ts,tsx}';
+@source '../../../../packages/najm-kit/src/**/*.{ts,tsx}';
+@source '../../../../packages/najm-chatbot/src/react/**/*.{ts,tsx}';
+
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 240 10% 8%;
-    --card: 0 0% 100%;
-    --card-foreground: 240 10% 8%;
-    --primary: 160 84% 32%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 5% 96%;
-    --secondary-foreground: 240 6% 20%;
-    --muted: 240 5% 96%;
-    --muted-foreground: 240 4% 46%;
-    --accent: 240 5% 96%;
-    --accent-foreground: 240 10% 8%;
-    --destructive: 0 72% 51%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 240 6% 90%;
-    --input: 240 6% 90%;
-    --ring: 160 84% 32%;
-    --radius: 0.625rem;
-  }
-
-  .dark {
-    --background: 240 10% 4%;
-    --foreground: 240 5% 96%;
-    --card: 240 8% 8%;
-    --card-foreground: 240 5% 96%;
-    --primary: 160 84% 39%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 240 6% 12%;
-    --secondary-foreground: 240 5% 90%;
-    --muted: 240 6% 12%;
-    --muted-foreground: 240 5% 55%;
-    --accent: 240 6% 12%;
-    --accent-foreground: 240 5% 96%;
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 240 6% 15%;
-    --input: 240 6% 15%;
-    --ring: 160 84% 39%;
-  }
-
   * {
     @apply border-border;
   }
