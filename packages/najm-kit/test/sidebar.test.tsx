@@ -201,14 +201,20 @@ describe("Sidebar", () => {
   });
 
   test("renders forwardRef logo icons as components", () => {
-    const { container } = render(<NSidebar logoIcon={FakeForwardRefIcon} logoTitle="Studio" />);
+    const { container } = render(
+      <NSidebar logo={{ variant: "chip", expanded: <FakeForwardRefIcon />, title: "Studio" }} />
+    );
     expect(container.querySelector("[data-testid='fake-forward-ref-icon']")).toBeTruthy();
     expect(container.textContent).toContain("Studio");
   });
 
   test("centers logo and nav icons in collapsed rail with spacing-aware offsets", () => {
     const { container } = render(
-      <NSidebar navItems={navItems} logoIcon={FakeIcon} logoTitle="Studio" collapsed />
+      <NSidebar
+        navItems={navItems}
+        logo={{ variant: "chip", expanded: <FakeIcon />, title: "Studio" }}
+        collapsed
+      />
     );
     const desktopSidebar = Array.from(container.querySelectorAll("aside")).find((aside) =>
       aside.className.includes("md:flex")
@@ -217,18 +223,20 @@ describe("Sidebar", () => {
     const navItem = Array.from(desktopSidebar.querySelectorAll("button")).find((button) =>
       button.className.includes("bg-sidebar-primary") || button.className.includes("text-sidebar-foreground")
     ) as HTMLElement;
-    const logoBox = header.querySelector(".size-10") as HTMLElement;
+    const logoBox = header.querySelector(".size-8") as HTMLElement;
 
     expect(header.className).toContain("justify-start");
     expect(desktopSidebar.getAttribute("style") ?? "").toContain("--sidebar-edge-width");
-    expect(logoBox.className).toContain("var(--spacing");
-    expect(logoBox.className).not.toContain("2.25rem");
+    // The collapsed box is 32px, so it centres inside the rail's px-4 header on
+    // its own rather than needing the margin offset the old chip required.
+    expect(logoBox).toBeTruthy();
+    expect(logoBox.className).not.toContain("ml-[calc(");
     expect(navItem.className).toContain("var(--spacing");
     expect(navItem.className).not.toContain("justify-center");
   });
 
   test("collapses from the sidebar header button", () => {
-    const { container } = render(<NSidebar navItems={navItems} logoTitle="Studio" />);
+    const { container } = render(<NSidebar navItems={navItems} logo={{ title: "Studio" }} />);
     const desktopSidebar = Array.from(container.querySelectorAll("aside")).find((aside) =>
       aside.className.includes("md:flex")
     ) as HTMLElement;

@@ -222,9 +222,12 @@ function FullSidebarDemo() {
   return (
     <div className="flex h-full overflow-hidden bg-background">
       <NSidebar
-        logoIcon={GraduationCap}
-        logoTitle="Najm School"
-        logoSubtitle="Dashboard"
+        logo={{
+          variant: "chip",
+          expanded: <GraduationCap className="size-6 text-sidebar-primary" />,
+          title: "Najm School",
+          subtitle: "Dashboard",
+        }}
         navItems={sidebarItems}
         activePath={active}
         onNavigate={setActive}
@@ -279,9 +282,12 @@ const [mobileOpen, setMobileOpen] = React.useState(false);
 
 <div className="flex h-screen overflow-hidden bg-background">
   <NSidebar
-    logoIcon={GraduationCap}
-    logoTitle="Najm School"
-    logoSubtitle="Dashboard"
+    logo={{
+      variant: "chip",
+      expanded: <GraduationCap className="size-6 text-sidebar-primary" />,
+      title: "Najm School",
+      subtitle: "Dashboard",
+    }}
     navItems={navItems}
     activePath={active}
     onNavigate={setActive}

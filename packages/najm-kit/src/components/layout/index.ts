@@ -12,7 +12,7 @@ export type { NGridProps, NGridItemProps, NGridCols, NGridSpan } from "./NGrid";
 export { NSidebar, NSidebarItem } from "../sidebar";
 export type {
   NSidebarHeaderProps,
-  NSidebarLogoProps,
+  NSidebarBrandProps,
   NSidebarContentProps,
   NSidebarSectionProps,
   NSidebarFooterProps,

@@ -1,7 +1,7 @@
 // Components
 export { NSidebar } from './NSidebar';
 export { NSidebarHeader } from './NSidebarHeader';
-export { NSidebarLogo } from './NSidebarLogo';
+export { NSidebarBrand } from './NSidebarBrand';
 export { NSidebarContent } from './NSidebarContent';
 export { NSidebarSection } from './NSidebarSection';
 export { NSidebarItem } from './NSidebarItem';
@@ -13,7 +13,8 @@ export { NSidebarProvider, useNSidebar } from './NSidebarContext';
 export type { NSidebarContextValue } from './NSidebarContext';
 export type {
   NSidebarHeaderProps,
-  NSidebarLogoProps,
+  NSidebarBrandProps,
+  SidebarLogo,
   NSidebarContentProps,
   NSidebarSectionProps,
   NSidebarFooterProps,

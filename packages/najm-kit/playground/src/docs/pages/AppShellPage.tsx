@@ -497,8 +497,7 @@ const userMenuActions: UserMenuAction[] = [
 
 <div className="flex h-screen">
   <NSidebar
-    logoTitle="Acme"
-    logoSubtitle="Dashboard"
+    logo={{ title: "Acme", subtitle: "Dashboard" }}
     navItems={navItems}
     activePath={active}
     onNavigate={setActive}
@@ -515,9 +514,12 @@ const userMenuActions: UserMenuAction[] = [
         <Preview>
           <div className="flex h-full">
             <NSidebar
-              logoIcon={Zap}
-              logoTitle="Acme Inc"
-              logoSubtitle="Workspace"
+              logo={{
+                variant: "chip",
+                expanded: <Zap className="size-6 text-sidebar-primary" />,
+                title: "Acme Inc",
+                subtitle: "Workspace",
+              }}
               navItems={sectionedNavItems}
               activePath={sidebarActive}
               onNavigate={setSidebarActive}

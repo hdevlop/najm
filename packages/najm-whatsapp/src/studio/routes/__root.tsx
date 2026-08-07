@@ -84,9 +84,12 @@ function RootLayout() {
     <div className="dark h-full w-full">
       <div className="flex h-full w-full overflow-hidden bg-bg">
         <NSidebar
-          logoIcon={MessagesSquare}
-          logoTitle="WhatsApp Studio"
-          logoSubtitle="Operations"
+          logo={{
+            variant: 'chip',
+            expanded: <MessagesSquare className="size-6 text-sidebar-primary" />,
+            title: 'WhatsApp Studio',
+            subtitle: 'Operations',
+          }}
           navItems={navItems}
           activePath={activePanel}
           onNavigate={handleNavigate}

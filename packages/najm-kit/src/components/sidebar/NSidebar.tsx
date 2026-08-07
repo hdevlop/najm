@@ -1,18 +1,31 @@
-import { useMemo, useCallback, useEffect, useRef, useState } from "react";
-import type { PointerEvent as ReactPointerEvent } from "react";
+import { isValidElement, useMemo, useCallback, useEffect, useRef, useState } from "react";
+import type { PointerEvent as ReactPointerEvent, ReactNode } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { sidebarBorderClasses } from "../../theme/borders";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { NSidebarHeader } from "./NSidebarHeader";
-import { NSidebarLogo } from "./NSidebarLogo";
+import { NSidebarBrand } from "./NSidebarBrand";
+import { useNBranding } from "../branding/NBrandingContext";
 import { NSidebarContent } from "./NSidebarContent";
 import { NSidebarFooter } from "./NSidebarFooter";
 import { NSidebarMobile } from "./NSidebarMobile";
 import { useNSidebar } from "./NSidebarContext";
-import type { NavItem, NavItemGroup, SidebarProps, SidebarWidth } from "./types";
+import type { NavItem, NavItemGroup, SidebarLogo, SidebarProps, SidebarWidth } from "./types";
 
 export type { SidebarProps } from "./types";
+
+const LOGO_OBJECT_KEYS = ["expanded", "collapsed", "fallback", "alt", "href", "title", "subtitle"] as const;
+
+function isSidebarLogoObject(value: SidebarProps["logo"]): value is SidebarLogo {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    !isValidElement(value) &&
+    !Array.isArray(value) &&
+    LOGO_OBJECT_KEYS.some((key) => key in value)
+  );
+}
 
 function buildGroups(items: NavItem[]): NavItemGroup[] {
   const groups: NavItemGroup[] = [];
@@ -134,10 +147,6 @@ export function NSidebar({
   expandLabel = "Expand",
   hamburgerClassName,
   showHamburgerButton = false,
-  logoIcon,
-  logoTitle,
-  logoSubtitle,
-  onLogoClick,
   onSettings,
   settingsLabel,
   onLogout,
@@ -155,6 +164,7 @@ export function NSidebar({
    * sidebar working with no provider at all.
    */
   const sidebar = useNSidebar();
+  const branding = useNBranding();
   const isMobileControlled = mobileOpenProp !== undefined;
   const isCollapsedControlled = collapsedProp !== undefined;
   const mobileOpen = isMobileControlled
@@ -264,21 +274,42 @@ export function NSidebar({
     ? { paddingTop: contentSlot.paddingTop }
     : undefined;
 
-  const desktopDefaultLogoContent = logoIcon || logoTitle || logoSubtitle
-    ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={desktopCollapsed} />
-    : null;
-  const mobileDefaultLogoContent = logoIcon || logoTitle || logoSubtitle
-    ? <NSidebarLogo icon={logoIcon} title={logoTitle} subtitle={logoSubtitle} onClick={onLogoClick} collapsed={false} />
-    : null;
-  // The render-prop form is handed the resolved collapsed state — including
-  // `autoCollapseAt` — so consumers no longer have to approximate it in CSS.
-  const renderLogo = (isMobile: boolean) =>
-    typeof logo === "function"
-      ? logo({ collapsed: isMobile ? false : desktopCollapsed, isMobile })
-      : logo;
+  // A logo the surrounding NBrandingProvider already published, so a shell that
+  // has no logo opinion of its own passes nothing at all.
+  const brandingLogo = useMemo<SidebarLogo | null>(() => {
+    if (!branding?.logoExpanded && !branding?.logoCollapsed) return null;
+    return {
+      expanded: branding.logoExpanded,
+      collapsed: branding.logoCollapsed,
+      fallback: branding.logoFallback,
+      href: branding.logoHref,
+      alt: branding.appName,
+    };
+  }, [branding]);
 
-  const desktopHeaderContent = renderLogo(false) ?? desktopDefaultLogoContent;
-  const mobileHeaderContent = renderLogo(true) ?? mobileDefaultLogoContent;
+  const brandNode = (value: SidebarLogo, isCollapsed: boolean) => (
+    <NSidebarBrand
+      logo={value}
+      collapsed={isCollapsed}
+      linkComponent={linkComponent}
+      className={classNames?.sidebarLogo}
+    />
+  );
+
+  // The object and render-prop forms are handed the resolved collapsed state —
+  // including `autoCollapseAt` — so consumers no longer approximate it in CSS.
+  const renderLogo = (isMobile: boolean): ReactNode => {
+    const isCollapsed = isMobile ? false : desktopCollapsed;
+    if (typeof logo === "function") return logo({ collapsed: isCollapsed, isMobile });
+    if (isSidebarLogoObject(logo)) {
+      return brandNode({ ...logo, alt: logo.alt ?? branding?.appName }, isCollapsed);
+    }
+    if (logo === undefined) return brandingLogo ? brandNode(brandingLogo, isCollapsed) : undefined;
+    return logo;
+  };
+
+  const desktopHeaderContent = renderLogo(false);
+  const mobileHeaderContent = renderLogo(true);
 
   const contentProps = {
     groups,

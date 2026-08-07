@@ -91,6 +91,8 @@ export type { NProgressProps, ProgressColor, ProgressLabelPosition, ProgressProp
 export { Separator } from "./components/ui/separator";
 export { ScrollArea, type ScrollAreaProps } from "./components/ui/scroll-area";
 export { NajmScroll, type NajmScrollProps } from "./components/ui/scroll";
+export { NImage, type NImageProps } from "./components/ui/NImage";
+export { NBrandingProvider, useNBranding, type NBrandingValue } from "./components/branding";
 export { NIcon } from "./components/Icon";
 export type { NIconProps, NIconSource } from "./components/Icon";
 export { Avatar, AvatarImage, AvatarFallback, AvatarStatus, AvatarGroup, avatarVariants } from "./components/ui/avatar";
@@ -178,7 +180,7 @@ export { NSmartPasteDialog, type NSmartPasteDialogProps, type SmartPastePreview 
 
 // Sidebar sub-components
 export { NSidebarHeader } from "./components/sidebar/NSidebarHeader";
-export { NSidebarLogo } from "./components/sidebar/NSidebarLogo";
+export { NSidebarBrand } from "./components/sidebar/NSidebarBrand";
 export { NSidebarContent } from "./components/sidebar/NSidebarContent";
 export { NSidebarSection } from "./components/sidebar/NSidebarSection";
 export { NSidebarFooter } from "./components/sidebar/NSidebarFooter";
@@ -186,7 +188,7 @@ export { NSidebarMobile } from "./components/sidebar/NSidebarMobile";
 export { NSidebarProvider, useNSidebar } from "./components/sidebar/NSidebarContext";
 export type {
   NSidebarHeaderProps,
-  NSidebarLogoProps,
+  NSidebarBrandProps,
   NSidebarContentProps,
   NSidebarSectionProps,
   NSidebarFooterProps,
@@ -196,7 +198,7 @@ export type {
 
 // Layout
 export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageLayout, NPageHeader, NPageHeaderActions, NPageHeaderCompactActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet, NGrid, NGridItem } from "./components/layout";
-export type { SidebarLogoRender } from "./components/sidebar/types";
+export type { SidebarLogo, SidebarLogoRender } from "./components/sidebar/types";
 export type { SidebarProps, SidebarItemProps, LinkComponentType,   NavItem,
   NavItemGroup,
   NAppShellClassNames,

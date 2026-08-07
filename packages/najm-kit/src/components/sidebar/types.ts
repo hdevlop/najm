@@ -31,6 +31,7 @@ export interface NAppShellClassNames {
   sidebar?: string;
   sidebarItem?: string;
   sidebarHeader?: string;
+  sidebarLogo?: string;
   sidebarFooter?: string;
   navbar?: string;
   content?: string;
@@ -55,8 +56,33 @@ export type SidebarLogoRender = (state: {
   isMobile: boolean;
 }) => ReactNode;
 
+/**
+ * Declarative form of `logo`. The sidebar owns the box, the fit and the
+ * collapsed/expanded switch so every app renders the mark identically; the
+ * consumer only says which asset. A `string` slot renders through `NImage`,
+ * a `ReactNode` slot is placed in the same box untouched.
+ */
+export interface SidebarLogo {
+  /**
+   * `mark` (default) frames logo artwork in a fixed box. `chip` is the icon
+   * treatment: a square, tinted pill sized for a lucide-style glyph.
+   */
+  variant?: "mark" | "chip";
+  expanded?: ReactNode | string;
+  /** Falls back to `expanded`, rendered in the collapsed box. */
+  collapsed?: ReactNode | string;
+  /** Swapped in when a `string` slot fails to load. */
+  fallback?: string;
+  /** Defaults to the app name from `NBrandingProvider`. */
+  alt?: string;
+  href?: string;
+  onClick?: () => void;
+  title?: string;
+  subtitle?: string;
+}
+
 export interface SidebarProps {
-  logo?: ReactNode | SidebarLogoRender;
+  logo?: ReactNode | SidebarLogoRender | SidebarLogo;
   navItems?: NavItem[];
   activePath?: string;
   isActive?: (item: NavItem, activePath: string) => boolean;
@@ -103,10 +129,6 @@ export interface SidebarProps {
    * `mobileOpen` from an NPageHeader via its `onSidebarOpen` prop.
    */
   showHamburgerButton?: boolean;
-  logoIcon?: ComponentType<{ className?: string }> | ReactNode;
-  logoTitle?: string;
-  logoSubtitle?: string;
-  onLogoClick?: () => void;
   onSettings?: () => void;
   settingsLabel?: string;
   onLogout?: () => void;
@@ -133,12 +155,11 @@ export interface NSidebarHeaderProps {
   classNames?: NAppShellClassNames;
 }
 
-export interface NSidebarLogoProps {
-  icon?: ComponentType<{ className?: string }> | ReactNode;
-  title?: string;
-  subtitle?: string;
-  onClick?: () => void;
-  collapsed?: boolean;
+export interface NSidebarBrandProps {
+  logo: SidebarLogo;
+  collapsed: boolean;
+  linkComponent?: LinkComponentType;
+  className?: string;
 }
 
 export interface NSidebarContentProps {

@@ -547,7 +547,7 @@ export function DashboardPreview() {
     <div className="flex h-full w-full overflow-hidden bg-background font-sans">
       <SelectablePreviewElement component="sidebar" className="h-full shrink-0">
         <NSidebar
-          logoIcon={GraduationCap}
+          logo={{ variant: "chip", expanded: <GraduationCap className="size-6 text-sidebar-primary" /> }}
           navItems={navItems}
           activePath={active}
           isActive={isSidebarItemActive}
