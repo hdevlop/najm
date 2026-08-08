@@ -12,6 +12,15 @@ export type { FormInputBackground, FormInputProps, FormProps } from "./types";
 export type { FormVariant, FormSlotClassNames } from "./VariantContext";
 export type { UseNFormOptions } from "./useNForm";
 export type { DynamicArrayProps, RepeatingFieldsProps } from "./DynamicArray";
+export { buildFormFill } from "./formFill";
+export type {
+  FormDevTools,
+  FormDevToolsConfig,
+  FormDevToolsOptions,
+  FormFillOverride,
+  FormFillOverrides,
+} from "./formFill";
+export { FormDevToolsProvider } from "./FormDevToolsContext";
 
 export { WizardForm, StepIndicator, StepsHeader, StepsProgress, useStepNavigation, useFormSubmission } from "./multi-step";
 export type { StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./multi-step";

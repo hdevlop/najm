@@ -147,6 +147,41 @@ import { Form, FormInput, useNForm } from 'najm-kit';
 | Data | Table (NTable), StatCard, DetailList |
 | Overlays | Command palette, Tooltip, Toast |
 
+## Global form development tools
+
+Enable schema-driven test values once on the full application provider. Every
+`NForm` and `WizardForm` below it then fills from its Zod schema when F8 is
+pressed; applications do not need a second provider or a form-fill helper.
+
+```tsx
+import { NajmAppProvider } from "najm-kit/app";
+
+<NajmAppProvider formDevTools>
+  <App />
+</NajmAppProvider>;
+```
+
+Pass a boolean to control it from application settings:
+
+```tsx
+<NajmAppProvider formDevTools={formFillEnabled}>
+  <App />
+</NajmAppProvider>
+```
+
+Forms with live relation options can override only those fields. The provider
+still owns enablement and Najm Kit still owns schema traversal and generation.
+
+```tsx
+<NForm
+  schema={orderSchema}
+  devTools={{ overrides: { customerId: customerOptions } }}
+  onSubmit={saveOrder}
+>
+  {/* fields */}
+</NForm>
+```
+
 ## ImageInput and AvatarInput
 
 `ImageInput` and `AvatarInput` ship with a resilient preview contract so

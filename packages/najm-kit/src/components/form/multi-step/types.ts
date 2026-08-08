@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { UseFormReturn, FieldValues } from "react-hook-form";
 import type { FormVariant } from "../VariantContext";
+import type { FormDevTools } from "../formFill";
 
 export interface StepConfig {
   id: string;
@@ -42,6 +43,7 @@ export interface WizardFormProps {
   footerSlot?: ReactNode;
   footerDivider?: WizardFooterDivider;
   footerDividerClassName?: string;
+  devTools?: FormDevTools;
   children?: ReactNode;
 }
 

@@ -1,8 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import { useTranslation } from 'najm-i18n/react';
+import { z } from 'zod';
 import {
+  FormInput,
   NButton,
+  NForm,
   NTable,
   useNBranding,
   useNBrandingEditor,
@@ -72,6 +76,12 @@ const columns: NTableColumnDef<Row>[] = [
   { accessorKey: 'role', header: 'Role' },
 ];
 
+const formFillSchema = z.object({
+  name: z.string().min(2),
+  email: z.string().email(),
+  active: z.boolean(),
+});
+
 export default function UIProviderPage() {
   const { theme, setTheme } = useNajmTheme();
   const { timeZone } = useNajmTimeZone();
@@ -79,6 +89,7 @@ export default function UIProviderPage() {
   const design = useNajmDesignEditor();
   const brandingEditor = useNBrandingEditor();
   const appName = useNBranding()?.appName;
+  const [submittedName, setSubmittedName] = useState('');
 
   return (
     <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
@@ -211,6 +222,33 @@ export default function UIProviderPage() {
         starting <code>common.pagination.</code> is a catalog field name that
         does not match the kit&apos;s.
       </p>
+
+      <section className="border-border flex flex-col gap-3 rounded-lg border p-4">
+        <div>
+          <h2 className="font-medium">Global form development tools</h2>
+          <p className="text-muted-foreground text-sm">
+            Focus this form and press F8. `NajmAppProvider` supplies generated
+            values without another application provider or helper file.
+          </p>
+        </div>
+        <NForm
+          schema={formFillSchema}
+          defaultValues={{ name: '', email: '', active: false }}
+          onSubmit={(values) => setSubmittedName(values.name)}
+        >
+          <div className="grid gap-3 sm:grid-cols-2">
+            <FormInput name="name" type="text" formLabel="Name" />
+            <FormInput name="email" type="text" formLabel="Email" />
+          </div>
+          <FormInput name="active" type="checkbox" formLabel="Active" />
+          <NButton type="submit">Submit generated values</NButton>
+          {submittedName ? (
+            <p className="text-muted-foreground text-sm">
+              Submitted: {submittedName}
+            </p>
+          ) : null}
+        </NForm>
+      </section>
 
       {/*
         `dynamicHeight` defaults to true, which makes NTable measure its

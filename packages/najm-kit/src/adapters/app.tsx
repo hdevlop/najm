@@ -9,6 +9,8 @@ import type { NBrandingInput } from '../components/branding';
 import { NajmFormatProvider } from '../format/provider';
 import { NajmNextUIProvider } from './next';
 import type { NajmNextUIProviderProps } from './next';
+import { FormDevToolsProvider } from '../components/form/FormDevToolsContext';
+import type { FormDevToolsOptions } from '../components/form/formFill';
 
 /** Branding shown by the kit's chrome. Purely presentational values. */
 export interface NajmAppBranding {
@@ -19,6 +21,11 @@ export interface NajmAppBranding {
 
 export interface NajmAppProviderProps
   extends Omit<NajmNextUIProviderProps, 't'> {
+  /**
+   * Enables schema-driven form filling for every `NForm` and `WizardForm`.
+   * `true` uses F8; an options object can choose another shortcut.
+   */
+  formDevTools?: boolean | FormDevToolsOptions;
   /**
    * Catalog for `najm-i18n`. Supplying it mounts an `I18nProvider` and derives
    * the pagination labels from it, so `t` is not a prop here — the provider
@@ -99,6 +106,7 @@ type InnerProps = Omit<
   | 'defaultLanguage'
   | 'languageEndpoint'
   | 'appName'
+  | 'formDevTools'
 >;
 
 /**
@@ -194,6 +202,7 @@ export function NajmAppProvider({
   languageEndpoint = DEFAULT_LANGUAGE_ENDPOINT,
   appName,
   initialBranding,
+  formDevTools,
   ...props
 }: NajmAppProviderProps) {
   const persistLanguage = React.useCallback(
@@ -221,16 +230,24 @@ export function NajmAppProvider({
 
   // Without a catalog there is nothing for `I18nProvider` to serve, and
   // mounting it empty would shadow one an application had already placed above.
-  if (!translations) return <NajmAppNoI18n {...props} initialBranding={seeded} />;
+  if (!translations) {
+    return (
+      <FormDevToolsProvider value={formDevTools}>
+        <NajmAppNoI18n {...props} initialBranding={seeded} />
+      </FormDevToolsProvider>
+    );
+  }
 
   return (
-    <I18nProvider
-      translations={translations}
-      initialLanguage={initialLanguage ?? defaultLanguage ?? 'en'}
-      defaultLanguage={defaultLanguage}
-      onLanguageChange={persistLanguage}
-    >
-      <NajmAppUI {...props} initialBranding={seeded} />
-    </I18nProvider>
+    <FormDevToolsProvider value={formDevTools}>
+      <I18nProvider
+        translations={translations}
+        initialLanguage={initialLanguage ?? defaultLanguage ?? 'en'}
+        defaultLanguage={defaultLanguage}
+        onLanguageChange={persistLanguage}
+      >
+        <NajmAppUI {...props} initialBranding={seeded} />
+      </I18nProvider>
+    </FormDevToolsProvider>
   );
 }

@@ -63,6 +63,11 @@ describe("Root barrel import", () => {
     expect(najmUI.NForm).toBeDefined();
   });
 
+  test("exports schema-driven form development tools", () => {
+    expect(typeof najmUI.buildFormFill).toBe("function");
+    expect(najmUI.FormDevToolsProvider).toBeDefined();
+  });
+
   test("exports RepeatingFields component", () => {
     expect(najmUI.RepeatingFields).toBeDefined();
   });

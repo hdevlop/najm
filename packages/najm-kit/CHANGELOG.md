@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.8.1 - 2026-08-08
+
+- Added schema-driven form development tools to `NajmAppProvider`. Passing
+  `formDevTools` enables F8 filling for every `NForm` and `WizardForm` without
+  an application helper or additional provider.
+- Added built-in Zod 4 form-value generation with per-form overrides for
+  relation fields and other application-owned values. Existing explicit
+  `devTools.enabled` and `devTools.fill` usage remains supported.
+
 ## 2.8.0 - 2026-08-08
 
 - Added server-safe `najm-kit/format` helpers for currency minor units,

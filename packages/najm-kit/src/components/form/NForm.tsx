@@ -6,8 +6,10 @@ import type { ZodTypeAny } from "zod";
 import { cn } from "../../lib/cn";
 import type { FormProps } from "./types";
 import { VariantProvider } from "./VariantContext";
+import { useResolvedFormDevTools } from "./FormDevToolsContext";
 
 function NFormInner<T extends ZodTypeAny>({ schema, defaultValues, onSubmit, form: externalForm, variant = "default", bordered, as = "form", className = "", id, devTools, children }: FormProps<T>) {
+  const resolvedDevTools = useResolvedFormDevTools(schema, devTools);
   const resolver = useMemo(() => (schema ? zodResolver(schema as any) : undefined), [schema]);
   const internalForm = useForm({
     resolver,
@@ -16,19 +18,19 @@ function NFormInner<T extends ZodTypeAny>({ schema, defaultValues, onSubmit, for
   const form = externalForm ?? internalForm;
 
   const handleFill = useCallback(() => {
-    if (devTools?.fill) {
-      form.reset(devTools.fill() as any);
+    if (resolvedDevTools.fill) {
+      form.reset(resolvedDevTools.fill() as any);
     }
-  }, [devTools, form]);
+  }, [resolvedDevTools.fill, form]);
 
   useEffect(() => {
-    if (!devTools?.enabled) return;
+    if (!resolvedDevTools.enabled || !resolvedDevTools.fill) return;
     const handler = (e: KeyboardEvent) => {
-      if (e.key === "F8") { e.preventDefault(); handleFill(); }
+      if (e.key === resolvedDevTools.shortcut) { e.preventDefault(); handleFill(); }
     };
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
-  }, [devTools?.enabled, handleFill]);
+  }, [resolvedDevTools.enabled, resolvedDevTools.fill, resolvedDevTools.shortcut, handleFill]);
 
   useEffect(() => {
     const proc = (globalThis as any).process;

@@ -1,8 +1,9 @@
 import type { SubmitHandler, UseFormProps, UseFormReturn } from "react-hook-form";
-import type { ZodTypeAny, TypeOf } from "zod";
+import type { TypeOf, ZodTypeAny } from "zod";
 import type { TextInputProps, NumberInputProps, PasswordInputProps, OtpInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, AvatarInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeZoneInputProps, SliderInputProps } from "../inputs/types";
 import type { FormSlotClassNames, FormVariant } from "./VariantContext";
 import type { NIconSource } from "../Icon";
+import type { FormDevTools } from "./formFill";
 
 export type FormInputBackground = "card" | "background" | "secondary" | "muted" | "transparent";
 
@@ -80,9 +81,6 @@ export type FormProps<T extends ZodTypeAny = ZodTypeAny> = {
   as?: "form" | "div";
   className?: string;
   id?: string;
-  devTools?: {
-    enabled?: boolean;
-    fill?: () => Partial<TypeOf<T>>;
-  };
+  devTools?: FormDevTools<T>;
   children: React.ReactNode;
 };

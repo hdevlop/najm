@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef } from "react";
+import React, { useCallback, useEffect, useMemo, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Form } from "../../ui/form";
@@ -9,6 +9,7 @@ import { useStepNavigation } from "./hooks/useStepNavigation";
 import { useFormSubmission } from "./hooks/useFormSubmission";
 import { VariantProvider } from "../VariantContext";
 import type { WizardFooterDivider, WizardFormProps } from "./types";
+import { useResolvedFormDevTools } from "../FormDevToolsContext";
 
 type ValidationIssue = {
   path?: Array<string | number>;
@@ -50,7 +51,9 @@ export function WizardForm({
   footerSlot,
   footerDivider = "none",
   footerDividerClassName,
+  devTools,
 }: WizardFormProps) {
+  const resolvedDevTools = useResolvedFormDevTools(schema, devTools);
   const nav = useStepNavigation({
     steps,
     currentStep: controlledStep,
@@ -97,6 +100,42 @@ export function WizardForm({
     resolver: stepSchema ? zodResolver(stepSchema as any) : undefined,
     defaultValues: stepDefaults as any,
   });
+
+  const fillWizard = useCallback(() => {
+    if (!resolvedDevTools.fill) return;
+    const values = {
+      ...(defaultValues ?? {}),
+      ...resolvedDevTools.fill(),
+    };
+    formDataRef.current = values;
+    pendingIssuesRef.current = null;
+    nav.reset();
+    const firstStep = steps[0];
+    const firstValues = firstStep?.fields
+      ? Object.fromEntries(
+          firstStep.fields
+            .filter((field) => field in values)
+            .map((field) => [field, values[field]]),
+        )
+      : values;
+    form.reset(firstValues);
+  }, [defaultValues, form, formDataRef, nav, resolvedDevTools.fill, steps]);
+
+  useEffect(() => {
+    if (!resolvedDevTools.enabled || !resolvedDevTools.fill) return;
+    const handler = (event: KeyboardEvent) => {
+      if (event.key !== resolvedDevTools.shortcut) return;
+      event.preventDefault();
+      fillWizard();
+    };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [
+    fillWizard,
+    resolvedDevTools.enabled,
+    resolvedDevTools.fill,
+    resolvedDevTools.shortcut,
+  ]);
 
   useEffect(() => {
     const newDefaults = getStepDefaultValues(currentStepConfig.id);
