@@ -15,6 +15,13 @@ export default defineConfig({
     // two carry no component imports and are what server code should reach for.
     format: 'src/format/index.ts',
     pagination: 'src/lib/pagination.ts',
+    // Framework-neutral person-image resolver. The seven WebP illustrations
+    // are embedded as `data:image/webp;base64,…` strings via the esbuild
+    // `dataurl` loader configured below, so consumers do not need to copy
+    // any package file into their `public` directory or wire an asset
+    // server. The published output is one module that runs anywhere
+    // JavaScript runs.
+    'person-images': 'src/person-images/index.ts',
   },
   format: ['esm'],
   target: 'es2022',
@@ -90,4 +97,11 @@ export default defineConfig({
       },
     },
   ],
+  // Embed the seven person-illustration WebPs as base64 data URLs. The
+  // package only imports `.webp` from the `person-images` entry, so a
+  // package-wide loader is safe: a stray `.webp` import anywhere else is
+  // something to investigate rather than handle.
+  loader: {
+    '.webp': 'dataurl',
+  },
 });

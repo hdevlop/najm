@@ -1,6 +1,6 @@
 {
   "name": "najm-kit",
-  "version": "2.8.1",
+  "version": "2.8.2",
   "license": "MIT",
   "type": "module",
   "description": "Reusable React UI component package for Najm framework",
@@ -52,6 +52,11 @@
       "types": "./dist/json.d.ts",
       "import": "./dist/json.mjs",
       "default": "./dist/json.mjs"
+    },
+    "./person-images": {
+      "types": "./dist/person-images.d.ts",
+      "import": "./dist/person-images.mjs",
+      "default": "./dist/person-images.mjs"
     }
   },
   "scripts": {

@@ -513,3 +513,91 @@ const data = [
 server by setting `shouldFilter={false}` and handling `onSearchChange`. Use
 `loading` and `loadingMessage` while replacement options are being fetched.
 Client-side filtering remains the default.
+
+## Person image fallbacks (`najm-kit/person-images`)
+
+A framework-neutral, React-free subpath that resolves person-image fallbacks
+for any application. The seven WebP illustrations are embedded as base64 data
+URLs in the published bundle, so consumers do not need to copy package files
+into `public/` or wire an asset server.
+
+```ts
+import { getPersonImage } from "najm-kit/person-images";
+
+const childSrc = getPersonImage({
+  image: child.image,
+  role: "child",
+  gender: child.gender,
+});
+```
+
+Built-in roles:
+
+| Role     | Default          | Female          | Male            |
+| -------- | ---------------- | --------------- | --------------- |
+| `child`  | male child art   | female child    | male child      |
+| `adult`  | male adult art   | female adult    | male adult      |
+| `parent` | male parent art  | female parent   | male parent     |
+| `family` | neutral family   | neutral family  | neutral family  |
+
+Resolution precedence, for every call:
+
+1. A real `image` (anything that survives `resolveAvatarSrc`).
+2. A per-call `fallback` that is not blank and is not the `noavatar.png`
+   sentinel.
+3. The configured role's gender variant, or the role's required `default`
+   when the variant or the gender is missing.
+
+The per-call `fallback` is treated like a real source: an empty string, a
+blank trimmed value, or any `noavatar.png` path falls through to the role
+default. The Kafil data is a worked example: children use `role: "child"`,
+households use `role: "family"`, sponsors, staff, applicants, and delivery
+staff use `role: "adult"`, and a household parent uses `role: "parent"`
+after the family dashboard maps its relationship value (`mother`, `mère`,
+`madre`, `أم`, …) to `F`, `M`, or `null` at the feature boundary.
+
+### Custom roles
+
+`createPersonImageResolver` returns a typed resolver that accepts the
+application's own role names. Unknown role strings fail type checking:
+
+```ts
+import { createPersonImageResolver } from "najm-kit/person-images";
+
+const getSmsPersonImage = createPersonImageResolver({
+  teacher: {
+    default: "/images/teachers/default.webp",
+    female: "/images/teachers/female.webp",
+    male: "/images/teachers/male.webp",
+  },
+  student: {
+    default: "/images/students/default.webp",
+    female: "/images/students/female.webp",
+    male: "/images/students/male.webp",
+  },
+});
+
+const teacherSrc = getSmsPersonImage({
+  image: teacher.image,
+  role: "teacher",
+  gender: teacher.gender,
+});
+```
+
+The factory merges custom definitions over the built-in map. A custom `child`
+override replaces the built-in child art for that application alone — the
+package itself is untouched, and other consumers keep their built-in
+fallbacks.
+
+Custom paths may be application-relative URLs, managed API URLs, CDN URLs,
+or data URLs. najm-kit does not fetch, upload, authorize, or persist them.
+
+### Per-call fallback override
+
+Every call accepts a `fallback`. It overrides the role default for that call
+only, after a real `image` and before the role's gender variant:
+
+```ts
+getPersonImage({ image: child.image, role: "child", gender: child.gender, fallback: child.placeholder });
+```
+

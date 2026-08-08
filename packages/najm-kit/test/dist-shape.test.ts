@@ -117,3 +117,95 @@ describeBuilt("dist shape", () => {
     }
   });
 });
+
+describeBuilt("person-images distribution", () => {
+  const PERSON_ENTRY = "person-images.mjs";
+  const PERSON_DTS = "person-images.d.ts";
+  const PERSON_ASSETS = [
+    "adult-female.webp",
+    "adult-male.webp",
+    "child-female.webp",
+    "child-male.webp",
+    "family.webp",
+    "parent-female.webp",
+    "parent-male.webp",
+  ];
+
+  if (!existsSync(join(DIST, PERSON_ENTRY))) {
+    test.skip("person-images entry is not built", () => {});
+    return;
+  }
+
+  test("emits person-images.mjs and person-images.d.ts", () => {
+    expect(existsSync(join(DIST, PERSON_ENTRY))).toBe(true);
+    expect(existsSync(join(DIST, PERSON_DTS))).toBe(true);
+  });
+
+  test("ships every WebP asset as a data URL inside the bundle", () => {
+    const source = readFileSync(join(DIST, PERSON_ENTRY), "utf8");
+    const dataUrls = source.match(/data:image\/webp;base64,[A-Za-z0-9+/=]+/g) ?? [];
+    expect(dataUrls.length).toBeGreaterThanOrEqual(PERSON_ASSETS.length);
+    for (const marker of PERSON_ASSETS) {
+      expect(
+        source.includes(`/${marker}`),
+        `expected bundled source to mention ${marker}`,
+      ).toBe(true);
+    }
+  });
+
+  test("does not emit a separate .webp file alongside the bundle", () => {
+    for (const asset of PERSON_ASSETS) {
+      expect(
+        existsSync(join(DIST, asset)),
+        `expected ${asset} to be inlined, not emitted as a separate file`,
+      ).toBe(false);
+    }
+  });
+
+  test("exports the public API the plan promises", () => {
+    const dts = readFileSync(join(DIST, PERSON_DTS), "utf8");
+    for (const name of [
+      "getPersonImage",
+      "createPersonImageResolver",
+      "BUILT_IN_PERSON_IMAGE_ROLES",
+      "BuiltInPersonImageRole",
+      "PersonImageGender",
+      "PersonImageInput",
+      "PersonImageResolver",
+      "PersonImageRoleDefinition",
+      "PersonImageRoleMap",
+    ]) {
+      expect(dts.includes(name), `expected ${name} in person-images.d.ts`).toBe(true);
+    }
+  });
+
+  test("the root entry and its reachable chunks do not embed person images", () => {
+    // The whole point of keeping the subpath out of the root barrel is that
+    // the root entry does not pay for the seven embedded WebPs. If a future
+    // change re-exports person-images from the root entry, every consumer
+    // ships ~110KB of portrait art in their initial bundle — this assertion
+    // catches that on the built output.
+    const seen = new Set<string>();
+    const queue = ["index.mjs"];
+    let graph = "";
+    while (queue.length) {
+      const file = queue.pop()!;
+      if (seen.has(file) || !existsSync(join(DIST, file))) continue;
+      seen.add(file);
+      const source = readFileSync(join(DIST, file), "utf8");
+      graph += source;
+      for (const chunk of source.match(/chunk-[A-Z0-9]+\.mjs/g) ?? []) {
+        queue.push(chunk);
+      }
+    }
+
+    expect(
+      graph.includes("data:image/webp;base64,"),
+      "root index.mjs and its chunks must not embed person WebP data URLs",
+    ).toBe(false);
+    expect(
+      graph.includes("person-images"),
+      "root index.mjs must not reach person-images chunks",
+    ).toBe(false);
+  });
+});

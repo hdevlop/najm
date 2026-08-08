@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.8.2 - 2026-08-08
+
+- Added the framework-neutral `najm-kit/person-images` subpath. It ships a
+  built-in resolver for `child`, `adult`, `parent`, and `family` roles with
+  the seven WebP illustrations embedded as base64 data URLs, plus
+  `createPersonImageResolver` so an application can declare its own role
+  names (`teacher`, `student`, `doctor`, `driver`, …) and TypeScript catches
+  unknown role strings at the call site. The root `najm-kit` entry stays
+  unchanged and does not pull in the person images.
+
 ## 2.8.1 - 2026-08-08
 
 - Added schema-driven form development tools to `NajmAppProvider`. Passing
