@@ -7,9 +7,16 @@ import type { NTablePaginationLabels } from "../components/table/paginationContr
  * depends on no `najm-*` package, and this signature is satisfied by every
  * mainstream i18n library. The application keeps its catalog and its own
  * language provider.
+ *
+ * `Key` narrows the accepted keys. It exists for the application that types its
+ * translator to a generated union of its catalog — such a `t` is *not*
+ * assignable to `NajmTranslate<string>`, since a parameter position accepting
+ * fewer values is the wrong way round. Builders below name the exact keys they
+ * pass, so a narrow translator satisfies them without a cast and the keys stay
+ * checked against the catalog.
  */
-export type NajmTranslate = (
-  key: string,
+export type NajmTranslate<Key extends string = string> = (
+  key: Key,
   params?: Record<string, string | number>,
 ) => string;
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { NButton, NBadge } from 'najm-kit';
+import { NButton, NBadge, statusTextClass } from 'najm-kit';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
 
@@ -33,6 +33,16 @@ const STATUS_BADGES = [
   { label: 'Completed', color: 'success' },
   { label: 'Paused', color: 'warning' },
   { label: 'Archived', color: 'neutral' },
+] as const;
+
+const BUILT_IN_STATUSES = [
+  'approved',
+  'pending_review',
+  'out_for_delivery',
+  'paused',
+  'archived',
+  'refunded',
+  'nebulous',
 ] as const;
 
 const ICON_MAP = {
@@ -208,8 +218,39 @@ export function BadgePage() {
       </Example>
 
       <Example
+        title="Built-in status vocabulary"
+        description="Pass status alone: NAJM_STATUS_COLORS colors it, the token is humanized into the label, and anything unrecognized lands on neutral."
+        code={`<NBadge status="approved" look="soft" shape="pill" />
+<NBadge status="pending_review" look="soft" shape="pill" />
+<NBadge status="out_for_delivery" look="soft" shape="pill" />
+<NBadge status="paused" look="soft" shape="pill" />
+<NBadge status="archived" look="soft" shape="pill" />
+<NBadge status="refunded" look="soft" shape="pill" />
+<NBadge status="nebulous" look="soft" shape="pill" />`}
+      >
+        {BUILT_IN_STATUSES.map((s) => (
+          <NBadge key={s} status={s} look="soft" shape="pill" />
+        ))}
+      </Example>
+
+      <Example
+        title="Status text without a badge"
+        description="statusTextClass returns the matching text color for prose or numbers that must agree with a nearby badge. An unmapped status returns '' and keeps the surrounding color."
+        code={`<span className={statusTextClass('validated')}>+1,200.00 MAD</span>
+<span className={statusTextClass('pending')}>+450.00 MAD</span>
+<span className={statusTextClass('refunded')}>-320.00 MAD</span>
+<span className={statusTextClass('nebulous')}>+80.00 MAD</span>`}
+      >
+        {(['validated', 'pending', 'refunded', 'nebulous'] as const).map((s) => (
+          <span key={s} className={`text-sm font-semibold ${statusTextClass(s)}`}>
+            {s} +1,200.00 MAD
+          </span>
+        ))}
+      </Example>
+
+      <Example
         title="Status mapping"
-        description="Pass a status string and a statusMap to automatically resolve color from a status key."
+        description="Pass a statusMap to override single keys — it is consulted before the built-in vocabulary, and unlisted keys still fall through to it."
         code={`const STATUS_MAP = { active: 'success', pending: 'accent', inactive: 'neutral', rejected: 'destructive' };
 const ICON_MAP = { success: 'circle-check', accent: 'hourglass', neutral: 'ban', destructive: 'circle-x' };
 

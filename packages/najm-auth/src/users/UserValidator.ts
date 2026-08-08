@@ -30,6 +30,17 @@ export class UserValidator {
    }
 
    /**
+    * Check that a normalized phone number is not already taken.
+    */
+   async checkPhoneUnique(phone: string, excludeId?: string) {
+      if (!phone) return;
+      const existingUser = await this.userRepository.findByPhone(phone);
+      if (existingUser && existingUser.id !== excludeId) {
+         Err(this.t('errors.phoneExists'), 409);
+      }
+   }
+
+   /**
     * Check if user exists by ID
     */
    async checkUserExists(id: string) {
@@ -124,6 +135,8 @@ export class UserValidator {
          Err('Password is required', 400);
       }
 
+      this.validatePasswordLength(password);
+
       const minLength = 8;
       const hasUppercase = /[A-Z]/.test(password);
       const hasLowercase = /[a-z]/.test(password);
@@ -143,6 +156,13 @@ export class UserValidator {
 
       if (!hasNumber) {
          Err('Password must contain at least one number', 400);
+      }
+   }
+
+   /** Keep every byte passed to bcrypt significant. */
+   validatePasswordLength(password: string): void {
+      if (new TextEncoder().encode(password).length > 72) {
+         Err('Password must be at most 72 bytes', 400);
       }
    }
 

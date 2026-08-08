@@ -7,6 +7,14 @@ export default defineConfig({
     'adapters/next': 'src/adapters/next.tsx',
     'adapters/app': 'src/adapters/app.tsx',
     json: 'src/json/index.ts',
+    query: 'src/query/index.ts',
+    // Server-safe leaf entries. The root barrel is one module that reaches the
+    // whole component library, so importing it from a server component or a
+    // route handler resolves react-hook-form under the `react-server`
+    // condition, where `Controller` does not exist and the build fails. These
+    // two carry no component imports and are what server code should reach for.
+    format: 'src/format/index.ts',
+    pagination: 'src/lib/pagination.ts',
   },
   format: ['esm'],
   target: 'es2022',
@@ -36,6 +44,7 @@ export default defineConfig({
     'next/navigation',
     'najm-i18n',
     'najm-i18n/react',
+    '@tanstack/react-query',
     'lucide-react',
     'react-international-phone',
     'react-international-phone/style.css',

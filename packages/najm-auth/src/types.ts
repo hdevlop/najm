@@ -5,6 +5,11 @@
 import type { ValidationPluginConfig } from 'najm-validation';
 import type { RateLimitPluginConfig } from 'najm-rate';
 import type { EmailPluginConfig } from 'najm-email';
+import type { IdentityConfig, ResolvedIdentityConfig } from './identity/types';
+import type {
+  CredentialSetupConfig,
+  ResolvedCredentialSetupConfig,
+} from './credentialSetup/types';
 
 /**
  * JWT configuration for token generation and verification
@@ -114,8 +119,12 @@ export interface AuthConfig {
   lockout: LockoutConfig;
   /** Bcrypt work factor (default: 10) */
   bcryptRounds: number;
+  /** Server-scoped login and phone identity policy. */
+  identity: ResolvedIdentityConfig;
   /** Session cookie cache settings */
   session: SessionCookieConfig;
+  /** Resolved credential-setup policy for the built-in `password` flow. */
+  credentialSetup: ResolvedCredentialSetupConfig;
   /** Resolved external identity-provider configuration. */
   oauth?: ResolvedOAuthConfig;
 }
@@ -133,6 +142,8 @@ export interface AuthSchema {
   tokens: any;
   /** Durable one-time browser sessions used by CredentialSetupService. */
   credentialSetupSessions?: any;
+  /** Durable "this user still owes a setup purpose" rows. */
+  credentialSetupRequirements?: any;
   roles: any;
   permissions: any;
   rolePermissions: any;
@@ -177,6 +188,18 @@ export type AuthPluginConfig = {
   bcryptRounds?: number;
   /** Session cookie cache settings (optional — sensible defaults applied) */
   session?: Partial<SessionCookieConfig>;
+  /**
+   * Login identifier normalization. Defaults to the Moroccan preset; pass
+   * another preset to replace it, or `extend` for project-specific
+   * identifiers.
+   */
+  identity?: IdentityConfig;
+  /**
+   * Policy overrides for the built-in credential-setup flow. The flow itself
+   * is always mounted — there is no activation switch — and does nothing until
+   * a user has a durable setup requirement.
+   */
+  credentialSetup?: CredentialSetupConfig;
   /** Optional config forwarded to validation() dependency */
   validation?: ValidationPluginConfig;
   /** Optional config forwarded to rateLimit() dependency */

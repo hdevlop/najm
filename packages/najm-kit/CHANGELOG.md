@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.8.0 - 2026-08-08
+
+- Added server-safe `najm-kit/format` helpers for currency minor units,
+  numbers, percentages, dates, times, relative time, tokens, local date inputs,
+  and slugs. Client applications can use the same contract reactively through
+  `NajmFormatProvider` and `useNajmFormat`.
+- Added the server-safe `najm-kit/pagination` offset protocol, including bounded
+  page creation, total-aware continuation, probe-row continuation for APIs
+  without totals, and query cleanup that preserves meaningful `false` and `0`.
+- Added the optional-peer `najm-kit/query` entry with offset infinite-query and
+  responsive paged/card-list hooks, plus shared card-pagination adapters and
+  localized continuation labels.
+- Extended `NajmAppProvider` with formatting locale, currency, and placeholder
+  configuration so applications can bind language, time zone, and formatting
+  without another host bridge provider.
+- Added shared media-query/card-viewport helpers and avatar-source utilities.
+
 ## 2.6.2
 
 - Added `NSidebarProvider` and `useNSidebar`, so sidebar state can be read from a distance. `NSidebar` renders beside the page content rather than around it, which left applications hand-rolling a context to hand `setMobileOpen` down to a page header — a wrapper component plus an aliased import at every call site. Wrap the shell in `NSidebarProvider` and `NPageHeader` now resolves both `onSidebarOpen` and `mobileBreakpoint` from it, so a header nested anywhere below renders a working mobile trigger with no props threaded to it. Also exports the `NSidebarContextValue` type.

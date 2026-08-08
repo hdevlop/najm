@@ -69,4 +69,9 @@
 - Publish order is the exact `PACKAGE_TARGETS` order in `scripts/workspaces.ts`: `najm-core`, `najm-guard`, `najm-validation`, `najm-cache`, `najm-rate`, `najm-cors`, `najm-cookies`, `najm-i18n`, `najm-mcp`, `najm-event`, `najm-database`, `najm-storage`, `najm-email`, `najm-auth`, `najm-api`, `najm-rag`, `najm-chatbot`, `najm-whatsapp`, `najm-cli`, `najm-kit`.
 - `publish-all.ts` replaces `workspace:*` dependencies with `^<version>` in the publish manifest, applies `publishConfig` export overrides, then restores package files.
 - Dry-run all packages: `bun run publish:all:dry`; publish all: `bun run publish:all`.
-- Single package publish shortcuts bump patch versions, for example `bun run pub:core`, `bun run pub:auth`, `bun run pub:ui`; generic form is `bun scripts/publish-package.ts <name> [--dry-run|--patch|--minor|--major|--tag <tag>|--otp <code>]`.
+- Single-package publish shortcuts publish the already-versioned, committed
+  candidate and require a clean worktree, package tests, public API checks, and
+  a build. Version flags (`--patch`, `--minor`, `--major`) only prepare the
+  package version and exit so that change can be reviewed and committed before
+  packing or publication. Generic form:
+  `bun scripts/publish-package.ts <name> [--dry-run|--patch|--minor|--major|--tag <tag>|--otp <code>]`.

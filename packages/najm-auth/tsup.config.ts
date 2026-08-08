@@ -3,6 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: [
     'src/index.ts',
+    'src/identity/ma.ts',
     'src/schema/pg.ts',
     'src/schema/sqlite.ts',
     'src/client/index.ts',

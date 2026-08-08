@@ -17,6 +17,9 @@ export default {
       pageOf: 'Page {{page}} sur {{pageCount}}',
       pageOfUnknown: 'Page {{page}}',
       rowsSelected: '{{selected}} sur {{total}} ligne(s) sélectionnée(s).',
+      loadMoreError: 'Impossible de charger plus de lignes.',
+      retryLoadMore: 'Réessayer',
+      itemsLoaded: '{{count}} lignes chargées',
     },
   },
   auth: {

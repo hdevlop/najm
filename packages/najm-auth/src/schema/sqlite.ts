@@ -113,6 +113,25 @@ export const credentialSetupSessionsTable = sqliteTable('credential_setup_sessio
 }));
 
 /**
+ * Durable record that a user still owes a credential-setup purpose. Survives
+ * browser sessions, unlike credential_setup_sessions — the composite key lets
+ * one user owe more than one purpose at a time.
+ */
+export const credentialSetupRequirementsTable = sqliteTable('credential_setup_requirements', {
+  userId: text('user_id').references(() => usersTable.id, { onDelete: 'cascade' }).notNull(),
+  purpose: text('purpose').notNull(),
+  temporaryCredentialKind: text('temporary_credential_kind'),
+  required: integer('required', { mode: 'boolean' }).default(true).notNull(),
+  completedAt: text('completed_at'),
+  createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
+  updatedAt: text('updated_at')
+    .$defaultFn(() => new Date().toISOString())
+    .$onUpdate(() => sql`(datetime('now'))`),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.userId, table.purpose] }),
+}));
+
+/**
  * Junction table for many-to-many relationship between roles and permissions
  */
 export const rolePermissionsTable = sqliteTable('role_permissions', {
@@ -133,6 +152,7 @@ export const authSchema = {
   oauthAccounts: oauthAccountsTable,
   tokens: tokensTable,
   credentialSetupSessions: credentialSetupSessionsTable,
+  credentialSetupRequirements: credentialSetupRequirementsTable,
   roles: rolesTable,
   permissions: permissionsTable,
   rolePermissions: rolePermissionsTable,
@@ -159,6 +179,9 @@ export type NewToken = typeof tokensTable.$inferInsert;
 
 export type CredentialSetupSession = typeof credentialSetupSessionsTable.$inferSelect;
 export type NewCredentialSetupSession = typeof credentialSetupSessionsTable.$inferInsert;
+
+export type CredentialSetupRequirement = typeof credentialSetupRequirementsTable.$inferSelect;
+export type NewCredentialSetupRequirement = typeof credentialSetupRequirementsTable.$inferInsert;
 
 export type RolePermission = typeof rolePermissionsTable.$inferSelect;
 export type NewRolePermission = typeof rolePermissionsTable.$inferInsert;

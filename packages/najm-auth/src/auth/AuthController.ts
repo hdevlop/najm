@@ -8,7 +8,7 @@ import { Validate } from 'najm-validation';
 import { RateLimit } from 'najm-rate';
 import type { Context } from 'hono';
 import { createHash } from 'node:crypto';
-import { normalizeAuthIdentifier } from './authIdentity';
+import { getRequestIdentityResolver } from '../identity/requestResolver';
 import {
   registerDto,
   inviteUserDto,
@@ -50,7 +50,7 @@ export const authIdentityRateLimitKey = async (ctx: Context): Promise<string> =>
   try {
     const body = await ctx.req.json();
     const identity = body?.identifier ?? body?.email;
-    const normalizedIdentity = normalizeAuthIdentifier(identity);
+    const normalizedIdentity = getRequestIdentityResolver(ctx)(identity);
     if (normalizedIdentity) {
       return `${ip}:${hashKeyPart(normalizedIdentity)}`;
     }

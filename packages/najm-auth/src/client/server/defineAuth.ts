@@ -75,6 +75,16 @@ export interface DefineAuthConfig {
   loginRoute?: string;
   /** Route to redirect after login (default: '/dashboard') */
   afterLoginRoute?: string;
+  /**
+   * Where an *authenticated* user goes when their role is not allowed
+   * (default: '/forbidden').
+   *
+   * Distinct from `loginRoute` on purpose. Sending them to the login form says
+   * "prove who you are" to someone who already has; they log in again, land
+   * back on the same page, and get bounced again. A forbidden page is the only
+   * response that terminates.
+   */
+  forbiddenRoute?: string;
   /** Routes that are always public (glob patterns) */
   publicRoutes?: string[];
   /** Routes that require authentication (glob patterns) */
@@ -123,6 +133,15 @@ export interface AuthKit {
   getSession: (opts?: Pick<GetSessionConfig, 'mode'>) => Promise<ServerSession | null>;
   /** Require session — throws if unauthenticated */
   requireSession: () => Promise<ServerSession>;
+  /**
+   * Require one of `roles` — redirects to `loginRoute` when unauthenticated and
+   * to `forbiddenRoute` when authenticated as the wrong role.
+   *
+   * ```ts
+   * const session = await auth.requireRole(['admin', 'operator']);
+   * ```
+   */
+  requireRole: (roles: string[]) => Promise<ServerSession>;
   /** Generated Next.js middleware function */
   middleware: (request: Request) => Promise<Response>;
   /** Next.js middleware config with matcher */
@@ -146,6 +165,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     apiBaseURL = '/api',
     authPrefix = '/auth',
     loginRoute = '/login',
+    forbiddenRoute = '/forbidden',
     publicRoutes = [],
     protectedRoutes = [],
     roleRoutes = {},
@@ -232,6 +252,21 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     }
   };
 
+  // ---------- requireRole ----------
+  const requireRole = async (roles: string[]): Promise<ServerSession> => {
+    const session = await requireSession();
+    // `roles` is the authoritative list when present; `user.role` is the
+    // single-role shape older sessions carry.
+    const held = session.roles ?? (session.user.role ? [session.user.role] : []);
+
+    if (!held.some((role) => roles.includes(role))) {
+      const { redirect } = await import('next/navigation');
+      redirect(forbiddenRoute);
+    }
+
+    return session;
+  };
+
   // ---------- middleware ----------
   const middleware = withAuthMiddleware({
     protectedRoutes,
@@ -263,11 +298,14 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
         redirect(loginRoute);
       }
 
+      // Authenticated but not allowed is `forbiddenRoute`, not `loginRoute`:
+      // re-authenticating cannot change the answer, so sending them to the form
+      // only loops them back here.
       if (options?.role) {
         const userRoles = session.roles ?? (session.user.role ? [session.user.role] : []);
         if (!userRoles.includes(options.role)) {
           const { redirect } = await import('next/navigation');
-          redirect(loginRoute);
+          redirect(forbiddenRoute);
         }
       }
 
@@ -276,7 +314,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
         const perms = session.permissions ?? session.user.permissions ?? [];
         if (!matchPermission(perms, options.permission)) {
           const { redirect } = await import('next/navigation');
-          redirect(loginRoute);
+          redirect(forbiddenRoute);
         }
       }
 
@@ -294,6 +332,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     },
     getSession,
     requireSession,
+    requireRole,
     middleware,
     config: { matcher },
     protect,

@@ -46,6 +46,7 @@ export {
 
 // Core modules
 export * from './auth';
+export * from './identity';
 export * from './permissions';
 export * from './roles';
 export * from './ownership';
@@ -63,6 +64,7 @@ export {
   rolesTable,
   tokensTable,
   credentialSetupSessionsTable,
+  credentialSetupRequirementsTable,
   permissionsTable,
   rolePermissionsTable,
   oauthAccountsTable,
@@ -85,6 +87,8 @@ export type {
   NewToken,
   CredentialSetupSession,
   NewCredentialSetupSession,
+  CredentialSetupRequirement,
+  NewCredentialSetupRequirement,
   Permission,
   NewPermission,
   RolePermission,

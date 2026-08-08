@@ -215,6 +215,89 @@ Key behaviors:
 `AvatarInput` forwards every preview and accessibility prop unchanged while
 preserving its circular, size, fill, and camera-icon defaults.
 
+## Formatting
+
+Pure formatters are available from the server-safe `najm-kit/format` entry.
+Money values are integer minor units and use the currency's own exponent (for
+example MAD has two decimals, JPY zero, and KWD three).
+
+```ts
+import { formatCurrency, formatDate, slugify } from 'najm-kit/format';
+
+formatCurrency(12_500, { locale: 'fr-MA', currency: 'MAD' });
+formatDate('2026-08-08T20:00:00Z', {
+  locale: 'fr-MA',
+  timeZone: 'Africa/Casablanca',
+});
+slugify('Najm Format & Pagination');
+```
+
+Client code can use the active locale, time zone, currency, and placeholder
+through `useNajmFormat`. `NajmAppProvider` mounts the format provider for you:
+
+```tsx
+import { NajmAppProvider } from 'najm-kit/app';
+import { useNajmFormat } from 'najm-kit';
+
+<NajmAppProvider
+  translations={translations}
+  currency="MAD"
+  locales={{ en: 'en-MA', fr: 'fr-MA' }}
+>
+  <App />
+</NajmAppProvider>
+
+function Total({ value }: { value: number }) {
+  return <span>{useNajmFormat().money(value)}</span>;
+}
+```
+
+## Offset pagination and queries
+
+`najm-kit/pagination` is server-safe and framework-independent. It accepts
+endpoints that return either `{ rows, total }` or a bare row array. When no
+total exists it probes for one extra row; when a total exists continuation is
+calculated without another request.
+
+```ts
+import {
+  createOffsetPagination,
+  fetchOffsetPage,
+} from 'najm-kit/pagination';
+
+const pagination = createOffsetPagination(pageIndex, pageSize);
+const page = await fetchOffsetPage(
+  ({ limit, offset }) => api.orders.list({ limit, offset }),
+  pagination,
+);
+```
+
+React Query consumers install the optional `@tanstack/react-query` peer and use
+the isolated `najm-kit/query` entry. `useResponsiveOffsetList` resolves numbered
+desktop paging versus card continuation and exposes props that plug directly
+into `NTable` and `createCardPagination`.
+
+```tsx
+import { NTable, createCardPagination } from 'najm-kit';
+import { useResponsiveOffsetList } from 'najm-kit/query';
+
+const list = useResponsiveOffsetList({
+  queryKey: ['orders'],
+  fetchPage: ({ limit, offset }) => api.orders.list({ limit, offset }),
+  strategy: 'paged',
+});
+
+<NTable
+  data={list.data}
+  columns={columns}
+  manualPagination
+  pageCount={list.pageCount}
+  pagination={list.pagination}
+  onPaginationChange={list.onPaginationChange}
+  cardPagination={createCardPagination(list, labels)}
+/>
+```
+
 ## Hooks
 
 ```tsx

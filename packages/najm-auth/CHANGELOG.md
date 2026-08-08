@@ -1,5 +1,49 @@
 # Changelog
 
+## 3.0.0 - 2026-08-08
+
+- feat(identity): normalize login identifiers through a configurable country
+  preset, defaulting to Morocco, and use the same resolved identity for lookup,
+  lockout accounting, and rate-limit bucketing
+- fix(identity): scope the resolved identity policy to each Najm server and its
+  request context, so multiple auth configurations in one process cannot
+  replace each other's country preset
+- feat(credential-setup): add durable `credential_setup_requirements` storage
+  keyed on `(user_id, purpose)` for PostgreSQL and SQLite
+- feat(credential-setup): mount a built-in `password` setup flow with
+  `GET/POST /auth/credential-setup/{setup,change,cancel}` — always registered,
+  inert until a user owes the purpose, and configurable only for policy
+- feat(auth): accept `temporaryCredential` plus `requireCredentialSetup` on
+  `provisionUser()`, marking the requirement in the same transaction and
+  rejecting a permanent password in the same call
+- feat(auth): accept an optional normalized `phone` on `provisionUser()`
+- fix(auth): reject email-shaped phone values, preserve phone on invite-based
+  provisioning, validate typed temporary credentials, and enforce bcrypt's
+  72-byte boundary even when strength checks are intentionally skipped
+- feat(auth): return a discriminated `LoginResult` — `authenticated`, or
+  `credential_setup` with no usable tokens
+- fix(auth): validate the login credential with login-only bounds instead of
+  creation-time strength rules, which rejected valid stored passwords at the
+  edge before authentication ran
+- security(auth): refuse a normal session for a required user on every path —
+  `establish()`, Google OAuth, refresh, and signed-session recovery — and revoke
+  existing sessions when a requirement is marked
+- security(auth): fail closed on an unknown stored temporary-credential kind
+  rather than falling back to a different normalizer
+- feat(client): `login()` and `useLogin()` accept `identifier`/`rememberMe`,
+  return `LoginResult`, and apply tokens only for `authenticated`
+- fix(client): recognize credential-setup responses in both top-level and
+  standard `{ data }` response shapes
+- feat(client/server): `withAuthCookiePersistence` recognizes Najm's own setup
+  response without configuration and clears the remembered preference once
+  setup completes
+- feat(exports): add the `najm-auth/identity/ma` subpath with
+  `moroccanCinTemporaryCredential` and `moroccoIdentityPreset`
+
+**Breaking:** `NajmAuthClient.login()` and `useLogin().login()` now resolve to
+`LoginResult` instead of `AuthUser`; branch on `nextStep`. A custom `AuthSchema`
+must supply `credentialSetupSessions` and `credentialSetupRequirements`.
+
 ## 2.0.7
 
 - fix(client): support an explicit loopback-only recovery endpoint for

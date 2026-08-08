@@ -15,7 +15,6 @@ type CliOptions = {
   otp?: string;
   access?: 'public' | 'restricted';
   skipWhoami: boolean;
-  noBuild: boolean;
   bump?: BumpType;
   packOnly: boolean;
   publishTarball?: string;
@@ -55,10 +54,9 @@ function printUsage(): void {
   console.log('  --otp <code>           Provide npm 2FA one-time password');
   console.log('  --access <mode>        Access level: public or restricted');
   console.log('  --skip-whoami          Skip npm whoami precheck');
-  console.log('  --no-build             Skip package build before publish');
-  console.log('  --patch                Bump patch version before publishing');
-  console.log('  --minor                Bump minor version before publishing');
-  console.log('  --major                Bump major version before publishing');
+  console.log('  --patch                Prepare a patch version, then exit for review/commit');
+  console.log('  --minor                Prepare a minor version, then exit for review/commit');
+  console.log('  --major                Prepare a major version, then exit for review/commit');
   console.log('  --pack-only            Pack the tarball, print its path and SHA-256, then exit');
   console.log('  --publish-tarball <p>  Publish the exact tarball at <p> instead of --workspace');
   console.log('  --tarball-dir <dir>    Directory for produced tarballs (default: dist-publish)');
@@ -74,14 +72,15 @@ function printUsage(): void {
   console.log('  bun scripts/publish-package.ts najm-core');
   console.log('  bun scripts/publish-package.ts packages/najm-api --dry-run');
   console.log('  bun scripts/publish-package.ts najm-core --patch');
-  console.log('  bun scripts/publish-package.ts najm-core --patch --otp 123456');
+  console.log('  bun scripts/publish-package.ts najm-core --patch');
+  console.log('  git add packages/najm-core/package.json && git commit');
+  console.log('  bun scripts/publish-package.ts najm-core --pack-only');
 }
 
 export function parseArgs(argv: string[]): CliOptions {
   const options: CliOptions = {
     dryRun: false,
     skipWhoami: false,
-    noBuild: false,
     packOnly: false,
     tarballDir: DEFAULT_TARBALL_DIR,
   };
@@ -106,11 +105,6 @@ export function parseArgs(argv: string[]): CliOptions {
 
     if (arg === '--skip-whoami') {
       options.skipWhoami = true;
-      continue;
-    }
-
-    if (arg === '--no-build') {
-      options.noBuild = true;
       continue;
     }
 
@@ -190,6 +184,19 @@ export function parseArgs(argv: string[]): CliOptions {
 
   if (!options.verifyPublished && !options.packageRef) {
     throw new Error('Missing package name/workspace.');
+  }
+
+  if (options.bump && (
+    options.dryRun
+    || options.packOnly
+    || options.publishTarball
+    || options.verifyPublished
+    || options.tag
+    || options.otp
+    || options.access
+    || options.skipWhoami
+  )) {
+    throw new Error('Version preparation flags cannot be combined with pack, publish, verify, or skip flags.');
   }
 
   return options;
@@ -383,6 +390,45 @@ export function currentCommitSha(): string | null {
   }
 }
 
+export function assertCleanStatus(status: string): void {
+  const entries = status.split(/\r?\n/).map((line) => line.trimEnd()).filter(Boolean);
+  if (entries.length === 0) return;
+
+  const preview = entries.slice(0, 12).join('\n  ');
+  const remainder = entries.length > 12 ? `\n  ...and ${entries.length - 12} more` : '';
+  throw new Error(
+    `Release requires a clean worktree. Commit or remove every tracked and untracked change first:\n  ${preview}${remainder}`,
+  );
+}
+
+export function assertCleanWorktree(): void {
+  let status: string;
+  try {
+    status = execFileSync(
+      'git',
+      ['status', '--porcelain=v1', '--untracked-files=all'],
+      { stdio: ['ignore', 'pipe', 'pipe'] },
+    ).toString();
+  } catch {
+    throw new Error('Release requires a readable Git worktree. `git status` failed.');
+  }
+  assertCleanStatus(status);
+}
+
+async function runReleaseChecks(target: PackageTarget): Promise<void> {
+  assertCleanWorktree();
+  await runCommand(
+    ['bunx', 'turbo', 'run', 'build', '--filter', target.name],
+    `Building ${target.name}`,
+  );
+  await runCommand(
+    ['bunx', 'turbo', 'run', 'test', '--filter', target.name],
+    `Testing ${target.name}`,
+  );
+  await runCommand(['bun', 'run', 'api:check'], 'Checking public API snapshots');
+  assertCleanWorktree();
+}
+
 async function packTarball(
   workspace: string,
   tarballDir: string,
@@ -478,6 +524,16 @@ async function main(): Promise<void> {
 
   const target = resolveTarget(options.packageRef!);
 
+  if (options.bump) {
+    assertCleanWorktree();
+    const version = await bumpPackageVersion(target.workspace, options.bump);
+    console.log(`\nVersion prepared: ${target.name}@${version}`);
+    console.log('Review and commit the version/changelog, then rerun without a bump flag.');
+    return;
+  }
+
+  await runReleaseChecks(target);
+
   if (options.packOnly) {
     if (!options.skipWhoami) {
       try {
@@ -487,12 +543,7 @@ async function main(): Promise<void> {
       }
     }
 
-    if (!options.noBuild) {
-      await runCommand(
-        ['bunx', 'turbo', 'run', 'build', '--filter', target.name],
-        `Building ${target.name}`,
-      );
-    }
+    assertCleanWorktree();
 
     const versionMap = await buildVersionMap();
     const version = versionMap.get(target.name);
@@ -520,11 +571,7 @@ async function main(): Promise<void> {
     await runCommand(['npm', 'whoami'], 'Checking npm authentication');
   }
 
-  if (options.bump) {
-    await bumpPackageVersion(target.workspace, options.bump);
-  }
-
-  // Rebuild version map after optional bump so it reflects the new version.
+  // The committed package version is the release version.
   const versionMap = await buildVersionMap();
   const version = versionMap.get(target.name);
 
@@ -532,9 +579,7 @@ async function main(): Promise<void> {
     throw new Error(`Could not determine version for ${target.name}`);
   }
 
-  if (!options.noBuild) {
-    await runCommand(['bunx', 'turbo', 'run', 'build', '--filter', target.name], `Building ${target.name}`);
-  }
+  assertCleanWorktree();
 
   if (!options.dryRun && !options.publishTarball) {
     await assertVersionNotPublished(target.name, version);

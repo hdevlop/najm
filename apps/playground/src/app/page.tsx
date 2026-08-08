@@ -63,6 +63,12 @@ export default function Home() {
               </div>
             )}
           />
+
+          <div className="mt-4 border-t border-border pt-4">
+            <Button variant="outline" className="w-full" asChild>
+              <Link href="/format-pagination">Formatting &amp; pagination example</Link>
+            </Button>
+          </div>
         </div>
       </div>
     </main>

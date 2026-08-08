@@ -81,11 +81,13 @@ export { useDebouncedValue } from "./hooks/useDebouncedValue";
 export { useLocalStorageState } from "./hooks/useLocalStorageState";
 export { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 export { useSelection } from "./hooks/useSelection";
+export { useMediaQuery, useCardViewport, useDesktopTableMode, DEFAULT_CARD_BREAKPOINT } from "./hooks/useMediaQuery";
 
 // UI Primitives
 export { Button, NButton, buttonVariants } from "./components/Button";
 export type { ButtonIcon, ButtonLoaderPosition, ButtonProps, ButtonRounded, ButtonSize, ButtonVariant, NButtonProps } from "./components/Button";
 export { Badge, NBadge, badgeColorVariants, badgeVariants } from "./components/Badge";
+export { colorTextClass, findStatusColor, NAJM_COLOR_TEXT_CLASSES, NAJM_STATUS_COLORS, resolveStatusColor, statusTextClass } from "./components/Badge";
 export type { BadgeColor, BadgeIcon, BadgeLook, BadgeProps, BadgeShape, BadgeSize, BadgeVariant, NBadgeLook, NBadgeProps } from "./components/Badge";
 export { NIndicator, Indicator, indicatorVariants } from "./components/Indicator";
 export type { IndicatorProps, IndicatorPosition, IndicatorResponsivePosition, IndicatorOverlay, IndicatorSize, IndicatorVertical, IndicatorHorizontal } from "./components/Indicator";
@@ -198,7 +200,8 @@ export { NForm, FormInput, AvatarFormInput, NFormSectionHeader, RepeatingFields,
 export type { FormInputBackground, FormInputProps, FormProps, AvatarFormInputProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta } from "./components/form";
 
 // Table
-export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses, buildPageItems, NTableDefaultsProvider, useNTableDefaults } from "./components/table";
+export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses, buildPageItems, NTableDefaultsProvider, useNTableDefaults, createCardPagination, buildCardPaginationLabels, DEFAULT_CARD_PAGINATION_KEY_PREFIX } from "./components/table";
+export type { ListStrategy, ResolvedListMode, CardPaginationState, CardPaginationLabels, CardPaginationKey } from "./components/table";
 export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp, NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels, NTablePageItem, NTableDefaults } from "./components/table";
 export type { NDataCardShellProps, NDataCardShellActions } from "./components/table";
 export type { NTableCardRootProps, NFileBrowserProps, NFileBrowserCardProps, NFileBrowserRenderThumbProps, FileNode, FileBrowserMode, BuildDefaultFileColumnsOptions } from "./components/table";
@@ -207,6 +210,53 @@ export type { NTableCardRootProps, NFileBrowserProps, NFileBrowserCardProps, NFi
 export { cn } from "./lib/cn";
 export type { SelectItemType as SelectItemDataType, DialogSize, DialogWidth, DialogHeight, RenderSlot } from "./lib/types";
 export { resolveSlot } from "./lib/slots";
+export { isPlaceholderAvatar, resolveAvatarSrc } from "./lib/avatar";
+
+// Offset pagination — the fetching half of the page controls in ./components/table.
+export {
+  fetchOffsetPage,
+  createOffsetPagination,
+  getPageIndex,
+  cleanQuery,
+  DEFAULT_PAGE_SIZE,
+  DEFAULT_MAX_PAGE_SIZE,
+} from "./lib/pagination";
+export type {
+  ApiPage,
+  OffsetPagination,
+  OffsetPage,
+  OffsetPageFetcher,
+  OffsetPageOptions,
+  QueryValue,
+} from "./lib/pagination";
+
+// Formatting — locale- and time-zone-aware, bound to the preferences provider.
+// The provider comes from its own module rather than the ./format barrel: that
+// barrel is the server-safe `najm-kit/format` entry and deliberately excludes
+// anything calling createContext.
+export {
+  NajmFormatProvider,
+  useNajmFormat,
+  useNajmFormatContext,
+} from "./format/provider";
+export type {
+  NajmFormatContextValue,
+  NajmFormatProviderProps,
+} from "./format/provider";
+export {
+  formatCurrency,
+  formatNumber,
+  formatPercent,
+  formatDate,
+  formatDateTime,
+  formatTime,
+  formatRelativeTime,
+  humanizeToken,
+  localDateInput,
+  slugify,
+  DEFAULT_PLACEHOLDER,
+} from "./format";
+export type { NajmFormatConfig, SlugifyOptions } from "./format";
 
 // Dialog
 export { NDialog, NDialogDescription, NDialogHeader, NDialogPrimaryButton, NDialogSecondaryButton, NMultiDialog, dialogVariants, NConfirmDialog, NDeleteDialog, NDeleteDialogContent, useDialog, useDialogStore, createDialogStore, NSheet, NPortalScopeProvider, useNPortalScope } from "./components/Dialog";

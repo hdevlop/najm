@@ -1,5 +1,7 @@
 import {
   authSchema,
+  credentialSetupRequirementsTable,
+  credentialSetupSessionsTable,
   oauthAccountsTable,
   permissionsTable,
   rolePermissionsTable,
@@ -28,10 +30,14 @@ import { cartItemsTable } from '../modules/cart/CartSchema';
 import { orderItemsTable, ordersTable } from '../modules/order/OrderSchema';
 import { productsTable } from '../modules/product/ProductSchema';
 
+// Named here as well as spread into `schema` below: drizzle-kit builds
+// migrations from this file's named table exports, not from the aggregate.
 export {
   aiSettingsTable,
   cartItemsTable,
   chatSessionsTable,
+  credentialSetupRequirementsTable,
+  credentialSetupSessionsTable,
   orderItemsTable,
   ordersTable,
   oauthAccountsTable,

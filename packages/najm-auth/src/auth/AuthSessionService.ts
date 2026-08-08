@@ -3,6 +3,9 @@ import { Err } from 'najm-core';
 import { CookieManager } from './CookieManager';
 import { TokenService } from '../tokens/TokenService';
 import { UserService, type SanitizedUser } from '../users/UserService';
+import { CredentialSetupRequirementService } from '../credentialSetup/CredentialSetupRequirementService';
+import { CREDENTIAL_SETUP_CODES, credentialSetupError } from '../credentialSetup/errors';
+import { PASSWORD_SETUP_PURPOSE } from '../credentialSetup/types';
 import type { TokenPair } from '../types';
 
 @Injectable()
@@ -11,11 +14,23 @@ export class AuthSessionService {
     private tokenService: TokenService,
     private userService: UserService,
     private cookieManager: CookieManager,
+    private credentialSetupRequirements?: CredentialSetupRequirementService,
   ) { }
 
   async establish(user: SanitizedUser): Promise<TokenPair & { user: SanitizedUser }> {
     if (user.status !== 'active') {
       Err('oauth_account_inactive', 403);
+    }
+
+    // Central chokepoint: every path that would mint a normal session goes
+    // through here, so one check covers password login, OAuth, and anything an
+    // application adds later.
+    if (await this.credentialSetupRequirements?.isRequired(user.id, PASSWORD_SETUP_PURPOSE)) {
+      credentialSetupError(
+        CREDENTIAL_SETUP_CODES.REQUIRED,
+        'Credential setup is required before a session can be established',
+        403,
+      );
     }
 
     await this.tokenService.deleteExpiredSessions();

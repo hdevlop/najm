@@ -467,7 +467,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.7.0",
+      "version": "2.7.1",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",
@@ -514,6 +514,7 @@
         "@hookform/resolvers": "^5",
         "@lezer/highlight": "^1.2.0",
         "@tailwindcss/postcss": "^4",
+        "@tanstack/react-query": "^5",
         "@testing-library/react": "^16",
         "@testing-library/user-event": "^14.6.1",
         "@types/culori": "^4.0.1",
@@ -541,6 +542,7 @@
         "@codemirror/view": "^6.42.0",
         "@hookform/resolvers": "^5",
         "@lezer/highlight": "^1.2.0",
+        "@tanstack/react-query": "^5",
         "@uiw/react-codemirror": "^4.25.0",
         "najm-i18n": ">=2",
         "next": ">=14",
@@ -557,6 +559,7 @@
         "@codemirror/theme-one-dark",
         "@codemirror/view",
         "@lezer/highlight",
+        "@tanstack/react-query",
         "@uiw/react-codemirror",
         "najm-i18n",
         "next",

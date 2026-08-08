@@ -21,6 +21,10 @@ export default {
       pageOf: 'Page {{page}} of {{pageCount}}',
       pageOfUnknown: 'Page {{page}}',
       rowsSelected: '{{selected}} of {{total}} row(s) selected.',
+      // Card continuation, read by buildCardPaginationLabels off the same prefix.
+      loadMoreError: 'Could not load more rows.',
+      retryLoadMore: 'Retry',
+      itemsLoaded: '{{count}} rows loaded',
     },
   },
   auth: {

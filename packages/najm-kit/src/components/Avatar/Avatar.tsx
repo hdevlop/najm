@@ -1,6 +1,7 @@
 import React from "react";
 import { Avatar as AvatarPrimitive, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { cn } from "../../lib/cn";
+import { resolveAvatarSrc } from "../../lib/avatar";
 
 const AVATAR_COLORS: [string, string][] = [
   ["#3b82f6", "#1d4ed8"],
@@ -82,10 +83,6 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function shouldUseSrc(src?: string | null): src is string {
-  return Boolean(src && src !== "noavatar.png");
-}
-
 function withVersion(src: string, version?: string | number | null): string {
   if (!version || src.startsWith("data:") || src.startsWith("blob:")) return src;
   const separator = src.includes("?") ? "&" : "?";
@@ -109,7 +106,8 @@ export function NAvatar({
 }: AvatarProps) {
   const label = title || fallback || "";
   const imageVersion = srcVersion ?? version;
-  const imageSrc = shouldUseSrc(src) ? withVersion(src, imageVersion) : fallbackSrc;
+  const resolvedSrc = resolveAvatarSrc(src, undefined);
+  const imageSrc = resolvedSrc ? withVersion(resolvedSrc, imageVersion) : fallbackSrc;
   const { bg, text } = nameToColor(label);
   const hasText = Boolean(title || subtitle || meta);
   const fallbackText = fallback && !title ? fallback : label ? getInitials(label) : "?";

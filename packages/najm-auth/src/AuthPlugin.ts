@@ -24,6 +24,13 @@ import { email } from 'najm-email';
 import { AUTH_LOCALES } from './locales';
 import { OAUTH_MODULE } from './oauth';
 import { CREDENTIAL_SETUP_MODULE } from './credentialSetup';
+import {
+  DEFAULT_CREDENTIAL_SETUP_COOKIE_NAME,
+  DEFAULT_CREDENTIAL_SETUP_TTL_MS,
+} from './credentialSetup/CredentialSetupService';
+import { defaultCredentialSetupPasswordSchema } from './credentialSetup/CredentialSetupDto';
+import type { ResolvedCredentialSetupConfig } from './credentialSetup/types';
+import { createIdentityResolver } from './identity/resolver';
 
 const DEFAULT_JWT = {
   accessSecret: process.env.JWT_ACCESS_SECRET || '',
@@ -88,6 +95,24 @@ const resolveGoogleConfig = (config?: AuthPluginConfig) => {
   };
 };
 
+const resolveCredentialSetupConfig = (
+  config?: AuthPluginConfig,
+): ResolvedCredentialSetupConfig => {
+  const password = config?.credentialSetup?.password ?? {};
+  const ttlMs = password.ttlMs ?? DEFAULT_CREDENTIAL_SETUP_TTL_MS;
+  if (!Number.isInteger(ttlMs) || ttlMs < 1_000 || ttlMs > 24 * 60 * 60 * 1_000) {
+    throw new Error('auth.credentialSetup.password.ttlMs must be an integer between 1000 and 86400000');
+  }
+
+  return {
+    password: {
+      ttlMs,
+      cookieName: password.cookieName?.trim() || DEFAULT_CREDENTIAL_SETUP_COOKIE_NAME,
+      passwordSchema: password.passwordSchema ?? defaultCredentialSetupPasswordSchema,
+    },
+  };
+};
+
 export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
   const bcryptRounds = config?.bcryptRounds ?? 10;
   if (!Number.isInteger(bcryptRounds) || bcryptRounds < 4 || bcryptRounds > 31) {
@@ -112,6 +137,9 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
       duration: config?.lockout?.duration ?? '15m',
     },
     bcryptRounds,
+    identity: {
+      resolve: createIdentityResolver(config?.identity),
+    },
     session: {
       name: config?.session?.name ?? 'najm.session',
       maxAge: config?.session?.maxAge ?? 300,
@@ -119,6 +147,7 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
       // CookieManager falls back to jwt.accessSecret when this is undefined.
       secret: config?.session?.secret ?? process.env.NAJM_SESSION_SECRET,
     },
+    credentialSetup: resolveCredentialSetupConfig(config),
     oauth: {
       google: resolveGoogleConfig(config),
     },
@@ -142,6 +171,15 @@ export const selectAuthSchema = (config?: AuthPluginConfig): AuthSchema => {
   if (config?.schema) {
     if (config.oauth?.google && !config.schema.oauthAccounts) {
       throw new Error('auth.schema.oauthAccounts is required when Google OAuth is enabled');
+    }
+    // The credential-setup flow is always mounted, so its two tables are part
+    // of the contract rather than an opt-in. Failing at startup beats failing
+    // at the first provisioned user's login.
+    if (!config.schema.credentialSetupSessions) {
+      throw new Error('auth.schema.credentialSetupSessions is required — re-export it from najm-auth/pg or najm-auth/sqlite');
+    }
+    if (!config.schema.credentialSetupRequirements) {
+      throw new Error('auth.schema.credentialSetupRequirements is required — re-export it from najm-auth/pg or najm-auth/sqlite');
     }
     return config.schema;
   }

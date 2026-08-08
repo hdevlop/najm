@@ -10,6 +10,7 @@ import { AuthProviderWrapper } from '@/providers/AuthProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { UI_THEME_COOKIE } from '@/app/api/ui-theme/route';
 import { UI_LANGUAGE_COOKIE } from '@/app/api/ui-language/route';
+import { UI_TIME_ZONE_COOKIE } from '@/app/api/ui-timezone/route';
 
 export const metadata: Metadata = {
   title: 'Najm Playground',
@@ -46,6 +47,9 @@ export default async function RootLayout({
   const language = (
     cookieStore.get(UI_LANGUAGE_COOKIE)?.value === 'fr' ? 'fr' : 'en'
   ) satisfies Locale;
+  // Seeds the provider so a reload renders dates in the chosen zone rather than
+  // falling back to UTC. The provider re-validates it.
+  const timeZone = cookieStore.get(UI_TIME_ZONE_COOKIE)?.value;
 
   return (
     <html
@@ -60,8 +64,11 @@ export default async function RootLayout({
               translations={translations}
               initialLanguage={language}
               initialTheme={theme}
+              initialTimeZone={timeZone}
               initialDesign={DESIGN}
               appName="Najm Playground"
+              currency="MAD"
+              locales={{ en: 'en-MA', fr: 'fr-MA' }}
             >
               {children}
             </NajmAppProvider>

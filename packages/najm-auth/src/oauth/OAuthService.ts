@@ -1,6 +1,9 @@
 import { Inject, Injectable, Log, type ILogger } from 'najm-core';
 import { AUTH_CONFIG } from '../auth.tokens';
 import { AuthSessionService } from '../auth/AuthSessionService';
+import { CredentialSetupRequirementService } from '../credentialSetup/CredentialSetupRequirementService';
+import { CREDENTIAL_SETUP_CODES } from '../credentialSetup/errors';
+import { PASSWORD_SETUP_PURPOSE } from '../credentialSetup/types';
 import { TokenService } from '../tokens/TokenService';
 import type { AuthConfig } from '../types';
 import { UserService } from '../users/UserService';
@@ -22,6 +25,7 @@ export class OAuthService {
     private sessions: AuthSessionService,
     private tokens: TokenService,
     private users: UserService,
+    private requirements?: CredentialSetupRequirementService,
   ) { }
 
   startGoogleLogin(returnTo?: string): string {
@@ -68,6 +72,13 @@ export class OAuthService {
         await this.accounts.linkUser(attempt.userId, identity);
       } else {
         const user = await this.accounts.resolveForLogin(identity);
+        // Checked here as well as inside establish() so the browser gets the
+        // stable redirect code instead of a generic provider error. Without
+        // it, verified-email auto-linking would be a way around first-login
+        // password replacement.
+        if (await this.requirements?.isRequired(user.id, PASSWORD_SETUP_PURPOSE)) {
+          throw new OAuthFlowError(CREDENTIAL_SETUP_CODES.OAUTH_BLOCKED, 403);
+        }
         await this.sessions.establish(user);
       }
 

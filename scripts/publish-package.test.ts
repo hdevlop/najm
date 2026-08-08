@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  assertCleanStatus,
   bumpVersion,
   parseArgs,
   readPackingCommit,
@@ -17,7 +18,6 @@ describe("parseArgs", () => {
     expect(opts.packageRef).toBe("najm-kit");
     expect(opts.dryRun).toBe(false);
     expect(opts.skipWhoami).toBe(false);
-    expect(opts.noBuild).toBe(false);
     expect(opts.packOnly).toBe(false);
     expect(opts.tarballDir).toBe("dist-publish");
   });
@@ -42,15 +42,14 @@ describe("parseArgs", () => {
     expect(opts.tarballDir).toBe("artifacts");
   });
 
-  test("combines pack and version-bump flags", () => {
-    const opts = parseArgs(["najm-kit", "--pack-only", "--patch", "--no-build"]);
-    expect(opts.packOnly).toBe(true);
-    expect(opts.bump).toBe("patch");
-    expect(opts.noBuild).toBe(true);
+  test("keeps version preparation separate from packing", () => {
+    expect(() => parseArgs(["najm-kit", "--pack-only", "--patch"]))
+      .toThrow(/cannot be combined/);
   });
 
   test("rejects unknown arguments", () => {
     expect(() => parseArgs(["najm-kit", "--bogus"])).toThrow(/Unknown argument/);
+    expect(() => parseArgs(["najm-kit", "--no-build"])).toThrow(/Unknown argument/);
   });
 
   test("requires a package reference when not verifying", () => {
@@ -115,6 +114,17 @@ describe("bumpVersion", () => {
 
   test("rejects non-semver", () => {
     expect(() => bumpVersion("abc", "patch")).toThrow(/semver/);
+  });
+});
+
+describe("release worktree gate", () => {
+  test("accepts an empty porcelain status", () => {
+    expect(() => assertCleanStatus("\n")).not.toThrow();
+  });
+
+  test("rejects tracked and untracked release inputs", () => {
+    expect(() => assertCleanStatus(" M packages/najm-auth/src/index.ts\n?? docs/release.md\n"))
+      .toThrow(/clean worktree/);
   });
 });
 

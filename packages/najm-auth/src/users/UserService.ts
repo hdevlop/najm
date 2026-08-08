@@ -9,10 +9,13 @@ import { RoleValidator } from '../roles/RoleValidator';
 import { EncryptionService } from '../auth/EncryptionService';
 import { nanoid } from 'nanoid';
 import { clean } from '../shared';
+import { normalizeAuthIdentifier } from '../identity/resolver';
 import { Err } from 'najm-core';
 import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig } from '../types';
 import type { User } from '../schema/pg';
+
+const E164_PHONE = /^\+[1-9]\d{7,14}$/;
 
 export type SanitizedUser = Omit<User, 'password' | 'failedLoginAttempts' | 'lockoutUntil'> & {
   role?: string | null;
@@ -116,21 +119,44 @@ export class UserService {
   }
 
   @Transaction()
-  async create(data: Record<string, any>): Promise<SanitizedUser> {
-    const { id, email, name, image, emailVerified, password, roleId, role } = data;
+  async create(
+    data: Record<string, any>,
+    options: { validatePasswordStrength?: boolean } = {},
+  ): Promise<SanitizedUser> {
+    const { id, email, name, image, emailVerified, password, roleId, role, phone } = data;
 
     // Require explicit password - no defaults
     if (!password || typeof password !== 'string' || password.trim().length === 0) {
       Err('Password is required');
     }
 
-    // Validate password strength
-    this.userValidator.validatePasswordStrength(password);
+    // System-issued temporary credentials skip complexity, not bcrypt's hard
+    // 72-byte significance boundary.
+    this.userValidator.validatePasswordLength(password);
+
+    // Provisioning with a temporary credential opts out: the value is issued by
+    // the system, replaced at first login, and must not be forced to look like
+    // a password the user chose.
+    if (options.validatePasswordStrength !== false) {
+      this.userValidator.validatePasswordStrength(password);
+    }
 
     let userId = id || nanoid(10);
 
     await this.userValidator.checkEmailUnique(data.email);
     await this.userValidator.checkUserIdIsUnique(userId);
+
+    // Stored in the same normalized form login lookup resolves to, or phone
+    // login would never find the row it just created.
+    const normalizedPhone = phone == null
+      ? null
+      : (this.authConfig.identity?.resolve(phone) ?? normalizeAuthIdentifier(phone));
+    if (phone != null && (!normalizedPhone || !E164_PHONE.test(normalizedPhone))) {
+      Err('A valid phone number is required', 400);
+    }
+    if (normalizedPhone) {
+      await this.userValidator.checkPhoneUnique(normalizedPhone, userId);
+    }
 
     const hashedPassword = await this.encryptionService.hashPassword(password);
     const resolvedRoleId = await this.resolveUserRole(roleId, role);
@@ -143,6 +169,7 @@ export class UserService {
       password: hashedPassword,
       roleId: resolvedRoleId,
       emailVerified,
+      ...(normalizedPhone ? { phone: normalizedPhone } : {}),
       status: (data.status as 'active' | 'inactive' | 'pending') ?? this.authConfig.registrationMode ?? 'active',
     };
 

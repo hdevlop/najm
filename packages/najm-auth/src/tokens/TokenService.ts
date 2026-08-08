@@ -10,6 +10,8 @@ import timestring from 'timestring';
 import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig, JwtPayload } from '../types';
 import { CookieManager } from '../auth/CookieManager';
+import { CredentialSetupRequirementRepository } from '../credentialSetup/CredentialSetupRequirementRepository';
+import { PASSWORD_SETUP_PURPOSE } from '../credentialSetup/types';
 import { Err } from 'najm-core';
 
 @Injectable()
@@ -20,7 +22,10 @@ export class TokenService {
   constructor(
     private tokenRepository: TokenRepository,
     private cookieManager: CookieManager,
-    private cache: CacheService
+    private cache: CacheService,
+    // The repository, not the service: CredentialSetupRequirementService
+    // depends on TokenService, and this side of the pair only needs a read.
+    private credentialSetupRequirements?: CredentialSetupRequirementRepository,
   ) { }
 
   /**
@@ -455,6 +460,18 @@ export class TokenService {
       await this.revokeFamily(tokenFamily);
       Err(this.t('errors.refreshTokenInvalid'), 401);
     }
+
+    // Covers refresh and signed-session recovery alike: a requirement marked
+    // after a session was minted must end that session, not ride along on it.
+    const requirement = await this.credentialSetupRequirements
+      ?.find(userId, PASSWORD_SETUP_PURPOSE);
+    if (requirement?.required) {
+      await this.revokeFamily(tokenFamily);
+      this.cookieManager.clearRefreshToken();
+      this.cookieManager.clearSessionCookie();
+      Err(this.t('errors.credentialSetupRequired'), 403);
+    }
+
     return user;
   }
 

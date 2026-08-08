@@ -5,6 +5,7 @@ import { AuthService } from './AuthService';
 import { AuthGuard } from './AuthGuard';
 import { AuthResolver } from './AuthResolver';
 import { AuthSessionService } from './AuthSessionService';
+import { AuthIdentityContextService } from './AuthIdentityContextService';
 
 export * from './EncryptionService';
 export * from './CookieManager';
@@ -25,4 +26,5 @@ export const AUTH_MODULE = [
   AuthGuard,
   AuthController,
   AuthResolver,
+  AuthIdentityContextService,
 ] as const;

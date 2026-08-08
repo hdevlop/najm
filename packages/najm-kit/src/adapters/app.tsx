@@ -6,6 +6,7 @@ import type { Translations } from 'najm-i18n';
 
 import { NBrandingStateProvider } from '../components/branding';
 import type { NBrandingInput } from '../components/branding';
+import { NajmFormatProvider } from '../format/provider';
 import { NajmNextUIProvider } from './next';
 import type { NajmNextUIProviderProps } from './next';
 
@@ -45,6 +46,31 @@ export interface NajmAppProviderProps
    * branding endpoint returns. An `appName` inside `initialBranding` wins.
    */
   appName?: string;
+
+  /**
+   * ISO 4217 code for `useNajmFormat().money`, e.g. `"MAD"`.
+   *
+   * Omitted means the application does not format currency. It is not defaulted
+   * to anything: rendering an amount in the wrong currency is worse than the
+   * error thrown for the missing code.
+   */
+  currency?: string;
+  /**
+   * Maps a `najm-i18n` language onto the BCP 47 tag used for formatting, e.g.
+   * `{ en: "en-MA", fr: "fr-MA" }`.
+   *
+   * The distinction matters because language and region are separate choices:
+   * `fr` alone formats dates and separators the French way, which is not how
+   * they are written in Morocco. Unmapped languages are used as-is.
+   */
+  locales?: Record<string, string>;
+  /**
+   * Fixes the formatting locale, ignoring the active language. Escape hatch for
+   * an application whose language and number formats are genuinely independent.
+   */
+  locale?: string;
+  /** Rendered for absent values. Defaults to an em dash. */
+  formatPlaceholder?: string;
 
   /**
    * Controlled marks. Prefer `initialBranding` — passing this means the
@@ -87,9 +113,14 @@ function NajmAppUI({
   children,
   branding,
   initialBranding,
+  currency,
+  locale,
+  locales,
+  formatPlaceholder,
   ...props
 }: InnerProps) {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
+  const resolved = locale ?? locales?.[language] ?? language;
 
   return (
     <NajmNextUIProvider t={t} {...props}>
@@ -97,7 +128,13 @@ function NajmAppUI({
         branding={branding}
         initialBranding={initialBranding}
       >
-        {children}
+        <NajmFormatProvider
+          locale={resolved}
+          currency={currency}
+          placeholder={formatPlaceholder}
+        >
+          {children}
+        </NajmFormatProvider>
       </NBrandingStateProvider>
     </NajmNextUIProvider>
   );
@@ -107,6 +144,10 @@ function NajmAppNoI18n({
   children,
   branding,
   initialBranding,
+  currency,
+  locale,
+  locales,
+  formatPlaceholder,
   ...props
 }: InnerProps) {
   return (
@@ -115,7 +156,13 @@ function NajmAppNoI18n({
         branding={branding}
         initialBranding={initialBranding}
       >
-        {children}
+        <NajmFormatProvider
+          locale={locale ?? 'en'}
+          currency={currency}
+          placeholder={formatPlaceholder}
+        >
+          {children}
+        </NajmFormatProvider>
       </NBrandingStateProvider>
     </NajmNextUIProvider>
   );

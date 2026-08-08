@@ -14,3 +14,4 @@ export { TableStoreContext, useTableStore } from "./TableContext";
 export { createTableStore, type TableState, type TableStore, type NTableClassNames as StoreClassNames, type ViewMode, type BuiltInViewMode, type CustomModeRenderers } from "./store";
 export { useStoreSync, useDynamicPageSize, useTable, useTableKeyboard } from "./hooks";
 export { filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses } from "./responsiveColumns";
+export { createCardPagination, buildCardPaginationLabels, DEFAULT_CARD_PAGINATION_KEY_PREFIX, type ListStrategy, type ResolvedListMode, type CardPaginationState, type CardPaginationLabels, type CardPaginationKey } from "./cardPagination";

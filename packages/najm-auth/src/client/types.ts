@@ -60,6 +60,38 @@ export interface TokenPair {
 }
 
 /**
+ * Login credentials. `identifier` accepts an email address or a phone number;
+ * `email` stays supported for existing callers.
+ */
+export interface LoginCredentials {
+  identifier?: string;
+  email?: string;
+  password: string;
+  /** Persist the auth cookies past the browser closing. */
+  rememberMe?: boolean;
+  [key: string]: unknown;
+}
+
+/** The account must replace its credential before it gets a session. */
+export interface CredentialSetupPending {
+  nextStep: 'credential_setup';
+  setupRequired: true;
+  purpose: string;
+  expiresAt: string;
+}
+
+export interface AuthenticatedLogin {
+  nextStep: 'authenticated';
+  user: AuthUser;
+}
+
+/**
+ * Login answer. Branch on `nextStep`: `credential_setup` carries no tokens and
+ * leaves the client unauthenticated.
+ */
+export type LoginResult = AuthenticatedLogin | CredentialSetupPending;
+
+/**
  * Retry configuration
  */
 export interface RetryConfig {

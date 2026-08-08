@@ -2,25 +2,30 @@ import { createHash, randomBytes } from 'node:crypto';
 import { CookieService } from 'najm-cookies';
 import { Err, Injectable } from 'najm-core';
 import { Transaction } from 'najm-database';
+import { I18n, type TFn } from 'najm-i18n';
 import { CookieManager } from '../auth/CookieManager';
 import { TokenService } from '../tokens/TokenService';
 import { CredentialSetupRepository } from './CredentialSetupRepository';
+import { CREDENTIAL_SETUP_CODES, credentialSetupError } from './errors';
+import { normalizeSetupPurpose } from './purpose';
 import type {
   CredentialSetupOptions,
   CredentialSetupSessionInfo,
   CredentialSetupStarted,
 } from './types';
 
-const DEFAULT_COOKIE_NAME = 'najm.credential-setup';
-const DEFAULT_TTL_MS = 10 * 60 * 1_000;
+export const DEFAULT_CREDENTIAL_SETUP_COOKIE_NAME = 'najm.credential-setup';
+export const DEFAULT_CREDENTIAL_SETUP_TTL_MS = 10 * 60 * 1_000;
+
 const MAX_TTL_MS = 24 * 60 * 60 * 1_000;
-const PURPOSE_PATTERN = /^[a-z0-9](?:[a-z0-9:_-]{0,62}[a-z0-9])?$/;
 const COOKIE_NAME_PATTERN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/;
 
 type ResolvedCredentialSetupOptions = Required<CredentialSetupOptions>;
 
 @Injectable()
 export class CredentialSetupService {
+  @I18n('auth') private t?: TFn;
+
   constructor(
     private readonly repository: CredentialSetupRepository,
     private readonly tokens: TokenService,
@@ -59,7 +64,7 @@ export class CredentialSetupService {
   async require(options: CredentialSetupOptions): Promise<CredentialSetupSessionInfo> {
     const resolved = this.resolveOptions(options);
     const token = this.cookies.get(resolved.cookieName);
-    if (!token) Err('Credential setup session is required', 401);
+    if (!token) this.sessionRequired();
 
     const session = await this.repository.findActive(
       this.hashToken(token),
@@ -67,7 +72,7 @@ export class CredentialSetupService {
     );
     if (!session) {
       this.clearCookie(resolved);
-      Err('Credential setup session is invalid or expired', 401);
+      this.sessionInvalid();
     }
     return session;
   }
@@ -84,7 +89,7 @@ export class CredentialSetupService {
   ): Promise<T> {
     const resolved = this.resolveOptions(options);
     const token = this.cookies.get(resolved.cookieName);
-    if (!token) Err('Credential setup session is required', 401);
+    if (!token) this.sessionRequired();
 
     const session = await this.repository.consume(
       this.hashToken(token),
@@ -92,7 +97,7 @@ export class CredentialSetupService {
     );
     if (!session) {
       this.clearCookie(resolved);
-      Err('Credential setup session is invalid or expired', 401);
+      this.sessionInvalid();
     }
 
     const result = await complete(session);
@@ -115,15 +120,37 @@ export class CredentialSetupService {
     await this.repository.deleteExpired();
   }
 
+  /** Tolerates direct construction outside DI, where `t` is not injected. */
+  private message(key: string, fallback: string): string {
+    try {
+      return this.t?.(key) || fallback;
+    } catch {
+      return fallback;
+    }
+  }
+
+  private sessionRequired(): never {
+    return credentialSetupError(
+      CREDENTIAL_SETUP_CODES.SESSION_REQUIRED,
+      this.message('errors.credentialSetupSessionRequired', 'Credential setup session is required'),
+      401,
+    );
+  }
+
+  private sessionInvalid(): never {
+    return credentialSetupError(
+      CREDENTIAL_SETUP_CODES.SESSION_INVALID,
+      this.message('errors.credentialSetupSessionInvalid', 'Credential setup session is invalid or expired'),
+      401,
+    );
+  }
+
   private resolveOptions(options: CredentialSetupOptions): ResolvedCredentialSetupOptions {
-    const purpose = options.purpose?.trim().toLowerCase();
-    const cookieName = options.cookieName?.trim() || DEFAULT_COOKIE_NAME;
-    const ttlMs = options.ttlMs ?? DEFAULT_TTL_MS;
+    const purpose = normalizeSetupPurpose(options.purpose);
+    const cookieName = options.cookieName?.trim() || DEFAULT_CREDENTIAL_SETUP_COOKIE_NAME;
+    const ttlMs = options.ttlMs ?? DEFAULT_CREDENTIAL_SETUP_TTL_MS;
     const cookiePath = options.cookiePath ?? '/';
 
-    if (!purpose || !PURPOSE_PATTERN.test(purpose)) {
-      Err('Credential setup purpose must be 1-64 lowercase letters, numbers, colon, underscore, or hyphen', 500);
-    }
     if (!COOKIE_NAME_PATTERN.test(cookieName) || cookieName.length > 128) {
       Err('Credential setup cookie name is invalid', 500);
     }

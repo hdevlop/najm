@@ -7,7 +7,9 @@ export const authConfig: DefineAuthConfig = {
   tabSync: true,
   loginRoute: '/login',
   afterLoginRoute: '/dashboard',
-  publicRoutes: ['/', '/login', '/register', '/forgot-password', '/reset-password', '/auth/oauth/callback'],
+  // `/change-password` is public on purpose: a user in credential setup holds
+  // only the opaque setup cookie, never a session.
+  publicRoutes: ['/', '/login', '/register', '/forgot-password', '/reset-password', '/change-password', '/format-pagination', '/auth/oauth/callback'],
   protectedRoutes: ['/dashboard/:path*', '/account/:path*', '/admin/:path*'],
   roleRoutes: {
     '/admin/:path*': ['admin'],

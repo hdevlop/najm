@@ -19,6 +19,12 @@ export { withAuth, type WithAuthOptions, type WithAuthProps } from './withAuth';
 
 // Unified Next.js surface
 export { defineAuth, type DefineAuthConfig, type AuthKit } from './defineAuth';
+export { getSafeRedirectPath, type SafeRedirectOptions } from './safeRedirect';
+export {
+  withAuthCookiePersistence,
+  makeSessionCookie,
+  type AuthCookiePersistenceOptions,
+} from './authCookiePersistence';
 export type {
   SessionRecoveryErrorDetails,
   SessionRecoveryFailure,

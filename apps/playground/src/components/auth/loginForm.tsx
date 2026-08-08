@@ -12,8 +12,13 @@ import { Input } from '@/components/ui/input';
 import { GoogleLoginButton, useLogin } from 'najm-auth/client/react';
 
 const schema = z.object({
-  email: z.string().email('Enter a valid email'),
-  password: z.string().min(8, 'At least 8 characters'),
+  // `identifier` accepts an email or a phone number — the server resolves both
+  // through the configured identity preset.
+  identifier: z.string().trim().min(1, 'Enter your email or phone'),
+  // Deliberately not the creation policy: login verifies an existing hash, and
+  // a provisioned account signs in with a temporary credential.
+  password: z.string().min(1, 'Enter your password'),
+  rememberMe: z.boolean(),
 });
 
 type Values = z.infer<typeof schema>;
@@ -45,19 +50,27 @@ export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }
   const router = useRouter();
 
   const { login, isLoading, error } = useLogin({
-    onSuccess: () => router.replace('/dashboard'),
+    // Not `onSuccess`: that also fires for a pending credential setup, which
+    // carries no session to send to the dashboard.
+    onAuthenticated: () => router.replace('/dashboard'),
+    onCredentialSetup: () => router.replace('/change-password'),
   });
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
     defaultValues: {
-      email: '',
+      identifier: '',
       password: '',
+      rememberMe: false,
     },
   });
 
   const onSubmit = (values: Values) => {
-    login({ email: values.email, password: values.password });
+    login({
+      identifier: values.identifier ?? '',
+      password: values.password ?? '',
+      rememberMe: values.rememberMe ?? false,
+    });
   };
 
   const errorMsg = error ? error.message : null;
@@ -68,12 +81,12 @@ export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }
         <form className="space-y-4" onSubmit={form.handleSubmit(onSubmit)} noValidate>
           <FormField
             control={form.control}
-            name="email"
+            name="identifier"
             render={({ field }) => (
               <FormItem>
-                <FormLabel>Email</FormLabel>
+                <FormLabel>Email or phone</FormLabel>
                 <FormControl>
-                  <Input type="email" autoComplete="email" {...field} />
+                  <Input type="text" autoComplete="username" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>
@@ -94,7 +107,15 @@ export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }
             )}
           />
 
-          <div className="text-right">
+          <div className="flex items-center justify-between">
+            <label className="flex items-center gap-2 text-xs text-muted-foreground">
+              <input
+                type="checkbox"
+                className="h-3.5 w-3.5 accent-primary"
+                {...form.register('rememberMe')}
+              />
+              Remember me
+            </label>
             <Link
               href="/forgot-password"
               className="text-xs text-muted-foreground hover:text-foreground hover:underline"

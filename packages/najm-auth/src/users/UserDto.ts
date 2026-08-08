@@ -58,16 +58,28 @@ export const userIdParam = z.object({
 
 const identifierField = z.string().trim().min(1).max(254);
 
+// Login verifies an existing hash — it must not re-apply creation-time strength
+// rules. A password set before the policy changed, or a temporary credential
+// issued by provisioning, would otherwise be rejected at the edge before
+// authentication ever runs. Only the bounds that make a comparison meaningful
+// are enforced here.
+const loginCredentialField = z
+  .string()
+  .min(1, 'Password is required')
+  .refine((v) => new TextEncoder().encode(v).length <= 72, 'Password must be at most 72 bytes');
+
 // `email` remains supported for existing consumers. New consumers may submit
 // `identifier` with either an email address or an international phone number.
 export const loginDto = z.union([
   z.object({
     identifier: identifierField,
-    password: passwordField,
+    password: loginCredentialField,
+    rememberMe: z.boolean().optional(),
   }),
   z.object({
     email: emailField,
-    password: passwordField,
+    password: loginCredentialField,
+    rememberMe: z.boolean().optional(),
   }),
 ]);
 

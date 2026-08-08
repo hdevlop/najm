@@ -9,6 +9,8 @@ Production-ready authentication and authorization library for the Najm framework
 - ✅ Permission-based access control (PBAC) with wildcards
 - ✅ Row-level ownership scoping for multi-tenant apps
 - ✅ Built-in password reset flow with email support
+- ✅ Forced first-login credential setup for provisioned accounts
+- ✅ Country identity presets so `06…` and `+2126…` resolve to one account
 - ✅ Multi-dialect support (PostgreSQL, SQLite)
 - ✅ Type-safe decorators with TypeScript
 - ✅ Rate limiting on auth endpoints
@@ -134,6 +136,21 @@ auth({
   // Frontend
   frontendUrl?: string                     // Password reset link base URL
 
+  // Login identifier normalization (see "Identity presets")
+  identity?: {
+    preset?: 'ma' | 'tn' | IdentityPreset | null   // Default: 'ma'
+    extend?: IdentityNormalizer[]                  // Runs before the preset
+  }
+
+  // Credential setup policy overrides (the flow itself is always on)
+  credentialSetup?: {
+    password?: {
+      passwordSchema?: ZodType<string>     // Default: 8-72 bytes, a letter and a digit
+      ttlMs?: number                       // Default: 600000 (10 minutes)
+      cookieName?: string                  // Default: 'najm.credential-setup'
+    }
+  }
+
   // Optional Google OpenID Connect
   oauth?: {
     google?: true | {
@@ -175,6 +192,89 @@ All routes are prefixed with `/auth` and auto-registered by the plugin.
 | `GET` | `/auth/oauth/google/start` | Start Google sign-in | None |
 | `GET` | `/auth/oauth/google/callback` | Verify Google callback and create Najm session | None |
 | `POST` | `/auth/oauth/google/link` | Link Google to the current user | ✅ Required |
+| `GET` | `/auth/credential-setup/setup` | Read the pending setup session | Setup cookie |
+| `POST` | `/auth/credential-setup/change` | Replace the temporary credential | Setup cookie |
+| `POST` | `/auth/credential-setup/cancel` | Abandon the setup session | Setup cookie |
+
+### Identity presets
+
+Login lookup, lockout accounting, and rate-limit bucketing all normalize the
+submitted identifier the same way. The pipeline is: email (lowercased) →
+project extensions → the country preset → generic E.164.
+
+The resolved pipeline belongs to the specific `auth()` plugin/server instance.
+Multiple isolated Najm servers can therefore use different country presets in
+one process without replacing each other's login or rate-limit behavior.
+
+Morocco is the default, so `0612345678`, `212612345678`, and `+212612345678`
+all resolve to `+212612345678` with no configuration.
+
+```typescript
+auth();                                                  // preset: 'ma'
+auth({ identity: { extend: [employeeNumberNormalizer] } });
+auth({ identity: { preset: 'tn' } });                    // replaces Morocco
+auth({ identity: { preset: null, extend: [custom] } });  // generic only
+```
+
+Local numbers are country-ambiguous, so presets **replace** each other rather
+than stacking — two presets claiming `06…` would resolve one raw input to two
+different accounts.
+
+### First-login credential setup
+
+Provision an account with a temporary credential and Najm refuses it a normal
+session until the holder replaces it:
+
+```typescript
+import { moroccanCinTemporaryCredential } from 'najm-auth/identity/ma';
+
+await authService.provisionUser({
+  email: guardian.email,
+  phone: guardian.phone,
+  role: 'family',
+  temporaryCredential: moroccanCinTemporaryCredential(guardian.cin),
+  requireCredentialSetup: 'password',
+});
+```
+
+`temporaryCredential` also accepts a plain string, compared exactly and
+case-sensitively — enough for a student or registration number:
+
+```typescript
+await authService.provisionUser({
+  email: student.schoolEmail,
+  role: 'student',
+  temporaryCredential: student.registrationNumber,
+  requireCredentialSetup: 'password',
+});
+```
+
+Supplying both `password` and `temporaryCredential` is rejected, so an account
+can never hold a permanent password that something also treats as temporary.
+Typed helpers such as `moroccanCinTemporaryCredential()` validate their value,
+and every temporary credential remains limited to bcrypt's 72-byte boundary.
+
+Login then answers a discriminated result instead of a token pair:
+
+```typescript
+const result = await auth.client.login({ identifier, password, rememberMe });
+
+if (result.nextStep === 'credential_setup') {
+  router.push('/change-password');   // no tokens were issued
+} else {
+  router.push('/dashboard');
+}
+```
+
+The requirement is enforced at every session-establishment path — password
+login, `AuthSessionService.establish()`, Google OAuth (which redirects with
+`oauthError=oauth_credential_setup_required`), refresh, and signed-session
+recovery — so verified-email OAuth linking cannot skip it. Marking a new
+requirement also revokes the user's current sessions.
+
+`withAuthCookiePersistence` recognizes the setup response on its own: it drops
+any session cookies the response carried, clears the remembered preference, and
+leaves the opaque setup cookie alone.
 
 ### Google Sign-In
 
@@ -502,12 +602,34 @@ oauth_accounts
 ├── providerAccountId (Google `sub`)
 ├── unique(provider, providerAccountId)
 └── unique(userId, provider)
+
+credential_setup_sessions
+├── id (string, primary key)
+├── userId (string, FK → users.id, cascade delete)
+├── purpose (string)
+├── tokenHash (string, unique — SHA-256 of the browser cookie)
+├── expiresAt (timestamp)
+├── consumedAt (timestamp, nullable)
+└── revokedAt (timestamp, nullable)
+
+credential_setup_requirements
+├── userId (string, FK → users.id, cascade delete)
+├── purpose (string; `password` for the built-in flow)
+├── temporaryCredentialKind (string, nullable; `exact` or `ma-cin`)
+├── required (boolean, default: true)
+├── completedAt (timestamp, nullable)
+└── primary key (userId, purpose)
 ```
 
+`credential_setup_requirements` is keyed on `(userId, purpose)` rather than
+`userId` alone, so one user can owe more than one future setup purpose.
+
 Existing databases must generate and run a migration after upgrading so the
-new `oauth_accounts` table exists. Custom `AuthSchema` objects may omit
-`oauthAccounts` while OAuth is disabled, but Google configuration fails fast
-unless the custom schema supplies it.
+new `oauth_accounts`, `credential_setup_sessions`, and
+`credential_setup_requirements` tables exist. Custom `AuthSchema` objects may
+omit `oauthAccounts` while OAuth is disabled, but Google configuration fails
+fast unless the custom schema supplies it. Both credential-setup tables are
+required of a custom schema, because the setup flow is always mounted.
 
 ### ID Strategy
 

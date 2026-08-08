@@ -19,8 +19,23 @@ import type {
   TabSyncMessage,
   OAuthProvider,
   OAuthLoginOptions,
+  CredentialSetupPending,
+  LoginCredentials,
+  LoginResult,
 } from './types';
 import { AuthError } from './types';
+
+/**
+ * Najm answers a pending setup either at the top level or inside the standard
+ * `{ data }` envelope, depending on how the route is wrapped.
+ */
+function isCredentialSetupPending(payload: unknown): payload is CredentialSetupPending {
+  return (
+    typeof payload === 'object' &&
+    payload !== null &&
+    (payload as { nextStep?: unknown }).nextStep === 'credential_setup'
+  );
+}
 
 const INITIAL_STATE: AuthState = {
   user: null,
@@ -87,15 +102,33 @@ export class NajmAuthClient {
   // Auth Operations
   // =========================================================================
 
-  async login(credentials: { email: string; password: string }): Promise<AuthUser> {
-    const res = await this.api.post<ServerResponse<TokenPair & { user?: AuthUser }>>(
-      `${this.prefix}/login`,
-      { body: credentials, skipAuth: true },
-    );
-    this.applyTokens(res.data);
+  async login(credentials: LoginCredentials): Promise<LoginResult> {
+    const res = await this.api.post<
+      | ServerResponse<(TokenPair & { user?: AuthUser }) | CredentialSetupPending>
+      | CredentialSetupPending
+    >(`${this.prefix}/login`, { body: credentials, skipAuth: true });
 
-    if (res.data.user) {
-      this.state = { ...this.state, user: res.data.user };
+    // The server answered, so whatever opened the refresh circuit earlier is
+    // no longer true — reset it before either branch.
+    this.resetRefreshFailures();
+
+    const setup = isCredentialSetupPending(res)
+      ? res
+      : isCredentialSetupPending(res.data)
+        ? res.data
+        : null;
+
+    if (setup) {
+      // No tokens, no user, no hydration: the browser holds only an opaque
+      // setup cookie until it completes the flow.
+      return { ...setup };
+    }
+
+    const authenticated = (res as ServerResponse<TokenPair & { user?: AuthUser }>).data;
+    this.applyTokens(authenticated);
+
+    if (authenticated.user) {
+      this.state = { ...this.state, user: authenticated.user };
       this.notify();
     } else {
       await this.fetchUser();
@@ -103,7 +136,7 @@ export class NajmAuthClient {
 
     this.tabSync?.broadcastSync(this.getSyncPayload());
     this.emit('login', this.state.user!);
-    return this.state.user!;
+    return { nextStep: 'authenticated', user: this.state.user! };
   }
 
   async register(data: Record<string, unknown>): Promise<AuthUser> {

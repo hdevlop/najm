@@ -17,6 +17,7 @@
     "db:seed": "bun --tsconfig-override tsconfig.seed.json src/server/database/seed.ts",
     "db:reset": "bun src/server/database/reset.ts",
     "db:reset-seed": "bun src/server/database/reset.ts && bun --tsconfig-override tsconfig.seed.json src/server/database/seed.ts",
+    "demo:credential-setup": "bun scripts/provision-setup-demo.ts",
     "chatbot:semantics:import": "bun scripts/import-chatbot-semantics.ts",
     "test:rag": "bun scripts/test-routing-config.ts",
     "test:studio": "bun scripts/test-studio-smoke.ts"

@@ -2,10 +2,12 @@ import * as React from "react";
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/cn";
+import { humanizeToken } from "../../format/format";
 import { NIcon, type NIconSource } from "../Icon";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
 import { resolveVariantAlias } from "../../theme/design-config";
+import { colorTextClass, resolveStatusColor } from "./status";
 
 const badgeVariants = cva(
   "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
@@ -66,8 +68,11 @@ const badgeColorVariants = cva(
       { color: "accent", look: "soft", class: "bg-accent/10 text-accent-foreground border-accent/30" },
       { color: "accent", look: ["outline", "dash"], class: "text-accent-foreground border-accent/40" },
       { color: "neutral", look: "solid", class: "bg-neutral text-neutral-foreground" },
-      { color: "neutral", look: "soft", class: "bg-neutral/10 text-neutral-foreground border-neutral/30" },
-      { color: "neutral", look: ["outline", "dash"], class: "text-neutral-foreground border-neutral/40" },
+      // Not `text-neutral-foreground`: that token is the contrast color on a
+      // solid neutral fill, so on a tinted or transparent one it inverts with
+      // the theme and disappears.
+      { color: "neutral", look: "soft", class: "bg-neutral/10 text-muted-foreground border-neutral/30" },
+      { color: "neutral", look: ["outline", "dash"], class: "text-muted-foreground border-neutral/40" },
       { color: "info", look: "solid", class: "bg-info text-info-foreground" },
       { color: "info", look: "soft", class: "bg-info/10 text-info border-info/20" },
       { color: "info", look: ["outline", "dash"], class: "text-info border-info/60" },
@@ -112,15 +117,6 @@ export type BadgeProps = React.ComponentProps<"span"> & {
   iconPosition?: "left" | "right";
 };
 
-const COLOR_TEXT_MAP: Record<string, string> = {
-  success: "text-success",
-  warning: "text-warning",
-  accent: "text-accent-foreground",
-  info: "text-info",
-  neutral: "text-neutral-foreground",
-  destructive: "text-destructive",
-};
-
 const SIZE_TEXT_MAP: Record<string, string> = {
   sm: "text-xs",
   md: "text-sm",
@@ -161,18 +157,20 @@ function Badge({
   const effVariant = (variant ?? (aliased.variant as BadgeVariant) ?? recipe?.defaultVariant) as BadgeProps["variant"];
   const recipeRadius = shape === undefined ? resolveRadiusValue(recipe?.radius) : undefined;
   const recipeStyle = recipeRadius ? { borderRadius: recipeRadius, ...style } : style;
-  const resolvedColor = statusMap?.[status ?? ""] ?? color ?? "primary";
+  const resolvedColor = status
+    ? resolveStatusColor(status, statusMap, color ?? "neutral")
+    : color ?? "primary";
   const resolvedLabel =
     label ??
     (typeof children === "string" ? children : undefined) ??
-    status;
+    (status ? humanizeToken(status) : undefined);
   const content = typeof children !== "string" && children ? children : resolvedLabel ?? children;
   const resolvedIcon = icon ?? (resolvedColor ? iconMap?.[resolvedColor] : undefined);
   const iconNode = renderIcon(showIcon ? resolvedIcon : icon);
   const isMinimal = look === "minimal" || look === "text";
 
   if (isMinimal) {
-    const textColor = COLOR_TEXT_MAP[resolvedColor ?? ""] ?? "text-foreground";
+    const textColor = colorTextClass(resolvedColor);
     const sizeClass = SIZE_TEXT_MAP[size ?? "md"] ?? "text-sm";
 
     return (

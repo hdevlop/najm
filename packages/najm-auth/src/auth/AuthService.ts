@@ -1,5 +1,6 @@
 import { Injectable, Inject } from 'najm-core';
 import { Err, Log, type ILogger } from 'najm-core';
+import { Transaction } from 'najm-database';
 import { I18n, I18nService, type TFn } from 'najm-i18n';
 import { EmailService, passwordResetTemplate, accountInviteTemplate } from 'najm-email';
 import { nanoid } from 'nanoid';
@@ -14,6 +15,18 @@ import { AUTH_CONFIG } from '../auth.tokens';
 import timestring from 'timestring';
 import { AuthSessionService } from './AuthSessionService';
 import { isEmailIdentifier, normalizeAuthIdentifier } from './authIdentity';
+import {
+  resolveTemporaryCredentialKind,
+  toTemporaryCredential,
+  type TemporaryCredentialInput,
+} from '../identity/temporaryCredential';
+import { CredentialSetupRequirementService } from '../credentialSetup/CredentialSetupRequirementService';
+import { PasswordSetupService } from '../credentialSetup/PasswordSetupService';
+import {
+  PASSWORD_SETUP_PURPOSE,
+  type CredentialSetupPending,
+  type CredentialSetupRequirementRow,
+} from '../credentialSetup/types';
 
 /**
  * Identity fields for creating a user behind a person record (parent, student,
@@ -23,11 +36,44 @@ export type ProvisionUserInput = {
   id?: string;
   name?: string;
   email: string;
+  /** Normalized through the configured identity preset before it is stored. */
+  phone?: string;
   role?: string;
   roleId?: string;
   image?: string | null;
   status?: 'active' | 'inactive' | 'pending';
 };
+
+/**
+ * Provisioning that hands the user a temporary credential and durably requires
+ * them to replace it at first login.
+ *
+ * Modelled as a union rather than optional fields on purpose: a caller must not
+ * be able to set a permanent password and mark it temporary in the same call.
+ */
+export type ProvisionUserWithSetupInput = ProvisionUserInput & {
+  temporaryCredential: TemporaryCredentialInput;
+  requireCredentialSetup: typeof PASSWORD_SETUP_PURPOSE;
+  password?: never;
+};
+
+export type ProvisionUserWithPasswordInput = ProvisionUserInput & {
+  password?: string | null;
+  temporaryCredential?: never;
+  requireCredentialSetup?: never;
+};
+
+/** The two variants collapsed for the implementation; callers see the union. */
+type ProvisionUserBody = ProvisionUserInput & {
+  password?: string | null;
+  temporaryCredential?: TemporaryCredentialInput;
+  requireCredentialSetup?: typeof PASSWORD_SETUP_PURPOSE;
+};
+
+/** Login answer: either a complete session, or a pending credential setup. */
+export type LoginResult =
+  | (TokenPair & { nextStep: 'authenticated'; user: SanitizedUser })
+  | CredentialSetupPending;
 
 @Injectable()
 export class AuthService {
@@ -46,6 +92,8 @@ export class AuthService {
     private i18nService: I18nService,
     private emailService: EmailService,
     private authSessionService?: AuthSessionService,
+    private credentialSetupRequirements?: CredentialSetupRequirementService,
+    private passwordSetup?: PasswordSetupService,
   ) { }
 
   private isLockoutActive(lockoutUntil?: string | null): boolean {
@@ -100,6 +148,7 @@ export class AuthService {
       id: body.id,
       name: body.name,
       email: body.email,
+      phone: body.phone,
       role: body.role,
       roleId: body.roleId,
       image: body.image,
@@ -140,28 +189,98 @@ export class AuthService {
    *
    * Returns the created (sanitized) user so the caller can link `userId`.
    */
-  async provisionUser(body: ProvisionUserInput & { password?: string | null }): Promise<SanitizedUser> {
-    const password = typeof body.password === 'string' ? body.password.trim() : '';
+  async provisionUser(
+    body: ProvisionUserWithPasswordInput | ProvisionUserWithSetupInput,
+  ): Promise<SanitizedUser> {
+    const input = body as ProvisionUserBody;
+
+    if (input.requireCredentialSetup) {
+      return this.provisionWithCredentialSetup(input);
+    }
+
+    if (input.temporaryCredential) {
+      Err('provisionUser requires requireCredentialSetup when a temporaryCredential is supplied', 400);
+    }
+
+    const password = typeof input.password === 'string' ? input.password.trim() : '';
 
     if (password) {
       return this.userService.create({
-        id: body.id,
-        name: body.name,
-        email: body.email,
-        role: body.role,
-        roleId: body.roleId,
-        image: body.image,
+        id: input.id,
+        name: input.name,
+        email: input.email,
+        phone: input.phone,
+        role: input.role,
+        roleId: input.roleId,
+        image: input.image,
         password,
-        status: body.status ?? 'active',
+        status: input.status ?? 'active',
       });
     }
 
-    return this.inviteUser(body);
+    return this.inviteUser(input);
   }
 
-  async loginUser(body: LoginDto): Promise<TokenPair & { user: SanitizedUser }> {
-    const user = await this.verifyCredentials(body);
-    return this.establishSession(user);
+  /**
+   * Create the account and mark the durable requirement in one transaction, so
+   * a user never exists holding a temporary credential that nothing forces
+   * them to replace. No session is issued here.
+   */
+  @Transaction()
+  private async provisionWithCredentialSetup(
+    body: ProvisionUserBody,
+  ): Promise<SanitizedUser> {
+    if (body.password != null) {
+      Err('provisionUser cannot set a password and a temporaryCredential at the same time', 400);
+    }
+    if (!body.temporaryCredential) {
+      Err('provisionUser requires a temporaryCredential when credential setup is required', 400);
+    }
+    if (!this.credentialSetupRequirements) {
+      Err.invalidOperation('Credential setup is unavailable: CredentialSetupRequirementService is not registered');
+    }
+
+    const temporary = toTemporaryCredential(body.temporaryCredential);
+    const kind = resolveTemporaryCredentialKind(temporary.kind);
+    if (kind.isTemporaryShape && !kind.isTemporaryShape(temporary.value)) {
+      Err(`Invalid temporary credential for kind '${kind.name}'`, 400);
+    }
+    const password = kind.normalize(temporary.value);
+    if (!password?.trim()) {
+      Err('provisionUser requires a non-empty temporaryCredential', 400);
+    }
+
+    const user = await this.userService.create({
+      id: body.id,
+      name: body.name,
+      email: body.email,
+      phone: body.phone,
+      role: body.role,
+      roleId: body.roleId,
+      image: body.image,
+      password,
+      status: body.status ?? 'active',
+    }, { validatePasswordStrength: false });
+
+    await this.credentialSetupRequirements.markRequired(user.id, body.requireCredentialSetup, {
+      temporaryCredentialKind: kind.name,
+    });
+
+    return user;
+  }
+
+  async loginUser(body: LoginDto): Promise<LoginResult> {
+    const { user, requirement } = await this.authenticate(body, { kind: 'active' });
+
+    if (requirement) {
+      if (!this.passwordSetup) {
+        Err.invalidOperation('Credential setup is required but PasswordSetupService is not registered');
+      }
+      return this.passwordSetup.begin(user.id);
+    }
+
+    const session = await this.establishSession(user);
+    return { ...session, nextStep: 'authenticated' };
   }
 
   /**
@@ -170,7 +289,7 @@ export class AuthService {
    * this before issuing a purpose-bound CredentialSetupService session.
    */
   async verifyCredentials(body: LoginDto): Promise<SanitizedUser> {
-    return this.verifyCredentialsForPolicy(body, { kind: 'active' });
+    return (await this.authenticate(body, { kind: 'active' })).user;
   }
 
   /**
@@ -182,19 +301,25 @@ export class AuthService {
     if (!expectedRole.trim()) {
       Err(this.t('errors.invalidCredentials'), 401);
     }
-    return this.verifyCredentialsForPolicy(body, {
+    return (await this.authenticate(body, {
       kind: 'pending',
       expectedRole: expectedRole.trim().toLowerCase(),
-    });
+    })).user;
   }
 
-  private async verifyCredentialsForPolicy(
+  /**
+   * The one credential path. Resolves identity, the durable setup requirement,
+   * and the credential normalization that requirement implies — in that order —
+   * before a single hash comparison decides the outcome. Nothing about the
+   * requirement is revealed until credentials and account policy have passed.
+   */
+  private async authenticate(
     body: LoginDto,
     policy: { kind: 'active' } | { kind: 'pending'; expectedRole: string },
-  ): Promise<SanitizedUser> {
-    const password = body.password;
+  ): Promise<{ user: SanitizedUser; requirement?: CredentialSetupRequirementRow }> {
     const rawIdentifier = 'identifier' in body ? body.identifier : body.email;
-    const identifier = normalizeAuthIdentifier(rawIdentifier);
+    const identifier = this.config.identity?.resolve(rawIdentifier)
+      ?? normalizeAuthIdentifier(rawIdentifier);
     // Note: @Validate(loginDto) ensures an identifier/email and password are
     // present. The service repeats safe normalization for direct callers.
     let user;
@@ -217,8 +342,19 @@ export class AuthService {
       Err(this.t('errors.accountLocked'), 423);
     }
 
-    const storedHash = user?.password ?? await this.getDummyHash();
-    const isValid = await this.userValidator.comparePassword(password, storedHash);
+    // Looked up for every attempt, including unknown identifiers: skipping the
+    // query when no user matched would make account existence measurable.
+    const requirement = await this.credentialSetupRequirements
+      ?.find(user?.id ?? '', PASSWORD_SETUP_PURPOSE);
+
+    const { credential, kindUnavailable } = this.resolveLoginCredential(body.password, requirement);
+
+    // An unresolvable stored kind fails closed against the dummy hash rather
+    // than falling back to a different normalizer.
+    const storedHash = kindUnavailable || !user?.password
+      ? await this.getDummyHash()
+      : user.password;
+    const isValid = await this.userValidator.comparePassword(credential, storedHash);
 
     if (!user || !isValid) {
       if (user) {
@@ -251,7 +387,32 @@ export class AuthService {
     }
 
     const { password: _, failedLoginAttempts: __, lockoutUntil: ___, ...sanitized } = user;
-    return sanitized;
+    return { user: sanitized, requirement };
+  }
+
+  /**
+   * A user-chosen password is compared byte-for-byte. Only an active
+   * requirement, and only its own stored kind, can transform the submitted
+   * value — so lowercasing a CIN never leaks into normal logins.
+   */
+  private resolveLoginCredential(
+    password: string,
+    requirement?: CredentialSetupRequirementRow,
+  ): { credential: string; kindUnavailable: boolean } {
+    if (!requirement) return { credential: password, kindUnavailable: false };
+
+    try {
+      const kind = resolveTemporaryCredentialKind(requirement.temporaryCredentialKind);
+      return { credential: kind.normalize(password), kindUnavailable: false };
+    } catch (error) {
+      this.logger.error('Unresolvable temporary credential kind on an active requirement', {
+        userId: requirement.userId,
+        purpose: requirement.purpose,
+        kind: requirement.temporaryCredentialKind,
+        error,
+      });
+      return { credential: password, kindUnavailable: true };
+    }
   }
 
   /** Establish a complete normal auth session for an already verified user. */
@@ -260,6 +421,7 @@ export class AuthService {
       this.tokenService,
       this.userService,
       this.cookieManager,
+      this.credentialSetupRequirements,
     );
     return this.authSessionService.establish(user);
   }

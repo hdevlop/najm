@@ -27,4 +27,8 @@ export type {
   TabSyncMessage,
   OAuthProvider,
   OAuthLoginOptions,
+  LoginCredentials,
+  LoginResult,
+  AuthenticatedLogin,
+  CredentialSetupPending,
 } from './types';

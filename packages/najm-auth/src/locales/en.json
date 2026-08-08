@@ -27,7 +27,15 @@
       "oauthProviderAccountLinked": "This Google account is already linked.",
       "oauthSignupDisabled": "Registration with Google is disabled.",
       "oauthHostedDomainDenied": "This Google Workspace domain is not allowed.",
-      "oauthLinkSessionExpired": "Your session changed before Google could be linked. Please try again."
+      "oauthLinkSessionExpired": "Your session changed before Google could be linked. Please try again.",
+      "oauthCredentialSetupRequired": "Set a new password before signing in with Google.",
+      "credentialSetupRequired": "Set a new password before continuing.",
+      "credentialSetupSessionRequired": "Credential setup session is required.",
+      "credentialSetupSessionInvalid": "Credential setup session is invalid or expired.",
+      "credentialSetupAlreadyCompleted": "The password was already replaced. Please sign in again.",
+      "credentialSetupPasswordRejected": "Choose a different password.",
+      "credentialSetupTemporaryShape": "Choose a password that is not your temporary credential.",
+      "credentialSetupSamePassword": "Choose a password different from your current one."
     },
     "success": {
       "login": "Login successful",
@@ -40,7 +48,10 @@
       "tokenRefreshed": "Token refreshed successfully",
       "sessionRecovered": "Session recovered successfully",
       "oauthLogin": "Google sign-in successful",
-      "oauthLinked": "Google account linked successfully"
+      "oauthLinked": "Google account linked successfully",
+      "credentialSetupPending": "Password setup is required",
+      "credentialSetupPasswordReplaced": "Password set successfully",
+      "credentialSetupCancelled": "Password setup cancelled"
     },
     "emails": {
       "passwordReset": {
@@ -56,6 +67,7 @@
       "notFound": "User not found",
       "idExists": "User ID already exists",
       "emailRequired": "Email is required",
+      "phoneExists": "Phone number already registered",
       "passwordRequired": "Password is required",
       "invalidEmail": "Invalid email format",
       "weakPassword": "Password is too weak",
