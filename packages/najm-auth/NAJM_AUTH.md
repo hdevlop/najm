@@ -683,6 +683,74 @@ export const PATCH = adapt;
 export const DELETE = adapt;
 ```
 
+## Server Components (`najm-auth/client/server/react`)
+
+`auth.getSession()`, `auth.requireSession()`, and `auth.requireRole()` each run
+a full resolution. On one navigation a root layout, a nested layout, and a page
+that all want the session therefore perform three cookie verifications and, when
+the signed cookie is stale, three recovery round trips.
+
+`createReactServerAuth(auth)` wraps the resolution in React's `cache()` so all
+three share one. It lives behind its own subpath because `cache()` needs React,
+and neither the core entry nor the Edge bundle may depend on it.
+
+```ts
+// src/lib/session.ts — the one module every server boundary imports
+import 'server-only';
+
+import { createReactServerAuth } from 'najm-auth/client/server/react';
+
+import { auth } from './auth';
+
+export const serverAuth = createReactServerAuth(auth);
+```
+
+```tsx
+// src/app/layout.tsx
+const session = await serverAuth.getSession();
+
+// src/app/dashboard/layout.tsx
+const session = await serverAuth.requireSession();
+
+// src/app/dashboard/admin/page.tsx
+const session = await serverAuth.requireRole(['admin', 'operator']);
+```
+
+### What the adapter shares
+
+One `resolveSessionOutcome()` call produces a classified result —
+`authenticated`, `unauthenticated`, or `failed` — and `getSession()`,
+`requireSession()`, and `requireRole()` are interpretations of that one value.
+The optional and strict views therefore cannot disagree, and asking for both
+does not cost a second recovery call. `defineAuth()` interprets the same outcome
+type, so the package-level guards and the adapter cannot drift apart.
+
+| Outcome | `getSession()` | `requireSession()` |
+|---|---|---|
+| `authenticated` | the session | the session |
+| `unauthenticated` (no refresh cookie, invalid or revoked session, 401/403 from recovery) | `null` | redirect to `loginRoute` |
+| `failed` (no session secret, unreadable cookies, unreachable or malformed recovery) | `null` | the error, thrown |
+
+Redirect routes come from the `defineAuth()` config that produced `auth`; the
+factory takes no options of its own.
+
+### Boundaries
+
+- **React Server Components only.** Route handlers, server actions, the proxy,
+  and scripts use the `auth` methods directly. Outside a render `cache()` has no
+  request store, so the adapter would silently resolve again on every call.
+- **One instance, at module scope.** React shares a cache entry per memoized
+  function, so a factory call inside a component shares nothing.
+- **No cross-request storage.** No module map, global, Redis, Najm cache plugin,
+  `unstable_cache`, or `"use cache"` boundary is involved; the isolation is
+  React's own per-request cache.
+- **Stable within a render.** Both successes and failures are; an auth mutation
+  must redirect or refresh into a new render to be observed.
+- **Isolated build surface.** The subpath is not re-exported from the root,
+  `client`, `client/react`, `client/edge`, or `client/server` entries, so the
+  Edge bundle stays free of React. The `browser` export condition resolves to a
+  module that throws, so a Client Component or Edge import fails at build time.
+
 ## React Bindings (`najm-auth/client/react`)
 
 **Hooks:** `useAuth`, `useSession`, `useUser`, `useLogin`, `useLogout`, `useRegister`, `useForgotPassword`, `useResetPassword`, `useChangePassword`, `usePermissions`, `useAuthEvent(s)`.

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { signedSession } from '../../../../session';
+import { signedSession } from '../../../../signedSession';
 
 export const dynamic = 'force-dynamic';
 

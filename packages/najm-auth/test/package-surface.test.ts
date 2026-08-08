@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 
 const packageRoot = join(import.meta.dir, '..');
 const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), 'utf8'));
@@ -57,5 +58,66 @@ describe('published surface', () => {
     const clientTypes = read('dist/client/index.d.ts');
     expect(clientTypes).toContain('LoginResult');
     expect(clientTypes).toContain('CredentialSetupPending');
+  });
+});
+
+describe('the React-server session adapter', () => {
+  const otherEntries = [
+    'dist/index',
+    'dist/client/index',
+    'dist/client/edge',
+    'dist/client/react/index',
+    'dist/client/server/index',
+  ];
+
+  test('it is exported as its own opt-in subpath', () => {
+    expect(packageJson.exports['./client/server/react']).toEqual({
+      types: './dist/client/server/react.d.ts',
+      'react-server': './dist/client/server/react.js',
+      browser: './dist/client/server/reactClientGuard.js',
+      import: './dist/client/server/react.js',
+      default: './dist/client/server/react.js',
+    });
+    expect(read('tsup.config.ts')).toContain("'src/client/server/react.ts'");
+    expect(read('tsup.config.ts')).toContain("'src/client/server/reactClientGuard.ts'");
+  });
+
+  test('the declarations carry the documented contract', () => {
+    const types = read('dist/client/server/react.d.ts');
+    for (const name of [
+      'createReactServerAuth',
+      'ReactServerAuth',
+      'getSession(): Promise<ServerSession | null>',
+      'requireSession(): Promise<ServerSession>',
+      'requireRole(roles: string[]): Promise<ServerSession>',
+    ]) {
+      expect(types).toContain(name);
+    }
+  });
+
+  test('no other entry point re-exports it', () => {
+    for (const entry of otherEntries) {
+      expect(read(`${entry}.js`)).not.toContain('createReactServerAuth');
+      expect(read(`${entry}.d.ts`)).not.toContain('createReactServerAuth');
+    }
+  });
+
+  test('the Edge and proxy outputs stay free of React', () => {
+    for (const entry of ['dist/client/edge.js', 'dist/client/server/index.js']) {
+      const source = read(entry);
+      expect(source).not.toMatch(/from\s*["']react["']/);
+      expect(source).not.toMatch(/import\(\s*["']react["']\s*\)/);
+      expect(source).not.toContain('client/server/react');
+    }
+  });
+
+  test('it is a server module, while client/react stays a client boundary', () => {
+    expect(read('dist/client/server/react.js')).not.toContain('use client');
+    expect(read('dist/client/react/index.js')).toStartWith('"use client"');
+  });
+
+  test('the browser condition resolves to a module that refuses to load', async () => {
+    const guard = pathToFileURL(join(packageRoot, 'dist/client/server/reactClientGuard.js')).href;
+    await expect(import(guard)).rejects.toThrow(/React Server Component module/);
   });
 });

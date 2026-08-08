@@ -38,11 +38,12 @@
 // ```
 // ============================================================================
 
-import type { ServerSession, GetSessionConfig } from './getSession';
+import type { ServerSession, GetSessionConfig, SessionOutcome } from './getSession';
 import { createAuthClient, type NajmAuthClient } from '../NajmAuthClient';
 import type { FetchClient } from '../FetchClient';
 import type { RetryConfig } from '../types';
 import type { SessionRecoveryFailure } from '../sessionRecovery';
+import { attachReactServerInternals, heldRoles, redirectsToLogin } from './internals';
 import { withAuthMiddleware } from './withAuthMiddleware';
 
 // ============================================================================
@@ -225,41 +226,33 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     return resolveSession({ ...sessionConfig, ...opts });
   };
 
+  // ---------- resolveSessionOutcome ----------
+  // One classified resolution. The strict guard below and the React-server
+  // adapter both interpret this value, so neither can drift from the other.
+  const resolveSessionOutcome = async (): Promise<SessionOutcome> => {
+    const { resolveSessionOutcome: resolve } = await import('./getSession');
+    return resolve(sessionConfig);
+  };
+
   // ---------- requireSession ----------
   const requireSession = async (): Promise<ServerSession> => {
-    const sessionModule = await import('./getSession');
-    const {
-      getSession: resolveSession,
-      NoSessionError,
-      AuthTransportError,
-    } = sessionModule;
+    const outcome = await resolveSessionOutcome();
 
-    try {
-      const session = await resolveSession({ ...sessionConfig, mode: 'strict' });
-      return session;
-    } catch (err) {
-      if (err instanceof NoSessionError) {
-        const { redirect } = await import('next/navigation');
-        redirect(loginRoute);
-      }
+    if (outcome.status === 'authenticated') return outcome.session;
 
-      if (err instanceof AuthTransportError && (err.status === 401 || err.status === 403)) {
-        const { redirect } = await import('next/navigation');
-        redirect(loginRoute);
-      }
-
-      throw err;
+    if (redirectsToLogin(outcome)) {
+      const { redirect } = await import('next/navigation');
+      redirect(loginRoute);
     }
+
+    throw outcome.error;
   };
 
   // ---------- requireRole ----------
   const requireRole = async (roles: string[]): Promise<ServerSession> => {
     const session = await requireSession();
-    // `roles` is the authoritative list when present; `user.role` is the
-    // single-role shape older sessions carry.
-    const held = session.roles ?? (session.user.role ? [session.user.role] : []);
 
-    if (!held.some((role) => roles.includes(role))) {
+    if (!heldRoles(session).some((role) => roles.includes(role))) {
       const { redirect } = await import('next/navigation');
       redirect(forbiddenRoute);
     }
@@ -302,8 +295,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
       // re-authenticating cannot change the answer, so sending them to the form
       // only loops them back here.
       if (options?.role) {
-        const userRoles = session.roles ?? (session.user.role ? [session.user.role] : []);
-        if (!userRoles.includes(options.role)) {
+        if (!heldRoles(session).includes(options.role)) {
           const { redirect } = await import('next/navigation');
           redirect(forbiddenRoute);
         }
@@ -323,7 +315,9 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
   };
 
   // ---------- Return kit ----------
-  return {
+  // The internals are a non-enumerable symbol property rather than a method:
+  // `najm-auth/client/server/react` needs them, no application does.
+  return attachReactServerInternals({
     get client() {
       return getClient();
     },
@@ -336,5 +330,5 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     middleware,
     config: { matcher },
     protect,
-  };
+  }, { resolveSessionOutcome, loginRoute, forbiddenRoute });
 }

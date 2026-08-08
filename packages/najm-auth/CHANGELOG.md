@@ -1,5 +1,23 @@
 # Changelog
 
+## 3.1.0 - 2026-08-09
+
+- feat(client/server): add the `najm-auth/client/server/react` subpath exporting
+  `createReactServerAuth(auth)`, which wraps session resolution in React's
+  `cache()` so a root layout, nested layouts, and a page share one lookup and
+  one recovery round trip per request instead of one each
+- feat(client/server): resolve a session into a single classified outcome
+  (`authenticated`, `unauthenticated`, `failed`) that both the optional
+  `getSession()` view and the strict guards interpret, so the two can no longer
+  duplicate work or diverge on what counts as unauthenticated
+- feat(exports): the new subpath is opt-in and is not re-exported from the root,
+  `client`, `client/react`, `client/edge`, or `client/server` entries; the Edge
+  and proxy bundles stay free of React, and the `browser` export condition
+  resolves to a module that throws so a Client Component or Edge import fails at
+  build time
+- docs: document the canonical `auth.ts` / `session.ts` / `proxy.ts` App Router
+  structure, and that the adapter is for React Server Components only
+
 ## 3.0.0 - 2026-08-08
 
 - feat(identity): normalize login identifiers through a configurable country

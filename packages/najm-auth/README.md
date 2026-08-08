@@ -743,6 +743,95 @@ auth({
 
 ---
 
+## Next.js App Router Structure
+
+Every App Router application keeps the same three files. Copying more than this
+between apps means logic that belongs in the package has leaked into them.
+
+```text
+src/lib/auth.ts     defineAuth() configuration — browser, server, and proxy safe
+src/lib/session.ts  one createReactServerAuth() instance for Server Components
+src/proxy.ts        imports auth.ts only, and exports auth.middleware
+```
+
+```typescript
+// src/lib/auth.ts
+import { defineAuth } from 'najm-auth/client/server';
+
+export const auth = defineAuth({
+  apiBaseURL: '/api',
+  loginRoute: '/login',
+  forbiddenRoute: '/forbidden',
+  publicRoutes: ['/', '/login'],
+  protectedRoutes: ['/dashboard/:path*', '/admin/:path*'],
+  roleRoutes: { '/admin/:path*': ['admin'] },
+});
+```
+
+```typescript
+// src/lib/session.ts
+import 'server-only';
+
+import { createReactServerAuth } from 'najm-auth/client/server/react';
+
+import { auth } from './auth';
+
+export const serverAuth = createReactServerAuth(auth);
+```
+
+```typescript
+// src/proxy.ts
+import { auth } from './lib/auth';
+
+export default auth.middleware;
+export const config = auth.config;
+```
+
+### Why `session.ts` exists
+
+A Next.js page is not one function. The root layout, each nested layout, and the
+page render separately, and each one that asks for the session pays for its own
+cookie verification and possibly its own recovery round trip. React's `cache()`
+collapses those into one — but only for callers that go through the *same*
+memoized function, which means the application has to own one module that
+creates it. `session.ts` is that module and nothing else; strictness, redirect
+targets, role fallback, and error classification all stay in the package.
+
+```tsx
+// Root layout, nested layout, and page: one resolution between them.
+const session = await serverAuth.getSession();      // null when anonymous
+const session = await serverAuth.requireSession();  // redirects to loginRoute
+const session = await serverAuth.requireRole(['admin', 'operator']);
+```
+
+- `requireSession()` redirects to `loginRoute` when the visitor is missing,
+  invalid, or revoked. An unreachable recovery endpoint or an unset session
+  secret is an operational fault, not an anonymous visitor: those stay visible
+  errors instead of becoming a login redirect that hides the outage.
+- `requireRole()` redirects to `forbiddenRoute`, never to login — the visitor is
+  already authenticated, so signing in again cannot change the answer.
+- `session.roles` is authoritative when present, with `user.role` as the
+  single-role fallback.
+
+### Scope and limits
+
+- **React Server Components only.** Route handlers, server actions, proxy/Edge
+  code, and scripts keep using `auth.getSession()`, `auth.requireSession()`, and
+  `auth.requireRole()`. Outside a render there is no request cache for `cache()`
+  to write to, so the adapter would resolve the session again on every call.
+- **Call the factory once, at module scope.** Calling it inside a layout, page,
+  or component builds a fresh memoized resolver per call and shares nothing.
+- **The snapshot is stable for one render.** Code that mutates authentication
+  must redirect or refresh into a new render to observe the result.
+- **Requests never share.** The cache is React's per-request cache — no module
+  map, no global, no Redis, no `unstable_cache`, no `"use cache"`.
+- **Requires React 18.3 or newer** (the first version exporting `cache()`); the
+  factory throws a named error on older versions. The subpath is opt-in, so
+  non-React consumers of `najm-auth` are unaffected. Importing it from a Client
+  Component or the Edge runtime fails at build time.
+
+---
+
 ## TypeScript Types
 
 ```typescript

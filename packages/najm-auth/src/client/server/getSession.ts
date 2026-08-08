@@ -86,6 +86,21 @@ export class AuthTransportError extends Error {
   }
 }
 
+/**
+ * The structured result of one resolution attempt.
+ *
+ * Optional callers (`getSession`) and strict callers (`requireSession`,
+ * `requireRole`, the React-server adapter) all read this single value, so they
+ * cannot diverge on what counts as "unauthenticated" and a caller that wants
+ * both views never pays for a second recovery round trip.
+ */
+export type SessionOutcome =
+  | { status: 'authenticated'; session: ServerSession }
+  | { status: 'unauthenticated'; error: NoSessionError }
+  | { status: 'failed'; error: AuthConfigError | AuthTransportError };
+
+export type FailedSessionOutcome = Exclude<SessionOutcome, { status: 'authenticated' }>;
+
 function defaultBaseURL(): string {
   const explicit = typeof process !== 'undefined' ? process.env.NAJM_AUTH_BASE_URL : undefined;
   if (explicit) return explicit;
@@ -117,18 +132,32 @@ function requestOriginFromHeaders(
   }
 }
 
+const authenticated = (session: ServerSession): SessionOutcome => ({
+  status: 'authenticated',
+  session,
+});
+const unauthenticated = (message: string): SessionOutcome => ({
+  status: 'unauthenticated',
+  error: new NoSessionError(message),
+});
+const failed = (error: AuthConfigError | AuthTransportError): SessionOutcome => ({
+  status: 'failed',
+  error,
+});
+
 /**
- * Resolve a session in a Next.js Server Component, Route Handler, or Server
- * Action. Recovery returns claims for the current render but cannot persist
- * response cookies during Server Component rendering; middleware performs that
- * persistence for protected navigation.
+ * Perform one full resolution and classify the result without deciding what the
+ * caller should do about it. This is the single place cookie verification and
+ * recovery happen; `getSession` and the strict guards are interpretations of
+ * the value it returns.
  */
-export async function getSession(config: GetSessionConfig = {}): Promise<ServerSession | null> {
+export async function resolveSessionOutcome(
+  config: GetSessionConfig = {},
+): Promise<SessionOutcome> {
   const cookieName = config.cookieName ?? 'refreshToken';
   const sessionCookieName = config.sessionCookieName ?? 'najm.session';
   const baseURL = config.baseURL ?? defaultBaseURL();
   const prefix = config.authPrefix ?? '/auth';
-  const strict = config.mode === 'strict';
   const internalRecoveryURL = resolveInternalRecoveryURL(config.internalRecoveryURL);
 
   let sessionCookieValue: string | undefined;
@@ -144,8 +173,7 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
       requestOrigin = requestOriginFromHeaders(await mod.headers());
     }
   } catch {
-    if (strict) throw new AuthConfigError('Failed to read cookies from Next.js headers()');
-    return null;
+    return failed(new AuthConfigError('Failed to read cookies from Next.js headers()'));
   }
 
   const secret = resolveSessionSecret(config.sessionSecret);
@@ -156,28 +184,25 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
       maxAgeSeconds: config.sessionMaxAge,
     });
     if (claims) {
-      return {
+      return authenticated({
         user: claims.user,
         roles: claims.roles,
         permissions: claims.permissions,
-      };
+      });
     }
   }
 
   if (!secret) {
-    if (strict) throw new AuthConfigError('Session cookie secret is not configured');
-    return null;
+    return failed(new AuthConfigError('Session cookie secret is not configured'));
   }
   if (
     !refreshCookieValue
     || (config.recoveryURL === false && !internalRecoveryURL)
   ) {
-    if (strict) throw new NoSessionError('No recoverable refresh session');
-    return null;
+    return unauthenticated('No recoverable refresh session');
   }
   if (!requestOrigin) {
-    if (strict) throw new AuthConfigError('Incoming request origin is unavailable');
-    return null;
+    return failed(new AuthConfigError('Incoming request origin is unavailable'));
   }
 
   const endpoint = internalRecoveryURL
@@ -197,20 +222,30 @@ export async function getSession(config: GetSessionConfig = {}): Promise<ServerS
   });
 
   if (recovery.status === 'recovered') {
-    return {
+    return authenticated({
       user: recovery.claims.user,
       roles: recovery.claims.roles,
       permissions: recovery.claims.permissions,
-    };
+    });
   }
-  if (strict) {
-    if (recovery.status === 'invalid') {
-      throw new NoSessionError('Refresh session is invalid or revoked');
-    }
-    throw new AuthTransportError(
-      'Session recovery endpoint was unavailable or returned an invalid session',
-      recovery.httpStatus,
-    );
+  if (recovery.status === 'invalid') {
+    return unauthenticated('Refresh session is invalid or revoked');
   }
+  return failed(new AuthTransportError(
+    'Session recovery endpoint was unavailable or returned an invalid session',
+    recovery.httpStatus,
+  ));
+}
+
+/**
+ * Resolve a session in a Next.js Server Component, Route Handler, or Server
+ * Action. Recovery returns claims for the current render but cannot persist
+ * response cookies during Server Component rendering; middleware performs that
+ * persistence for protected navigation.
+ */
+export async function getSession(config: GetSessionConfig = {}): Promise<ServerSession | null> {
+  const outcome = await resolveSessionOutcome(config);
+  if (outcome.status === 'authenticated') return outcome.session;
+  if (config.mode === 'strict') throw outcome.error;
   return null;
 }

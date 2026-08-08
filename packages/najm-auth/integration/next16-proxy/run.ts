@@ -38,6 +38,7 @@ try {
   await runMainRecoverySuite();
   await runNonLoopbackRejection();
   await runExplicitPrecedence();
+  await runSharedSessionSuite();
   console.log('Next.js 16 + Bun production proxy recovery suite: PASS');
 } finally {
   rmSync(join(fixture, distDir), { recursive: true, force: true });
@@ -158,6 +159,63 @@ async function runExplicitPrecedence() {
     const response = await navigate(origin, '/protected', admin.cookies);
     await expectProtected(response, 'explicit internalRecoveryURL precedence');
   });
+}
+
+/**
+ * `/shared` sits outside `protectedRoutes`, so the proxy leaves it alone and
+ * the React render is the only thing resolving a session. Its root layout,
+ * nested layout, and page each ask — through one `createReactServerAuth`
+ * instance — so a navigation that needs recovery must produce exactly one
+ * recovery round trip, not three.
+ */
+async function runSharedSessionSuite() {
+  await withProductionServer(3, ({ internalOrigin }) => ({
+    NAJM_AUTH_INTERNAL_URL: `${internalOrigin}/api/auth/session/recover`,
+  }), async ({ origin }) => {
+    const admin = await login(origin, { role: 'admin' });
+    const recoverable = new Map(admin.cookies);
+    recoverable.delete('najm.session');
+
+    const before = await recoveryCount(origin);
+    const shared = await navigate(origin, '/shared', recoverable);
+    const body = await shared.text();
+    const spent = await recoveryCount(origin) - before;
+
+    assert(
+      shared.status === 200,
+      `shared navigation returned ${shared.status} (${shared.headers.get('location') ?? 'no location'})`,
+    );
+    assert(body.includes('shared navigation succeeded'), 'shared page did not render');
+    assert(
+      spent === 1,
+      `three server boundaries resolved the session ${spent} times, expected one shared resolution`,
+    );
+    for (const marker of ['root:integration-admin', 'layout:integration-admin', 'page:integration-admin']) {
+      assert(body.includes(marker), `shared render is missing ${marker}`);
+    }
+
+    // A second request must not inherit the first request's resolution.
+    const sponsor = await login(origin, { role: 'sponsor' });
+    const sponsorCookies = new Map(sponsor.cookies);
+    sponsorCookies.delete('najm.session');
+    const forbidden = await navigate(origin, '/shared', sponsorCookies);
+    assert(
+      forbidden.status === 307 && forbidden.headers.get('location')?.endsWith('/forbidden'),
+      `wrong role on /shared returned ${forbidden.status} → ${forbidden.headers.get('location')}`,
+    );
+
+    const anonymous = await navigate(origin, '/shared', new Map());
+    assert(
+      anonymous.status === 307 && anonymous.headers.get('location')?.endsWith('/login'),
+      `anonymous /shared returned ${anonymous.status} → ${anonymous.headers.get('location')}`,
+    );
+  });
+}
+
+async function recoveryCount(origin: string): Promise<number> {
+  const response = await fetch(`${origin}/api/fixture/recoveries`, { redirect: 'manual' });
+  const body = await response.json() as { count: number };
+  return body.count;
 }
 
 async function withProductionServer(

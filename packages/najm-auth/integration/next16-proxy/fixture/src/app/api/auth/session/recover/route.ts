@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
-import { signedSession } from '../../../../../session';
+import { countRecovery } from '../../../../../recoveryCount';
+import { signedSession } from '../../../../../signedSession';
 
 export const dynamic = 'force-dynamic';
 
 export async function POST(request: Request) {
+  countRecovery();
   const cookie = request.headers.get('cookie') ?? '';
   const isRecovery = request.headers.get('x-najm-session-recovery') === '1';
   const refreshToken = readCookie(cookie, 'refreshToken');

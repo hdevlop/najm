@@ -10,6 +10,8 @@ export default defineConfig({
     'src/client/edge.ts',
     'src/client/react/index.ts',
     'src/client/server/index.ts',
+    'src/client/server/react.ts',
+    'src/client/server/reactClientGuard.ts',
   ],
   format: ['esm'],
   dts: {
