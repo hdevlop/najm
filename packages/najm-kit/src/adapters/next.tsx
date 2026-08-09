@@ -1,9 +1,13 @@
 import React from 'react';
 import { useRouter } from 'next/navigation';
+import NextImage from 'next/image';
+import type { ImageProps } from 'next/image';
 
 import { NajmUIProvider } from '../providers';
 import type { NajmUIProviderProps } from '../providers';
 import type { NajmMode } from '../theme/types';
+import { normalizeImageSources } from '../lib/imageSource';
+import { useImageChain } from '../hooks/useImageChain';
 
 export interface NextLinkAdapterProps extends Record<string, any> {
   href: string;
@@ -30,6 +34,55 @@ export function useNextNavigationAdapter() {
       }
     },
   };
+}
+
+export interface NNextImageProps extends Omit<ImageProps, 'src' | 'onError'> {
+  src: string;
+  /** Swapped in once `src` fails to load. Tried exactly once. */
+  fallbackSrc?: string;
+  onError?: ImageProps['onError'];
+}
+
+/**
+ * `next/image` with the fallback behavior of `NImage`, for applications that
+ * want the optimizer, the layout reservation, and `fill`/`sizes`.
+ *
+ * Lives only in `najm-kit/next`. The root entry must stay installable without
+ * Next, which is why this cannot be a prop on `NImage`.
+ *
+ * It classifies nothing. An application that serves an asset from a route the
+ * browser must reach directly — an authenticated one, say — passes
+ * `unoptimized` at the call site, because whether a route is protected is the
+ * application's fact and not something a URL shape can be read for. Note also
+ * what `unoptimized` is not: it changes delivery mechanics only. Session
+ * validation, permissions, and what bytes come back remain entirely the
+ * backend's.
+ */
+export function NNextImage({
+  src,
+  fallbackSrc,
+  loading,
+  priority,
+  onError,
+  ...props
+}: NNextImageProps) {
+  const chain = useImageChain(normalizeImageSources([src, fallbackSrc]));
+
+  return (
+    <NextImage
+      {...props}
+      priority={priority}
+      // Next already lazy-loads by default, but stating it keeps the contract
+      // the same as `NAvatar`'s. Left alone under `priority`, which Next treats
+      // as mutually exclusive with an explicit `loading`.
+      loading={loading ?? (priority ? undefined : 'lazy')}
+      src={chain.src ?? src}
+      onError={(event) => {
+        chain.markFailed();
+        onError?.(event);
+      }}
+    />
+  );
 }
 
 /** Where `NajmNextUIProvider` POSTs each preference. */

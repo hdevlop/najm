@@ -1,7 +1,9 @@
 import React from "react";
-import { Avatar as AvatarPrimitive, AvatarFallback, AvatarImage } from "../ui/avatar";
+import { Avatar as AvatarPrimitive, AvatarFallback } from "../ui/avatar";
 import { cn } from "../../lib/cn";
 import { resolveAvatarSrc } from "../../lib/avatar";
+import { normalizeImageSources } from "../../lib/imageSource";
+import { useImageChain } from "../../hooks/useImageChain";
 
 const AVATAR_COLORS: [string, string][] = [
   ["#3b82f6", "#1d4ed8"],
@@ -28,6 +30,22 @@ export interface AvatarClassNames {
   meta?: string;
 }
 
+/**
+ * Native image attributes forwarded to the avatar's `<img>`.
+ *
+ * `src`, `alt`, and `className` are excluded because this component resolves
+ * them: the source comes from the primary/fallback chain, the alt text from
+ * `alt`/`title`, and the class from `classNames.image`.
+ *
+ * Typed off the native element rather than a framework image component on
+ * purpose — see the note on `NAvatar` about why the avatar loads its image
+ * directly through the browser.
+ */
+export type NAvatarImageProps = Omit<
+  React.ImgHTMLAttributes<HTMLImageElement>,
+  "src" | "alt" | "className"
+>;
+
 export interface AvatarProps {
   src?: string | null;
   title?: string;
@@ -42,6 +60,14 @@ export interface AvatarProps {
   meta?: React.ReactNode;
   className?: string;
   classNames?: AvatarClassNames;
+  /**
+   * Escape hatch onto the underlying `<img>`: `loading`, `sizes`,
+   * `crossOrigin`, `referrerPolicy`, `decoding`, and the load/error handlers.
+   *
+   * `onLoad` and `onError` are composed with this component's own state rather
+   * than replacing it, so supplying them does not break the fallback chain.
+   */
+  imageProps?: NAvatarImageProps;
 }
 
 const SIZE_CLASSES = {
@@ -83,12 +109,22 @@ function getInitials(name: string): string {
     .slice(0, 2);
 }
 
-function withVersion(src: string, version?: string | number | null): string {
-  if (!version || src.startsWith("data:") || src.startsWith("blob:")) return src;
-  const separator = src.includes("?") ? "&" : "?";
-  return `${src}${separator}v=${encodeURIComponent(String(version))}`;
-}
-
+/**
+ * Person or record avatar: an image with a fallback image behind it, initials
+ * behind that, and an optional title/subtitle/meta column beside it.
+ *
+ * The image is a native `<img>`, not a framework image component and not
+ * Radix's `AvatarImage`. Two reasons, both load-bearing:
+ *
+ * - Radix preloads through `new window.Image()` and mounts the element only
+ *   once the bytes have arrived, which discards the element's own load and
+ *   error events and makes `loading="lazy"` inert. This component has to expose
+ *   both.
+ * - Loading directly through the browser is what lets a same-origin protected
+ *   route work at all: the request carries the session the page already has,
+ *   and no optimizer sits between the two. The package therefore never needs to
+ *   know which routes an application protects.
+ */
 export function NAvatar({
   src,
   title,
@@ -103,36 +139,88 @@ export function NAvatar({
   meta,
   className,
   classNames,
+  imageProps,
 }: AvatarProps) {
   const label = title || fallback || "";
   const imageVersion = srcVersion ?? version;
-  const resolvedSrc = resolveAvatarSrc(src, undefined);
-  const imageSrc = resolvedSrc ? withVersion(resolvedSrc, imageVersion) : fallbackSrc;
+  // The placeholder filter runs before the chain, so a seeded `noavatar.png`
+  // falls through to `fallbackSrc` rather than becoming the first attempt.
+  const sources = normalizeImageSources(
+    [resolveAvatarSrc(src, undefined), fallbackSrc],
+    imageVersion,
+  );
+  const chain = useImageChain(sources);
   const { bg, text } = nameToColor(label);
   const hasText = Boolean(title || subtitle || meta);
   const fallbackText = fallback && !title ? fallback : label ? getInitials(label) : "?";
   const shapeClass = SHAPE_CLASSES[shape];
 
+  const {
+    onLoad: onImageLoad,
+    onError: onImageError,
+    loading: imageLoading,
+    ...restImageProps
+  } = imageProps ?? {};
+
+  const imageRef = React.useRef<HTMLImageElement | null>(null);
+  const { markLoaded } = chain;
+
+  // An image already in the browser cache can finish before React attaches the
+  // load handler — during hydration it is usually already complete by the time
+  // the element is claimed. Without this the initials would never come down.
+  // Only the success direction is inferred: `complete` with no natural width is
+  // also the state of an element that has not started, so treating it as a
+  // failure here would burn through the chain on mount.
+  React.useEffect(() => {
+    const element = imageRef.current;
+    if (element?.complete && element.naturalWidth > 0) markLoaded();
+  }, [chain.src, markLoaded]);
+
+  const showImage = Boolean(chain.src) && !chain.exhausted;
+  // Initials stay mounted until an image has actually painted, and come back
+  // when every source has failed. While both are mounted the image is absolutely
+  // positioned over the initials, so it does not push them out of the box; once
+  // it loads they unmount, which is what keeps a transparent PNG from showing
+  // letters through its own pixels.
+  const showFallback = !showImage || !chain.loaded;
+
   return (
     <div className={cn("flex items-center gap-3", classNames?.root, className)}>
       <AvatarPrimitive
-        className={cn(SIZE_CLASSES[size], shapeClass, "flex justify-center items-center overflow-hidden", classNames?.avatar)}
+        className={cn(SIZE_CLASSES[size], shapeClass, "flex justify-center items-center overflow-hidden bg-muted", classNames?.avatar)}
       >
-        {imageSrc && (
-          <AvatarImage
-            src={imageSrc}
+        {showImage && (
+          <img
+            {...restImageProps}
+            ref={imageRef}
+            data-slot="avatar-image"
+            src={chain.src}
             alt={alt || label}
-            className={cn("object-cover", classNames?.image)}
+            loading={imageLoading ?? "lazy"}
+            className={cn("absolute inset-0 size-full object-cover", classNames?.image)}
+            onLoad={(event) => {
+              markLoaded();
+              onImageLoad?.(event);
+            }}
+            onError={(event) => {
+              chain.markFailed();
+              onImageError?.(event);
+            }}
           />
         )}
-        <AvatarFallback
-          style={{ backgroundColor: bg, color: text }}
-          className={cn(shapeClass, classNames?.fallback)}
-        >
-          <span className={cn("font-semibold", TEXT_SIZE_CLASSES[size])}>
-            {fallbackText}
-          </span>
-        </AvatarFallback>
+        {showFallback && (
+          // Mounted by this component rather than by Radix's loading status:
+          // the status is driven by a preloader we deliberately do not use, so
+          // the visibility decision belongs here alongside the chain state.
+          <AvatarFallback
+            style={{ backgroundColor: bg, color: text }}
+            className={cn(shapeClass, classNames?.fallback)}
+          >
+            <span className={cn("font-semibold", TEXT_SIZE_CLASSES[size])}>
+              {fallbackText}
+            </span>
+          </AvatarFallback>
+        )}
       </AvatarPrimitive>
 
       {hasText && (

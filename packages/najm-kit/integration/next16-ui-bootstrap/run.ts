@@ -62,6 +62,7 @@ try {
   await oneResolutionPerNavigation();
   await failureIsIsolatedAndStable();
   await theNextRequestRetries();
+  await imageDeliveryIsExplicit();
   console.log('Next.js 16 najm-kit UI bootstrap suite: PASS');
 } finally {
   server.kill();
@@ -121,6 +122,43 @@ async function theNextRequestRetries() {
   assert(html.includes('root:7:/uploaded-logo.png'), 'a later request reused the process-wide fallback');
   const state = await readState();
   assert(state.hits.branding === 1, `expected one branding hit, got ${state.hits.branding}`);
+}
+
+/**
+ * `NNextImage` renders through the real optimizer for a public asset and
+ * straight to the route for one the application marked `unoptimized`.
+ *
+ * Only a production build can show this: the decision is made by Next's image
+ * loader at render time, and a unit test sees the props rather than the emitted
+ * markup. It is also the assertion that keeps route classification where it
+ * belongs — the package cannot pass this by guessing from the URL, because both
+ * sources here are same-origin paths.
+ */
+async function imageDeliveryIsExplicit() {
+  const html = await navigate('/media');
+
+  assert(
+    html.includes('/_next/image?url=%2Fpublic-cover.png'),
+    'the public image did not go through the Next optimizer',
+  );
+  assert(
+    html.includes('src="/api/managed/files/serve/fixture-asset"'),
+    'the unoptimized image was not delivered straight from its route',
+  );
+  assert(
+    !html.includes('url=%2Fapi%2Fmanaged'),
+    'the unoptimized image was rewritten through the optimizer',
+  );
+  assert(html.includes('loading="lazy"'), 'the lazy default did not reach the markup');
+  assert(html.includes('loading="eager"'), 'an explicit eager loading value was overridden');
+  // `fill` still reserves the box for the direct image. `sizes` does not appear
+  // beside it: Next emits `sizes` only alongside a `srcSet`, and an unoptimized
+  // source has none to describe. That is Next's contract, not a loss here — the
+  // optimized path keeps both, which the unit suite covers.
+  assert(
+    html.includes('data-nimg="fill"'),
+    'the unoptimized image lost its fill layout',
+  );
 }
 
 async function navigate(path: string): Promise<string> {

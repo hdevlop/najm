@@ -87,8 +87,8 @@ export { useMediaQuery, useCardViewport, useDesktopTableMode, DEFAULT_CARD_BREAK
 export { Button, NButton, buttonVariants } from "./components/Button";
 export type { ButtonIcon, ButtonLoaderPosition, ButtonProps, ButtonRounded, ButtonSize, ButtonVariant, NButtonProps } from "./components/Button";
 export { Badge, NBadge, badgeColorVariants, badgeVariants } from "./components/Badge";
-export { colorTextClass, findStatusColor, NAJM_COLOR_TEXT_CLASSES, NAJM_STATUS_COLORS, resolveStatusColor, statusTextClass } from "./components/Badge";
-export type { BadgeColor, BadgeIcon, BadgeLook, BadgeProps, BadgeShape, BadgeSize, BadgeVariant, NBadgeLook, NBadgeProps } from "./components/Badge";
+export { colorTextClass, findStatusColor, NAJM_COLOR_TEXT_CLASSES, NAJM_STATUS_COLORS, normalizeStatusToken, resolveStatusColor, statusTextClass } from "./components/Badge";
+export type { BadgeColor, BadgeIcon, BadgeLook, BadgeProps, BadgeShape, BadgeSize, BadgeVariant, NBadgeDefaults, NBadgeLook, NBadgeProps } from "./components/Badge";
 export { NIndicator, Indicator, indicatorVariants } from "./components/Indicator";
 export type { IndicatorProps, IndicatorPosition, IndicatorResponsivePosition, IndicatorOverlay, IndicatorSize, IndicatorVertical, IndicatorHorizontal } from "./components/Indicator";
 export { Input } from "./components/ui/input";
@@ -165,7 +165,7 @@ export { NSkeleton, Skeleton, NStatCardSkeleton, NTableRowSkeleton, NTableSkelet
 
 // Avatar
 export { NAvatar } from "./components/Avatar";
-export type { NAvatarProps, NAvatarClassNames, AvatarShape as NAvatarShape } from "./components/Avatar";
+export type { NAvatarProps, NAvatarClassNames, NAvatarImageProps, AvatarShape as NAvatarShape } from "./components/Avatar";
 
 // Card
 export { NCard, AsyncCard, NAsyncCard, NCardAction, NCardFooter, NCardMedia, NCardSection, NCardInfo, NSectionInfo, NSection, NSectionWithInfo, NSectionHeader, truncateByCharacters, NStatCard, NDonutCard } from "./components/Card";

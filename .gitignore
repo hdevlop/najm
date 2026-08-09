@@ -14,6 +14,7 @@ lerna-debug.log*
 
 .cache
 .runtime/
+/tmp/
 # stdout/stderr of the detached playground server (scripts/playground-next-background.ts)
 .logs/
 .agents/

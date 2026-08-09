@@ -164,6 +164,23 @@ describe("Root barrel import", () => {
     expect(najmUI.NAvatar).toBeDefined();
   });
 
+  test("exports NImage component", () => {
+    expect(najmUI.NImage).toBeDefined();
+  });
+
+  test("exports the one status normalization rule", () => {
+    expect(typeof najmUI.normalizeStatusToken).toBe("function");
+    expect(najmUI.normalizeStatusToken(" Out-For Delivery ")).toBe(
+      "out_for_delivery",
+    );
+  });
+
+  test("does not export the Next image component from the root", () => {
+    // It lives in `najm-kit/next`; exporting it here would make `next` a hard
+    // dependency of every consumer.
+    expect("NNextImage" in najmUI).toBe(false);
+  });
+
   test("exports NMultiDialog component", () => {
     expect(najmUI.NMultiDialog).toBeDefined();
   });

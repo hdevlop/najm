@@ -1,5 +1,23 @@
 # Changelog
 
+## 2.10.0 - 2026-08-10
+
+- Added a shared, failure-aware media source chain for `NAvatar`, `NImage`, and
+  the new Next-only `NNextImage` export. Sources reset cleanly when inputs or
+  cache versions change, duplicate candidates are tried once, consumer event
+  handlers are preserved, and failed avatars return to initials without a
+  broken-image glyph.
+- `NAvatar` now uses a native lazy-loaded image so loading and error events are
+  observable, keeps initials visible until the image paints, supports native
+  `imageProps`, and actually tries `fallbackSrc` after a primary failure.
+- Added provider-level status badge defaults and the public
+  `normalizeStatusToken` helper. Applications can configure translated status
+  labels, colors, icons, look, shape, and size once while explicit badge props
+  retain precedence.
+- Added `NNextImage` and `NNextImageProps` to `najm-kit/next` only, preserving
+  Next Image `fill`, `sizes`, optimizer, and `unoptimized` controls without
+  adding Next.js to the root runtime graph.
+
 ## 2.9.0 - 2026-08-09
 
 - Added `najm-kit/server`, a pure UI bootstrap loader. `createUiBootstrapLoader()`

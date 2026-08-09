@@ -31,12 +31,44 @@ const SERVER_SAFE_ENTRIES = [
 const built = existsSync(DIST) && ENTRIES.every((e) => existsSync(join(DIST, e)));
 const describeBuilt = built ? describe : describe.skip;
 
+/**
+ * Every module reachable from `entry` through the emitted chunk graph,
+ * concatenated.
+ *
+ * Entry files are re-export stubs under `splitting: true`, so asserting on one
+ * of them proves nothing about what a consumer importing it actually loads.
+ */
+function collectGraph(entry: string): string {
+  const seen = new Set<string>();
+  const queue = [entry];
+  let graph = "";
+  while (queue.length) {
+    const file = queue.pop()!;
+    if (seen.has(file) || !existsSync(join(DIST, file))) continue;
+    seen.add(file);
+    const source = readFileSync(join(DIST, file), "utf8");
+    graph += source;
+    for (const chunk of source.match(/chunk-[A-Z0-9]+\.mjs/g) ?? []) {
+      queue.push(chunk);
+    }
+  }
+  return graph;
+}
+
+/**
+ * Contexts a provider from one entry publishes to and a hook from another
+ * reads. Each must be created exactly once across the whole output.
+ */
+const SHARED_CONTEXTS = ["NajmPreferencesContext", "NBadgeDefaultsContext"];
+
 describeBuilt("dist shape", () => {
-  test("every entry shares one React context module", () => {
+  test.each(SHARED_CONTEXTS)("%s is created once and reachable from every entry", (name) => {
     // With `splitting: false`, each entry bundles its own copy of
     // src/providers — including its own createContext object. A provider from
     // one entry then publishes to a context a hook from another entry never
     // reads, and every consumer throws from inside a correctly nested tree.
+    // `NBadgeDefaultsContext` is the same hazard one step further out:
+    // `NajmNextUIProvider` mounts it and `NBadge` from the root entry reads it.
     const chunks = readdirSync(DIST).filter((f) => f.startsWith("chunk-"));
 
     // Match the `createContext` call rather than the bare name. The exported
@@ -44,15 +76,16 @@ describeBuilt("dist shape", () => {
     // substring, so any chunk that merely re-exports the hook used to register
     // as a second definition — which sent this test looking for the wrong owner
     // and failed on an output that was actually correct.
-    const CREATES_CONTEXT =
-      /\bNajmPreferencesContext\s*=\s*(?:\w+\.)?createContext\b/;
+    const CREATES_CONTEXT = new RegExp(
+      `\\b${name}\\s*=\\s*(?:\\w+\\.)?createContext\\b`,
+    );
     const owners = chunks.filter((c) =>
       CREATES_CONTEXT.test(readFileSync(join(DIST, c), "utf8")),
     );
 
     expect(
       owners.length,
-      `NajmPreferencesContext must be created exactly once, found in: ${owners.join(", ") || "no chunk"}`,
+      `${name} must be created exactly once, found in: ${owners.join(", ") || "no chunk"}`,
     ).toBe(1);
     const owner = owners[0];
 
@@ -88,6 +121,40 @@ describeBuilt("dist shape", () => {
     expect(source.startsWith("'use client'")).toBe(false);
   });
 
+  test("the root entry and its chunks import nothing from next", () => {
+    // `next` is an optional peer dependency, so a project without it installed
+    // must still be able to import `najm-kit`. One `next/image` or
+    // `next/navigation` specifier anywhere in the root graph turns that into a
+    // module resolution failure at the consumer's first build — and with
+    // `splitting: true` the specifier can arrive through a chunk the root entry
+    // merely re-exports, which is why the whole graph is walked rather than
+    // just `index.mjs`.
+    const NEXT_IMPORT = /from\s*["']next(\/[^"']*)?["']/;
+
+    const match = NEXT_IMPORT.exec(collectGraph("index.mjs"));
+    expect(
+      match?.[0] ?? null,
+      `the root entry graph must not import from next, found: ${match?.[0]}`,
+    ).toBeNull();
+  });
+
+  test("the next adapter is where the Next image component lives", () => {
+    expect(collectGraph("adapters/next.mjs")).toContain("next/image");
+
+    const declarations = readFileSync(join(DIST, "adapters/next.d.ts"), "utf8");
+    expect(declarations).toContain("NNextImage");
+    expect(declarations).toContain("NNextImageProps");
+
+    // And not from the root, which would put `next` in the type graph of every
+    // consumer — including those without it installed. Matched on the declared
+    // names rather than the string: the root's `NImage` doc comment names
+    // `NNextImage` to point readers at it, and that reference is the point.
+    const root = readFileSync(join(DIST, "index.d.ts"), "utf8");
+    expect(root).not.toContain("NNextImageProps");
+    expect(root).not.toContain("declare function NNextImage");
+    expect(root).not.toMatch(/from\s*['"]next\/image['"]/);
+  });
+
   test("the leaf entries reach no client-only React API", () => {
     // The root barrel is one module reaching the whole component library, so
     // server code cannot import it: react-hook-form resolves to its
@@ -101,20 +168,7 @@ describeBuilt("dist shape", () => {
     for (const entry of SERVER_SAFE_ENTRIES) {
       if (!existsSync(join(DIST, entry))) continue;
 
-      // Follow the entry's own chunk graph; the entry file is a re-export stub.
-      const seen = new Set<string>();
-      const queue = [entry];
-      let graph = "";
-      while (queue.length) {
-        const file = queue.pop()!;
-        if (seen.has(file) || !existsSync(join(DIST, file))) continue;
-        seen.add(file);
-        const source = readFileSync(join(DIST, file), "utf8");
-        graph += source;
-        for (const chunk of source.match(/chunk-[A-Z0-9]+\.mjs/g) ?? []) {
-          queue.push(chunk);
-        }
-      }
+      const graph = collectGraph(entry);
 
       for (const token of forbidden) {
         expect(graph, `${entry} reaches ${token}`).not.toContain(token);
@@ -190,19 +244,7 @@ describeBuilt("person-images distribution", () => {
     // change re-exports person-images from the root entry, every consumer
     // ships ~110KB of portrait art in their initial bundle — this assertion
     // catches that on the built output.
-    const seen = new Set<string>();
-    const queue = ["index.mjs"];
-    let graph = "";
-    while (queue.length) {
-      const file = queue.pop()!;
-      if (seen.has(file) || !existsSync(join(DIST, file))) continue;
-      seen.add(file);
-      const source = readFileSync(join(DIST, file), "utf8");
-      graph += source;
-      for (const chunk of source.match(/chunk-[A-Z0-9]+\.mjs/g) ?? []) {
-        queue.push(chunk);
-      }
-    }
+    const graph = collectGraph("index.mjs");
 
     expect(
       graph.includes("data:image/webp;base64,"),

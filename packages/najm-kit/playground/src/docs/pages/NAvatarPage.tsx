@@ -177,6 +177,70 @@ export function NAvatarPage() {
           }}
         />
       </Example>
+
+      <Example
+        title="Primary, then fallback, then initials"
+        description="The primary source is tried first. When it fails, fallbackSrc is tried — once. When that fails too, the initials come back and no broken-image glyph is left behind."
+        code={`<NAvatar
+  src="/does-not-exist.png"
+  fallbackSrc="https://github.com/shadcn.png"
+  title="Recovered Image"
+/>
+
+<NAvatar
+  src="/does-not-exist.png"
+  fallbackSrc="/also-missing.png"
+  title="Everything Failed"
+/>`}
+      >
+        <div className="flex flex-col gap-3">
+          <NAvatar
+            src="/does-not-exist.png"
+            fallbackSrc="https://github.com/shadcn.png"
+            title="Recovered Image"
+            subtitle="primary failed, fallback loaded"
+          />
+          <NAvatar
+            src="/does-not-exist.png"
+            fallbackSrc="/also-missing.png"
+            title="Everything Failed"
+            subtitle="initials, no broken glyph"
+          />
+        </div>
+      </Example>
+
+      <Example
+        title="Transparent image"
+        description="Initials are unmounted once an image paints, so a transparent PNG shows the muted avatar surface rather than letters through its own pixels."
+        code={`<NAvatar src={transparentPng} title="Transparent Png" />`}
+      >
+        <NAvatar
+          src={TRANSPARENT_PNG}
+          title="Transparent Png"
+          subtitle="loaded, no initials showing through"
+        />
+      </Example>
+
+      <Example
+        title="Loading policy"
+        description="The image is a native <img> loaded directly by the browser and lazy by default. imageProps reaches it for an eager override, sizes, or the load and error handlers — which are composed with the fallback chain rather than replacing it."
+        code={`<NAvatar
+  src="https://github.com/shadcn.png"
+  title="Above The Fold"
+  imageProps={{ loading: 'eager', sizes: '40px' }}
+/>`}
+      >
+        <NAvatar
+          src="https://github.com/shadcn.png"
+          title="Above The Fold"
+          subtitle="loading=eager"
+          imageProps={{ loading: 'eager', sizes: '40px' }}
+        />
+      </Example>
     </ComponentPage>
   );
 }
+
+/** A 1x1 fully transparent PNG. */
+const TRANSPARENT_PNG =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAAC0lEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';

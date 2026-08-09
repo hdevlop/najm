@@ -71,8 +71,15 @@ export const NAJM_COLOR_TEXT_CLASSES: Record<BadgeColor, string> = {
   destructive: "text-destructive",
 };
 
-/** `Out_For_Delivery ` and `out-for-delivery` are the same status key. */
-function normalizeStatus(status: string): string {
+/**
+ * `Out_For_Delivery `, `out-for-delivery` and `out for delivery` are the same
+ * status key.
+ *
+ * Exported because it is the *one* rule: colors, icons, and labels all key off
+ * a status the same way, and an application whose own status handling has to
+ * agree with a badge should not have to guess it.
+ */
+export function normalizeStatusToken(status: string): string {
   return status.trim().toLowerCase().replace(/[\s-]+/g, "_");
 }
 
@@ -91,7 +98,7 @@ export function findStatusColor(
   statusMap?: Record<string, BadgeColor>,
 ): BadgeColor | undefined {
   if (!status) return undefined;
-  const normalized = normalizeStatus(status);
+  const normalized = normalizeStatusToken(status);
   return (
     lookup(statusMap, status, normalized) ??
     lookup(NAJM_STATUS_COLORS, status, normalized)

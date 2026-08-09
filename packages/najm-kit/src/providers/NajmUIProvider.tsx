@@ -8,6 +8,11 @@ import type { NajmDesignConfig } from "../theme/design-types";
 // its dependencies into that bundle for the sake of one context provider.
 import { NTableDefaultsProvider } from "../components/table/TableDefaults";
 import type { NTableDefaults } from "../components/table/TableDefaults";
+// Same reason as the line above: imported from the module, not the `Badge`
+// barrel, which would drag NBadge, NIcon and the design provider into the
+// `najm-kit/next` bundle for the sake of one context.
+import { NBadgeDefaultsProvider } from "../components/Badge/defaults";
+import type { NBadgeDefaults } from "../components/Badge/defaults";
 import {
   NajmPreferencesProvider,
   useNajmPreferencesContext,
@@ -75,11 +80,24 @@ export interface NajmUIProviderProps
    * same reason as `t`.
    */
   tableDefaults?: NTableDefaults;
+  /**
+   * Presentation policy for `<NBadge status="…" />`: the look, the shape, and
+   * the map from the application's status tokens to its catalog keys.
+   *
+   * This is the prop that deletes a project's `StatusBadge` wrapper. Memoize it
+   * for the same reason as `t`.
+   */
+  badgeDefaults?: NBadgeDefaults;
 }
 
 type UICoreProps = Pick<
   NajmUIProviderProps,
-  "children" | "className" | "t" | "paginationKeyPrefix" | "tableDefaults"
+  | "children"
+  | "className"
+  | "t"
+  | "paginationKeyPrefix"
+  | "tableDefaults"
+  | "badgeDefaults"
 >;
 
 /**
@@ -96,6 +114,7 @@ function NajmUICore({
   t,
   paginationKeyPrefix = DEFAULT_PAGINATION_KEY_PREFIX,
   tableDefaults,
+  badgeDefaults,
 }: UICoreProps) {
   const { theme } = useNajmTheme();
   const design = useNajmDesignEditor()?.design ?? EMPTY_DESIGN;
@@ -122,7 +141,13 @@ function NajmUICore({
       className={cn("min-h-full", className)}
     >
       <NTableDefaultsProvider value={defaults}>
-        {children}
+        {/* Mounted unconditionally so the translator reaches the badges: an
+            application can supply `statusLabelKeys` later, and a language
+            change has to recompute labels through the same `t` the tables
+            already use. */}
+        <NBadgeDefaultsProvider defaults={badgeDefaults} t={t}>
+          {children}
+        </NBadgeDefaultsProvider>
       </NTableDefaultsProvider>
     </NajmDesignProvider>
   );
@@ -155,6 +180,7 @@ export function NajmUIProvider({
   t,
   paginationKeyPrefix,
   tableDefaults,
+  badgeDefaults,
   initialTheme,
   initialTimeZone,
   onThemeChange,
@@ -170,6 +196,7 @@ export function NajmUIProvider({
         t={t}
         paginationKeyPrefix={paginationKeyPrefix}
         tableDefaults={tableDefaults}
+        badgeDefaults={badgeDefaults}
       >
         {children}
       </NajmUICore>

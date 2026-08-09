@@ -19,6 +19,14 @@ export {
   findStatusColor,
   NAJM_COLOR_TEXT_CLASSES,
   NAJM_STATUS_COLORS,
+  normalizeStatusToken,
   resolveStatusColor,
   statusTextClass,
 } from "./status";
+export {
+  NBadgeDefaultsProvider,
+  useNBadgeDefaults,
+  type NBadgeDefaults,
+  type NBadgeDefaultsContextValue,
+  type NBadgeDefaultsProviderProps,
+} from "./defaults";

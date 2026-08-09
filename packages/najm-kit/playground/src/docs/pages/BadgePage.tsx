@@ -1,5 +1,5 @@
 import React from 'react';
-import { NButton, NBadge, statusTextClass } from 'najm-kit';
+import { NajmUIProvider, NButton, NBadge, statusTextClass } from 'najm-kit';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
 
@@ -288,6 +288,52 @@ const ICON_MAP = { success: 'circle-check', accent: 'hourglass', neutral: 'ban',
         <NBadge color="warning" look="text" label="Pending" />
         <NBadge color="destructive" look="text" label="Failed" />
       </Example>
+
+      <Example
+        title="Provider status defaults"
+        description="Declare the look, the shape and the map from your status tokens to your catalog keys once on NajmUIProvider. Every status badge below it picks them up; a status you have not mapped is humanized, and a content badge is left alone."
+        code={`<NajmUIProvider
+  t={(key) => catalog[key] ?? key}
+  badgeDefaults={{
+    look: 'soft',
+    shape: 'pill',
+    statusLabelKeys: { active: 'status.active' },
+  }}
+>
+  <NBadge status="active" />        {/* translated */}
+  <NBadge status="pending_review" /> {/* humanized  */}
+  <NBadge status="active" look="solid" label="Enrolled" /> {/* local override */}
+  <NBadge>Beta</NBadge>              {/* untouched  */}
+</NajmUIProvider>`}
+      >
+        <NajmUIProvider
+          t={(key) => STATUS_CATALOG[key] ?? key}
+          badgeDefaults={{
+            look: 'soft',
+            shape: 'pill',
+            statusLabelKeys: STATUS_LABEL_KEYS,
+          }}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <NBadge status="active" />
+            <NBadge status="out_for_delivery" />
+            <NBadge status="pending_review" />
+            <NBadge status="active" look="solid" label="Enrolled" />
+            <NBadge>Beta</NBadge>
+          </div>
+        </NajmUIProvider>
+      </Example>
     </ComponentPage>
   );
 }
+
+/** Stand-ins for an application's catalog — this package ships neither. */
+const STATUS_LABEL_KEYS: Record<string, string> = {
+  active: 'status.active',
+  out_for_delivery: 'status.outForDelivery',
+};
+
+const STATUS_CATALOG: Record<string, string> = {
+  'status.active': 'Currently active',
+  'status.outForDelivery': 'On its way',
+};

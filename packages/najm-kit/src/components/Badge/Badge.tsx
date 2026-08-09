@@ -8,6 +8,11 @@ import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
 import { resolveVariantAlias } from "../../theme/design-config";
 import { colorTextClass, resolveStatusColor } from "./status";
+import {
+  mergeBadgeMaps,
+  resolveBadgeStatusLabel,
+  useNBadgeDefaults,
+} from "./defaults";
 
 const badgeVariants = cva(
   "inline-flex items-center justify-center rounded-md border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
@@ -149,36 +154,55 @@ function Badge({
 }: BadgeProps) {
   const Comp = asChild ? Slot : "span";
   const recipe = useNajmComponentStyle("badge");
+  const ambient = useNBadgeDefaults();
+  // Provider policy is *status* policy. A content badge — `<NBadge>Beta</NBadge>`
+  // — is not a lifecycle state, and an application that wants its statuses soft
+  // and pill-shaped is not asking for that everywhere.
+  const statusDefaults = status ? ambient?.defaults : undefined;
+
+  const effectiveLook = look ?? statusDefaults?.look;
+  const effectiveShape = shape ?? statusDefaults?.shape;
+  const effectiveSize = size ?? statusDefaults?.size;
+  const effectiveShowIcon = showIcon ?? statusDefaults?.showIcon;
+  const effectiveStatusMap = mergeBadgeMaps(statusDefaults?.statusMap, statusMap);
+  const effectiveIconMap = mergeBadgeMaps(statusDefaults?.iconMap, iconMap);
   // Variant aliasing: e.g. primary badge can reuse the secondary recipe.
   const aliased = resolveVariantAlias(
     recipe?.variants,
     (variant ?? recipe?.defaultVariant ?? "default") as string,
   );
   const effVariant = (variant ?? (aliased.variant as BadgeVariant) ?? recipe?.defaultVariant) as BadgeProps["variant"];
-  const recipeRadius = shape === undefined ? resolveRadiusValue(recipe?.radius) : undefined;
+  // A shape from the provider counts as a stated shape: the design recipe's
+  // radius must not silently un-pill an application's status badges.
+  const recipeRadius = effectiveShape === undefined ? resolveRadiusValue(recipe?.radius) : undefined;
   const recipeStyle = recipeRadius ? { borderRadius: recipeRadius, ...style } : style;
   const resolvedColor = status
-    ? resolveStatusColor(status, statusMap, color ?? "neutral")
+    ? resolveStatusColor(status, effectiveStatusMap, color ?? "neutral")
     : color ?? "primary";
+  // Most specific first: the call site, then its children, then the
+  // application's label for this status, then the humanized token.
   const resolvedLabel =
     label ??
     (typeof children === "string" ? children : undefined) ??
-    (status ? humanizeToken(status) : undefined);
+    (status
+      ? resolveBadgeStatusLabel(status, statusDefaults, ambient?.t) ??
+        humanizeToken(status)
+      : undefined);
   const content = typeof children !== "string" && children ? children : resolvedLabel ?? children;
-  const resolvedIcon = icon ?? (resolvedColor ? iconMap?.[resolvedColor] : undefined);
-  const iconNode = renderIcon(showIcon ? resolvedIcon : icon);
-  const isMinimal = look === "minimal" || look === "text";
+  const resolvedIcon = icon ?? (resolvedColor ? effectiveIconMap?.[resolvedColor] : undefined);
+  const iconNode = renderIcon(effectiveShowIcon ? resolvedIcon : icon);
+  const isMinimal = effectiveLook === "minimal" || effectiveLook === "text";
 
   if (isMinimal) {
     const textColor = colorTextClass(resolvedColor);
-    const sizeClass = SIZE_TEXT_MAP[size ?? "md"] ?? "text-sm";
+    const sizeClass = SIZE_TEXT_MAP[effectiveSize ?? "md"] ?? "text-sm";
 
     return (
       <Comp
         data-slot="badge"
         className={cn(
           "inline-flex items-center gap-1.5 font-medium bg-transparent border-0",
-          look === "text" ? "px-0" : undefined,
+          effectiveLook === "text" ? "px-0" : undefined,
           textColor,
           sizeClass,
           className
@@ -194,7 +218,12 @@ function Badge({
   }
 
   const classes = resolvedColor
-    ? badgeColorVariants({ color: resolvedColor, look: look as BadgeLook | undefined, size, shape })
+    ? badgeColorVariants({
+        color: resolvedColor,
+        look: effectiveLook as BadgeLook | undefined,
+        size: effectiveSize,
+        shape: effectiveShape,
+      })
     : badgeVariants({ variant: effVariant });
 
   return (

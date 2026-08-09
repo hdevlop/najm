@@ -147,6 +147,134 @@ import { Form, FormInput, useNForm } from 'najm-kit';
 | Data | Table (NTable), StatCard, DetailList |
 | Overlays | Command palette, Tooltip, Toast |
 
+## Images and avatars
+
+Three components, one fallback rule. Each tries its sources in order, tries a
+source at most once, and discards what it knows about a failure the moment the
+sources change.
+
+### `NImage` — plain `<img>`
+
+For a logo or an icon whose box the caller's CSS already owns. No layout is
+invented, and `onError` is forwarded rather than swallowed.
+
+```tsx
+import { NImage } from 'najm-kit';
+
+<NImage src={logo} fallback="/brand/logo.svg" alt="Acme" className="h-8 w-auto" />
+```
+
+### `NAvatar` — person or record
+
+The image is a native `<img>` loaded directly by the browser, so a same-origin
+protected route works with the session the page already has, and the package
+needs no knowledge of which routes are protected.
+
+```tsx
+import { NAvatar } from 'najm-kit';
+
+<NAvatar
+  src={member.image}
+  fallbackSrc={stockPortrait}
+  version={member.imageRevision}
+  title={member.name}
+  subtitle={member.role}
+  size="lg"
+/>
+```
+
+- The primary source is tried first, then `fallbackSrc`, then the initials.
+- `version` (or `srcVersion`) is appended as `?v=…` to every remote source, so a
+  re-upload is not served from cache. `data:` and `blob:` sources are left alone.
+- Initials stay visible until an image paints and come back if every source
+  fails — a transparent PNG never shows letters through itself.
+- `imageProps` reaches the element for `loading`, `sizes`, `crossOrigin`,
+  `referrerPolicy`, and the load/error handlers. It defaults to `loading="lazy"`,
+  and supplied handlers are composed with the fallback chain rather than
+  replacing it.
+
+### `NNextImage` — optimized, from `najm-kit/next`
+
+Same fallback contract with Next's optimizer, layout reservation, `fill`, and
+`sizes`. It lives only in the `najm-kit/next` entry, because the root package
+stays installable without Next.
+
+```tsx
+import { NNextImage } from 'najm-kit/next';
+
+// A public asset: let the optimizer resize and re-encode it.
+<NNextImage src="/covers/spring.png" alt="Spring" width={64} height={64} />
+```
+
+For an asset the browser must fetch directly — one behind an authenticated route,
+typically — the *application* says so:
+
+```tsx
+<NNextImage
+  src={record.image}
+  alt={record.name}
+  fill
+  sizes="64px"
+  unoptimized
+/>
+```
+
+`unoptimized` is passed at the call site rather than inferred from the URL:
+which routes are protected is the application's fact, not something a package
+can read off a path. It changes delivery mechanics only — session validation,
+permissions, privacy projection, and what bytes come back all remain the
+backend's.
+
+## Status badges
+
+`<NBadge status="…" />` already maps a broad lifecycle vocabulary onto the
+semantic colors, so it is correct without configuration:
+
+```tsx
+import { NBadge } from 'najm-kit';
+
+<NBadge status="out_for_delivery" />   // warning, "Out For Delivery"
+<NBadge status="nebulous" />           // neutral, "Nebulous"
+```
+
+What an application usually adds on top is the same three things at every call
+site: its look, its shape, and its own translated label. Declare them once:
+
+```tsx
+<NajmAppProvider
+  badgeDefaults={{
+    look: 'soft',
+    shape: 'pill',
+    statusLabelKeys: {
+      active: 'status.active',
+      out_for_delivery: 'status.outForDelivery',
+    },
+  }}
+>
+```
+
+`badgeDefaults` lives on `NajmUIProvider` and is inherited by
+`NajmNextUIProvider` and `NajmAppProvider`, so there is one place to set it.
+The keys are the application's catalog keys, resolved through the same `t` the
+provider already has — this package ships no status catalog. A language change
+recomputes every label without a remount.
+
+Resolution, most specific first:
+
+1. An explicit prop beats every provider default.
+2. `label` beats string children; string children beat the provider's label.
+3. A `statusLabels` literal beats a `statusLabelKeys` catalog lookup.
+4. An unmapped status is humanized (`pending_review` → `Pending Review`).
+5. A per-instance `statusMap`/`iconMap` merges over the provider's, so
+   overriding one status costs one status.
+6. Provider status defaults apply **only** when `status` is set —
+   `<NBadge>Beta</NBadge>` keeps the ordinary content-badge look.
+
+Statuses are matched through one rule, exported as `normalizeStatusToken`, so
+`Out-For-Delivery `, `out for delivery`, and `out_for_delivery` are the same
+key for colors, icons, and labels alike. Badge text is presentation: it renames
+nothing in the backend and validates no lifecycle transition.
+
 ## Global form development tools
 
 Enable schema-driven test values once on the full application provider. Every
