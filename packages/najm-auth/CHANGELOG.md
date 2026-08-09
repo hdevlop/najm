@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.1 - 2026-08-09
+
+- docs: explain the App Router auth boundary in prose — why `auth.ts` and
+  `session.ts` cannot be merged, why a protected layout needs
+  `export const dynamic = 'force-dynamic'`, and why a strict guard must not
+  be silenced with `.catch(() => null)`
+- docs: add a per-app checklist rooted at the real Next.js production
+  boundary rather than mocks
+- chore(najm-cli): `najm init next` now offers to scaffold `src/lib/auth.ts`,
+  `src/lib/session.ts`, and `src/proxy.ts` (with `najm-auth` and
+  `server-only` as dependencies) and prints the protected-layout snippet
+
 ## 3.1.0 - 2026-08-09
 
 - feat(client/server): add the `najm-auth/client/server/react` subpath exporting
