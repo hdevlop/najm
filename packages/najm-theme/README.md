@@ -711,10 +711,9 @@ are exactly the interesting ones, and a log aggregator is not where they belong.
   `najm-kit` must never depend on `najm-theme`.
 - Node 20+, Bun 1.2+, React 18+, Next.js 14+, Drizzle 0.45+.
 - PostgreSQL and SQLite are both first-class and tested for parity.
-- **`assetUploads` requires a `najm-storage` that exports `STORAGE_SERVICE`, and
-  `mcp` requires a `najm-mcp` that exports `MCP_REGISTRY`.** Both aliases landed
-  after `najm-storage@2.1.1` and `najm-mcp@2.0.2`; the `peerDependencies` ranges
-  must be raised to the releases carrying them before this package is published.
+- **`assetUploads` requires `najm-storage` ≥ 2.2.0, and `mcp` requires
+  `najm-mcp` ≥ 2.1.0** — the releases that alias `STORAGE_SERVICE` and
+  `MCP_REGISTRY` to their services. The `peerDependencies` ranges enforce this.
   Against an older peer the feature fails at boot with a message naming the
   missing registration — loudly, not silently, but it does not work.
 

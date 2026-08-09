@@ -47,7 +47,8 @@ Node, filesystem, Drizzle, or decorator import.
   constructor, which stops being true the moment this package is consumed as
   `dist` beside an application that maps the same specifier to `src`: the
   container answers with a *second* service instead of failing. Requires
-  `najm-mcp` with `MCP_REGISTRY` and `najm-storage` with `STORAGE_SERVICE`.
+  `najm-mcp` ≥ 2.1.0 and `najm-storage` ≥ 2.2.0, the releases that alias
+  `MCP_REGISTRY` and `STORAGE_SERVICE` to their services.
 
 **Schemas** (`najm-theme/pg`, `najm-theme/sqlite`)
 
