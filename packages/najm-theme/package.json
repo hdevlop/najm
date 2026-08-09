@@ -1,9 +1,9 @@
 {
   "name": "najm-theme",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "license": "MIT",
   "type": "module",
-  "description": "Managed runtime theming for Najm applications \u2014 appearance, theme presets, and branding assets with persistence, transport, and composable settings UI",
+  "description": "Managed runtime theming for Najm applications — appearance, theme presets, and branding assets with persistence, transport, and composable settings UI",
   "files": [
     "dist",
     "README.md",

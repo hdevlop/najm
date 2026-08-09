@@ -1,5 +1,21 @@
 # najm-theme
 
+## 0.1.1
+
+Documentation only. No change to the code, the export map, or any dependency
+range — `dist` is byte-identical to 0.1.0.
+
+### Fixed
+
+- The Compatibility section of the README described raising the `najm-storage`
+  and `najm-mcp` peer ranges as work still to be done before publication. It was
+  written before those releases existed and shipped inside 0.1.0, where it read
+  as a warning about the package a consumer had just installed. It now states
+  the requirement plainly: `najm-storage` ≥ 2.2.0 and `najm-mcp` ≥ 2.1.0, the
+  releases that alias `STORAGE_SERVICE` and `MCP_REGISTRY` to their services.
+  Published as its own version because a README is part of the package surface
+  and npm will not replace the contents of 0.1.0.
+
 ## 0.1.0
 
 Initial release. Pre-1.0: the public API is not frozen, and 1.0.0 waits until two
