@@ -442,3 +442,72 @@ const app = await Server({
 
 export default app
 `
+
+// The App Router auth boundary is exactly three files. auth.ts is reachable
+// from the browser and the Edge; session.ts must never be. They cannot be
+// merged — see najm-auth's README, "auth.ts and session.ts cannot be merged".
+
+export const AUTH_CONFIG_TEMPLATE = `import { defineAuth } from 'najm-auth/client/server';
+
+/**
+ * Browser, server, and Edge safe. Everything app-specific lives here: routes,
+ * cookie names, and role mapping. Never import najm-auth/client/server/react
+ * from this file — the proxy and every Client Component reach it.
+ */
+export const auth = defineAuth({
+  apiBaseURL: '/api',
+  authPrefix: '/auth',
+  loginRoute: '/login',
+  forbiddenRoute: '/forbidden',
+  publicRoutes: ['/', '/login'],
+  protectedRoutes: ['/dashboard/:path*'],
+  roleRoutes: {},
+  verifyAlways: true,
+});
+`;
+
+export const SESSION_TEMPLATE = `import 'server-only';
+
+import { createReactServerAuth } from 'najm-auth/client/server/react';
+
+import { auth } from './auth';
+
+/**
+ * The app's one request-scoped session accessor.
+ *
+ * The factory must run exactly once, at module scope. React's cache() keys on
+ * the function identity it returns, so a second instance — or one built inside
+ * a layout, page, or helper — resolves the session again instead of sharing
+ * this render's result.
+ *
+ * Server Components only. Route handlers, the proxy, and scripts keep using the
+ * core auth methods.
+ */
+export const serverAuth = createReactServerAuth(auth);
+`;
+
+export const PROXY_TEMPLATE = `import { auth } from '@/lib/auth';
+
+// Edge runtime: core auth only. Importing @/lib/session here would pull React
+// into the middleware bundle and fail the build.
+export default auth.middleware;
+export const config = auth.config;
+`;
+
+export const PROTECTED_LAYOUT_TEMPLATE = `import { serverAuth } from '@/lib/session';
+
+// A protected tree reads the per-request session cookie, so it cannot be
+// prerendered. Without this, requireSession() runs at build time with no
+// request and correctly fails as a configuration error.
+export const dynamic = 'force-dynamic';
+
+export default async function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  await serverAuth.requireSession();
+
+  return <>{children}</>;
+}
+`;

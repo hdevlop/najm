@@ -751,6 +751,25 @@ factory takes no options of its own.
   Edge bundle stays free of React. The `browser` export condition resolves to a
   module that throws, so a Client Component or Edge import fails at build time.
 
+### Adopting it in a new app
+
+`najm init next` offers to scaffold `src/lib/auth.ts`, `src/lib/session.ts`, and
+`src/proxy.ts` already wired; generate them rather than copying another app's
+files.
+
+Three things catch every adopter, all covered in
+[README.md](./README.md#nextjs-app-router-structure):
+
+1. `auth.ts` and `session.ts` cannot be collapsed into one file. The
+   `defineAuth()` module is reachable from the browser and the Edge; the adapter
+   must not be. Merging them breaks the middleware, client, SSR, and server
+   graphs at once.
+2. A layout calling `requireSession()` needs `export const dynamic =
+   'force-dynamic'`, because prerendering runs it with no request.
+3. A prerender or outage failure must not be wrapped in `.catch(() => null)`.
+   `getSession()` is already the optional view; silencing the strict one hides
+   real faults.
+
 ## React Bindings (`najm-auth/client/react`)
 
 **Hooks:** `useAuth`, `useSession`, `useUser`, `useLogin`, `useLogout`, `useRegister`, `useForgotPassword`, `useResetPassword`, `useChangePassword`, `usePermissions`, `useAuthEvent(s)`.

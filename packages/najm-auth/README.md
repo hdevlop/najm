@@ -830,6 +830,85 @@ const session = await serverAuth.requireRole(['admin', 'operator']);
   non-React consumers of `najm-auth` are unaffected. Importing it from a Client
   Component or the Edge runtime fails at build time.
 
+### `auth.ts` and `session.ts` cannot be merged
+
+Two files looks like one too many until you try it. Both directions fail, for
+the same reason in mirror image:
+
+| Module | Must be reachable from | Must never be reachable from |
+|---|---|---|
+| the `defineAuth()` module | browser, Edge, server | — |
+| the `createReactServerAuth()` module | server only | browser, Edge |
+
+`auth.client` and `auth.api` are what Client Components call, and
+`auth.middleware` is what the Edge proxy calls, so the `defineAuth()` module is
+always in the browser and Edge graphs. The adapter must never be. Putting both
+in one file puts the adapter everywhere `auth` already is, and the `browser`
+export condition — which exists precisely to catch this — resolves to a module
+that throws:
+
+```text
+The export createReactServerAuth was not found in module
+  …/najm-auth/dist/client/server/reactClientGuard.js [app-client]
+
+Import traces:
+  Middleware:               ./src/lib/auth.ts → ./src/proxy.ts
+  Client Component Browser: ./src/lib/auth.ts → … → ./src/app/dashboard/page.tsx
+  Client Component SSR:     ./src/lib/auth.ts → … → ./src/app/dashboard/page.tsx
+  Server Component:         ./src/lib/auth.ts → ./src/lib/session.ts → layout.tsx
+```
+
+Renaming the files changes nothing; there simply have to be two. This is a
+property of the runtime boundary, not of the package.
+
+### Protected trees must opt out of prerendering
+
+`requireSession()` reads a per-request cookie. A route Next.js tries to
+prerender has no request, so the read fails and the guard reports a
+configuration error — correct behavior, wrong context. Mark the protected
+segment dynamic:
+
+```tsx
+// src/app/(dashboard)/layout.tsx
+export const dynamic = 'force-dynamic';
+
+export default async function DashboardLayout({ children }) {
+  await serverAuth.requireSession();
+  return <Shell>{children}</Shell>;
+}
+```
+
+`getSession()` needs no such opt-out — it returns `null` rather than throwing,
+so a prerendered public page renders anonymous. Do not "fix" a prerender failure
+by wrapping a strict guard in `.catch(() => null)`; that turns a real outage
+into a silently anonymous page.
+
+### What the app owns, what the package owns
+
+| App, via `defineAuth()` | Package |
+|---|---|
+| `loginRoute`, `forbiddenRoute`, route matchers, `roleRoutes` | when to redirect where |
+| cookie names, `apiBaseURL`, `authPrefix`, recovery URL | request memoization |
+| `refreshThreshold`, `tabSync`, `verifyAlways` | strict vs optional semantics |
+| — | `session.roles` / `user.role` fallback |
+| — | error classification |
+
+If a new app has to copy anything beyond the three files above, that logic
+belongs in the package instead.
+
+### What a new app must prove
+
+At its real Next.js production boundary, not with mocks:
+
+- two concurrent renders never observe each other's session;
+- root layout, nested layout, and page resolve once per render — measurable by
+  counting recovery round trips;
+- anonymous navigation to a protected route redirects to `loginRoute`;
+- an authenticated role mismatch reaches `forbiddenRoute` without a login loop;
+- an unset session secret or an unreachable recovery endpoint stays a visible
+  failure rather than a login redirect;
+- the Edge/proxy bundle builds without pulling in React.
+
 ---
 
 ## TypeScript Types

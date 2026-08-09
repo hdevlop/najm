@@ -1,5 +1,13 @@
-import { TS_CONFIG, DB_DECORATORS_TEMPLATE, NEXT_TEMPLATE } from "../templates";
-import { intro, log, outro, select, text } from "@clack/prompts";
+import {
+   TS_CONFIG,
+   DB_DECORATORS_TEMPLATE,
+   NEXT_TEMPLATE,
+   AUTH_CONFIG_TEMPLATE,
+   SESSION_TEMPLATE,
+   PROXY_TEMPLATE,
+   PROTECTED_LAYOUT_TEMPLATE,
+} from "../templates";
+import { confirm, intro, log, outro, select, text } from "@clack/prompts";
 import { readFile } from 'fs/promises';
 import { cleanJsonString } from "../utils";
 import { installPackages, pathExists } from "pm-ninja";
@@ -13,19 +21,23 @@ export class NextCommand {
    private port: number;
    private packageManager: string;
    private runtime: string;
+   private withAuth: boolean;
 
    constructor() {
       this.basePath = 'src';
       this.port = 3000;
+      this.withAuth = false;
    }
 
    async initialize() {
       try {
          intro(pc.blue('🏗️ NajmApi Project NetxtJs Initialization'));
          await this.promptBasePath();
+         await this.promptAuth();
          await this.promptPKManager();
          await this.buildProject();
          await this.addPackages();
+         if (this.withAuth) this.explainAuth();
          outro(pc.green('🎯 NajmApi initialized in existing project, Happy coding!! 🚀'));
       } catch (error) {
          console.error('An error occurred:', error);
@@ -47,6 +59,13 @@ export class NextCommand {
       }) as string;
 
       this.runtime = this.packageManager === 'bun' ? 'bun' : 'node';
+   }
+
+   async promptAuth() {
+      this.withAuth = await confirm({
+         message: 'Scaffold the najm-auth App Router boundary (lib/auth.ts, lib/session.ts, proxy.ts)?',
+         initialValue: true,
+      }) as boolean;
    }
 
    async promptBasePath() {
@@ -90,6 +109,19 @@ export class NextCommand {
       const baseDir = pathParts[0]; 
       const serverDir = pathParts.slice(1).join('/');
 
+      // auth.ts is imported by the browser, the Edge proxy, and the server;
+      // session.ts only by Server Components. They are separate files because
+      // no single module can satisfy both boundaries.
+      const authFiles = this.withAuth
+         ? {
+            lib: {
+               auth$ts: AUTH_CONFIG_TEMPLATE,
+               session$ts: SESSION_TEMPLATE,
+            },
+            proxy$ts: PROXY_TEMPLATE,
+         }
+         : {};
+
       const structure = {
          [baseDir]: {
             [serverDir]: {
@@ -106,6 +138,7 @@ export class NextCommand {
                },
                index$ts: NEXT_TEMPLATE
             },
+            ...authFiles,
          },
 
          tsconfig$json: await this.getTSDefaultConfig(),
@@ -127,8 +160,16 @@ export class NextCommand {
    }
 
    async addPackages() {
+      const dependencies = ['hono', 'najm-api', 'reflect-metadata'];
+
+      if (this.withAuth) {
+         // server-only turns an accidental client import of session.ts into a
+         // named build error instead of a bundling surprise.
+         dependencies.push('najm-auth', 'server-only');
+      }
+
       const packages = {
-         dependencies: ['hono', 'najm-api', 'reflect-metadata'],
+         dependencies,
          devDependencies: ['typescript', '@types/node']
       };
 
@@ -136,5 +177,16 @@ export class NextCommand {
          cwd: process.cwd(),
          pm: this.packageManager
       });
+   }
+
+   explainAuth() {
+      log.info(
+         'Auth boundary created. Keep auth.ts and session.ts separate: auth.ts is\n' +
+         'reachable from the browser and the Edge proxy, session.ts must not be.\n' +
+         'Merging them breaks the middleware, client, SSR, and server graphs at once.'
+      );
+      log.info(
+         `Guard a protected segment like this:\n\n${PROTECTED_LAYOUT_TEMPLATE}`
+      );
    }
 }
