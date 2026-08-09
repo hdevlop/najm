@@ -197,9 +197,12 @@ apps/playground/server.log
 apps/playground/storage/wa-sessions/*
 !apps/playground/storage/wa-sessions/.keep
 apps/theme-studio/theme-studio.db
+apps/theme-studio/theme-studio-managed.db
+apps/theme-studio/storage/
 packages/najm-auth/.auth-test.log
 playground.db
 theme-studio.db
+theme-studio-managed.db
 
 # Leaked TypeScript compiler outputs in source directories.
 # Build artifacts belong in dist/, not next to .ts sources.

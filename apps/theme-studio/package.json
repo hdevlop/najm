@@ -15,10 +15,11 @@
     "db:reset": "bun src/server/database/reset.ts",
     "db:seed": "bun src/server/database/seed.ts",
     "db:reset-seed": "bun src/server/database/reset.ts && bun src/server/database/seed.ts",
-    "clean": "rimraf .next dist theme-studio.db drizzle"
+    "clean": "rimraf .next dist theme-studio.db theme-studio-managed.db storage drizzle"
   },
   "dependencies": {
     "@hookform/resolvers": "^5",
+    "@tanstack/react-query": "^5",
     "better-sqlite3": "^12.6.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^0.474",
@@ -26,7 +27,10 @@
     "najm-core": "workspace:*",
     "najm-cors": "workspace:*",
     "najm-database": "workspace:*",
+    "najm-guard": "workspace:*",
     "najm-kit": "workspace:*",
+    "najm-storage": "workspace:*",
+    "najm-theme": "workspace:*",
     "najm-validation": "workspace:*",
     "next": "^15.5.21",
     "react": "^19",
