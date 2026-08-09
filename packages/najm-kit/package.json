@@ -1,6 +1,6 @@
 {
   "name": "najm-kit",
-  "version": "2.8.2",
+  "version": "2.9.0",
   "license": "MIT",
   "type": "module",
   "description": "Reusable React UI component package for Najm framework",
@@ -31,6 +31,18 @@
       "types": "./dist/adapters/app.d.ts",
       "import": "./dist/adapters/app.mjs",
       "default": "./dist/adapters/app.mjs"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.mjs",
+      "default": "./dist/server/index.mjs"
+    },
+    "./server/react": {
+      "types": "./dist/server/react.d.ts",
+      "react-server": "./dist/server/react.mjs",
+      "browser": "./dist/server/reactClientGuard.mjs",
+      "import": "./dist/server/react.mjs",
+      "default": "./dist/server/react.mjs"
     },
     "./package.json": "./package.json",
     "./query": {
@@ -69,7 +81,9 @@
     "dev:preview": "vite",
     "preview": "vite preview",
     "build:preview": "vite build",
-    "test": "bun test",
+    "test": "bun test && bun run test:rsc",
+    "test:rsc": "cd test/rsc && bun test --conditions react-server",
+    "test:next16": "bun run build && bun integration/next16-ui-bootstrap/run.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "peerDependencies": {

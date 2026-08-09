@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.9.0 - 2026-08-09
+
+- Added `najm-kit/server`, a pure UI bootstrap loader. `createUiBootstrapLoader()`
+  takes the application's own fetcher, endpoint paths, payload parsers, and
+  factory values, then runs the resources concurrently, unwraps the `{ data }`
+  envelope (or one the application selects), and falls back per resource so a
+  branding outage never discards a valid appearance. Failures are reported
+  through an optional structured `onDiagnostic` callback carrying resource,
+  reason, path, and status — never a response body, header, cookie, or raw
+  thrown value. A `fallback()` that throws stays a visible error. The entry
+  imports no React, no Next.js, and no Node built-in, and re-exports
+  `parseNajmDesignConfig` so an appearance payload can be parsed without
+  reaching the root barrel.
+- Added `najm-kit/server/react`, the React Server Component adapter.
+  `createReactServerUiBootstrap()` memoizes one bootstrap per request with
+  React's `cache()` and derives the per-resource accessors from it, so a root
+  layout, a nested layout, and a page share one resolution and one stable
+  snapshot for the whole render. Resolution is request-scoped only: separate
+  requests share no snapshot, failure, or diagnostic, and a transient outage is
+  retried on the next request. The `browser` export condition resolves to a
+  module that throws, so importing the adapter from a Client Component fails at
+  build time instead of shipping the application's fetcher and factory values
+  into a browser bundle.
+- The root `najm-kit`, `najm-kit/next`, and `najm-kit/app` entries are unchanged
+  and do not reach either server entry.
+
 ## 2.8.2 - 2026-08-08
 
 - Added the framework-neutral `najm-kit/person-images` subpath. It ships a

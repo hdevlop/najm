@@ -15,6 +15,14 @@ export default defineConfig({
     // two carry no component imports and are what server code should reach for.
     format: 'src/format/index.ts',
     pagination: 'src/lib/pagination.ts',
+    // Server UI bootstrap. `server/index` is pure — no React import at all —
+    // and `server/react` is the React Server Component adapter, kept as its
+    // own entry so the root and `adapters/*` outputs never reach it.
+    // `server/reactClientGuard` is what the `browser` export condition points
+    // at, so a Client Component importing the adapter fails at build time.
+    'server/index': 'src/server/index.ts',
+    'server/react': 'src/server/react.ts',
+    'server/reactClientGuard': 'src/server/reactClientGuard.ts',
     // Framework-neutral person-image resolver. The seven WebP illustrations
     // are embedded as `data:image/webp;base64,…` strings via the esbuild
     // `dataurl` loader configured below, so consumers do not need to copy

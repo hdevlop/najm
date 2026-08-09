@@ -21,7 +21,12 @@ const ENTRIES = ["index.mjs", "adapters/next.mjs", "adapters/app.mjs"];
  * entry that reaches one crashes on module evaluation rather than at a call
  * site — which is why this is checked on the built output and not by `tsc`.
  */
-const SERVER_SAFE_ENTRIES = ["format.mjs", "pagination.mjs"];
+const SERVER_SAFE_ENTRIES = [
+  "format.mjs",
+  "pagination.mjs",
+  "server/index.mjs",
+  "server/react.mjs",
+];
 
 const built = existsSync(DIST) && ENTRIES.every((e) => existsSync(join(DIST, e)));
 const describeBuilt = built ? describe : describe.skip;

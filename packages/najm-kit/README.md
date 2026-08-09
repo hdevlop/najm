@@ -601,3 +601,115 @@ only, after a real `image` and before the role's gender variant:
 getPersonImage({ image: child.image, role: "child", gender: child.gender, fallback: child.placeholder });
 ```
 
+
+## Server UI bootstrap (`najm-kit/server`, `najm-kit/server/react`)
+
+An application that renders its own theme and its own logos on the server ends
+up writing the same module every time: fetch the public endpoints, unwrap the
+`data` envelope, validate the payload, fall back to the built-in assets when
+any of that fails, and run the resources in parallel. These two entries own
+that mechanism. What stays with the application is what is genuinely
+application-specific — how a request reaches its own backend, which paths it
+serves, what a valid payload looks like, what the factory values are, and where
+a diagnostic goes.
+
+Neither entry is re-exported from `najm-kit`, `najm-kit/next`, or
+`najm-kit/app`. `najm-kit/server` imports no React at all, so a route handler
+or a plain script can use it.
+
+### The application's one server module
+
+```ts
+// src/lib/serverLoader.ts
+import "server-only";
+
+import { parseNajmDesignConfig } from "najm-kit/server";
+import { createReactServerUiBootstrap } from "najm-kit/server/react";
+
+export const serverUi = createReactServerUiBootstrap({
+  fetcher: async (path) => {
+    const { server } = await import("@app/server");
+    return server.fetch(new Request(`http://internal${path}`));
+  },
+  resources: {
+    appearance: {
+      path: "/api/appearance",
+      parse: parseAppearance,          // returns undefined or throws to reject
+      fallback: getFactoryAppearance,  // called per load
+    },
+    branding: {
+      path: "/api/branding",
+      parse: parseBranding,
+      fallback: getFactoryBranding,
+    },
+  },
+  onDiagnostic: (diagnostic) => {
+    console.warn(`[ui-bootstrap] ${diagnostic.resource} ${diagnostic.reason}`, diagnostic);
+  },
+});
+
+export const loadServerUiBootstrap = serverUi.load;
+export const { appearance: loadServerAppearance, branding: loadServerBranding } =
+  serverUi.loaders;
+```
+
+`load()` resolves every resource; `loaders.<name>()` and `loadResource(name)`
+read one off the same resolution. Resource names, payload types, and the number
+of resources are the application's — the snapshot type is inferred from the
+`resources` object, so `snapshot.branding` is your branding type and not a
+package interface.
+
+### Call the factory once, at module scope
+
+`createReactServerUiBootstrap()` builds one `React.cache()` entry. Calling it
+inside a layout, page, or component builds a fresh one per call and shares
+nothing. Every server boundary in a render must import the same module.
+
+The cache is React's, so it is request-scoped and nothing else: separate
+requests never see each other's snapshot or each other's failure, and a
+transient outage is retried on the next request rather than pinned into a
+process-global. That also rules out a module `Map`, a module promise,
+`unstable_cache`, `"use cache"`, or a durable cache here — every one of them
+would leak one visitor's render into another's.
+
+The snapshot is deliberately stable for the length of one render. A settings
+surface that saves appearance or branding updates the client provider and then
+refreshes or navigates into a new render to observe the persisted result.
+
+Outside a render — route handlers, server actions, scripts — use
+`createUiBootstrapLoader()` from `najm-kit/server` directly. There is no request
+cache for `cache()` to write to there, so the adapter would silently re-fetch
+per call.
+
+### Failure behaviour
+
+Resources fall back independently: a branding outage never discards a valid
+appearance. Each failure calls `onDiagnostic` once with a `reason` of
+`fetch-failed`, `response-not-ok`, `invalid-json`, `invalid-envelope`, or
+`invalid-payload`, plus the path and — for a non-success response — the status.
+Diagnostics never carry response bodies, headers, cookies, or raw thrown
+values; `error` is a normalized `"<name>: <message>"` for an `Error` and the
+value's type for anything else.
+
+A `fallback()` that throws is **not** caught. A missing factory theme is the
+application's configuration error, and a second fallback would only hide it.
+
+Falling back is right for *public* appearance and branding, where the worst case
+is a visitor seeing the built-in logo. It is not a general rule: do not route
+authenticated, financial, or privacy-sensitive reads through this, because a
+silent fallback there hides an outage behind plausible-looking data.
+
+### Envelopes
+
+`select` defaults to Najm's `{ data }` envelope. Applications behind a different
+envelope pass their own at the loader level or per resource; returning the
+payload unchanged is a valid selector, and throwing rejects the response as
+`invalid-envelope`.
+
+### Client Components
+
+`najm-kit/server/react` maps the `browser` export condition to a module that
+throws, so importing it from a Client Component fails the build with an
+explanation rather than shipping the application's fetcher and factory values
+into a browser bundle. Seed the client from the server snapshot through
+`NajmAppProvider` instead.

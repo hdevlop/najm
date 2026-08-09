@@ -1,0 +1,10 @@
+{
+  "name": "najm-kit-next16-ui-bootstrap-fixture",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build",
+    "start": "next start"
+  }
+}

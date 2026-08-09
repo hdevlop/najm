@@ -3,7 +3,8 @@
 ## Scope
 
 - This package is the React UI component library for Najm apps, not a Najm backend plugin.
-- Public surfaces are `src/index.ts`, `src/adapters/next.tsx`, `src/json/index.ts`, and `src/theme.css`; keep these aligned with `package.json` `exports`.
+- Public surfaces are `src/index.ts`, `src/adapters/next.tsx`, `src/json/index.ts`, `src/server/index.ts`, `src/server/react.ts`, and `src/theme.css`; keep these aligned with `package.json` `exports`.
+- `src/server/` is the server UI bootstrap. `server/index.ts` is pure — no React import at all — and `server/react.ts` is the React Server Component adapter. Neither is re-exported from the root barrel or the adapters, and `server/reactClientGuard.ts` is what the `browser` export condition resolves to so a Client Component import fails at build time. `test/server-entry-surface.test.ts` asserts both directions on the built output.
 - Tailwind v4 only. `src/theme.css` is a Tailwind v4 *source* file (not precompiled CSS): it carries `@source "./"`, `@custom-variant dark`, the `@theme inline` token map, the default oklch `--*` tokens (standard shadcn names, no prefix), and component utilities. Consumers compile it with their own v4 build via `@import "tailwindcss"; @import "najm-kit/theme.css";`.
 - Use package-local patterns before adding new primitives: Radix-based UI in `src/components/ui`, higher-level `N*` components in feature folders, shared helpers in `src/lib`, theme tokens in `src/theme`.
 
@@ -11,8 +12,10 @@
 
 - Build from repo root: `bun run build:ui`; package-local equivalent is `bun run --cwd packages/najm-kit build`.
 - Build CSS only: `bun run --cwd packages/najm-kit build:css`.
-- Run tests: `bun run test:ui` or `bun test packages/najm-kit`.
+- Run tests: `bun run test:ui` or `bun test packages/najm-kit`. `test` is `bun test` followed by `bun run test:rsc`.
 - Run one file: `bun run --cwd packages/najm-kit test test/<file>.test.tsx`.
+- React Server Component tests: `bun run --cwd packages/najm-kit test:rsc`. React memoizes `cache()` only in its `react-server` build, so those tests need `--conditions react-server` — and `@testing-library/react` cannot be imported under that condition, so the suite lives in `test/rsc/` with its own `bunfig.toml` and runs from that directory.
+- Next.js 16 production fixture: `bun run --cwd packages/najm-kit test:next16`. It builds and starts a real app whose root layout, nested layout, and page all read the server UI bootstrap, and asserts one endpoint hit per resource per navigation. Not part of `bun run test:ui`.
 - Type-check source only (build tsconfig): `bun run --cwd packages/najm-kit typecheck`.
 - Type-check source + tests: `bun run --cwd packages/najm-kit typecheck:tests` (uses `tsconfig.test.json`; pulls `bun` types for `@testing-library` test globals).
 - Lint (alias for both type checks): `bun run --cwd packages/najm-kit lint`; from repo root: `bun run lint:ui`.
@@ -22,7 +25,7 @@
 ## Build Quirks
 
 - `build` runs `tsup` then `node scripts/build-css.mjs`; do not call `tsup` alone when verifying published output.
-- `tsup.config.ts` emits ESM `.mjs` entries for `index`, `adapters/next`, and `json`, and treats React, Next, lucide, phone input, and CodeMirror packages as externals.
+- `tsup.config.ts` emits ESM `.mjs` entries for `index`, `adapters/next`, `json`, `format`, `pagination`, `person-images`, and the three `server/*` entries, and treats React, Next, lucide, phone input, and CodeMirror packages as externals.
 - `splitting: true` is load-bearing, not a size optimization. `index` and `adapters/next` share `src/providers`, and without splitting each entry gets its own copy of the module and therefore its own React context object — `NajmNextUIProvider` from `najm-kit/next` would publish to a context that `useNajmTheme` from `najm-kit` never reads. Do not turn it off. The `dist/chunk-*.mjs` files it emits are part of the published output.
 - `next` is an optional peer dependency. Only `src/adapters/next.tsx` imports it, so the root entry stays installable without Next; keep it that way.
 - `scripts/build-css.mjs` does NOT compile Tailwind (the consumer's v4 build does). It assembles `src/theme.css` into `dist/theme.css`, writes `dist/theme.css.d.ts`, and appends OverlayScrollbars + `react-international-phone` CSS so the import is self-contained. The authored `@import "tw-animate-css"` must stay the first statement, so all inlined third-party CSS is appended after it.
