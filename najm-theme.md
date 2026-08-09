@@ -133,8 +133,18 @@ Those files are application configuration, not duplicated feature logic.
 
 - School currently resolves the older `najm-kit@2.1.43` lock and must perform a
   controlled Najm Kit upgrade before consuming `najm-theme`.
+- **School is PostgreSQL, not SQLite.** Verified at School `4abb86d`:
+  `drizzle.config.ts` declares `postgresql`, every Najm plugin declares
+  `dialect: 'pg'`, and the server depends on `postgres@3.4.8`. There is no
+  SQLite driver or schema anywhere in School. Both planned consumers are
+  PostgreSQL, so `najm-theme/sqlite` ships with no real consumer and its parity
+  rests on package tests alone. See `najm-theme-api-freeze.md` §0.1.
 - School has a local `NajmDesignProvider`, a separate `next-themes` provider,
   a basic `light | dark | system` setting, and one `schoolLogo` field.
+- **`schoolLogo` has no renderer.** Its five references are the column, DTO,
+  repository, service projection, and form validation; no component reads it.
+  The "second branding source of truth" risk is smaller than assumed. See
+  `najm-theme-api-freeze.md` §0.2.
 - School's settings module mixes school identity, academic configuration,
   notifications, security, time zone, language, date/time formats, currency,
   and theme mode. Those domain settings must remain School-owned.
@@ -777,196 +787,227 @@ compatibility layer without an explicit removal issue.
 
 ## 14. Implementation moves
 
+Current status:
+
+- [x] Moves 1-7 are implemented, verified, published, and present on
+  `origin/master` through `85634d2`.
+- [x] Registry releases are `najm-theme@0.1.1`, `najm-mcp@2.1.0`, and
+  `najm-storage@2.2.0`.
+- [x] Theme Studio managed-package mode and the Playground integration proof
+  are complete.
+- [x] Kafil's source contract is recorded in
+  `output/pdf/Kafil x najm-theme - Contract Review.pdf`.
+- [x] Move 0 is closed. School is reviewed, the five cross-consumer decisions
+  plus actor attribution and missing-asset resolution are frozen, and the
+  frozen names are recorded in `najm-theme-api-freeze.md`.
+- [ ] Moves 8-10 remain open; neither consumer adoption is complete.
+
 ### Move 0 - freeze the shared contract from two consumers
 
 Repos: Najm, Kafil, School.
 
-- [ ] Record the exact Kafil appearance DTO, editable-field policy, theme
+- [x] Record the exact Kafil appearance DTO, editable-field policy, theme
   preset behavior, four branding projections, asset formats, limits, revision
   semantics, audits, and browser consumers.
-- [ ] Complete the pending Kafil branding/appearance reference acceptance
+- [x] Complete the pending Kafil branding/appearance reference acceptance
   needed to distinguish correct behavior from merely present source code.
-- [ ] Record School's provider tree, settings schema, `schoolLogo` consumers,
-  theme-mode behavior, SQLite schema composition, authorization, storage, and
-  desired settings placement.
-- [ ] Decide which standard branding slots School enables and how legacy
-  `schoolLogo` maps without leaving two sources of truth.
-- [ ] Record the genuine shared intersection and every app-owned difference.
-- [ ] Freeze route names, DTO names, slot contract, dialect scope, audit event
+  Contract-level acceptance is established from live data in
+  `najm-theme-api-freeze.md` §5. Kafil's browser acceptance stays open in
+  Kafil `PLAN.md` Phase 2 and gates Kafil's release, not the package API.
+- [x] Audit stored GIF/AVIF assets. Result: **zero GIF and zero AVIF** exist,
+  on disk or referenced. Eight branding files, all magic-byte verified as
+  WebP/PNG/JPEG. No re-encode work is required. Re-run against production
+  before cutover. See `najm-theme-api-freeze.md` §1.5.
+- [x] Record School's provider tree, settings schema, `schoolLogo` consumers,
+  theme-mode behavior, **PostgreSQL** schema composition, authorization,
+  storage, and desired settings placement. See `najm-theme-api-freeze.md` §3.
+- [x] Decide which standard branding slots School enables and how legacy
+  `schoolLogo` maps without leaving two sources of truth. All four slots;
+  `schoolLogo` imports into `sidebarLogoExpanded` only when it holds decodable
+  bytes. See `najm-theme-api-freeze.md` §3.4.
+- [x] Record the genuine shared intersection and every app-owned difference.
+  See `najm-theme-api-freeze.md` §4.
+- [x] Freeze route names, DTO names, slot contract, dialect scope, audit event
   names, and built-in preset deletion policy in an API design note.
-- [ ] Verify the `najm-theme` registry name immediately before implementation;
+  See `najm-theme-api-freeze.md` §1-§2.
+- [x] Verify the `najm-theme` registry name immediately before implementation;
   if unavailable, stop for a naming decision instead of publishing a lookalike.
 
 Gate:
 
-- [ ] Both consumers can be expressed through configuration without package
+- [x] Both consumers can be expressed through configuration without package
   imports from either application.
-- [ ] No unresolved data, authorization, storage, or provider-tree assumption
+- [x] No unresolved data, authorization, storage, or provider-tree assumption
   remains in the public API.
 
 ### Move 1 - scaffold `packages/najm-theme`
 
 Repo: Najm.
 
-- [ ] Add the workspace with ESM-only package metadata, `dist`-only files,
+- [x] Add the workspace with ESM-only package metadata, `dist`-only files,
   README, changelog, TypeScript configs, tsup build, clean, lint, and test
   scripts.
-- [ ] Add the explicit export map and client/server boundary guards.
-- [ ] Add `najm-theme` paths and project references to root TypeScript config.
-- [ ] Add `najm-theme` after `najm-kit` in `PACKAGE_TARGETS` and test order.
-- [ ] Add root `build:theme`, `test:theme`, `pub:theme`, and dry-run support
+- [x] Add the explicit export map and client/server boundary guards.
+- [x] Add `najm-theme` paths and project references to root TypeScript config.
+- [x] Add `najm-theme` after `najm-kit` in `PACKAGE_TARGETS` and test order.
+- [x] Add root `build:theme`, `test:theme`, `pub:theme`, and dry-run support
   through the existing publication script.
-- [ ] Do not re-export `najm-theme` from `najm-api` in the first release; it is
+- [x] Do not re-export `najm-theme` from `najm-api` in the first release; it is
   optional and includes React-capable subpaths.
-- [ ] Add public API snapshot coverage for every exported subpath.
+- [x] Add public API snapshot coverage for every exported subpath.
 
 Gate:
 
-- [ ] Empty package builds, packs, and resolves each subpath under Node, Bun,
+- [x] Empty package builds, packs, and resolves each subpath under Node, Bun,
   TypeScript, browser, and `react-server` conditions without cross-entry leaks.
 
 ### Move 2 - implement contracts, validation, and schemas
 
 Repo: Najm.
 
-- [ ] Implement universal appearance, branding, preset, revision, scope,
+- [x] Implement universal appearance, branding, preset, revision, scope,
   capability, diagnostic, and configuration types.
-- [ ] Reuse `NajmDesignConfig` and the server-safe Najm Kit parser; do not add a
+- [x] Reuse `NajmDesignConfig` and the server-safe Najm Kit parser; do not add a
   second general design model.
-- [ ] Port Kafil's CSS-safety and payload-size requirements into a configurable
+- [x] Port Kafil's CSS-safety and payload-size requirements into a configurable
   package validator without importing Kafil constants or paths.
-- [ ] Implement safe editable-field merging and changed-group calculation.
-- [ ] Implement positive revision DTOs and Unicode-safe preset slugs.
-- [ ] Implement standard branding slots plus validated custom slots.
-- [ ] Add PostgreSQL and SQLite schemas with equivalent constraints and
+- [x] Implement safe editable-field merging and changed-group calculation.
+- [x] Implement positive revision DTOs and Unicode-safe preset slugs.
+- [x] Implement standard branding slots plus validated custom slots.
+- [x] Add PostgreSQL and SQLite schemas with equivalent constraints and
   feature-specific plus combined schema exports.
-- [ ] Add pure tests for invalid CSS, unknown keys, oversized payloads,
+- [x] Add pure tests for invalid CSS, unknown keys, oversized payloads,
   revisions, slugs, slot inheritance, factory failure, and JSON round trips.
 
 Gate:
 
-- [ ] Contracts are server/client safe, dialect schemas match, and neither
+- [x] Contracts are server/client safe, dialect schemas match, and neither
   Kafil nor School appears in source or built artifacts.
 
 ### Move 3 - implement persistence and backend domain services
 
 Repo: Najm.
 
-- [ ] Implement dialect repository bindings and DI tokens.
-- [ ] Implement appearance get/save/replace/reset with independent factory
+- [x] Implement dialect repository bindings and DI tokens.
+- [x] Implement appearance get/save/replace/reset with independent factory
   fallback and expected-revision locking.
-- [ ] Implement preset list/create/apply/delete with scope isolation, limit,
+- [x] Implement preset list/create/apply/delete with scope isolation, limit,
   validation, and appearance transaction coordination.
-- [ ] Implement branding public/admin projections, save/reset, slot fallback,
+- [x] Implement branding public/admin projections, save/reset, slot fallback,
   and revision locking.
-- [ ] Implement structured diagnostics and safe audit events.
-- [ ] Implement the `theme()` plugin with explicit features, guards,
+- [x] Implement structured diagnostics and safe audit events.
+- [x] Implement the `theme()` plugin with explicit features, guards,
   dependencies, scope, paths, and configuration validation.
-- [ ] Implement thin REST controllers and optional MCP tools.
-- [ ] Add role/guard denial tests and prove public projections omit admin and
+- [x] Implement thin REST controllers and optional MCP tools.
+- [x] Add role/guard denial tests and prove public projections omit admin and
   storage fields.
-- [ ] Add real PostgreSQL and SQLite concurrency tests: two writes from one
+- [x] Add real PostgreSQL and SQLite concurrency tests: two writes from one
   revision allow exactly one commit.
 
 Gate:
 
-- [ ] Services pass pure, controller, plugin, dialect, authorization,
+- [x] Services pass pure, controller, plugin, dialect, authorization,
   transaction, conflict, projection, and audit tests.
 
 ### Move 4 - implement branding asset lifecycle
 
 Repo: Najm.
 
-- [ ] Integrate through `najm-storage` rather than direct filesystem calls.
-- [ ] Implement candidate upload, detected MIME validation, decoding,
+- [x] Integrate through `najm-storage` rather than direct filesystem calls.
+- [x] Implement candidate upload, detected MIME validation, decoding,
   normalization, immutable naming, and slot-specific limits.
-- [ ] Implement referenced-only public delivery with exact MIME and immutable
+- [x] Implement referenced-only public delivery with exact MIME and immutable
   cache headers.
-- [ ] Implement post-commit replacement cleanup, draft cancellation cleanup,
+- [x] Implement post-commit replacement cleanup, draft cancellation cleanup,
   and grace-period orphan reconciliation.
-- [ ] Prove path traversal, invalid filename, MIME mismatch, oversized file,
+- [x] Prove path traversal, invalid filename, MIME mismatch, oversized file,
   decompression/dimension abuse, cross-scope reference, and committed-file
   deletion are rejected.
-- [ ] Test local and database storage providers where supported.
-- [ ] Inspect packed output so optional Sharp behavior and native dependency
+- [x] Test local and database storage providers where supported.
+- [x] Inspect packed output so optional Sharp behavior and native dependency
   expectations are documented and deployable.
 
 Gate:
 
-- [ ] Upload-to-runtime delivery works without exposing storage internals, and
+- [x] Upload-to-runtime delivery works without exposing storage internals, and
   cleanup cannot delete a committed or factory asset.
 
 ### Move 5 - implement React transport and composable UI
 
 Repo: Najm.
 
-- [ ] Implement one typed client with configurable base URL and auth headers.
-- [ ] Implement package-owned query keys, queries, mutations, invalidation,
+- [x] Implement one typed client with configurable base URL and auth headers.
+- [x] Implement package-owned query keys, queries, mutations, invalidation,
   conflicts, retries, and error normalization.
-- [ ] Implement `NThemeSettingsProvider` and its resource-scoped draft state.
-- [ ] Implement independent Appearance, Branding, Presets, Actions, and Status
+- [x] Implement `NThemeSettingsProvider` and its resource-scoped draft state.
+- [x] Implement independent Appearance, Branding, Presets, Actions, and Status
   components using Najm Kit primitives only.
-- [ ] Implement the composite `NThemeSettings` view without making it the only
+- [x] Implement the composite `NThemeSettings` view without making it the only
   supported layout.
-- [ ] Connect appearance previews to `useNajmDesignEditor` and branding commits
+- [x] Connect appearance previews to `useNajmDesignEditor` and branding commits
   to `useNBrandingEditor`.
-- [ ] Ensure preset preview is in-memory and does not mutate persistence until
+- [x] Ensure preset preview is in-memory and does not mutate persistence until
   the explicit command.
-- [ ] Add en/fr/ar/es catalogs and parity tests.
-- [ ] Build and verify package CSS instead of trusting runtime class strings.
-- [ ] Add DOM tests for standalone, tabs, sheet, dialog, partial-feature,
+- [x] Add en/fr/ar/es catalogs and parity tests.
+- [x] Build and verify package CSS instead of trusting runtime class strings.
+- [x] Add DOM tests for standalone, tabs, sheet, dialog, partial-feature,
   conflict, upload, cancel, save, reset, error, keyboard, and RTL behavior.
 
 Gate:
 
-- [ ] A test consumer composes every section in different containers without
+- [x] A test consumer composes every section in different containers without
   local hooks or feature state and receives identical behavior.
 
 ### Move 6 - integrate RSC, Theme Studio, and Playground
 
 Repo: Najm.
 
-- [ ] Implement `najm-theme/server/react` by configuring, not duplicating, the
+- [x] Implement `najm-theme/server/react` by configuring, not duplicating, the
   Najm Kit RSC bootstrap.
-- [ ] Add browser-condition client guards and a Next.js 16 production fixture.
-- [ ] Extend `apps/theme-studio` with a managed-package mode covering live
+- [x] Add browser-condition client guards and a Next.js 16 production fixture.
+- [x] Extend `apps/theme-studio` with a managed-package mode covering live
   appearance, presets, standard and custom branding slots, partial features,
   and composition examples.
-- [ ] Keep Theme Studio project/style persistence distinct from the consumer
+- [x] Keep Theme Studio project/style persistence distinct from the consumer
   runtime package database; do not silently replace one product with the
   other.
-- [ ] Add the plugin and both dialect schemas to the real Playground integration
+- [x] Add the plugin and both dialect schemas to the real Playground integration
   harness with explicit storage and guards.
-- [ ] Prove root and nested RSC reads share one request snapshot and later
+- [x] Prove root and nested RSC reads share one request snapshot and later
   requests retry transient failures.
-- [ ] Prove client bundles contain no controller, Drizzle, Sharp, filesystem,
+- [x] Prove client bundles contain no controller, Drizzle, Sharp, filesystem,
   or `server-only` code.
 
 Gate:
 
-- [ ] Theme Studio, Playground, RSC tests, Next 16 build, and bundle-isolation
+- [x] Theme Studio, Playground, RSC tests, Next 16 build, and bundle-isolation
   checks all pass.
 
 ### Move 7 - documentation, release audit, and publication
 
 Repo: Najm.
 
-- [ ] Document installation, plugin order, dialect schemas, migrations,
+- [x] Document installation, plugin order, dialect schemas, migrations,
   storage, guards, scopes, factory values, routes, MCP, RSC singleton usage,
   provider mounting, component composition, localization, and failure modes.
-- [ ] Document complete, Appearance-only, Branding-only, Presets-disabled,
+- [x] Document complete, Appearance-only, Branding-only, Presets-disabled,
   page, sheet, dialog, and tabs examples.
-- [ ] Add a migration guide from a local theme/branding implementation.
-- [ ] Add changelog and API snapshot entries.
-- [ ] Run focused and full Najm gates at one clean candidate commit.
-- [ ] Inspect built JavaScript, declarations, CSS, export map, package files,
+- [x] Add a migration guide from a local theme/branding implementation.
+- [x] Add changelog and API snapshot entries.
+- [x] Run focused and full Najm gates at one clean candidate commit.
+- [x] Inspect built JavaScript, declarations, CSS, export map, package files,
   dependency directions, optional native dependencies, and secret scan.
-- [ ] Run `bun scripts/publish-package.ts najm-theme --dry-run` and inspect the
+- [x] Run the exact-tarball pack path and inspect the
   exact tarball.
-- [ ] Prepare the version through the repository's version workflow.
-- [ ] Publish only after explicit user authorization.
-- [ ] Verify registry version, dist-tag, tarball exports, declarations, and
+- [x] Prepare the version through the repository's version workflow.
+- [x] Publish only after explicit user authorization.
+- [x] Verify registry version, dist-tag, tarball exports, declarations, and
   source commit before consumer adoption.
+
+Recorded release exception: `test:seq` was executed and remained at the known
+baseline of 20/22 workspaces; `najm-chatbot` and `najm-whatsapp` failed for their
+pre-existing environment/logger-suite issues. All changed-package, Playground,
+Theme Studio, packaging, RSC, Next.js 16, and public-API gates passed.
 
 Najm candidate gate:
 
@@ -1045,9 +1086,13 @@ Repo: `C:\Users\hdevlop\Desktop\school`.
   compatible published version in a bounded prerequisite slice.
 - [ ] Preserve School's personal `light | dark | system` preference while
   introducing platform design as a separate source.
-- [ ] Add the SQLite package schema and generate a new School migration.
-- [ ] Map `schoolLogo` once into the selected standard branding slots; remove it
-  as an independent runtime branding source after verification.
+- [ ] Add the **PostgreSQL** package schema (`najm-theme/pg`) and generate a new
+  School migration. School is not a SQLite consumer; see §3 and
+  `najm-theme-api-freeze.md` §0.1.
+- [ ] Enable all four standard slots and import `schoolLogo` into
+  `sidebarLogoExpanded` only when it holds decodable PNG/JPEG/WebP bytes. It
+  has no renderer today, so there is no runtime branding source to remove —
+  drop the column on the same deferred schedule as Kafil's legacy columns.
 - [ ] Keep academic, notification, security, language, time zone, date/time,
   currency, backup, and database settings School-owned.
 - [ ] Register package capabilities through School administrator guards and
@@ -1056,9 +1101,12 @@ Repo: `C:\Users\hdevlop\Desktop\school`.
   tabs/sections without copying Kafil's sheet.
 - [ ] Seed the School root provider from the package server snapshot and remove
   redundant design/branding wrappers only when the package owns their behavior.
-- [ ] Add focused backend, frontend, SQLite, production-build, and browser
-  tests matching Kafil's valid, conflict, fallback, refresh, storage, and
-  request-isolation cases.
+- [ ] Add focused backend, frontend, **PostgreSQL**, production-build, and
+  browser tests matching Kafil's valid, conflict, fallback, refresh, storage,
+  and request-isolation cases.
+- [ ] Register with `presets: false` and `publicRead: true`. School's disabled
+  presets are the package's only real partial-feature proof; Kafil enables all
+  five and cannot provide it.
 
 School gate:
 
@@ -1137,25 +1185,28 @@ Repos: Najm and a future-app template if one exists.
 
 `najm-theme` is complete only when all of the following are true:
 
-- [ ] The package is published from a clean, verified Najm commit with all
+- [x] The package is published from a clean, verified Najm commit with all
   declared exports, declarations, CSS, and files present in the registry
   tarball.
-- [ ] Backend and React entries are isolated; client bundles contain no server
+- [x] Backend and React entries are isolated; client bundles contain no server
   implementation or native storage code.
-- [ ] Appearance, Presets, Branding, and Asset Uploads can be enabled
+- [x] Appearance, Presets, Branding, and Asset Uploads can be enabled
   independently within their dependency rules.
-- [ ] Consumers can compose sections in pages, tabs, sheets, dialogs, or
+- [x] Consumers can compose sections in pages, tabs, sheets, dialogs, or
   standalone views without local feature hooks.
-- [ ] PostgreSQL and SQLite pass schema, transaction, conflict, and migration
+- [x] PostgreSQL and SQLite pass schema, transaction, conflict, and migration
   tests.
-- [ ] Public projections, guards, scope isolation, audit metadata, and storage
+- [x] Public projections, guards, scope isolation, audit metadata, and storage
   delivery pass security tests.
 - [ ] Kafil consumes the published package, passes its complete local,
   PostgreSQL, production-build, and browser gates, and contains no duplicate
   feature implementation.
 - [ ] School consumes the same published package, passes its complete local,
-  SQLite, production-build, and browser gates, and contains no copied Kafil
+  PostgreSQL, production-build, and browser gates, and contains no copied Kafil
   implementation.
+- [ ] SQLite support is described honestly. Both consumers are PostgreSQL, so
+  `1.0.0` may not claim consumer-proven SQLite support; package dialect tests
+  are the only evidence behind it.
 - [ ] Factory values, permissions, storage configuration, scope, placement, and
   one-time migrations are the only material consumer-owned integration.
 - [ ] Najm publication, Kafil adoption, School adoption, GitHub states, and
