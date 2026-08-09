@@ -568,7 +568,7 @@
     },
     "packages/najm-mcp": {
       "name": "najm-mcp",
-      "version": "2.0.2",
+      "version": "2.1.0",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.29.0",
       },
