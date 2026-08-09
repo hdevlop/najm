@@ -1,6 +1,6 @@
 {
   "name": "najm-storage",
-  "version": "2.1.1",
+  "version": "2.2.0",
   "license": "MIT",
   "description": "File storage plugin for najm framework — local filesystem and database backends",
   "type": "module",
