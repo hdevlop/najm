@@ -1,0 +1,115 @@
+{
+  "theme": {
+    "appearance": {
+      "retrieved": "Apariencia cargada",
+      "saved": "Apariencia guardada",
+      "reset": "Apariencia restablecida al diseño original"
+    },
+    "presets": {
+      "retrieved": "Temas guardados cargados",
+      "created": "Tema guardado",
+      "applied": "Tema aplicado",
+      "deleted": "Tema eliminado"
+    },
+    "branding": {
+      "retrieved": "Identidad visual cargada",
+      "saved": "Identidad visual guardada",
+      "reset": "Identidad visual restablecida a las imágenes originales",
+      "assetUploaded": "Imagen subida",
+      "assetDeleted": "Imagen descartada",
+      "assetsReconciled": "Imágenes sin usar eliminadas",
+      "slots": {
+        "sidebarLogoExpanded": "Logotipo de la barra lateral",
+        "sidebarLogoCollapsed": "Icono de la barra lateral",
+        "authLogo": "Logotipo de inicio de sesión",
+        "authHeroImage": "Imagen de inicio de sesión"
+      }
+    },
+    "settings": {
+      "title": "Tema",
+      "description": "Colores, tipografía, temas guardados e imágenes de marca de esta plataforma.",
+      "appearanceTab": "Apariencia",
+      "brandingTab": "Identidad visual",
+      "presetsTab": "Temas guardados"
+    },
+    "sections": {
+      "appearanceTitle": "Apariencia",
+      "appearanceDescription": "Colores, tipografía y estilo de los componentes.",
+      "brandingTitle": "Identidad visual",
+      "brandingDescription": "Logotipos e imágenes que se muestran en toda la plataforma.",
+      "presetsTitle": "Temas guardados",
+      "presetsDescription": "Guarda el diseño actual para restaurarlo más adelante."
+    },
+    "actions": {
+      "save": "Guardar cambios",
+      "saving": "Guardando…",
+      "reset": "Restablecer",
+      "resetting": "Restableciendo…",
+      "discard": "Descartar cambios",
+      "retry": "Reintentar",
+      "reload": "Recargar",
+      "cancel": "Cancelar",
+      "confirm": "Confirmar",
+      "upload": "Subir imagen",
+      "replace": "Reemplazar",
+      "clear": "Quitar",
+      "cleanUp": "Limpiar imágenes sin usar"
+    },
+    "status": {
+      "clean": "No hay cambios sin guardar",
+      "dirty": "Tienes cambios sin guardar",
+      "loading": "Cargando…",
+      "saved": "Guardado",
+      "resetDone": "Restablecido",
+      "appearanceSaved": "Apariencia guardada",
+      "brandingSaved": "Identidad visual guardada",
+      "uploading": "Subiendo…",
+      "uploaded": "Imagen lista: guarda para aplicarla"
+    },
+    "confirm": {
+      "resetAppearanceTitle": "¿Restablecer la apariencia?",
+      "resetAppearanceBody": "Se descartarán todos los cambios de color y tipografía y se restaurará el diseño original de la aplicación.",
+      "resetBrandingTitle": "¿Restablecer la identidad visual?",
+      "resetBrandingBody": "Se eliminarán todas las imágenes subidas y se restaurarán los logotipos originales de la aplicación.",
+      "deletePresetTitle": "¿Eliminar este tema guardado?",
+      "deletePresetBody": "Se eliminará «{name}». Los diseños ya aplicados no se ven afectados."
+    },
+    "presetLabels": {
+      "empty": "Todavía no hay temas guardados.",
+      "savedOption": "Tema guardado actual",
+      "select": "Tema guardado",
+      "selectPlaceholder": "Elige un tema guardado",
+      "saveCurrent": "Guardar el diseño actual",
+      "saveTitle": "Guardar este diseño",
+      "saveDescription": "Ponle nombre a los colores y la tipografía actuales para restaurarlos más adelante.",
+      "nameLabel": "Nombre",
+      "namePlaceholder": "Por ejemplo: Invierno 2026",
+      "builtIn": "Integrado",
+      "limitReached": "Esta plataforma ya tiene el número máximo de temas guardados.",
+      "previewNotice": "Vista previa de un tema guardado. Aplícalo para hacer permanente el cambio.",
+      "apply": "Aplicar este tema"
+    },
+    "branding_ui": {
+      "inheritedFrom": "Heredado de {slot}",
+      "usingFactory": "Usa la imagen integrada",
+      "noImage": "Sin imagen",
+      "accepts": "Acepta {types}, hasta {size}",
+      "custom": "Imagen personalizada"
+    },
+    "errors": {
+      "loadFailed": "No se pudieron cargar los ajustes del tema.",
+      "saveFailed": "No se pudieron guardar los cambios.",
+      "resetFailed": "El restablecimiento no se completó.",
+      "uploadFailed": "No se pudo subir la imagen.",
+      "conflict": "Otra persona cambió esto mientras editabas. Recarga para ver los valores actuales y vuelve a aplicar tus cambios.",
+      "appearanceConflict": "Otra persona cambió la apariencia. Recarga antes de guardar de nuevo.",
+      "brandingConflict": "Otra persona cambió la identidad visual. Recarga antes de guardar de nuevo.",
+      "forbidden": "No tienes permiso para cambiar esto.",
+      "invalidDesign": "Ese diseño fue rechazado: {reason}",
+      "invalidImage": "Ese archivo no es una imagen compatible.",
+      "imageTooLarge": "Esa imagen supera el tamaño permitido para este espacio.",
+      "presetNotFound": "Ese tema guardado ya no existe.",
+      "builtInPresetProtected": "Los temas integrados no se pueden eliminar."
+    }
+  }
+}

@@ -33,6 +33,17 @@
       "najm-rag": ["./packages/najm-rag/src"],
       "najm-rate": ["./packages/najm-rate/src"],
       "najm-storage": ["./packages/najm-storage/src"],
+      // Mapped subpath by subpath rather than with a wildcard: the export map
+      // is not a mirror of the source tree ("najm-theme/pg" is
+      // "src/schema/pg"), so a "najm-theme/*" glob would resolve two of these
+      // to files that do not exist.
+      "najm-theme": ["./packages/najm-theme/src"],
+      "najm-theme/contracts": ["./packages/najm-theme/src/contracts"],
+      "najm-theme/server": ["./packages/najm-theme/src/server"],
+      "najm-theme/server/react": ["./packages/najm-theme/src/server/react"],
+      "najm-theme/pg": ["./packages/najm-theme/src/schema/pg"],
+      "najm-theme/sqlite": ["./packages/najm-theme/src/schema/sqlite"],
+      "najm-theme/react": ["./packages/najm-theme/src/react"],
       "najm-validation": ["./packages/najm-validation/src"],
       "najm-whatsapp": ["./packages/najm-whatsapp/src"],
     }

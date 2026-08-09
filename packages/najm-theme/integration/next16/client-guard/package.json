@@ -1,0 +1,9 @@
+{
+  "name": "najm-theme-next16-client-guard",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "next build"
+  }
+}

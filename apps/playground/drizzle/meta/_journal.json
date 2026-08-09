@@ -43,6 +43,13 @@
       "when": 1786202442480,
       "tag": "0005_romantic_riptide",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1786296540213,
+      "tag": "0006_aspiring_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }

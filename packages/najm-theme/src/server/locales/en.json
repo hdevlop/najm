@@ -1,0 +1,115 @@
+{
+  "theme": {
+    "appearance": {
+      "retrieved": "Appearance loaded",
+      "saved": "Appearance saved",
+      "reset": "Appearance reset to the factory design"
+    },
+    "presets": {
+      "retrieved": "Theme presets loaded",
+      "created": "Theme preset saved",
+      "applied": "Theme preset applied",
+      "deleted": "Theme preset deleted"
+    },
+    "branding": {
+      "retrieved": "Branding loaded",
+      "saved": "Branding saved",
+      "reset": "Branding reset to the factory assets",
+      "assetUploaded": "Image uploaded",
+      "assetDeleted": "Image discarded",
+      "assetsReconciled": "Unused images cleaned up",
+      "slots": {
+        "sidebarLogoExpanded": "Sidebar logo",
+        "sidebarLogoCollapsed": "Sidebar icon",
+        "authLogo": "Sign-in logo",
+        "authHeroImage": "Sign-in image"
+      }
+    },
+    "settings": {
+      "title": "Theme",
+      "description": "Colours, typography, saved themes, and brand images for this platform.",
+      "appearanceTab": "Appearance",
+      "brandingTab": "Branding",
+      "presetsTab": "Saved themes"
+    },
+    "sections": {
+      "appearanceTitle": "Appearance",
+      "appearanceDescription": "Colours, typography, and component styling.",
+      "brandingTitle": "Branding",
+      "brandingDescription": "Logos and images shown across the platform.",
+      "presetsTitle": "Saved themes",
+      "presetsDescription": "Store the current design and restore it later."
+    },
+    "actions": {
+      "save": "Save changes",
+      "saving": "Saving…",
+      "reset": "Reset to factory",
+      "resetting": "Resetting…",
+      "discard": "Discard changes",
+      "retry": "Try again",
+      "reload": "Reload",
+      "cancel": "Cancel",
+      "confirm": "Confirm",
+      "upload": "Upload image",
+      "replace": "Replace",
+      "clear": "Clear",
+      "cleanUp": "Clean up unused images"
+    },
+    "status": {
+      "clean": "No unsaved changes",
+      "dirty": "You have unsaved changes",
+      "loading": "Loading…",
+      "saved": "Saved",
+      "resetDone": "Reset",
+      "appearanceSaved": "Appearance saved",
+      "brandingSaved": "Branding saved",
+      "uploading": "Uploading…",
+      "uploaded": "Image ready — save to apply it"
+    },
+    "confirm": {
+      "resetAppearanceTitle": "Reset appearance?",
+      "resetAppearanceBody": "This discards every colour and typography change and restores the design this application shipped with.",
+      "resetBrandingTitle": "Reset branding?",
+      "resetBrandingBody": "This removes every uploaded image and restores the logos this application shipped with.",
+      "deletePresetTitle": "Delete this saved theme?",
+      "deletePresetBody": "\"{name}\" will be removed. Designs already applied are not affected."
+    },
+    "presetLabels": {
+      "empty": "No saved themes yet.",
+      "savedOption": "Current saved theme",
+      "select": "Saved theme",
+      "selectPlaceholder": "Choose a saved theme",
+      "saveCurrent": "Save current design",
+      "saveTitle": "Save this design",
+      "saveDescription": "Give the current colours and typography a name so you can restore them later.",
+      "nameLabel": "Name",
+      "namePlaceholder": "For example: Winter 2026",
+      "builtIn": "Built in",
+      "limitReached": "This platform already holds the maximum number of saved themes.",
+      "previewNotice": "Previewing a saved theme. Apply it to make the change permanent.",
+      "apply": "Apply this theme"
+    },
+    "branding_ui": {
+      "inheritedFrom": "Inherited from {slot}",
+      "usingFactory": "Using the built-in image",
+      "noImage": "No image",
+      "accepts": "Accepts {types}, up to {size}",
+      "custom": "Custom image"
+    },
+    "errors": {
+      "loadFailed": "The theme settings could not be loaded.",
+      "saveFailed": "The changes could not be saved.",
+      "resetFailed": "The reset did not complete.",
+      "uploadFailed": "The image could not be uploaded.",
+      "conflict": "Someone else changed this while you were editing. Reload to see the current values, then reapply your changes.",
+      "appearanceConflict": "Appearance was changed by someone else. Reload before saving again.",
+      "brandingConflict": "Branding was changed by someone else. Reload before saving again.",
+      "forbidden": "You do not have permission to change this.",
+      "invalidDesign": "That design was rejected: {reason}",
+      "invalidImage": "That file is not a supported image.",
+      "imageTooLarge": "That image is larger than this slot allows.",
+      "presetNotFound": "That saved theme no longer exists.",
+      "builtInPresetProtected": "Built-in themes cannot be deleted."
+    }
+  }
+}

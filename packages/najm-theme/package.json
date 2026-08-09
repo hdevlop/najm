@@ -1,0 +1,142 @@
+{
+  "name": "najm-theme",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "description": "Managed runtime theming for Najm applications \u2014 appearance, theme presets, and branding assets with persistence, transport, and composable settings UI",
+  "files": [
+    "dist",
+    "README.md",
+    "CHANGELOG.md"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.js",
+      "default": "./dist/contracts/index.js"
+    },
+    "./server": {
+      "types": "./dist/server/index.d.ts",
+      "import": "./dist/server/index.js",
+      "default": "./dist/server/index.js"
+    },
+    "./server/react": {
+      "types": "./dist/server/react.d.ts",
+      "react-server": "./dist/server/react.js",
+      "browser": "./dist/server/reactClientGuard.js",
+      "import": "./dist/server/react.js",
+      "default": "./dist/server/react.js"
+    },
+    "./pg": {
+      "types": "./dist/schema/pg.d.ts",
+      "import": "./dist/schema/pg.js",
+      "default": "./dist/schema/pg.js"
+    },
+    "./sqlite": {
+      "types": "./dist/schema/sqlite.d.ts",
+      "import": "./dist/schema/sqlite.js",
+      "default": "./dist/schema/sqlite.js"
+    },
+    "./react": {
+      "types": "./dist/react/index.d.ts",
+      "import": "./dist/react/index.js",
+      "default": "./dist/react/index.js"
+    },
+    "./styles.css": {
+      "types": "./dist/styles.css.d.ts",
+      "import": "./dist/styles.css",
+      "default": "./dist/styles.css"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsup && node scripts/build-css.mjs",
+    "build:css": "node scripts/build-css.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
+    "lint": "bun run typecheck && bun run typecheck:tests",
+    "test": "bun test ./test/contracts ./test/server ./test/database && bun test --preload ./test/react/setup.ts ./test/react && bun run test:rsc",
+    "test:rsc": "cd test/rsc && bun test --conditions react-server",
+    "test:next16": "bun run build && bun integration/next16/run.ts",
+    "test:watch": "bun test --watch",
+    "clean": "rimraf dist tsconfig.tsbuildinfo"
+  },
+  "keywords": [
+    "najm",
+    "theme",
+    "theming",
+    "branding",
+    "design-system",
+    "appearance",
+    "presets"
+  ],
+  "author": "Hicham Jebara",
+  "dependencies": {
+    "najm-core": "workspace:*",
+    "najm-database": "workspace:*",
+    "najm-event": "workspace:*",
+    "najm-i18n": "workspace:*",
+    "najm-validation": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5",
+    "drizzle-orm": ">=0.45.2",
+    "hono": "^4.12.18",
+    "najm-kit": ">=2.9.0",
+    "najm-mcp": "workspace:*",
+    "najm-storage": ">=2.2.0",
+    "next": ">=14",
+    "react": ">=18",
+    "react-dom": ">=18",
+    "reflect-metadata": "^0.2.0",
+    "zod": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "najm-mcp": {
+      "optional": true
+    },
+    "najm-storage": {
+      "optional": true
+    },
+    "next": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    }
+  },
+  "optionalDependencies": {
+    "sharp": "^0.35.3"
+  },
+  "devDependencies": {
+    "@tanstack/react-query": "^5",
+    "@testing-library/react": "^16.3.2",
+    "@types/node": "^25.0.2",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "drizzle-orm": "^0.45.2",
+    "happy-dom": "^20.11.1",
+    "najm-kit": "workspace:*",
+    "najm-mcp": "workspace:*",
+    "najm-storage": "workspace:*",
+    "next": "16.2.11",
+    "rimraf": "^6.0.1",
+    "tsup": "^8.5.1",
+    "typescript": "^5.9.3",
+    "zod": "^4.4.3",
+    "@testing-library/user-event": "^14.6.1"
+  }
+}

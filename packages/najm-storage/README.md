@@ -14,6 +14,7 @@ bun add najm-storage
 
 - `storage(config)` plugin factory
 - `StorageService`, `StorageValidator`
+- `STORAGE_SERVICE` — resolution token for the application's one `StorageService`
 - File helpers: `resolveStorageMimeType`, `analyzeFile`, `getReadableFileSize`
 - Path helpers: `normalizeStoragePath`, `isSafeStoragePath`, `assertSafeStoragePath`
 - Upload validation: `validateUploadInput`
@@ -25,6 +26,33 @@ bun add najm-storage
 - `getInfoOrThrow(namespace, filePath, message?)`
 - `deleteOrThrow(namespace, filePath, message?)`
 - `saveBase64(namespace, filePath, base64, mimeType?)`
+
+## Resolving storage from another package
+
+Inside an application, inject `StorageService` as usual. From **another
+package**, resolve `STORAGE_SERVICE` instead:
+
+```ts
+const STORAGE_SERVICE = Symbol.for('najm:storage:service');
+
+if (!container.has(STORAGE_SERVICE)) {
+  throw new Error('register storage() before this plugin');
+}
+const storage = await container.resolve(STORAGE_SERVICE);
+```
+
+A class is only a working DI token while every caller holds the same
+constructor. A package that ships as `dist` resolves `najm-storage` through its
+own `node_modules`, while an application may map the specifier to `src` — two
+module instances, two constructors. `container.resolve(StorageService)` given
+the wrong one does not throw; it builds a **second** service with none of the
+application's configuration, and files go somewhere nothing serves from.
+
+`storage()` aliases `STORAGE_SERVICE` to its own class, and `Symbol.for` returns
+the identical symbol in every copy, so the token always reaches the one service
+the application booted. Declare the symbol locally, as above, rather than
+importing it — that keeps `najm-storage` out of your module graph when the
+feature that needs it is off.
 
 ## Browser Storage (`najm-storage/client`)
 

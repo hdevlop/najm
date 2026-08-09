@@ -24,6 +24,9 @@ export const PACKAGE_TARGETS: PackageTarget[] = [
   { name: 'najm-whatsapp', workspace: 'packages/najm-whatsapp' },
   { name: 'najm-cli', workspace: 'packages/najm-cli' },
   { name: 'najm-kit', workspace: 'packages/najm-kit' },
+  // After najm-kit: najm-theme builds on the published kit contracts, so it
+  // must be packed and published against a kit version that already exists.
+  { name: 'najm-theme', workspace: 'packages/najm-theme' },
 ];
 
 export const TEST_TARGETS: PackageTarget[] = [

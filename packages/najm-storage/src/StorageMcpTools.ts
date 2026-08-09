@@ -140,29 +140,30 @@ export class StorageMcpTools {
   }
 
   // ---------------------------------------------------------------------------
-  // MCP registry resolution (dynamic import — najm-mcp is optional peer dep)
+  // MCP registry resolution (najm-mcp is an optional peer dep)
   // ---------------------------------------------------------------------------
 
+  /**
+   * Resolved through `Symbol.for('najm:mcp:registry')`, which `mcp()` aliases to
+   * its own `McpRegistryService`.
+   *
+   * Not through the class: this package and `najm-mcp` are separate resolutions,
+   * and an application that maps one specifier to `src` while this file's
+   * `import('najm-mcp')` reaches `dist` holds two different constructors. The
+   * container answers the wrong one by building a second, empty registry — so
+   * every tool below registers into a registry that is never served, and no
+   * error is raised anywhere. The string is duplicated rather than imported so
+   * this stays independent of which copy of `najm-mcp` loads.
+   */
   private async resolveMcpRegistry(): Promise<McpRegistryServiceLike> {
-    let mod: unknown;
+    const MCP_REGISTRY = Symbol.for('najm:mcp:registry');
 
-    try {
-      mod = await import('najm-mcp');
-    } catch {
-      throw new Error('[najm/storage] MCP tools enabled but najm-mcp is not installed. Install with: bun add najm-mcp');
+    if (!this.container.has(MCP_REGISTRY)) {
+      throw new Error('[najm/storage] MCP tools require the mcp() plugin. Register mcp() before storage({ mcp: true }). If najm-mcp is not installed: bun add najm-mcp');
     }
 
-    const mcpModule = mod as { McpRegistryService?: new (...args: any[]) => unknown };
-    const registryToken = mcpModule.McpRegistryService;
-
-    if (typeof registryToken !== 'function') {
-      throw new Error('[najm/storage] McpRegistryService unavailable from najm-mcp.');
-    }
-
-    try {
-      return await this.container.resolve(registryToken as any);
-    } catch {
-      throw new Error('[najm/storage] MCP tools require mcp() plugin. Register mcp() before storage({ mcp: true }).');
-    }
+    // Deliberately uncaught: a registered registry that fails while constructing
+    // should surface its own error, not be reported as a missing plugin.
+    return await this.container.resolve(MCP_REGISTRY);
   }
 }

@@ -8,11 +8,14 @@ import { rateLimit } from 'najm-rate';
 import { storage } from 'najm-storage';
 import { translations } from '../locales';
 import { databaseConfig } from './database';
-import { auth, isAuth } from 'najm-auth';
+import { auth, isAdmin, isAuth } from 'najm-auth';
 import { rag, ragStudio } from 'najm-rag';
 import { chatbot } from 'najm-chatbot';
 import { studioAssistant } from 'najm-chatbot/studio-assistant';
 import { whatsapp } from 'najm-whatsapp';
+import { theme } from 'najm-theme/server';
+import { themeSchema } from 'najm-theme/sqlite';
+import { factoryBranding, factoryDesign } from './theme';
 
 /**
  * Export all plugin configurations
@@ -93,6 +96,35 @@ export const mcpConfig = () => mcp({
 });
 
 export const storageConfig = () => storage({ provider: 'local', basePath: 'storage', studio: true, guards: [isAuth()], maxFileSize: 100 * 1024 * 1024, preview: { enabled: true, cacheDir: '.cache/thumbnails' } });
+
+/**
+ * Managed theming. Register it after `database()` and `storage()` — the plugin
+ * declares both, so getting the order wrong fails at startup with a message
+ * naming the missing one rather than at the first upload.
+ *
+ * `publicRead: true` because the sign-in page renders the theme and the logo
+ * before there is a session. Every mutation is admin-only.
+ */
+export const themeConfig = () => theme({
+  features: {
+    appearance: true,
+    branding: true,
+    presets: true,
+    assetUploads: true,
+    mcp: true,
+  },
+  dialect: 'sqlite',
+  schema: themeSchema,
+  publicRead: true,
+  factory: { appearance: () => factoryDesign, branding: factoryBranding },
+  guards: {
+    manageAppearance: [isAdmin()],
+    manageBranding: [isAdmin()],
+    managePresets: [isAdmin()],
+  },
+  storage: { namespace: 'theme-branding' },
+  diagnostics: (diagnostic) => console.warn('[theme]', diagnostic.code, diagnostic.detail ?? ''),
+});
 
 export const ragConfig = () => rag({
   dialect: process.env.PLAYGROUND_DB === 'pg' ? 'pg' : 'sqlite',

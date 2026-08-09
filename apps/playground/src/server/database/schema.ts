@@ -13,6 +13,12 @@ import { aiSettingsTable, chatSessionsTable, chatbotCoreSchema } from 'najm-chat
 import { ragSchema } from 'najm-rag/sqlite';
 import { storageSchema } from 'najm-storage/sqlite';
 import {
+  najmThemeAppearance,
+  najmThemeBranding,
+  najmThemePresets,
+  themeSchema,
+} from 'najm-theme/sqlite';
+import {
   waSchema as whatsappSchema,
   whatsappInstances,
   whatsappMessages,
@@ -36,6 +42,9 @@ export {
   aiSettingsTable,
   cartItemsTable,
   chatSessionsTable,
+  najmThemeAppearance,
+  najmThemeBranding,
+  najmThemePresets,
   credentialSetupRequirementsTable,
   credentialSetupSessionsTable,
   orderItemsTable,
@@ -65,6 +74,7 @@ export const schema = {
   ...chatbotCoreSchema,
   ...ragSchema,
   ...storageSchema,
+  ...themeSchema,
   ...whatsappSchema,
   products: productsTable,
   orders: ordersTable,

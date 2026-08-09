@@ -370,6 +370,35 @@ import { mcp } from 'najm-mcp';
 
 ---
 
+### `MCP_REGISTRY` — resolution token
+
+`Symbol.for('najm:mcp:registry')`, aliased by `mcp()` to its `McpRegistryService`.
+
+Application code should use `@Tool()` and let the scanner register everything.
+A **package** that contributes tools imperatively must resolve this token:
+
+```ts
+const MCP_REGISTRY = Symbol.for('najm:mcp:registry');
+
+if (!container.has(MCP_REGISTRY)) {
+  throw new Error('register mcp() before this plugin');
+}
+const registry = await container.resolve(MCP_REGISTRY);
+registry.registerTool({ /* … */ });
+```
+
+Not `container.resolve(McpRegistryService)`. A class is only a working DI token
+while every caller holds the same constructor, and a package that ships as
+`dist` resolves `najm-mcp` through its own `node_modules` while an application
+may map the specifier to `src`. The container answers the unfamiliar constructor
+by building a **second, empty registry**: every `registerTool` call succeeds,
+`GET /mcp/tools` returns 200, and none of the tools are in it. Nothing throws.
+
+`Symbol.for` returns the identical symbol in every copy, so the token always
+reaches the registry that is actually served.
+
+---
+
 ### `@McpServer()` — class decorator
 
 Marks a class as an MCP tool/resource/prompt provider.

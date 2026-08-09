@@ -15,6 +15,7 @@ import {
   chatbotConfig,
   studioAssistantConfig,
   whatsappConfig,
+  themeConfig,
 } from './config/plugins';
 
 import * as modulesModule from './modules';
@@ -31,6 +32,7 @@ export const server = new Server()
   .use(mcpConfig())
   .use(authConfig())
   .use(storageConfig())
+  .use(themeConfig())
   .use(ragConfig())
   .use(chatbotConfig())
   .use(studioAssistantConfig())

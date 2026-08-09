@@ -1,0 +1,115 @@
+{
+  "theme": {
+    "appearance": {
+      "retrieved": "Apparence chargée",
+      "saved": "Apparence enregistrée",
+      "reset": "Apparence réinitialisée au thème d'origine"
+    },
+    "presets": {
+      "retrieved": "Thèmes enregistrés chargés",
+      "created": "Thème enregistré",
+      "applied": "Thème appliqué",
+      "deleted": "Thème supprimé"
+    },
+    "branding": {
+      "retrieved": "Identité visuelle chargée",
+      "saved": "Identité visuelle enregistrée",
+      "reset": "Identité visuelle réinitialisée aux images d'origine",
+      "assetUploaded": "Image téléversée",
+      "assetDeleted": "Image abandonnée",
+      "assetsReconciled": "Images inutilisées supprimées",
+      "slots": {
+        "sidebarLogoExpanded": "Logo de la barre latérale",
+        "sidebarLogoCollapsed": "Icône de la barre latérale",
+        "authLogo": "Logo de connexion",
+        "authHeroImage": "Image de connexion"
+      }
+    },
+    "settings": {
+      "title": "Thème",
+      "description": "Couleurs, typographie, thèmes enregistrés et images de marque de cette plateforme.",
+      "appearanceTab": "Apparence",
+      "brandingTab": "Identité visuelle",
+      "presetsTab": "Thèmes enregistrés"
+    },
+    "sections": {
+      "appearanceTitle": "Apparence",
+      "appearanceDescription": "Couleurs, typographie et style des composants.",
+      "brandingTitle": "Identité visuelle",
+      "brandingDescription": "Logos et images affichés dans toute la plateforme.",
+      "presetsTitle": "Thèmes enregistrés",
+      "presetsDescription": "Conservez le design actuel pour le restaurer plus tard."
+    },
+    "actions": {
+      "save": "Enregistrer",
+      "saving": "Enregistrement…",
+      "reset": "Réinitialiser",
+      "resetting": "Réinitialisation…",
+      "discard": "Annuler les modifications",
+      "retry": "Réessayer",
+      "reload": "Recharger",
+      "cancel": "Annuler",
+      "confirm": "Confirmer",
+      "upload": "Téléverser une image",
+      "replace": "Remplacer",
+      "clear": "Effacer",
+      "cleanUp": "Nettoyer les images inutilisées"
+    },
+    "status": {
+      "clean": "Aucune modification non enregistrée",
+      "dirty": "Vous avez des modifications non enregistrées",
+      "loading": "Chargement…",
+      "saved": "Enregistré",
+      "resetDone": "Réinitialisé",
+      "appearanceSaved": "Apparence enregistrée",
+      "brandingSaved": "Identité visuelle enregistrée",
+      "uploading": "Téléversement…",
+      "uploaded": "Image prête — enregistrez pour l'appliquer"
+    },
+    "confirm": {
+      "resetAppearanceTitle": "Réinitialiser l'apparence ?",
+      "resetAppearanceBody": "Toutes les modifications de couleurs et de typographie seront supprimées et le thème d'origine de l'application sera restauré.",
+      "resetBrandingTitle": "Réinitialiser l'identité visuelle ?",
+      "resetBrandingBody": "Toutes les images téléversées seront supprimées et les logos d'origine de l'application seront restaurés.",
+      "deletePresetTitle": "Supprimer ce thème enregistré ?",
+      "deletePresetBody": "« {name} » sera supprimé. Les designs déjà appliqués ne sont pas affectés."
+    },
+    "presetLabels": {
+      "empty": "Aucun thème enregistré pour l'instant.",
+      "savedOption": "Thème enregistré actuel",
+      "select": "Thème enregistré",
+      "selectPlaceholder": "Choisir un thème enregistré",
+      "saveCurrent": "Enregistrer le design actuel",
+      "saveTitle": "Enregistrer ce design",
+      "saveDescription": "Donnez un nom aux couleurs et à la typographie actuelles pour les restaurer plus tard.",
+      "nameLabel": "Nom",
+      "namePlaceholder": "Par exemple : Hiver 2026",
+      "builtIn": "Intégré",
+      "limitReached": "Cette plateforme a déjà atteint le nombre maximal de thèmes enregistrés.",
+      "previewNotice": "Aperçu d'un thème enregistré. Appliquez-le pour rendre le changement permanent.",
+      "apply": "Appliquer ce thème"
+    },
+    "branding_ui": {
+      "inheritedFrom": "Hérité de {slot}",
+      "usingFactory": "Utilise l'image intégrée",
+      "noImage": "Aucune image",
+      "accepts": "Accepte {types}, jusqu'à {size}",
+      "custom": "Image personnalisée"
+    },
+    "errors": {
+      "loadFailed": "Les paramètres du thème n'ont pas pu être chargés.",
+      "saveFailed": "Les modifications n'ont pas pu être enregistrées.",
+      "resetFailed": "La réinitialisation n'a pas abouti.",
+      "uploadFailed": "L'image n'a pas pu être téléversée.",
+      "conflict": "Quelqu'un d'autre a modifié ces paramètres pendant votre édition. Rechargez pour voir les valeurs actuelles, puis réappliquez vos modifications.",
+      "appearanceConflict": "L'apparence a été modifiée par quelqu'un d'autre. Rechargez avant d'enregistrer à nouveau.",
+      "brandingConflict": "L'identité visuelle a été modifiée par quelqu'un d'autre. Rechargez avant d'enregistrer à nouveau.",
+      "forbidden": "Vous n'avez pas l'autorisation de modifier cela.",
+      "invalidDesign": "Ce design a été rejeté : {reason}",
+      "invalidImage": "Ce fichier n'est pas une image prise en charge.",
+      "imageTooLarge": "Cette image dépasse la taille autorisée pour cet emplacement.",
+      "presetNotFound": "Ce thème enregistré n'existe plus.",
+      "builtInPresetProtected": "Les thèmes intégrés ne peuvent pas être supprimés."
+    }
+  }
+}

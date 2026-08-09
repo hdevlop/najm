@@ -6,6 +6,7 @@ export {
   MCP_ANNOTATIONS_META,
   MCP_CONFIRMATION_META,
   MCP_CONTROLLER_TOOL_META,
+  MCP_REGISTRY,
   TOOL_PROVIDER,
 } from './tokens';
 export type { ToolProvider } from './tokens';

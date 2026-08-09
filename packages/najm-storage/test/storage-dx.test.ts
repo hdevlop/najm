@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { MCP_REGISTRY } from 'najm-mcp';
 import {
   FileCategory,
   StorageMcpTools,
@@ -715,10 +716,23 @@ describe('storage MCP tools', () => {
 
     const registered: Array<{ name: string; annotations?: any }> = [];
 
+    // `has` before `resolve`: tools are resolved through
+    // `Symbol.for('najm:mcp:registry')`, and the registration check is what
+    // separates "mcp() was never registered" from a registry that failed to
+    // construct.
+    const checkedTokens: unknown[] = [];
+    const resolvedTokens: unknown[] = [];
     tools.container = {
-      resolve: async () => ({
+      has: (token: unknown) => {
+        checkedTokens.push(token);
+        return true;
+      },
+      resolve: async (token: unknown) => {
+        resolvedTokens.push(token);
+        return {
         registerTool: (tool: { name: string; annotations?: any }) => registered.push(tool),
-      }),
+        };
+      },
     };
 
     await tools.activate();
@@ -730,6 +744,8 @@ describe('storage MCP tools', () => {
       'storage_upload',
       'storage_upload_from_path',
     ]);
+    expect(checkedTokens).toEqual([MCP_REGISTRY]);
+    expect(resolvedTokens).toEqual([MCP_REGISTRY]);
 
     // verify annotations
     const listTool = registered.find((t) => t.name === 'storage_list');
@@ -742,6 +758,39 @@ describe('storage MCP tools', () => {
     expect(uploadTool?.annotations?.idempotentHint).toBe(true);
   });
 
+  test('reports a missing MCP plugin before attempting resolution', async () => {
+    const { service } = createTestContext();
+    const tools = new StorageMcpTools(service) as any;
+    let resolved = false;
+
+    tools.container = {
+      has: (token: unknown) => token === MCP_REGISTRY ? false : true,
+      resolve: async () => {
+        resolved = true;
+        return {};
+      },
+    };
+
+    await expect(tools.activate()).rejects.toThrow('Register mcp() before storage({ mcp: true })');
+    expect(resolved).toBe(false);
+  });
+
+  test('preserves MCP registry construction errors', async () => {
+    const { service } = createTestContext();
+    const tools = new StorageMcpTools(service) as any;
+    const constructionError = new Error('registry construction failed');
+
+    tools.container = {
+      has: (token: unknown) => token === MCP_REGISTRY,
+      resolve: async (token: unknown) => {
+        expect(token).toBe(MCP_REGISTRY);
+        throw constructionError;
+      },
+    };
+
+    await expect(tools.activate()).rejects.toBe(constructionError);
+  });
+
   test('activate is idempotent — second call does not re-register', async () => {
     const { service } = createTestContext();
     const tools = new StorageMcpTools(service) as any;
@@ -749,6 +798,7 @@ describe('storage MCP tools', () => {
     const registered: Array<{ name: string }> = [];
 
     tools.container = {
+      has: () => true,
       resolve: async () => ({
         registerTool: (tool: { name: string }) => registered.push(tool),
       }),

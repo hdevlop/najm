@@ -1,0 +1,147 @@
+/* ==========================================================================
+   najm-theme — package styles
+
+   Only what this package's settings surface needs on top of
+   `najm-kit/theme.css`. Import it after the kit's:
+
+       @import "najm-kit/theme.css";
+       @import "najm-theme/styles.css";
+
+   A Tailwind v4 *source* file, like the kit's: the consuming application's
+   build compiles it, and the `@source` directive below is what makes the
+   utilities used by this package's components survive that build. Every class
+   those components apply is written literally in a `.tsx` file — none is
+   assembled at runtime — so scanning `dist` finds all of them.
+   ========================================================================== */
+
+@source "../../dist/react";
+
+/* --------------------------------------------------------------------------
+   Layout
+
+   Grid rather than flex-wrap: the branding slots have different preview
+   aspects, and `auto-fit` keeps a row of a wide logo and a square icon aligned
+   on their labels instead of on their boxes.
+
+   Logical properties throughout — `margin-inline`, `padding-inline`, `gap` —
+   so the whole surface mirrors under `dir="rtl"` without a second stylesheet.
+   -------------------------------------------------------------------------- */
+
+.najm-theme-settings {
+  display: flex;
+  flex-direction: column;
+  gap: var(--najm-theme-section-gap, 1.5rem);
+}
+
+.najm-theme-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--najm-theme-section-gap, 1.5rem);
+}
+
+.najm-theme-branding-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
+  gap: 1.5rem;
+}
+
+.najm-theme-branding-slot {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-inline-size: 0;
+}
+
+.najm-theme-branding-label {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  margin-block: 0;
+}
+
+.najm-theme-branding-provenance,
+.najm-theme-note {
+  font-size: 0.8125rem;
+  line-height: 1.25rem;
+  color: var(--muted-foreground);
+  margin-block: 0;
+}
+
+.najm-theme-preset-apply {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-block-start: 1rem;
+}
+
+.najm-theme-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--border);
+}
+
+.najm-theme-actions-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  /* Trails the status text in both directions. `margin-inline-start` rather
+     than `margin-left` is what keeps the bar's shape in Arabic. */
+  margin-inline-start: auto;
+}
+
+.najm-theme-status {
+  font-size: 0.875rem;
+  color: var(--muted-foreground);
+  margin-block: 0;
+}
+
+/* Colour is not the only signal — the text itself changes — but the emphasis
+   helps a sighted user find the one line that moved. */
+.najm-theme-status[data-dirty="true"] {
+  color: var(--foreground);
+  font-weight: 500;
+}
+
+/* --------------------------------------------------------------------------
+   Motion
+
+   The surface uses no animation to communicate state: every transition here is
+   decorative, so honouring the preference removes nothing a user needs.
+   -------------------------------------------------------------------------- */
+
+@media (prefers-reduced-motion: reduce) {
+  .najm-theme-settings *,
+  .najm-theme-settings *::before,
+  .najm-theme-settings *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Narrow viewports
+   -------------------------------------------------------------------------- */
+
+@media (max-width: 40rem) {
+  .najm-theme-branding-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .najm-theme-actions {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .najm-theme-actions-buttons {
+    margin-inline-start: 0;
+    justify-content: flex-end;
+  }
+}

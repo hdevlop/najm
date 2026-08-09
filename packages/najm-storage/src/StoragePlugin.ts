@@ -4,7 +4,7 @@
 
 import { plugin } from 'najm-core';
 import { events } from 'najm-event';
-import { STORAGE_CONFIG } from './tokens';
+import { STORAGE_CONFIG, STORAGE_SERVICE } from './tokens';
 import type { StorageConfig } from './types';
 import { StorageService } from './StorageService';
 import { StorageValidator } from './StorageValidator';
@@ -83,6 +83,11 @@ export const storage = (config: StorageConfig = {}) => {
     .version('2.0.0')
     .depends(events())
     .services(StorageService, StorageValidator, StorageController)
+    // The identity-stable way in for packages that store files through this
+    // plugin. The alias forwards to the same singleton registered above, so a
+    // consumer loaded from a different copy of `najm-storage` writes to the
+    // application's provider rather than to a second one of its own.
+    .alias(STORAGE_SERVICE, StorageService)
     .config(STORAGE_CONFIG, merged);
 
   if (merged.provider === 'database' || merged.studio) {

@@ -312,7 +312,7 @@
     ],
     "najm-mcp": [
       "export * from './types';",
-      "export { MCP_CONFIG, MCP_GROUP_META, MCP_TOOL_META, MCP_ANNOTATIONS_META, MCP_CONFIRMATION_META, MCP_CONTROLLER_TOOL_META, TOOL_PROVIDER, } from './tokens';",
+      "export { MCP_CONFIG, MCP_GROUP_META, MCP_TOOL_META, MCP_ANNOTATIONS_META, MCP_CONFIRMATION_META, MCP_CONTROLLER_TOOL_META, MCP_REGISTRY, TOOL_PROVIDER, } from './tokens';",
       "export type { ToolProvider } from './tokens';",
       "export { Tool, McpTool, ToolGroup, getMcpTools, getMcpToolGroup, getMcpAnnotations, getMcpConfirmation, getMcpControllerTools, } from './decorator';",
       "export * from './McpPlugin';",
@@ -371,6 +371,9 @@
       "export { StorageStudioController } from './StorageStudioController';",
       "export { AuditService } from './AuditService';",
       "export { isStoragePath, isFileObject, getFileExtension } from './fileUtils';"
+    ],
+    "najm-theme": [
+      "export * from \"./contracts\";"
     ],
     "najm-validation": [
       "export * from './types';",

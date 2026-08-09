@@ -42,6 +42,7 @@
     "najm-rag": "workspace:*",
     "najm-rate": "workspace:*",
     "najm-storage": "workspace:*",
+    "najm-theme": "workspace:*",
     "najm-validation": "workspace:*",
     "najm-whatsapp": "workspace:*",
     "next": "^15.5.21",
