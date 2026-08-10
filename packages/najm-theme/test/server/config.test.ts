@@ -142,11 +142,11 @@ describe("schema", () => {
 describe("factory values", () => {
   it("requires them only for enabled resources", () => {
     expect(() => resolveThemeConfig(config({ factory: { branding: () => ({}) } }))).toThrow(
-      /factory.appearance is required/,
+      /theme.definition is required when features.appearance/,
     );
     expect(() =>
       resolveThemeConfig(config({ factory: { appearance: () => ({ version: 1, theme: {} }) } })),
-    ).toThrow(/factory.branding is required/);
+    ).toThrow(/theme.definition is required when features.branding/);
   });
 
   it("does not call them at registration — a broken build should fail at use, with a path", () => {

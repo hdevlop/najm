@@ -16,8 +16,9 @@
 // ============================================================================
 
 export { theme } from "./module";
-export { resolveThemeConfig } from "./config";
+export { resolveThemeConfig, themePluginConfig } from "./config";
 export type {
+  NajmThemeOptions,
   NajmThemePluginConfig,
   ResolvedThemeConfig,
   ThemeFactoryValues,
@@ -27,6 +28,13 @@ export type {
   ThemeSchema,
   ThemeStorageConfig,
 } from "./config";
+
+// Re-exported so backend-only code registers a plugin with one import. A
+// consumer's own `theme/index.ts` should import it from `najm-theme/theme`
+// instead: that entry carries no controller, no Drizzle, and no decorator, so
+// the file stays safe to import from a React Server Component.
+export { defineTheme } from "../theme";
+export type { DefineThemeLimits, DefineThemeOptions } from "../theme";
 
 export { THEME_CONFIG, THEME_SCHEMA } from "./tokens";
 
@@ -64,3 +72,8 @@ export type { ThemePresetService } from "./presets/ThemePresetService";
 
 // Re-exported so backend code configuring the plugin needs one import, not two.
 export * from "../contracts";
+
+// Deprecated in 0.2.0, removed in 0.3.0. Exported from the entry 0.1.1 used, so
+// a consumer upgrading a minor version does not have to change an import path
+// to keep compiling.
+export { createFactoryDesignGetter } from "./deprecated";

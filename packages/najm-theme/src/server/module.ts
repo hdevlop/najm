@@ -21,7 +21,13 @@ import {
 import { BrandingRepository } from "./branding/BrandingRepository";
 import { BrandingService } from "./branding/BrandingService";
 import { BrandingValidator } from "./branding/BrandingValidator";
-import { resolveThemeConfig, type NajmThemePluginConfig, type ResolvedThemeConfig } from "./config";
+import {
+  resolveThemeConfig,
+  themePluginConfig,
+  type NajmThemeOptions,
+  type NajmThemePluginConfig,
+  type ResolvedThemeConfig,
+} from "./config";
 import { THEME_LOCALES } from "./locales";
 import { ThemeMcpTools } from "./mcp/ThemeMcpTools";
 import {
@@ -33,6 +39,7 @@ import { ThemePresetService } from "./presets/ThemePresetService";
 import { ThemePresetValidator } from "./presets/ThemePresetValidator";
 import { ThemeRequestContext } from "./shared/ThemeRequestContext";
 import { THEME_CONFIG, THEME_SCHEMA } from "./tokens";
+import { isNajmThemeDefinition, type NajmThemeDefinition } from "../contracts/factory";
 
 type GuardDecorator = ClassDecorator & MethodDecorator;
 
@@ -105,27 +112,37 @@ function bindRepositories(config: ResolvedThemeConfig): void {
  * @example
  * ```ts
  * import { theme } from "najm-theme/server";
- * import { themeSchema } from "najm-theme/pg";
+ * import { appTheme } from "../../theme";
  *
  * new Server()
  *   .use(database({ schema: { ...appSchema, ...themeSchema } }))
  *   .use(storage({ guards: [isAuth()] }))
- *   .use(theme({
- *     features: { appearance: true, branding: true, presets: true, assetUploads: true, mcp: false },
- *     dialect: "pg",
- *     schema: themeSchema,
- *     publicRead: true,
- *     factory: { appearance: () => factoryDesign, branding: () => factoryBranding },
- *     guards: {
- *       manageAppearance: [canManageTheme()],
- *       manageBranding: [canManageTheme()],
- *       managePresets: [canManageTheme()],
- *     },
- *   }));
+ *   .use(theme(appTheme, {
+ *     dialect: "sqlite",
+ *     manage: [isAdmin()],
+ *     audit: themeAudit,
+ *   }))
+ *   .base("/api");
  * ```
+ *
+ * The second form — `theme(config)` with factory callbacks — is the pre-0.2.0
+ * contract and is deprecated; see `NajmThemePluginConfig`.
  */
-export const theme = (config: NajmThemePluginConfig) => {
-  const resolved = resolveThemeConfig(config);
+export function theme(
+  definitionOrConfig: NajmThemeDefinition | NajmThemePluginConfig,
+  options?: NajmThemeOptions,
+) {
+  if (!isNajmThemeDefinition(definitionOrConfig) && options !== undefined) {
+    throw new TypeError(
+      "theme() takes policy options only alongside a defineTheme() definition — the deprecated single-config form carries its own",
+    );
+  }
+
+  const resolved = resolveThemeConfig(
+    isNajmThemeDefinition(definitionOrConfig)
+      ? themePluginConfig(definitionOrConfig, options)
+      : (definitionOrConfig as NajmThemePluginConfig),
+  );
 
   mountControllers(resolved);
   bindRepositories(resolved);
@@ -142,11 +159,12 @@ export const theme = (config: NajmThemePluginConfig) => {
   if (resolved.features.branding) {
     applyGuards(BrandingController as never, {
       getBranding: resolved.guards.readBranding,
-      // The asset route is how a browser fetches the logo on the login page, so
-      // it follows the *public* read decision rather than the management one.
-      // Guarding it while `GET /branding` stays public would publish a path
-      // that answers 401.
+      // The asset routes are how a browser fetches the logo on the login page,
+      // so they follow the *public* read decision rather than the management
+      // one. Guarding them while `GET /branding` stays public would publish
+      // paths that answer 401.
       serveAsset: resolved.guards.readBranding,
+      serveFactoryAsset: resolved.guards.readBranding,
       getBrandingConfig: resolved.guards.manageBranding,
       saveBranding: resolved.guards.manageBranding,
       resetBranding: resolved.guards.manageBranding,
@@ -215,4 +233,4 @@ export const theme = (config: NajmThemePluginConfig) => {
   }
 
   return builder.build();
-};
+}

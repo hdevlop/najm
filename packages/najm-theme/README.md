@@ -62,9 +62,52 @@ Peers, all optional except the ones a feature actually needs:
 
 ## Quick start
 
-Three files. Nothing else in the application changes.
+One directory and three edits. Nothing else in the application changes.
 
-**1. Compose the schema** — `src/server/database/schema.ts`
+**1. Create the factory theme** — `theme/`
+
+```text
+theme/
+├── index.ts
+├── theme.json
+├── sidebar-logo-expanded.(png|webp)
+├── sidebar-logo-collapsed.(png|webp)
+├── auth-logo.(png|webp)
+└── auth-hero.(png|webp)
+```
+
+```ts
+// theme/index.ts
+import { defineTheme } from "najm-theme/theme";
+
+export const appTheme = defineTheme(import.meta.url);
+```
+
+`theme.json` is a Najm design config — the same document the appearance editor
+saves, so a factory theme is always one the editor would accept back:
+
+```json
+{
+  "version": 1,
+  "theme": { "preset": "light", "tokens": { "primary": "oklch(0.55 0.18 255)" } },
+  "typography": { "fontSans": "Inter, system-ui, sans-serif" }
+}
+```
+
+The four image names are fixed and all four are required. Each may be `.png` or
+`.webp` and exactly one of them: shipping both `auth-logo.png` and
+`auth-logo.webp` is a configuration error, because otherwise which one gets
+served would depend on directory order. Every file is read and validated when
+this module initializes — header bytes against the extension, size against the
+slot ceiling — so a renamed export or a missing hero fails a deployment with a
+file name in the message instead of leaving a hole in the sign-in page.
+
+`import.meta.url` is what makes this portable. The working directory differs
+between a root script, a workspace script, a test runner, and a container, so a
+`process.cwd()` search resolves differently in each; the module URL is a property
+of the file that asked.
+
+**2. Compose the schema** — `src/server/database/schema.ts`
 
 ```ts
 import { themeSchema } from "najm-theme/pg"; // or najm-theme/sqlite
@@ -75,36 +118,29 @@ export const schema = { ...appSchema, ...themeSchema };
 Then generate a migration with your normal workflow. This package never issues
 `CREATE TABLE` at runtime.
 
-**2. Register the plugin** — `src/server/theme.ts`
+**3. Register the plugin** — `src/server/theme.ts`
 
 ```ts
 import { theme } from "najm-theme/server";
-import { themeSchema } from "najm-theme/pg";
+import { appTheme } from "../../theme";
 import { canManageTheme } from "./guards";
-import { factoryDesign, factoryBranding } from "./factory";
 
 export const themePlugin = () =>
-  theme({
-    features: {
-      appearance: true,
-      branding: true,
-      presets: true,
-      assetUploads: true,
-      mcp: false,
-    },
+  theme(appTheme, {
     dialect: "pg",
-    schema: themeSchema,
-    publicRead: true,
-    factory: { appearance: () => factoryDesign, branding: factoryBranding },
-    guards: {
-      manageAppearance: [canManageTheme()],
-      manageBranding: [canManageTheme()],
-      managePresets: [canManageTheme()],
-    },
+    manage: [canManageTheme()],
   });
 ```
 
-Register it after `database()`, and after `storage()` when `assetUploads` is on:
+That is the whole registration. Appearance, branding, presets, and uploads are
+on; reads are public, because the sign-in page needs the theme and the logo
+before there is a session; the schema follows the dialect; the routes mount at
+`/theme`; diagnostics print a sanitized warning. Every one of those is an option
+— `features`, `read`, `schema`, `basePath`, `diagnostics`, `limits`, `audit`,
+`storage`, `scope`, and per-route `guards` — and none of them is something two
+consumers ever chose differently.
+
+Register it after `database()`, and after `storage()` when uploads are on:
 
 ```ts
 new Server()
@@ -114,7 +150,20 @@ new Server()
   .base("/api");
 ```
 
-**3. Mount the UI** — anywhere in the application
+which produces `/api/theme/appearance`, `/api/theme/branding`, and
+`/api/theme/presets`. The package serves the factory images too, at
+`/api/theme/branding/factory/<slot>.<hash>.<ext>` — there is no public path for
+the application to publish and no static handler for it to configure. The hash
+is the file's own content, so a deploy that changes a logo changes its URL and
+the one-year immutable cache in front of it is honest.
+
+> Upload ceilings (`limits.logoBytes`, `limits.heroBytes`) are policy for what an
+> administrator may upload later. The *factory* files are checked when
+> `defineTheme` runs, against the package defaults — 512 KB for a logo, 2 MB for
+> the hero — so raise those with `defineTheme(import.meta.url, { limits })` if a
+> build genuinely ships something larger.
+
+**4. Mount the UI** — anywhere in the application
 
 ```tsx
 "use client";
@@ -124,20 +173,23 @@ import "najm-theme/styles.css";
 
 export function ThemeSettingsPage() {
   return (
-    <NThemeSettingsProvider client={{ baseUrl: "/api/theme" }}>
+    <NThemeSettingsProvider onPersisted={() => router.refresh()}>
       <NThemeSettings />
     </NThemeSettingsProvider>
   );
 }
 ```
 
----
+The settings client already defaults to the standard `/api/theme` mount, so no
+`baseUrl` is needed for a normal application. Pass one only when the mount
+differs.
 
 ## What each entry is for
 
 ```text
 najm-theme            universal contracts and pure helpers
 najm-theme/contracts  the same surface, named explicitly
+najm-theme/theme      defineTheme() — the factory theme directory loader
 najm-theme/server     the plugin, its configuration, the audit and error types
 najm-theme/server/react  the React Server Component bootstrap adapter
 najm-theme/pg         PostgreSQL Drizzle tables
@@ -145,6 +197,12 @@ najm-theme/sqlite     SQLite Drizzle tables
 najm-theme/react      providers, transport, and composable components
 najm-theme/styles.css package-owned styles, on top of najm-kit/theme.css
 ```
+
+`najm-theme/theme` is separate from `najm-theme/server` for one reason: your
+`theme/index.ts` is imported by the backend *and* by the React Server Component
+facade, and that entry carries no controller, no Drizzle, and no decorator, so
+importing it from a layout does not pull a plugin graph into your Next server
+bundle. `najm-theme/server` re-exports `defineTheme` for backend-only code.
 
 Two rules hold across the map, and both are enforced by tests:
 
@@ -162,53 +220,62 @@ Two rules hold across the map, and both are enforced by tests:
 ## Configuration
 
 ```ts
-interface NajmThemePluginConfig {
-  features: {
-    appearance: boolean;
-    branding: boolean;
-    presets: boolean;      // requires appearance
-    assetUploads: boolean;  // requires branding and najm-storage
-    mcp: boolean;
-  };
+theme(appTheme, {
+  manage: ThemeGuardDecorator[];     // required — who may change the theme
+  read?: ThemeGuardDecorator[];      // omitted: reads are public
+  features?: Partial<NajmThemeFeatures>;  // default: all on except mcp
   database?: string;                 // named database, default "default"
-  dialect?: "pg" | "sqlite";         // default "pg"
-  schema: ThemeSchema;               // the tables you composed
+  dialect?: "pg" | "sqlite";         // default "pg"; picks the built-in schema
+  schema?: ThemeSchema;              // override the built-in tables
   basePath?: string;                 // default "/theme"
   scope?: ThemeScopeResolver;        // default: everything is "platform"
-  publicRead: boolean;               // required, no default
-  factory: {
-    appearance?: () => NajmDesignConfig;
-    branding?: () => FactoryBranding;
-  };
   brandingSlots?: BrandingSlotDefinition[];  // default: the four standard slots
-  guards: ThemeRouteGuards;
+  guards?: ThemeRouteGuards;         // per-route, wins over manage/read
   storage?: ThemeStorageConfig;
   audit?: ThemeAuditSink;
-  diagnostics?: ThemeDiagnosticSink;
-  limits?: ThemeLimits;
+  diagnostics?: false | ThemeDiagnosticSink;  // default: sanitized console.warn
+  limits?: {
+    logoBytes?: number;              // upload ceiling for the three logo slots
+    heroBytes?: number;              // upload ceiling for the hero slot
+    appearance?: Partial<ThemeAppearanceLimits>;
+    maxPresets?: number;
+    allowBuiltInPresetDeletion?: boolean;
+  };
   resolveActorId?: (user: unknown) => string | null;
-}
+})
 ```
 
 Rules the plugin enforces at registration, not at first request:
 
-- **`features` is required and every flag is explicit.** A default either way
-  would mean a typo silently adds or removes a feature.
-- **Every enabled mutation needs guards.** A missing `manageAppearance`,
-  `manageBranding`, or `managePresets` fails registration.
-- **`publicRead` has no default.** `true` serves appearance and branding to
-  anonymous visitors, which is what a sign-in page needs. `false` requires
-  `guards.readAppearance` and `guards.readBranding`. Either is a decision about
-  what leaves the building, so the package will not make it for you.
-- **Presets are never public.** `publicRead` does not reach them; listing them
-  falls back to `guards.managePresets` unless you pass `guards.readPresets`.
-- **Factory values are required only for enabled resources**, and are called per
-  read. Their failure is *not* caught: a factory theme that cannot be built is a
-  broken build, and a second fallback would hide it behind a page that merely
-  looks unstyled.
+- **`manage` is required.** One list rather than three: every consumer that had
+  `manageAppearance`, `manageBranding`, and `managePresets` put the same guard in
+  all three, and the split invited a deployment where presets were administrable
+  and branding was not. `guards` still separates them when an application
+  genuinely means to.
+- **Reads are public unless you pass `read`.** An anonymous visitor needs the
+  theme and the logo to render the sign-in page; supplying `read` makes both
+  authenticated instead.
+- **Presets are never public.** `read` does not reach them; listing them falls
+  back to `manage` unless you pass `guards.readPresets`.
+- **The definition is required for every enabled resource.** Its factory design
+  is read per request and its failure is *not* caught: a factory theme that
+  cannot be built is a broken build, and a second fallback would hide it behind
+  a page that merely looks unstyled.
 - **Limits may be widened only within package maxima.** A design is parsed on
   every uncached server render, so an unbounded one is a denial-of-service
   vector against the application itself.
+
+<details>
+<summary>The pre-0.2.0 form — deprecated, removed in 0.3.0</summary>
+
+`theme(config)` with `features`, `publicRead`, `guards`, and
+`factory: { appearance, branding }` callbacks still resolves, so an application
+can adopt 0.2.0 and migrate in a separate change. It cannot serve factory assets
+— that needs a definition — and it keeps the old slot inheritance, where
+`sidebarLogoCollapsed` and `authLogo` fall back to `sidebarLogoExpanded`. Do not
+maintain both: there is no configuration in which the two are equally supported.
+
+</details>
 
 ### Scope
 
@@ -432,12 +499,21 @@ persisted. This nests inside it and replaces nothing.
 
 ```tsx
 <NThemeSettingsProvider
-  client={{ baseUrl: "/api/theme" }}
   language="fr"
   labels={{ "theme.settings.title": "Apparence" }}
   initialData={serverSnapshot}
   onPersisted={() => router.refresh()}
 >
+  {children}
+</NThemeSettingsProvider>
+```
+
+No `client` is needed: the settings client already defaults to the standard
+`/api/theme` mount that the RSC bootstrap reads from. A custom or remote mount
+is the only reason to pass one:
+
+```tsx
+<NThemeSettingsProvider client={{ baseUrl: "/api/theme-v2" }}>
   {children}
 </NThemeSettingsProvider>
 ```
@@ -520,20 +596,17 @@ Layout uses logical properties throughout, so the surface mirrors under
 ## Server rendering
 
 `najm-theme/server/react` configures `najm-kit/server/react`; it does not
-implement a second cache. One small module in your application owns the fetcher,
-the factory values, and the diagnostic sink:
+implement a second cache. One small module in your application binds this
+frontend to this backend:
 
 ```ts
 // src/lib/serverTheme.ts
 import "server-only";
 
-import { createReactThemeBootstrap } from "najm-theme/server/react";
+import { appTheme } from "../../theme";
 
-const serverTheme = createReactThemeBootstrap({
-  fetcher: (path) => server.fetch(new Request(`http://internal${path}`)),
-  basePath: "/api/theme",
-  factory: { appearance: () => factoryDesign, branding: factoryBranding },
-  onDiagnostic: reportThemeDiagnostic,
+const serverTheme = appTheme.react({
+  getServer: async () => (await import("@app/server")).server,
 });
 
 export const loadServerTheme = serverTheme.load;
@@ -541,16 +614,60 @@ export const loadServerAppearance = serverTheme.loadAppearance;
 export const loadServerBranding = serverTheme.loadBranding;
 ```
 
-**Call the factory once, at module scope**, in a module the whole app imports.
+**Call `.react()` once, at module scope**, in a module the whole app imports.
 Calling it inside a layout, a page, or a component builds a fresh memoization
 entry per call and shares nothing — which looks like it works and quietly costs
 one round trip per component.
 
 That module is the one file this package cannot delete for you, and it is
-deliberate: the fetcher, the factory values, and the diagnostic sink are all
-application-owned. What it *does* delete is everything that used to sit around it
-— the fetch, the envelope unwrap, the validation, the fallback, and the
-per-resource independence.
+deliberate: which server this frontend talks to is not something a package can
+know. What it *does* delete is everything that used to sit around it — the fetch,
+the envelope unwrap, the validation, the factory design, the branding map, the
+route prefix, and the per-resource independence.
+
+The route prefix defaults to `/api/theme`, and the fallback branding URLs move
+with it. The bootstrap attaches the factory map to the branding it returns, so
+the React tree does not need a separate prop, a literal route, or a factory
+callback to render the chain. A legacy consumer may override `basePath` with
+another absolute prefix, while malformed relative, query, hash, or traversal
+paths fail where they are written. Fallbacks emit a sanitized `console.warn` by
+default; pass a custom `onDiagnostic` for application observability, or
+`onDiagnostic: false` to silence it.
+
+`getServer` accepts a lazy Fetch-compatible server and is the normal same-process
+Najm integration. Use `fetcher` instead when the theme backend is remote or needs
+custom request construction. Supplying both, or neither, fails immediately. A
+frontend with no factory directory of its own — a separate deployment against a
+remote theme backend — uses `createReactThemeBootstrap({ fetcher, factory })`
+and supplies the two values itself.
+
+Then publish the resolved marks once, near the root, and render them by slot:
+
+```tsx
+// app/layout.tsx
+import { NThemeBrandingProvider } from "najm-theme/react";
+import { loadServerTheme } from "@/lib/serverTheme";
+
+const { appearance, branding } = await loadServerTheme();
+
+<NThemeBrandingProvider branding={branding}>
+  {children}
+</NThemeBrandingProvider>
+```
+
+```tsx
+<NThemeImage slot="sidebarLogoExpanded" alt="Acme" className="h-8 w-auto" />
+<NThemeImage slot="sidebarLogoCollapsed" alt="Acme" className="h-8 w-8" />
+<NThemeImage slot="authLogo" alt="Acme" className="mx-auto h-10 w-auto" />
+<NThemeImage slot="authHeroImage" alt="" fill />
+```
+
+`NThemeImage` renders what the server resolved — the managed upload if there is
+one, the factory file otherwise — and continues the same chain in the browser:
+an asset that 404s falls back to the factory file, and a slot whose every
+candidate fails renders nothing rather than a broken-image glyph. The factory
+map is on the branding the bootstrap returned, so the consumer passes no map,
+no path, and no mount.
 
 Rules:
 

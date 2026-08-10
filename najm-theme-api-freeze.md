@@ -1,8 +1,41 @@
 # najm-theme API Freeze
 
-Status: **FROZEN** for `najm-theme@0.1.x` adoption.
+Status: **FROZEN** for `najm-theme@0.1.x` adoption, then **SUPERSEDED in part**
+by the factory theme convention shipped in `0.2.0`.
 
-Date: 2026-08-09
+Date: 2026-08-09; convention amendment 2026-08-10.
+
+> **0.2.0 amendment.** `NAJM-THEME-RELEASE-ACCEPTANCE-PLAN.md` replaces the
+> consumer-supplied factory contract this document froze. What it supersedes,
+> and nothing else:
+>
+> - **Factory values.** `theme.factory.appearance` / `theme.factory.branding`
+>   callbacks and consumer-owned asset paths are replaced by one
+>   `defineTheme(import.meta.url)` definition over a canonical `theme/`
+>   directory. The callbacks still resolve in 0.2.0 and are removed in 0.3.0:
+>   `theme()` accepts a `NajmThemeDefinition` *or* the 0.1.x
+>   `NajmThemePluginConfig`, and `factory` remains on the options type. The
+>   helper that builds the appearance callback, `createFactoryDesignGetter`, is
+>   likewise still exported from `najm-theme/server`, now marked `@deprecated`.
+>   It was briefly dropped during 0.2.0 development, which broke the only
+>   consumer on a *minor* upgrade; `test/server/deprecatedFactory.test.ts` and
+>   the server entry list in `test/database/public-api.test.ts` hold it in place
+>   until 0.3.0.
+> - **Factory serving.** Factory assets are served by the package at
+>   `<mount>/branding/factory/<slot>.<hash>.<ext>`, not by the application's own
+>   static handler. Consumers no longer publish four public paths.
+> - **Slot inheritance.** With a definition, `sidebarLogoCollapsed` and
+>   `authLogo` no longer inherit `sidebarLogoExpanded`: all four factory files
+>   are required, so each slot resolves to its own managed upload or its own
+>   factory file.
+> - **Branding URLs.** Resolved paths now include the server base
+>   (`/api/theme/...`), read from `najm-core`'s `BASE_PATH`. Before 0.2.0 they
+>   omitted it, which made every managed asset URL a 404 for any application
+>   with a server base.
+>
+> Everything else below — persistence, revisions, conflict semantics, upload
+> safety, storage lifecycle, diagnostics, route table, and the Kafil migration
+> evidence — is unchanged and still binding.
 
 Companion to `najm-theme.md` §6-§11. That file states the plan; this file records
 the decisions that close Move 0 and the source evidence behind each one.

@@ -44,6 +44,8 @@
       "save": "Save changes",
       "saving": "Saving…",
       "reset": "Reset to factory",
+      "resetAppearance": "Reset appearance to factory",
+      "resetBranding": "Reset branding to factory",
       "resetting": "Resetting…",
       "discard": "Discard changes",
       "retry": "Try again",

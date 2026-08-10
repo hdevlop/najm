@@ -1,5 +1,98 @@
 # najm-theme
 
+## 0.2.0
+
+The factory theme convention. One directory replaces the callbacks, the asset
+paths, the fallback maps, and the route knowledge a consumer used to repeat in
+five places across two processes.
+
+A minor rather than a patch on purpose: the 0.1.1 consumer contract is
+superseded, and the branding URLs an application serves change.
+
+### Added
+
+- `defineTheme(import.meta.url)`, from the new `najm-theme/theme` entry. It
+  resolves a sibling `theme.json` and the four fixed branding basenames —
+  `sidebar-logo-expanded`, `sidebar-logo-collapsed`, `auth-logo`, `auth-hero`,
+  each exactly one `.png` or `.webp` — validates every one against its header
+  bytes and its slot ceiling, and returns an immutable definition. Module
+  relative, never `process.cwd()`; proven in Bun, compiled tests, a Next 16
+  production build, and the built package.
+- Package-owned factory asset serving at
+  `<mount>/branding/factory/<slot>.<hash>.<ext>`, with the file's real content
+  type, its length, `nosniff`, an ETag, and a one-year immutable cache that the
+  content hash makes honest. The bytes are read once at definition time, so the
+  route touches no filesystem and has no path to traverse.
+- `theme(definition, { manage, … })`. Features, public reads, the dialect
+  schema, the standard slots, storage defaults, route suffixes, and a sanitized
+  diagnostic sink all default; one `manage` guard list replaces three that were
+  identical in every consumer. Per-route `guards` remain as an escape hatch.
+- `definition.react({ getServer })` — the RSC bootstrap built from the same
+  definition, so the frontend repeats no factory design, no branding map, and no
+  route prefix. `createReactThemeBootstrap(definition, config)` is the same
+  thing for a module that already has the definition in hand.
+- The bootstrap attaches the factory map to every branding it returns, so the
+  React tree has the managed → factory chain without the consumer building it.
+  `NThemeImage` reads it through `<NThemeBrandingProvider branding={branding}>`.
+- `NThemeImage` and `NThemeBrandingProvider` in `najm-theme/react`: a slot
+  renderer with the managed-to-factory chain continued into the browser, so a
+  managed asset that 404s falls back to the file the build ships rather than to
+  a broken-image glyph.
+- `najm-theme/theme` export subpath, and the convention's names on
+  `najm-theme/contracts`.
+
+### Changed
+
+- **Standard consumer carries no theme plumbing.** A standard application passes
+  nothing but `branding` to `<NThemeBrandingProvider>`, nothing but
+  `onPersisted` to `<NThemeSettingsProvider>`, and `'/api/theme'` only ever
+  appears in tests that assert the public URL. `defineTheme`, `theme(...)`, and
+  `appTheme.react({ getServer })` are the only theme imports an application
+  writes; a source-boundary test enforces it on every `najm-theme` consumer in
+  the worktree.
+- **Branding paths now include the server base.** `/theme/branding/assets/x` was
+  never a URL an application with `.base("/api")` served; the resolved paths are
+  now `/api/theme/branding/assets/x`, read from `najm-core`'s `BASE_PATH`.
+- **No implicit factory inheritance.** With a definition, `sidebarLogoCollapsed`
+  and `authLogo` no longer fall back to `sidebarLogoExpanded`. All four factory
+  files are required, so each slot resolves to its own managed upload or its own
+  factory file; uploading one logo no longer silently replaces three marks.
+- `createReactThemeBootstrap()` supplies a sanitized warning reporter by
+  default, accepts `onDiagnostic: false` for deliberate silence, and validates
+  custom route prefixes. Standard consumers omit both `basePath` and
+  `onDiagnostic`.
+- Same-process consumers pass one lazy `getServer` function; the package builds
+  the internal Request. `fetcher` remains the mutually exclusive escape hatch
+  for a remote or custom transport.
+
+### Deprecated
+
+- `theme.factory.appearance` and `theme.factory.branding`, and the
+  `createReactThemeBootstrap({ factory })` form for an application that has a
+  factory directory. Both still work in 0.2.0 and are removed in 0.3.0. There is
+  no supported configuration in which a consumer maintains both.
+- `<NThemeBrandingProvider factory={…}>` removed in favour of the factory map
+  the bootstrap attaches to its branding return.
+
+### Migration
+
+1. Create `theme/` next to your application code: `theme.json` (the design that
+   used to be a TypeScript constant), the four images under their fixed names,
+   and `index.ts` containing
+   `export const appTheme = defineTheme(import.meta.url);`.
+2. Replace the plugin config with `theme(appTheme, { dialect, manage: [...] })`.
+3. Replace the RSC facade's config with `appTheme.react({ getServer })`.
+4. Delete the factory constants, the four public asset paths, any
+   `BrandingImage` fallback map, and the `factoryBranding` export from
+   `serverTheme.ts`. Render `<NThemeImage slot="…" alt="…" />` under
+   `<NThemeBrandingProvider branding={branding}>`. The factory chain is now on
+   the branding the bootstrap returned, not a separate prop.
+5. Drop `client={{ baseUrl: '/api/theme' }}` from `<NThemeSettingsProvider>`.
+   The settings client already defaults to the standard mount; pass one only
+   for a custom or remote backend.
+6. If anything outside the package linked to `/theme/branding/assets/…`, update
+   it to the mounted path — or keep a redirect until stored references age out.
+
 ## 0.1.1
 
 Documentation only. No change to the code, the export map, or any dependency

@@ -21,7 +21,7 @@
 // follows one. There is no path in this file that unlinks inside a transaction.
 // ============================================================================
 
-import { Container, DI, Inject, Meta, Service } from "najm-core";
+import { BASE_PATH, Container, DI, Inject, Meta, Service } from "najm-core";
 
 import type { BrandingSlotAsset, BrandingSlotDefinition } from "../../contracts/branding";
 import { isBrandingAssetFileName } from "../../contracts/branding";
@@ -51,6 +51,7 @@ interface StorageLike {
 export class BrandingAssetService {
   @DI() private container!: Container;
   @Inject(THEME_CONFIG) private config!: ResolvedThemeConfig;
+  @Inject(BASE_PATH) private serverBase?: string;
 
   private storage: StorageLike | null = null;
   private sharp: unknown = null;
@@ -98,9 +99,44 @@ export class BrandingAssetService {
     return `${this.config.storage.namespace}-${scopeId}`;
   }
 
+  /**
+   * Where this plugin's routes live as a *browser* sees them.
+   *
+   * The plugin's `basePath` alone is not that path. `new Server().base("/api")`
+   * puts every controller behind `/api`, so a branding URL built from the plugin
+   * path alone is one the application never serves — a 404 for the logo on the
+   * sign-in page, from a response that otherwise looks correct. `najm-core`
+   * publishes the server base under a registry symbol, and this is the one place
+   * that needs to read it.
+   *
+   * Falls back to the plugin path when the token is absent, which is what a
+   * directly-constructed service in a unit test has.
+   */
+  mountPrefix(): string {
+    const base = typeof this.serverBase === "string" ? this.serverBase : "";
+    return `${base}${this.config.basePath}`;
+  }
+
   /** The public URL a committed asset is served from. */
   publicPathFor(fileName: string): string {
-    return `${this.config.basePath}/branding/assets/${fileName}`;
+    return `${this.mountPrefix()}/branding/assets/${fileName}`;
+  }
+
+  /**
+   * Serves a factory asset straight from the definition.
+   *
+   * No storage, no filesystem, no path join: the bytes were read and validated
+   * when the application's `theme/index.ts` initialized, so this is a map lookup
+   * and a `Response`. Returns `null` for anything the definition does not
+   * recognize, which the controller turns into the same 404 an unknown managed
+   * asset gets.
+   */
+  serveFactoryAsset(fileName: unknown): Response | null {
+    return (
+      this.config.definition?.serveAsset(fileName, {
+        cacheMaxAge: this.config.storage.cacheMaxAge,
+      }) ?? null
+    );
   }
 
   // --------------------------------------------------------------------------

@@ -16,6 +16,10 @@ export default defineConfig({
     index: 'src/index.ts',
     'contracts/index': 'src/contracts/index.ts',
     'server/index': 'src/server/index.ts',
+    // The factory theme loader. Its own entry so a consumer's `theme/index.ts`
+    // — imported by the backend *and* by the RSC facade — does not drag a
+    // controller graph into Next's server bundle.
+    'theme/index': 'src/theme/index.ts',
     // The RSC adapter and the guard the `browser` condition resolves instead,
     // so a Client Component importing it fails at build time rather than
     // pulling a server module into the browser graph.
@@ -52,7 +56,6 @@ export default defineConfig({
     'hono',
     'najm-core',
     'najm-database',
-    'najm-event',
     'najm-i18n',
     'najm-kit',
     'najm-kit/server',

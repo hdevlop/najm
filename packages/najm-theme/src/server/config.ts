@@ -32,6 +32,11 @@ import {
 } from "../contracts/capabilities";
 import type { ThemeDiagnosticSink } from "../contracts/diagnostics";
 import {
+  isNajmThemeDefinition,
+  withoutSlotInheritance,
+  type NajmThemeDefinition,
+} from "../contracts/factory";
+import {
   DEFAULT_MAX_THEME_PRESETS,
   MAX_THEME_PRESETS_CEILING,
 } from "../contracts/presets";
@@ -41,6 +46,8 @@ import {
   platformScope,
   type ThemeScopeResolver,
 } from "../contracts/scope";
+import { themeSchema as pgThemeSchema } from "../schema/pg";
+import { themeSchema as sqliteThemeSchema } from "../schema/sqlite";
 import type { ThemeAuditSink } from "./audit/ThemeAuditSink";
 
 /**
@@ -113,6 +120,13 @@ export interface ThemeLimits {
   allowBuiltInPresetDeletion?: boolean;
 }
 
+/**
+ * @deprecated Supply a `defineTheme()` definition instead. Removed in 0.3.0.
+ *
+ * Four consumer-supplied callbacks and paths were the thing the factory theme
+ * convention replaced: they had to be repeated in the plugin and in the RSC
+ * bootstrap, and nothing checked that the two agreed or that the files existed.
+ */
 export interface ThemeFactoryValues {
   /**
    * The design served when nothing is stored, and the target of a reset.
@@ -142,6 +156,15 @@ export interface NajmThemePluginConfig {
   /** Route prefix. Defaults to `"/theme"`. */
   basePath?: string;
   scope?: ThemeScopeResolver;
+  /**
+   * The canonical factory theme directory, from `defineTheme(import.meta.url)`.
+   *
+   * Supplies the factory design, the four factory assets, and the bytes the
+   * package serves them from. Supersedes `factory`, which cannot express any of
+   * the last part.
+   */
+  definition?: NajmThemeDefinition;
+  /** @deprecated Pass a `definition` instead. Removed in 0.3.0. */
   factory?: ThemeFactoryValues;
   /** Defaults to the four standard slots. */
   brandingSlots?: readonly BrandingSlotDefinition[];
@@ -169,6 +192,68 @@ export interface NajmThemePluginConfig {
   resolveActorId?: (user: unknown) => string | null;
 }
 
+/**
+ * What an application still decides once the factory theme directory exists.
+ *
+ * Everything absent from this interface is either owned by the package (slot
+ * names, route suffixes, resolution order, managed file names) or derived from
+ * the definition (the factory design, the four assets, their URLs). What is left
+ * is genuinely application policy: who may change the theme, where it is
+ * persisted, what is recorded, and which ceilings this deployment wants.
+ */
+export interface NajmThemeOptions {
+  /**
+   * Who may change appearance, branding, and presets.
+   *
+   * One list rather than three. Three separate guard lists were the shape of
+   * the pre-0.2.0 configuration, and in every real consumer they held the same
+   * guard — the split invited a deployment where presets were administrable and
+   * branding was not, which nobody wanted and nothing detected. Applications
+   * that genuinely separate them still can, through `guards`.
+   */
+  manage: ThemeGuardDecorator[];
+  /**
+   * Guards for the *public* appearance and branding reads.
+   *
+   * Omitted, reads are public — the sign-in page needs the theme and the logo
+   * before there is a session, which is the case this package exists to serve.
+   * Supplying guards here makes the reads authenticated instead.
+   */
+  read?: ThemeGuardDecorator[];
+  /** Turns individual features off. All are on except `mcp`, which needs `mcp()`. */
+  features?: Partial<NajmThemeFeatures>;
+  /** Named database from `najm-database`. Defaults to `"default"`. */
+  database?: string;
+  /** Chooses the built-in schema. Defaults to `"pg"`. */
+  dialect?: "pg" | "sqlite";
+  /** Overrides the built-in schema for the chosen dialect. Rarely needed. */
+  schema?: ThemeSchema;
+  /** Route prefix under the server base. Defaults to `"/theme"`. */
+  basePath?: string;
+  scope?: ThemeScopeResolver;
+  storage?: ThemeStorageConfig;
+  audit?: ThemeAuditSink;
+  /** Defaults to a sanitized `console.warn`; pass `false` to silence it. */
+  diagnostics?: false | ThemeDiagnosticSink;
+  limits?: {
+    /** Upload ceiling for the three logo slots, in bytes. */
+    logoBytes?: number;
+    /** Upload ceiling for the hero slot, in bytes. */
+    heroBytes?: number;
+    appearance?: Partial<ThemeAppearanceLimits>;
+    maxPresets?: number;
+    allowBuiltInPresetDeletion?: boolean;
+  };
+  resolveActorId?: (user: unknown) => string | null;
+  /**
+   * Per-route guards, for an application that genuinely separates reading a
+   * preset from changing a logo. Anything set here wins over `manage`/`read`.
+   */
+  guards?: ThemeRouteGuards;
+  /** A registry beyond the four standard slots. Advanced. */
+  brandingSlots?: readonly BrandingSlotDefinition[];
+}
+
 /** The table objects, as exported by either dialect module. */
 export interface ThemeSchema {
   najmThemeAppearance?: unknown;
@@ -183,8 +268,17 @@ export interface ResolvedThemeConfig {
   schema: ThemeSchema;
   basePath: string;
   scope: ThemeScopeResolver;
+  definition?: NajmThemeDefinition;
   factoryAppearance: () => NajmDesignConfig;
-  factoryBranding: () => FactoryBranding;
+  /**
+   * Factory asset paths keyed by slot.
+   *
+   * Takes the prefix the theme routes are mounted under *as a browser sees
+   * them*, because that is the one thing a definition cannot know for itself:
+   * the plugin's `basePath` is configuration this package owns, and the server
+   * base in front of it belongs to `najm-core`.
+   */
+  factoryBranding: (mountPrefix: string) => FactoryBranding;
   brandingSlots: readonly BrandingSlotDefinition[];
   publicRead: boolean;
   guards: Required<{ [K in keyof ThemeRouteGuards]: ThemeGuardDecorator[] }>;
@@ -237,6 +331,119 @@ function requireGuards(
 }
 
 /**
+ * The default diagnostic sink.
+ *
+ * A theme diagnostic reports something the package recovered from — a dropped
+ * stale slot, an asset that could not be cleaned up. Silence was the old
+ * default, and silence is how a consumer discovers months later that branding
+ * reconciliation has been failing since a storage credential rotated. This
+ * prints the code and the sanitized detail and nothing else; anything richer is
+ * the application's own sink to write.
+ */
+const reportThemeDiagnostic: ThemeDiagnosticSink = (diagnostic) => {
+  console.warn(`[najm-theme] ${diagnostic.code}${diagnostic.detail ? `: ${diagnostic.detail}` : ""}`);
+};
+
+/**
+ * Projects a definition plus application policy onto the full configuration.
+ *
+ * Every default here is one the pre-0.2.0 contract made a consumer write out,
+ * and every one of them had the same value in each consumer that wrote it.
+ */
+export function themePluginConfig(
+  definition: NajmThemeDefinition,
+  options: NajmThemeOptions = {} as NajmThemeOptions,
+): NajmThemePluginConfig {
+  if (!options || typeof options !== "object") {
+    throw new TypeError("theme(definition, options) requires an options object");
+  }
+
+  const manage = options.manage;
+  if (!Array.isArray(manage) || manage.length === 0) {
+    throw new TypeError(
+      "theme.manage must be a non-empty array of guards — every theme mutation is authorized explicitly",
+    );
+  }
+
+  const features: NajmThemeFeatures = {
+    appearance: true,
+    branding: true,
+    presets: true,
+    assetUploads: true,
+    // The only one off by default: it requires the `mcp()` plugin, and turning
+    // it on for an application that has not registered one would fail boot.
+    mcp: false,
+    ...options.features,
+  };
+
+  const dialect = options.dialect ?? "pg";
+  if (dialect !== "pg" && dialect !== "sqlite") {
+    throw new TypeError('theme.dialect must be "pg" or "sqlite"');
+  }
+
+  const read = options.read;
+  const publicRead = !Array.isArray(read) || read.length === 0;
+
+  return {
+    features,
+    database: options.database,
+    dialect,
+    // Both dialect modules are already in this bundle; picking one here is what
+    // spares every consumer the import and the chance of pairing a `sqlite`
+    // dialect with the `pg` tables.
+    schema: options.schema ?? (dialect === "sqlite" ? sqliteThemeSchema : pgThemeSchema),
+    basePath: options.basePath,
+    scope: options.scope,
+    definition,
+    brandingSlots: applySlotCeilings(
+      options.brandingSlots ?? withoutSlotInheritance(STANDARD_BRANDING_SLOTS),
+      options.limits,
+    ),
+    publicRead,
+    guards: {
+      readAppearance: read,
+      readBranding: read,
+      manageAppearance: manage,
+      manageBranding: manage,
+      managePresets: manage,
+      ...options.guards,
+    },
+    storage: options.storage,
+    audit: options.audit,
+    diagnostics:
+      options.diagnostics === false ? undefined : (options.diagnostics ?? reportThemeDiagnostic),
+    limits: {
+      appearance: options.limits?.appearance,
+      maxPresets: options.limits?.maxPresets,
+      allowBuiltInPresetDeletion: options.limits?.allowBuiltInPresetDeletion,
+    },
+    resolveActorId: options.resolveActorId,
+  };
+}
+
+/**
+ * Applies the opinionated upload ceilings to the standard slots.
+ *
+ * Separate from `themePluginConfig` because it must also run for a consumer
+ * that supplied its own `brandingSlots`: a ceiling is a deployment decision and
+ * a registry is a shape decision, and combining them would make raising a limit
+ * mean re-declaring four slots.
+ */
+function applySlotCeilings(
+  slots: readonly BrandingSlotDefinition[],
+  limits: NajmThemeOptions["limits"],
+): readonly BrandingSlotDefinition[] {
+  const logoBytes = limits?.logoBytes;
+  const heroBytes = limits?.heroBytes;
+  if (logoBytes === undefined && heroBytes === undefined) return slots;
+
+  return slots.map((slot) => {
+    const maxBytes = slot.kind === "hero" ? heroBytes : logoBytes;
+    return maxBytes === undefined ? slot : Object.freeze({ ...slot, maxBytes });
+  });
+}
+
+/**
  * Resolves and validates the whole configuration.
  *
  * Exported separately from the plugin so it can be tested, and so a consumer
@@ -286,19 +493,35 @@ export function resolveThemeConfig(config: NajmThemePluginConfig): ResolvedTheme
     throw new TypeError("theme.schema.najmThemePresets is required when features.presets is on");
   }
 
-  // Factory values, for enabled resources only. A branding-only installation
-  // must not be made to invent a design it never serves.
-  const factoryAppearance = config.factory?.appearance;
-  if (features.appearance && typeof factoryAppearance !== "function") {
-    throw new TypeError("theme.factory.appearance is required when features.appearance is on");
-  }
-  const factoryBranding = config.factory?.branding;
-  if (features.branding && typeof factoryBranding !== "function") {
-    throw new TypeError("theme.factory.branding is required when features.branding is on");
+  // A definition covers both resources at once, which is the point of it. The
+  // callbacks below remain only for the pre-0.2.0 contract.
+  const definition = config.definition;
+  if (definition !== undefined && !isNajmThemeDefinition(definition)) {
+    throw new TypeError(
+      "theme.definition must come from defineTheme(import.meta.url) in najm-theme/theme",
+    );
   }
 
+  // Factory values, for enabled resources only. A branding-only installation
+  // must not be made to invent a design it never serves.
+  const factoryAppearance = definition ? () => definition.appearance() : config.factory?.appearance;
+  if (features.appearance && typeof factoryAppearance !== "function") {
+    throw new TypeError(
+      "theme.definition is required when features.appearance is on — pass defineTheme(import.meta.url)",
+    );
+  }
+  const factoryBranding = config.factory?.branding;
+  if (features.branding && !definition && typeof factoryBranding !== "function") {
+    throw new TypeError(
+      "theme.definition is required when features.branding is on — pass defineTheme(import.meta.url)",
+    );
+  }
+
+  const standardSlots = definition
+    ? withoutSlotInheritance(STANDARD_BRANDING_SLOTS)
+    : STANDARD_BRANDING_SLOTS;
   const brandingSlots = features.branding
-    ? assertBrandingSlotDefinitions([...(config.brandingSlots ?? STANDARD_BRANDING_SLOTS)])
+    ? assertBrandingSlotDefinitions([...(config.brandingSlots ?? standardSlots)])
     : [];
 
   if (typeof config.publicRead !== "boolean") {
@@ -376,12 +599,15 @@ export function resolveThemeConfig(config: NajmThemePluginConfig): ResolvedTheme
     schema,
     basePath: normalizeBasePath(config.basePath ?? "/theme"),
     scope,
+    definition,
     factoryAppearance:
       factoryAppearance
       ?? (() => {
-        throw new TypeError("theme.factory.appearance was not configured");
+        throw new TypeError("theme.definition was not configured");
       }),
-    factoryBranding: factoryBranding ?? (() => ({})),
+    factoryBranding: definition
+      ? (mountPrefix: string) => definition.branding(mountPrefix)
+      : (factoryBranding ?? (() => ({}))),
     brandingSlots,
     publicRead: config.publicRead,
     guards,

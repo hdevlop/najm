@@ -23,6 +23,13 @@ export interface NThemeSettingsResetButtonProps
  * it also removes the uploaded files. One resource per button rather than a
  * combined "reset everything", so an administrator restoring the logos is never
  * one mis-click from also losing the palette.
+ *
+ * Each button names its own resource — "Reset appearance to factory", not
+ * "Reset to factory". Two buttons sharing one name is a bar with two identical
+ * destructive controls on it: a screen reader reads the same words twice, and
+ * the only thing separating them is the order they happen to render in. The
+ * confirmation inside says which resource it is; the trigger has to as well,
+ * because that is where the decision to press is made.
  */
 export function NThemeSettingsResetButton({
   resource = "appearance",
@@ -60,7 +67,12 @@ export function NThemeSettingsResetButton({
         loading={status.phase === "resetting"}
         disabled={disabled || alreadyFactory}
       >
-        {children ?? t("theme.actions.reset")}
+        {children ??
+          t(
+            resource === "appearance"
+              ? "theme.actions.resetAppearance"
+              : "theme.actions.resetBranding",
+          )}
       </NButton>
 
       <NConfirmDialog

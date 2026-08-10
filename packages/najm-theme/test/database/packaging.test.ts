@@ -30,6 +30,7 @@ describe("export map", () => {
       "./server/react",
       "./sqlite",
       "./styles.css",
+      "./theme",
     ]);
   });
 

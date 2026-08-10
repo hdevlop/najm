@@ -1,6 +1,6 @@
 {
   "name": "najm-theme",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "license": "MIT",
   "type": "module",
   "description": "Managed runtime theming for Najm applications — appearance, theme presets, and branding assets with persistence, transport, and composable settings UI",
@@ -26,6 +26,11 @@
       "types": "./dist/server/index.d.ts",
       "import": "./dist/server/index.js",
       "default": "./dist/server/index.js"
+    },
+    "./theme": {
+      "types": "./dist/theme/index.d.ts",
+      "import": "./dist/theme/index.js",
+      "default": "./dist/theme/index.js"
     },
     "./server/react": {
       "types": "./dist/server/react.d.ts",
@@ -62,7 +67,7 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:tests": "tsc --noEmit -p tsconfig.test.json",
     "lint": "bun run typecheck && bun run typecheck:tests",
-    "test": "bun test ./test/contracts ./test/server ./test/database && bun test --preload ./test/react/setup.ts ./test/react && bun run test:rsc",
+    "test": "bun test ./test/contracts ./test/theme ./test/server ./test/consumer ./test/database && bun test --preload ./test/react/setup.ts ./test/react && bun run test:rsc",
     "test:rsc": "cd test/rsc && bun test --conditions react-server",
     "test:next16": "bun run build && bun integration/next16/run.ts",
     "test:watch": "bun test --watch",
@@ -81,7 +86,6 @@
   "dependencies": {
     "najm-core": "workspace:*",
     "najm-database": "workspace:*",
-    "najm-event": "workspace:*",
     "najm-i18n": "workspace:*",
     "najm-validation": "workspace:*"
   },
@@ -89,7 +93,7 @@
     "@tanstack/react-query": "^5",
     "drizzle-orm": ">=0.45.2",
     "hono": "^4.12.18",
-    "najm-kit": ">=2.9.0",
+    "najm-kit": ">=2.11.0",
     "najm-mcp": "workspace:*",
     "najm-storage": ">=2.2.0",
     "next": ">=14",

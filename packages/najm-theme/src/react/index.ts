@@ -22,6 +22,20 @@ export type {
   NThemeSettingsValue,
 } from "./providers/NThemeSettingsProvider";
 
+export {
+  NThemeBrandingProvider,
+  useNThemeBranding,
+  useNThemeBrandingOptional,
+  useNThemeBrandingSlot,
+} from "./providers/NThemeBrandingProvider";
+export type {
+  NThemeBrandingProviderProps,
+  NThemeBrandingValue,
+} from "./providers/NThemeBrandingProvider";
+
+export { NThemeImage } from "./components/NThemeImage";
+export type { NThemeImageProps } from "./components/NThemeImage";
+
 export { NThemeAppearanceSettings } from "./components/NThemeAppearanceSettings";
 export type { NThemeAppearanceSettingsProps } from "./components/NThemeAppearanceSettings";
 export { NThemeBrandingSettings } from "./components/NThemeBrandingSettings";

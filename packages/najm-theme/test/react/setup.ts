@@ -39,6 +39,22 @@ class MockImage {
   }
 }
 
+// A rendered <img> in happy-dom reports `complete === true` with
+// `naturalWidth === 0` — which in a real browser is precisely the signature of
+// an image that finished loading and failed. `NThemeImage` reads exactly that
+// pair on mount to catch a server-rendered asset that 404'd before hydration,
+// so leaving the default in place would make every image in every test look
+// broken.
+//
+// happy-dom never fetches, so it never finishes: `complete` is false here, and
+// the tests that care about failure dispatch a real `error` event instead.
+Object.defineProperty(win.HTMLImageElement.prototype, "complete", {
+  configurable: true,
+  get() {
+    return false;
+  },
+});
+
 // Object URLs, counted. The count is what the leak test reads: every preview
 // the branding editor creates must be revoked when its draft goes away.
 const liveUrls = new Set<string>();
@@ -91,6 +107,7 @@ const globals: Record<string, unknown> = {
   Node: win.Node,
   NodeFilter: win.NodeFilter,
   HTMLElement: win.HTMLElement,
+  HTMLImageElement: win.HTMLImageElement,
   HTMLDivElement: win.HTMLDivElement,
   HTMLButtonElement: win.HTMLButtonElement,
   HTMLInputElement: win.HTMLInputElement,

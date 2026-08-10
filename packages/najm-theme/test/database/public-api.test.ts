@@ -74,21 +74,36 @@ describe.skipIf(!BUILT)("najm-theme/contracts", () => {
       "DEFAULT_APPEARANCE_LIMITS",
       "DEFAULT_MAX_THEME_PRESETS",
       "DEFAULT_THEME_SCOPE_ID",
+      "FACTORY_ASSET_EXTENSIONS",
+      "FACTORY_ASSET_HASH_LENGTH",
+      "FACTORY_ASSET_MIME_TYPES",
+      "FACTORY_ASSET_ROUTE_SEGMENT",
+      "FACTORY_BRANDING_BASENAMES",
+      "FACTORY_BRANDING_FILES",
+      "FACTORY_THEME_FILE",
+      "FactoryAssetExtension",
+      "FactoryAssetResponseOptions",
       "FactoryBranding",
+      "FactoryBrandingBasename",
       "FactoryPath",
+      "FactoryThemeAsset",
       "INITIAL_THEME_REVISION",
       "MAX_APPEARANCE_LIMITS",
       "MAX_BRANDING_SLOT_BYTES",
       "MAX_THEME_PRESETS_CEILING",
       "NO_THEME_CAPABILITIES",
       "NajmDesignConfig",
+      "NajmThemeDefinition",
       "NajmThemeFeatures",
+      "ParsedFactoryAssetFileName",
       "PublicAppearance",
       "PublicBranding",
       "PublicThemePreset",
       "ResolveBrandingOptions",
       "ResolvedBrandingSlot",
       "STANDARD_BRANDING_SLOTS",
+      "STANDARD_BRANDING_SLOT_KEYS",
+      "StandardBrandingSlotKey",
       "THEME_PRESET_NAME_MAX_LENGTH",
       "THEME_PRESET_SLUG_MAX_LENGTH",
       "THEME_SCOPE_ID_MAX_LENGTH",
@@ -109,8 +124,10 @@ describe.skipIf(!BUILT)("najm-theme/contracts", () => {
       "capabilitiesFor",
       "changedAppearanceGroups",
       "describeThrown",
+      "factoryAssetFileName",
       "isBrandingAssetFileName",
       "isBrandingSlotKey",
+      "isNajmThemeDefinition",
       "isPublicThemePreset",
       "isThemePresetSlug",
       "isThemeRevision",
@@ -118,6 +135,7 @@ describe.skipIf(!BUILT)("najm-theme/contracts", () => {
       "isThemeScopeId",
       "mergeAppearance",
       "nextThemeRevision",
+      "parseFactoryAssetFileName",
       "parsePublicAppearance",
       "parsePublicBranding",
       "parseSafeDesignConfig",
@@ -129,6 +147,7 @@ describe.skipIf(!BUILT)("najm-theme/contracts", () => {
       "resolveBrandingSlots",
       "themePresetSlug",
       "uniqueThemePresetSlug",
+      "withoutSlotInheritance",
     ]);
   });
 });
@@ -139,7 +158,16 @@ describe.skipIf(!BUILT)("najm-theme/server", () => {
   it("exports the plugin, its configuration, and the composition points", () => {
     for (const name of [
       "theme",
+      "defineTheme",
+      "DefineThemeOptions",
+      "DefineThemeLimits",
+      // Deprecated in 0.2.0, removed in 0.3.0. Pinned because dropping it was
+      // an accident once already: 0.1.1 exported it, the first 0.2.0 build did
+      // not, and the only consumer stopped compiling on a *minor* upgrade.
+      "createFactoryDesignGetter",
       "resolveThemeConfig",
+      "themePluginConfig",
+      "NajmThemeOptions",
       "NajmThemePluginConfig",
       "ResolvedThemeConfig",
       "ThemeRouteGuards",
@@ -289,10 +317,43 @@ describe.skipIf(!BUILT)("najm-theme/server/react", () => {
     expect(exportedNames("server/react.d.ts")).toEqual([
       "PublicAppearance",
       "PublicBranding",
+      "PublicBrandingWithFactory",
       "ReactThemeBootstrap",
       "ReactThemeBootstrapConfig",
+      "ReactThemeBootstrapDefinitionConfig",
+      "ReactThemeBootstrapFactoryValues",
       "ThemeBootstrapFetcher",
+      "ThemeBootstrapServer",
+      "ThemeBootstrapServerLoader",
       "createReactThemeBootstrap",
     ]);
+  });
+});
+
+describe.skipIf(!BUILT)("najm-theme/theme", () => {
+  it("exports the loader and its definition contract, and nothing else", () => {
+    // Deliberately narrow. This entry is imported by a consumer's own
+    // `theme/index.ts`, which the backend *and* the RSC facade load — anything
+    // added here is something both graphs pay for.
+    expect(exportedNames("theme/index.d.ts")).toEqual([
+      "DefineThemeLimits",
+      "DefineThemeOptions",
+      "FactoryThemeAsset",
+      "NajmThemeDefinition",
+      "defineTheme",
+      "isNajmThemeDefinition",
+    ]);
+  });
+
+  it("reaches no controller, no Drizzle, and no React", () => {
+    const runtime = readFileSync(resolve(DIST, "theme/index.js"), "utf8");
+    const staticImports = [...runtime.matchAll(/^import\s[^;]*?from\s*['"]([^'"]+)['"]/gm)].map(
+      (match) => match[1],
+    );
+
+    expect(staticImports).toEqual(["crypto", "fs", "path", "url", "najm-kit/server"]);
+    // The kit's React entry is reachable only through `.react()`, which imports
+    // it on first use — a backend without React installed must still boot.
+    expect(runtime).toContain("await import('najm-kit/server/react')");
   });
 });

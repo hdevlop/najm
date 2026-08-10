@@ -329,11 +329,22 @@ export function NThemeSettingsProvider({
   // rendering provider here, in one effect, rather than at each call site. That
   // is what makes "the page restyles as you drag the colour" true without any
   // component knowing about the runtime.
+  //
+  // The editor is held in a ref rather than listed as a dependency, and that is
+  // load-bearing: writing to a provider re-renders it, which hands back a new
+  // editor object. Depending on that object while calling its setters is a
+  // self-triggering effect — write, new identity, re-run, write — which React
+  // ends with "Maximum update depth exceeded" and a blank settings page.
+  // The design *values* are the real trigger, and they are what this depends on.
+  const designEditorRef = React.useRef(designEditor);
+  designEditorRef.current = designEditor;
+
   React.useEffect(() => {
-    if (!designEditor) return;
-    if (designDraft) designEditor.setDraft(designDraft);
-    else if (committedDesign) designEditor.setCommitted(committedDesign);
-  }, [designEditor, designDraft, committedDesign]);
+    const editor = designEditorRef.current;
+    if (!editor) return;
+    if (designDraft) editor.setDraft(designDraft);
+    else if (committedDesign) editor.setCommitted(committedDesign);
+  }, [designDraft, committedDesign]);
 
   // Object URLs are revoked when the draft that owns them goes away. Without
   // this a long editing session leaks every preview the user cycled through.

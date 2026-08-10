@@ -130,7 +130,7 @@ export class BrandingService {
       // Called per read, so an application returning a fresh object keeps reads
       // independent. Its failure propagates, exactly as the factory design's
       // does — a branding factory that throws is a broken build.
-      factory: this.config.factoryBranding(),
+      factory: this.config.factoryBranding(this.assets.mountPrefix()),
       assetPath: (fileName) => this.assets.publicPathFor(fileName),
     });
   }

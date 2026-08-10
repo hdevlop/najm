@@ -76,6 +76,15 @@ export type BrandingSlotConfig = Record<string, BrandingSlotAsset>;
 export interface PublicBranding {
   /** Slot key to the path the chrome should render, or `null`. */
   slots: Record<string, string | null>;
+  /**
+   * Slot key to the factory file the package serves for that slot.
+   *
+   * Optional, and set by the definition-backed RSC bootstrap — never by the
+   * REST endpoint. A slot renderer that falls back to this when the resolved
+   * path 404s needs it, and the bootstrap carries it through so a standard
+   * consumer does not have to know the four factory URLs.
+   */
+  factory?: Record<string, string | null>;
   revision: number;
 }
 

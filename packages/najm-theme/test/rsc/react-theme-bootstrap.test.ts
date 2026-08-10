@@ -53,6 +53,7 @@ const json = (body: unknown, status = 200) =>
 // consumer's `lib/serverTheme.ts` does. Recreating it per test would give every
 // test its own memoization entry and prove nothing about sharing.
 const calls: string[] = [];
+const requestOrigins: string[] = [];
 let appearanceStatus = 200;
 let brandingStatus = 200;
 let appearancePayload: unknown = {
@@ -61,26 +62,32 @@ let appearancePayload: unknown = {
 };
 
 const serverTheme = createReactThemeBootstrap({
-  fetcher: async (path) => {
-    calls.push(path);
-    if (path.endsWith("/appearance")) {
-      return appearanceStatus === 200
-        ? json({ data: appearancePayload })
-        : json({ message: "nope" }, appearanceStatus);
-    }
-    return brandingStatus === 200
-      ? json({ data: { slots: { sidebarLogoExpanded: "/uploads/a.png" }, revision: 7 } })
-      : json({ message: "nope" }, brandingStatus);
-  },
-  basePath: "/api/theme",
+  getServer: async () => ({
+    async fetch(request: Request) {
+      const url = new URL(request.url);
+      const path = url.pathname;
+      calls.push(path);
+      requestOrigins.push(url.origin);
+      if (path.endsWith("/appearance")) {
+        return appearanceStatus === 200
+          ? json({ data: appearancePayload })
+          : json({ message: "nope" }, appearanceStatus);
+      }
+      return brandingStatus === 200
+        ? json({ data: { slots: { sidebarLogoExpanded: "/uploads/a.png" }, revision: 7 } })
+        : json({ message: "nope" }, brandingStatus);
+    },
+  }),
   factory: {
     appearance: () => structuredClone(FACTORY_DESIGN),
     branding: () => ({ ...FACTORY_BRANDING }),
   },
+  onDiagnostic: false,
 });
 
 beforeEach(() => {
   calls.length = 0;
+  requestOrigins.length = 0;
   appearanceStatus = 200;
   brandingStatus = 200;
   appearancePayload = {
@@ -93,10 +100,11 @@ beforeEach(() => {
 afterEach(endRequest);
 
 describe("loading", () => {
-  it("reads both resources from the configured base path", async () => {
+  it("reads both resources from the conventional base path by default", async () => {
     const snapshot = await serverTheme.load();
 
     expect(calls.sort()).toEqual(["/api/theme/appearance", "/api/theme/branding"]);
+    expect(requestOrigins).toEqual(["http://najm.internal", "http://najm.internal"]);
     expect(snapshot.appearance.revision).toBe(4);
     expect(snapshot.branding.slots.sidebarLogoExpanded).toBe("/uploads/a.png");
   });
@@ -222,6 +230,95 @@ describe("diagnostics", () => {
     expect(seen.every((entry) => entry.reason === "response-not-ok")).toBe(true);
     expect(seen.every((entry) => entry.status === 500)).toBe(true);
     expect(JSON.stringify(seen)).not.toContain("internal detail");
+  });
+
+  it("warns safely by default without repeated consumer reporter code", async () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args);
+
+    try {
+      const loader = createReactThemeBootstrap({
+        fetcher: async () => json({ message: "secret response detail" }, 503),
+        factory: {
+          appearance: () => structuredClone(FACTORY_DESIGN),
+          branding: () => ({ ...FACTORY_BRANDING }),
+        },
+      });
+
+      await loader.load();
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    expect(warnings).toHaveLength(2);
+    expect(JSON.stringify(warnings)).toContain("[najm-theme]");
+    expect(JSON.stringify(warnings)).toContain("status 503");
+    expect(JSON.stringify(warnings)).not.toContain("secret response detail");
+  });
+
+  it("allows an application to silence the package reporter", async () => {
+    const warnings: unknown[][] = [];
+    const originalWarn = console.warn;
+    console.warn = (...args: unknown[]) => warnings.push(args);
+
+    try {
+      const loader = createReactThemeBootstrap({
+        fetcher: async () => json({}, 500),
+        factory: {
+          appearance: () => structuredClone(FACTORY_DESIGN),
+          branding: () => ({ ...FACTORY_BRANDING }),
+        },
+        onDiagnostic: false,
+      });
+
+      await loader.load();
+    } finally {
+      console.warn = originalWarn;
+    }
+
+    expect(warnings).toEqual([]);
+  });
+});
+
+describe("route convention", () => {
+  it("rejects a relative or URL-like base path", () => {
+    const create = (basePath: string) =>
+      createReactThemeBootstrap({
+        fetcher: async () => json({}),
+        basePath,
+        factory: {
+          appearance: () => structuredClone(FACTORY_DESIGN),
+          branding: () => ({ ...FACTORY_BRANDING }),
+        },
+      });
+
+    for (const invalid of ["api/theme", "/api//theme", "/api/../theme", "/api/theme?x=1"]) {
+      expect(() => create(invalid)).toThrow("absolute path prefix");
+    }
+  });
+});
+
+describe("transport configuration", () => {
+  const factory = {
+    appearance: () => structuredClone(FACTORY_DESIGN),
+    branding: () => ({ ...FACTORY_BRANDING }),
+  };
+
+  it("requires exactly one transport", () => {
+    expect(() =>
+      createReactThemeBootstrap({
+        factory,
+      } as unknown as Parameters<typeof createReactThemeBootstrap>[0]),
+    ).toThrow("exactly one of fetcher or getServer");
+
+    expect(() =>
+      createReactThemeBootstrap({
+        fetcher: async () => json({}),
+        getServer: async () => ({ fetch: async () => json({}) }),
+        factory,
+      } as unknown as Parameters<typeof createReactThemeBootstrap>[0]),
+    ).toThrow("exactly one of fetcher or getServer");
   });
 });
 

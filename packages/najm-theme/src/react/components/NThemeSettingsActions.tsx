@@ -63,10 +63,12 @@ export function NThemeSettingsActions({
         {showReset && shows("appearance") ? (
           <NThemeSettingsResetButton resource="appearance" />
         ) : null}
+        {/*
+          No `children` override on either: the button labels itself from its
+          own resource, so the two never render the same accessible name.
+        */}
         {showReset && shows("branding") ? (
-          <NThemeSettingsResetButton resource="branding">
-            {t("theme.actions.reset")}
-          </NThemeSettingsResetButton>
+          <NThemeSettingsResetButton resource="branding" />
         ) : null}
 
         <NThemeSettingsSaveButton resources={resources} />

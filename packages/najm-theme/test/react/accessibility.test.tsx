@@ -71,11 +71,26 @@ describe("keyboard", () => {
 });
 
 describe("destructive actions", () => {
+  it("names each reset by the resource it destroys", async () => {
+    const view = await mount();
+
+    // Two destructive controls, side by side, both irreversible from this
+    // screen. Sharing one name would leave a screen-reader user choosing
+    // between two identical buttons by position — and the position is an
+    // implementation detail of the action bar, not something announced.
+    const labels = [...view.container.querySelectorAll("button")]
+      .map((element) => element.textContent?.trim() ?? "")
+      .filter((label) => /^Reset/.test(label));
+
+    expect(labels).toEqual(["Reset appearance to factory", "Reset branding to factory"]);
+    expect(new Set(labels).size, "the two reset buttons are distinguishable").toBe(labels.length);
+  });
+
   it("confirms a reset before it runs", async () => {
     const user = userEvent.setup();
     const view = await mount();
 
-    await user.click(view.button("Reset to factory"));
+    await user.click(view.button("Reset appearance to factory"));
 
     const dialog = await waitFor(() => {
       const found = document.querySelector("[role='alertdialog'], [role='dialog']");
@@ -92,7 +107,7 @@ describe("destructive actions", () => {
     const user = userEvent.setup();
     const view = await mount();
 
-    await user.click(view.button("Reset to factory"));
+    await user.click(view.button("Reset appearance to factory"));
     const confirm = await waitFor(() => {
       const found = [...document.querySelectorAll("button")].find(
         (element) =>

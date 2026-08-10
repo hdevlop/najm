@@ -35,13 +35,22 @@ clients, controllers, services, repositories, DTOs, validators, upload cleanup,
 or revision coordination. Its integration should be limited to:
 
 1. registering the plugin and its dialect schema;
-2. supplying factory theme and branding values;
+2. supplying one canonical `theme/` factory directory (see
+   `NAJM-THEME-RELEASE-ACCEPTANCE-PLAN.md`, implemented locally for 0.2.0 and
+   still awaiting DX, browser, Kafil, and release acceptance);
 3. supplying authorization guards or capabilities;
 4. choosing storage, audit, endpoint, scope, and enabled-feature options;
-5. mounting the provider and any desired UI sections;
+5. mounting the providers and any desired UI sections;
 6. creating its one module-level React server loader facade when using RSC.
 
 Those files are application configuration, not duplicated feature logic.
+
+> **0.2.0.** Step 2 used to read "supplying factory theme and branding values",
+> meaning two callbacks in the backend, two more in the RSC facade, four public
+> asset paths, and a fallback map in the React tree. The factory theme
+> convention replaces all of it with one directory and
+> `defineTheme(import.meta.url)`; the callbacks remain available and deprecated
+> until 0.3.0.
 
 ## 2. Scope and non-goals
 
@@ -591,7 +600,13 @@ POST   /theme/branding/assets/:slot/:fileName
 GET    /theme/branding/assets/:fileName
 DELETE /theme/branding/assets/:fileName
 POST   /theme/branding/assets/reconcile
+GET    /theme/branding/factory/:fileName       (0.2.0)
 ```
+
+Since 0.2.0 the resolved paths a client receives include the server base, so the
+standard mount produces `/api/theme/branding/assets/…` and
+`/api/theme/branding/factory/…`. Before 0.2.0 the package omitted the base,
+which made every managed asset URL a 404 for any application with one.
 
 Route rules:
 
@@ -717,18 +732,15 @@ Single feature in a dialog:
 `najm-theme/server/react` wraps the existing Najm Kit loader; it does
 not implement another cache.
 
-Proposed consumer facade:
+Consumer facade, since 0.2.0:
 
 ```ts
 import "server-only";
 
-import { createReactThemeBootstrap } from "najm-theme/server/react";
+import { appTheme } from "../../theme";
 
-const serverTheme = createReactThemeBootstrap({
-  fetcher: async (path) => server.fetch(new Request(`http://internal${path}`)),
-  factory,
-  basePath: "/api/theme",
-  onDiagnostic,
+const serverTheme = appTheme.react({
+  getServer: async () => (await import("@app/server")).server,
 });
 
 export const loadServerTheme = serverTheme.load;
@@ -740,7 +752,14 @@ Rules:
 
 - The application creates the adapter once at module scope. That small facade
   is intentional and cannot be replaced by a package-global singleton because
-  fetcher, factory values, diagnostics, and request identity are app-owned.
+  the server binding and request identity are app-owned. The package owns
+  internal Request construction, the canonical `/api/theme` route default, the
+  factory design, the four factory asset URLs, and sanitized fallback
+  reporting; custom fetchers, legacy paths, and application observability
+  remain explicit overrides.
+- The frontend renders slots through `NThemeImage` under
+  `NThemeBrandingProvider`. It supplies no factory path, no fallback map, and
+  no route suffix.
 - Root, auth, first-login, and nested layouts share one snapshot per render.
 - Separate requests never share snapshots or transient fallbacks.
 - Do not use a module `Map`, module promise, `unstable_cache`, Next `use cache`,
@@ -756,10 +775,12 @@ Rules:
 ### Allowed consumer integration
 
 ```text
-server/theme.ts              plugin configuration and guards
+theme/                       theme.json plus the four fixed factory assets (0.2.0)
+theme/index.ts               export const appTheme = defineTheme(import.meta.url)
+server/theme.ts              theme(appTheme, { dialect, manage })
 database/schema.ts           spread dialect themeSchema
-lib/serverTheme.ts           one RSC module singleton
-providers/AppProviders.tsx   mount NThemeSettingsProvider/NajmAppProvider
+lib/serverTheme.ts           one RSC module singleton: appTheme.react({ getServer })
+providers/AppProviders.tsx   mount NThemeBrandingProvider/NThemeSettingsProvider
 settings page/sheet          compose exported package components
 migration                    one-time legacy data transfer
 translations                optional product label overrides
@@ -779,6 +800,10 @@ asset candidate/orphan cleanup logic
 optimistic revision comparison logic
 theme preset slug generation
 package-owned locale messages
+factory design/branding callbacks and factory asset paths      (0.2.0)
+per-slot fallback maps and BrandingImage-style components       (0.2.0)
+static handlers or public paths for the four factory assets     (0.2.0)
+backend or frontend knowledge of theme route suffixes           (0.2.0)
 ```
 
 An application-specific adapter is acceptable only when it translates a real
@@ -1128,8 +1153,16 @@ bun run db:check
 
 Repos: Najm and a future-app template if one exists.
 
-- [ ] Compare the Kafil and School integrations and remove only configuration
-  friction that is genuinely shared.
+- [x] Compare the Kafil and School integrations and remove only configuration
+  friction that is genuinely shared. Landed as the factory theme convention in
+  0.2.0 — `NAJM-THEME-RELEASE-ACCEPTANCE-PLAN.md`. The package now owns canonical route
+  suffixes, the `/api/theme` default, path validation, sanitized default
+  diagnostics, same-process Request construction, the factory design, the four
+  factory assets and the route that serves them, and the slot renderer.
+  Consumers retain a `theme/` directory, a lazy server getter (or custom
+  fetcher), one `manage` guard list, an optional legacy prefix, an optional
+  observability override, and the module singleton. Factory sources are resolved
+  from `import.meta.url`, never `process.cwd()`.
 - [ ] Add a CLI scaffold only after both consumers prove the file set and
   configuration contract stable.
 - [ ] The scaffold may create registration, schema composition, RSC facade, and

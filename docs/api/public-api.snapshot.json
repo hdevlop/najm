@@ -185,6 +185,7 @@
       "export type { NajmDesignConfig, NajmComponentThemeConfig, NajmComponentStyleConfig, NajmComponentName, NajmVariantStyle, NajmSlotStyle, NajmDensity, NajmResponsiveBreakpoint, NajmResponsiveValue, NajmComponentRadius, NajmTypographyConfig, NajmLayoutConfig, } from \"./theme/design-types\";",
       "export { surfaceBorderClasses, sidebarBorderClasses, inputBorderClasses, } from \"./theme/borders\";",
       "export type { NajmBorderSide } from \"./theme/borders\";",
+      "export { focusRingClasses, focusRingWithinClasses } from \"./theme/focus\";",
       "export { useKeyboard } from \"./hooks/useKeyboard\";",
       "export { useDelayedLoading } from \"./hooks/useDelayedLoading\";",
       "export { useClickOutside } from \"./hooks/useClickOutside\";",

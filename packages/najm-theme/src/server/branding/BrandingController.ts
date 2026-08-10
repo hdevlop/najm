@@ -21,8 +21,9 @@ import { Validate } from "najm-validation";
 import type { Context } from "hono";
 
 import { capabilitiesFor } from "../../contracts/capabilities";
+import { FACTORY_ASSET_ROUTE_SEGMENT } from "../../contracts/factory";
 import type { ResolvedThemeConfig } from "../config";
-import { asHttp } from "../shared/errors";
+import { asHttp, ThemeNotFoundError } from "../shared/errors";
 import { ThemeRequestContext } from "../shared/ThemeRequestContext";
 import { THEME_CONFIG } from "../tokens";
 import { BrandingAssetService } from "./BrandingAssetService";
@@ -172,6 +173,29 @@ export class BrandingController {
         mimeTypeByFileName: mimeTypes,
       }),
     );
+  }
+
+  /**
+   * Serves a factory asset — the file the application ships in its `theme/`
+   * directory, and the thing a reset restores.
+   *
+   * Deliberately not a static file the consumer serves itself. The package owns
+   * the name, the content type, the length, and the cache policy, so the four
+   * marks behave identically in every consumer instead of depending on whichever
+   * static handler happened to be in front of them. The bytes come from the
+   * definition, so there is no path here to traverse and no file to race.
+   */
+  @Get(`/${FACTORY_ASSET_ROUTE_SEGMENT}/:fileName`)
+  async serveFactoryAsset(@Params() params: { fileName?: string }): Promise<Response> {
+    const response = this.assets.serveFactoryAsset(params?.fileName);
+    if (!response) {
+      // The same 404 an unknown managed asset gets. A distinguishable answer
+      // here would report which slots exist to anybody who asks.
+      return asHttp(async () => {
+        throw new ThemeNotFoundError("branding asset not found");
+      });
+    }
+    return response;
   }
 
   @Delete("/assets/:fileName")
