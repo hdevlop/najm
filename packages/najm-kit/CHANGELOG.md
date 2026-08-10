@@ -2,6 +2,21 @@
 
 ## 2.11.0 - 2026-08-10
 
+- Gave every keyboard-focusable primitive a visible focus ring, from one shared
+  source: `focusRingClasses` and `focusRingWithinClasses`, exported from the
+  root barrel so consumers stop hand-rolling app-level focus CSS. `TabsContent`
+  is keyboard-focusable (Radix sets `tabIndex={0}`) and previously showed no
+  indicator at all; `CollapsibleTrigger` now carries its own ring rather than
+  relying on whatever it wraps. `BaseInput` paints the ring on the wrapper via
+  `has-[:focus-visible]:`, which is what finally gives `NumberInput` and the
+  multi-select trigger an indicator — both suppress the inner control's ring,
+  so focusing the child element used to change only the border colour.
+- Fixed `Dialog` focus restoration. The opener is captured in
+  `onOpenAutoFocus` and refocused on close when focus would otherwise land on
+  `<body>`, so dismissing a dialog with Escape returns the keyboard to the
+  control that opened it (WCAG 2.4.3) instead of stranding it at the top of
+  the document. A caller that calls `preventDefault()` on the close event still
+  owns focus entirely.
 - Added a shared `surface` contract across `NLoadingState`, `NErrorState`, and
   `NEmptyState`. `inline` (default) preserves existing behavior; `panel` adds a
   centered minimum-height frame for table, card, dialog, and sheet bodies
