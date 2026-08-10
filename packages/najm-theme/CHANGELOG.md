@@ -1,5 +1,37 @@
 # najm-theme
 
+## 0.1.2
+
+### Fixed
+
+- **`NThemeSettingsProvider` no longer loops forever inside `NajmAppProvider`.**
+  The effect that publishes the current design to `najm-kit`'s runtime editor
+  listed that editor in its dependency array. The kit's editor value is a
+  `useMemo` over its own state, so `setCommitted` gives it a new identity — the
+  effect re-ran because of the write it had just performed, wrote again, and
+  never settled. Any application that mounts the kit's design provider, which is
+  every real consumer, hit "Maximum update depth exceeded" on the first page
+  that mounted this provider. The editor is now read through a ref, the effect
+  depends only on the draft and the committed design, and a commit is skipped
+  when the editor already holds that exact design.
+
+  Found by Kafil's browser gate during its Move 8 adoption, not by this
+  package's suite: every other React test here mounts the provider *without*
+  the kit's design editor above it, so `useNajmDesignEditor()` answered `null`
+  and the effect returned immediately. `test/react/runtime-handoff.test.tsx`
+  now mounts the real arrangement and fails on unbounded re-renders.
+
+- **Cancelling a preset preview restores the stored design again.** The same
+  effect returns to the stored design by way of `setCommitted`, and the fix
+  above made that call conditional on the stored design having actually
+  changed. But a preview writes to the editor's *draft*; `committed` is never
+  touched. So on cancel the condition was false, nothing was written, and the
+  editor went on rendering `draft ?? committed` — the preview stayed on screen
+  after the user dismissed it, and after deleting the very preset being
+  previewed. The effect now cancels the draft explicitly, which is inert when
+  there is no draft. Both halves of the hand-off are covered by
+  `test/react/runtime-handoff.test.tsx`.
+
 ## 0.1.1
 
 Documentation only. No change to the code, the export map, or any dependency

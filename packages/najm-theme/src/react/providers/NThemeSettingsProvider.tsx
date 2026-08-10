@@ -325,15 +325,50 @@ export function NThemeSettingsProvider({
   // Runtime preview
   // ---------------------------------------------------------------------
 
+  // Read through a ref, never a dependency.
+  //
+  // The kit's editor value is a `useMemo` over its own state, so *writing* to it
+  // gives it a new identity. An effect that depended on that identity would
+  // re-run because of the write it just performed, write again, and never
+  // settle — an infinite render loop in every application that mounts the kit's
+  // design provider, which is every real consumer. The package's other React
+  // tests mount this provider without the kit's editor above it, so they never
+  // reached this path; `test/react/runtime-handoff.test.tsx` does.
+  const designEditorRef = React.useRef(designEditor);
+  designEditorRef.current = designEditor;
+
   // Every design change — a customizer edit or a preset preview — reaches the
   // rendering provider here, in one effect, rather than at each call site. That
   // is what makes "the page restyles as you drag the colour" true without any
   // component knowing about the runtime.
   React.useEffect(() => {
-    if (!designEditor) return;
-    if (designDraft) designEditor.setDraft(designDraft);
-    else if (committedDesign) designEditor.setCommitted(committedDesign);
-  }, [designEditor, designDraft, committedDesign]);
+    const editor = designEditorRef.current;
+    if (!editor) return;
+    if (designDraft) {
+      editor.setDraft(designDraft);
+      return;
+    }
+
+    // No draft here means no draft there, and the two ways of getting back to
+    // the stored design are not interchangeable.
+    //
+    // `setCommitted` is for when the stored design itself is new — it adopts
+    // and discards the draft in one write. It is skipped when the editor
+    // already holds this exact object, because it replaces its state
+    // unconditionally and a redundant call re-renders the whole application
+    // for nothing.
+    //
+    // Cancelling a preset preview is the other case: `setDraft` never touched
+    // `committed`, so the stored design is unchanged and only the draft has to
+    // go. Leaving it to the guard above would strand the preview on screen —
+    // the editor renders `draft ?? committed`. `cancelDraft` is inert when
+    // there is no draft, so this costs nothing on the ordinary path.
+    if (committedDesign && editor.committed !== committedDesign) {
+      editor.setCommitted(committedDesign);
+      return;
+    }
+    editor.cancelDraft();
+  }, [designDraft, committedDesign]);
 
   // Object URLs are revoked when the draft that owns them goes away. Without
   // this a long editing session leaks every preview the user cycled through.
