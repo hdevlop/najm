@@ -75,9 +75,27 @@ export interface DialogContentProps extends React.ComponentProps<typeof DialogPr
   hideClose?: boolean;
 }
 
-function DialogContent({ className, children, padding, hideClose = false, ...props }: DialogContentProps) {
+function DialogContent({
+  className,
+  children,
+  padding,
+  hideClose = false,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
+  ...props
+}: DialogContentProps) {
   const resolvedPadding = useResponsivePadding(padding);
   const portalClassName = useNPortalScope();
+
+  // The control that opened this dialog, so focus can be put back on it.
+  //
+  // Read in `onOpenAutoFocus`, which the primitive fires immediately before it
+  // moves focus inside — the last moment the opener still holds it. Reading it
+  // during render instead looks equivalent and is not: the render that mounts
+  // the content can happen after a pointer interaction has already dropped
+  // focus to <body>, and the captured "opener" is then the document itself.
+  const openerRef = React.useRef<HTMLElement | null>(null);
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <div className={portalClassName}>
@@ -85,6 +103,40 @@ function DialogContent({ className, children, padding, hideClose = false, ...pro
         <DialogPrimitive.Content
           data-slot="dialog-content"
           data-padding={resolvedPadding}
+          // A repair, not a replacement. The primitive restores focus to the
+          // opener on close, but it does so while the rest of the page is still
+          // inside the subtree it made inert — and `focus()` on an inert
+          // element is a no-op, so focus silently stayed on <body>. A keyboard
+          // user who pressed Escape landed back at the top of the document.
+          //
+          // Deferred past that teardown, and only when focus was actually lost:
+          // a dialog that deliberately sends focus somewhere else on close still
+          // wins, because this does nothing unless <body> ended up holding it.
+          onOpenAutoFocus={(event) => {
+            const active = document.activeElement;
+            openerRef.current =
+              active instanceof HTMLElement && active !== document.body ? active : null;
+            onOpenAutoFocus?.(event);
+          }}
+          onCloseAutoFocus={(event) => {
+            onCloseAutoFocus?.(event);
+            if (event.defaultPrevented) return;
+            const opener = openerRef.current;
+            setTimeout(() => {
+              if (!opener?.isConnected) return;
+              const active = document.activeElement;
+              // "Focus was lost" in all the shapes it actually takes: nothing
+              // focused, the document defaults, or an element that has since
+              // been removed. Anything else is a deliberate destination and is
+              // left alone.
+              const lost =
+                !active
+                || active === document.body
+                || active === document.documentElement
+                || !active.isConnected;
+              if (lost) opener.focus();
+            }, 0);
+          }}
           className={cn(
             "bg-card text-card-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-sm translate-x-[-50%] translate-y-[-50%] gap-4 rounded-none lg:rounded-lg najm-border border-border shadow-lg duration-200",
             dialogPaddingMap[resolvedPadding],

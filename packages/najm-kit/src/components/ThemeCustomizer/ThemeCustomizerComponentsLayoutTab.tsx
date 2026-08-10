@@ -6,6 +6,7 @@ import { SelectInput } from "../inputs/SelectInput";
 import { Input } from "../ui/input";
 import { Switch } from "../ui/switch";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { focusRingClasses } from "../../theme/focus";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { CustomizerField } from "./CustomizerField";
 import {
@@ -528,7 +529,8 @@ function CollapsibleSection({
           className={cn(
             "flex w-full items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide",
             "text-muted-foreground hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-md",
+            focusRingClasses,
+            "focus-visible:rounded-md",
             "disabled:pointer-events-none disabled:opacity-50",
           )}
         >

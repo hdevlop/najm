@@ -100,8 +100,22 @@ export function NajmDesignEditorProvider({
     );
   }, []);
 
+  // Guarded like `beginDraft` and `cancelDraft` above, and for a sharper
+  // reason: a consumer that re-publishes the committed design from an effect
+  // keyed on this provider's value — which is what `najm-theme` does to mirror
+  // a saved design into the runtime — would otherwise loop forever. An
+  // unconditional `setState` here produces a new state object, which produces a
+  // new context value, which re-runs that effect, which calls this again.
+  //
+  // Only a call that changes nothing is skipped. Adopting a design while a
+  // draft is open still clears the draft, because discarding it is the second
+  // job this command has always done.
   const setCommitted = React.useCallback((next: NajmDesignConfig) => {
-    setState({ committed: next, draft: null });
+    setState((current) =>
+      current.committed === next && current.draft === null
+        ? current
+        : { committed: next, draft: null },
+    );
   }, []);
 
   const value = React.useMemo<NajmDesignEditorValue>(() => {

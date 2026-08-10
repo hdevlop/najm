@@ -169,3 +169,53 @@ describe("NDialog", () => {
     expect(clicked).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Focus restoration
+//
+// A confirmation opened from the keyboard and dismissed with Escape has to give
+// focus back to the control that opened it. The alternative is not a cosmetic
+// difference: focus falls to <body>, and the next Tab restarts from the top of
+// the document, so cancelling a dialog costs a keyboard user their place on the
+// page. Found by tabbing a production build, where the primitive's own restore
+// ran while the opener was still inside the subtree it had made inert — and
+// `focus()` on an inert element does nothing at all.
+// ---------------------------------------------------------------------------
+
+describe("dialog focus restoration", () => {
+  function Harness() {
+    const [open, setOpen] = React.useState(false);
+    return (
+      <>
+        <button type="button" data-testid="opener" onClick={() => setOpen(true)}>
+          Open
+        </button>
+        <NConfirmDialog
+          open={open}
+          onOpenChange={setOpen}
+          title="Are you sure?"
+          onConfirm={() => setOpen(false)}
+        />
+      </>
+    );
+  }
+
+  test("returns focus to the control that opened it", async () => {
+    const { getByTestId, queryByText } = render(<Harness />);
+    const opener = getByTestId("opener");
+
+    opener.focus();
+    fireEvent.click(opener);
+    await waitFor(() => expect(queryByText("Are you sure?")).not.toBeNull());
+
+    // Focus is inside the dialog now, which is the state the restore has to
+    // unwind. Asserting it makes the test fail loudly if the dialog ever stops
+    // taking focus, rather than passing because nothing ever moved.
+    expect(document.activeElement).not.toBe(opener);
+
+    fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape", code: "Escape" });
+    await waitFor(() => expect(queryByText("Are you sure?")).toBeNull());
+
+    await waitFor(() => expect(document.activeElement).toBe(opener));
+  });
+});

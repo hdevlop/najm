@@ -163,3 +163,118 @@ describe("useNajmDesignEditor", () => {
     expect(getByTestId("button-radius").textContent).toBe("lg");
   });
 });
+
+// ---------------------------------------------------------------------------
+// The identity guard on setCommitted
+//
+// `setCommitted` skips a call that would change nothing. That looks like a
+// micro-optimisation and is not: without it, any consumer that re-publishes the
+// committed design from an effect keyed on this provider's value loops until
+// React gives up with "Maximum update depth exceeded". najm-theme's settings
+// provider is exactly such a consumer — it mirrors a saved design into the
+// runtime — and the loop blanked its entire settings page.
+//
+// The guard is identity-based and deliberately narrow. Skipping on deep
+// equality instead would swallow the command's second job, which is discarding
+// the open draft, and "reset restored the design but left my edits on screen"
+// is a worse bug than the one being fixed.
+// ---------------------------------------------------------------------------
+
+/** A consumer that mirrors an external design in, the way najm-theme does. */
+function Mirror({ design }: { design: NajmDesignConfig }) {
+  const editor = useNajmDesignEditor();
+  const renders = React.useRef(0);
+  renders.current += 1;
+
+  React.useEffect(() => {
+    editor?.setCommitted(design);
+    // `editor` is in the dependency list on purpose: this is the shape of
+    // consumer that the guard protects, and the shape that a lint rule pushes
+    // people towards writing.
+  }, [editor, design]);
+
+  return <span data-testid="renders">{renders.current}</span>;
+}
+
+describe("setCommitted identity guard", () => {
+  test("a consumer that re-publishes the committed design settles instead of looping", () => {
+    const mirrored = designWith("full");
+
+    // Without the guard this throws React's "Maximum update depth exceeded"
+    // out of the effect flush that `render` performs inside `act`.
+    const { getByTestId } = render(
+      <NajmUIProvider initialDesign={COMMITTED}>
+        <Mirror design={mirrored} />
+        <Probe />
+      </NajmUIProvider>,
+    );
+
+    expect(getByTestId("committed").textContent).toBe("full");
+    // One render to mount, one for the adoption. A handful more would still be
+    // correct; dozens would mean the loop merely terminated rather than settled.
+    expect(Number(getByTestId("renders").textContent)).toBeLessThan(5);
+  });
+
+  test("an equal-but-distinct design is still adopted", () => {
+    // The guard compares identity, not contents. A second object carrying the
+    // same values is a real write — the application built it, and it is now the
+    // committed design.
+    function AdoptTwice() {
+      const editor = useNajmDesignEditor();
+      return (
+        <button
+          type="button"
+          data-testid="adopt"
+          onClick={() => editor?.setCommitted(designWith("full"))}
+        >
+          adopt
+        </button>
+      );
+    }
+
+    const { getByTestId } = render(
+      <NajmUIProvider initialDesign={COMMITTED}>
+        <AdoptTwice />
+        <Probe />
+      </NajmUIProvider>,
+    );
+
+    fireEvent.click(getByTestId("adopt"));
+    fireEvent.click(getByTestId("adopt"));
+    expect(getByTestId("committed").textContent).toBe("full");
+  });
+
+  test("re-adopting the design already committed still discards an open draft", () => {
+    // The case a naive guard breaks. `setCommitted(committed)` changes nothing
+    // about the committed design, so a guard that stops at "same design?" would
+    // return early — and leave the draft open, which is the opposite of what
+    // this command means.
+    function ReadoptCommitted() {
+      const editor = useNajmDesignEditor();
+      return (
+        <button
+          type="button"
+          data-testid="readopt"
+          onClick={() => editor && editor.setCommitted(editor.committed)}
+        >
+          readopt
+        </button>
+      );
+    }
+
+    const { getByTestId } = render(
+      <NajmUIProvider initialDesign={COMMITTED}>
+        <ReadoptCommitted />
+        <Probe />
+      </NajmUIProvider>,
+    );
+
+    fireEvent.click(getByTestId("begin"));
+    fireEvent.click(getByTestId("set"));
+    expect(getByTestId("draft").textContent).toBe("open");
+
+    fireEvent.click(getByTestId("readopt"));
+    expect(getByTestId("draft").textContent).toBe("closed");
+    expect(getByTestId("live").textContent).toBe("md");
+  });
+});

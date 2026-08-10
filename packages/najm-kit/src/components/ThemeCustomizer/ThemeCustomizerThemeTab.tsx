@@ -3,6 +3,7 @@ import { cn } from "../../lib/cn";
 import { ColorPickerInput } from "../inputs/ColorPickerInput";
 import { SegmentedControl } from "../ui/segmented-control";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../ui/collapsible";
+import { focusRingClasses } from "../../theme/focus";
 import { ChevronDown } from "lucide-react";
 import { CustomizerField } from "./CustomizerField";
 import { ThemeCustomizerTableColors } from "./ThemeCustomizerComponentsLayoutTab";
@@ -190,7 +191,8 @@ function TokenGroupSection({
           className={cn(
             "flex w-full items-center justify-between gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wide",
             "text-muted-foreground hover:text-foreground",
-            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:rounded-md",
+            focusRingClasses,
+            "focus-visible:rounded-md",
             "disabled:pointer-events-none disabled:opacity-50",
           )}
           aria-label={labelText}

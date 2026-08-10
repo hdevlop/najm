@@ -1,6 +1,7 @@
 import * as React from "react"
 import * as TabsPrimitive from "@radix-ui/react-tabs"
 import { cn } from "../../lib/cn"
+import { focusRingClasses } from "../../theme/focus"
 
 export type TabsVariant = "pills" | "underline" | "bordered" | "ghost"
 export type TabsOrientation = "horizontal" | "vertical"
@@ -104,7 +105,8 @@ function TabsTrigger({
     <TabsPrimitive.Trigger
       data-slot="tabs-trigger"
       className={cn(
-        "inline-flex cursor-pointer items-center justify-center gap-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-[color,box-shadow] outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "inline-flex cursor-pointer items-center justify-center gap-1.5 text-sm font-medium whitespace-nowrap text-muted-foreground transition-[color,box-shadow] disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        focusRingClasses,
         triggerVariantMap[variant],
         className
       )}
@@ -113,8 +115,18 @@ function TabsTrigger({
   )
 }
 
+// Radix gives the panel `tabIndex={0}` so a keyboard user can reach content that
+// holds no focusable control of its own. That makes the panel a tab stop, and a
+// tab stop with no indicator is a place a keyboard user lands blind — so it
+// carries the same ring as the trigger that opened it.
 function TabsContent({ className, ...props }: React.ComponentProps<typeof TabsPrimitive.Content>) {
-  return <TabsPrimitive.Content data-slot="tabs-content" className={cn("flex-1 outline-none", className)} {...props} />
+  return (
+    <TabsPrimitive.Content
+      data-slot="tabs-content"
+      className={cn("flex-1", focusRingClasses, className)}
+      {...props}
+    />
+  )
 }
 
 export { Tabs, TabsList, TabsTrigger, TabsContent }

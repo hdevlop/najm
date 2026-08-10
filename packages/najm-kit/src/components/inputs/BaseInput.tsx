@@ -2,6 +2,7 @@ import React from "react";
 import { cn } from "../../lib/cn";
 import { cva } from "class-variance-authority";
 import { inputBorderClasses } from "../../theme/borders";
+import { focusRingWithinClasses } from "../../theme/focus";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
 import type { TailwindColor } from "./types";
@@ -86,6 +87,13 @@ export const BaseInput = React.forwardRef<HTMLDivElement, BaseInputProps>(
         style={recipeRadius ? { borderRadius: recipeRadius, ...style } : style}
         className={cn(
           inputVariants({ variant, status, hasIcon, disabled }),
+          // The wrapper is what the user reads as "the field": the inner
+          // control is stripped of its own ring precisely so this element can
+          // carry the border. Until this was added, the border merely changed
+          // colour on focus — a 1px hue shift and nothing else — and the number
+          // fields and the multi-select trigger came out of the acceptance walk
+          // as tab stops with no visible indicator at all.
+          !isGhost && focusRingWithinClasses,
           !isGhost && borderClass,
           !isGhost && colorClass,
           className

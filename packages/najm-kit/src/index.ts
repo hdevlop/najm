@@ -72,6 +72,7 @@ export {
   inputBorderClasses,
 } from "./theme/borders";
 export type { NajmBorderSide } from "./theme/borders";
+export { focusRingClasses, focusRingWithinClasses } from "./theme/focus";
 
 // Hooks
 export { useKeyboard } from "./hooks/useKeyboard";
