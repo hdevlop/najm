@@ -1,13 +1,16 @@
 # Najm Kit Shared Media and Status Plan
 
-Status: **MOVES 0-5 DONE — Move 6 authorized and in progress**
+Status: **MOVES 0-7 IMPLEMENTED AND RELEASED — aggregate browser matrix timed out**
 
 Last updated: 2026-08-10
 
-Moves 0 through 5 are implemented and verified in this repository. The owner
-authorized version preparation, publication, and the gated Kafil migration on
-2026-08-10. Move 6 is now in progress; Move 7 still starts only after the
-registry artifact is independently verified.
+Moves 0 through 7 are implemented. The owner authorized version preparation,
+publication, the gated Kafil migration, and direct delivery to Kafil `main` on
+2026-08-10. `najm-kit@2.10.0` is published and independently verified, and
+Kafil consumes that registry artifact at commit `12b00e6f`. The focused media
+browser workflow and Phase 6 smoke gate pass. The aggregate eight-file browser
+matrix remains explicitly open because it was still progressing when it hit
+both the 10-minute and extended 20-minute harness limits.
 
 ## Goal
 
@@ -473,7 +476,7 @@ Repository: Najm.
 - [x] Inspect built JavaScript, declarations, shared chunks, and package exports.
 - [x] Confirm no Kafil identifier, route prefix, or translation key exists in
       source or built output.
-- [ ] Record the exact candidate commit and keep npm publication unperformed.
+- [x] Record the exact candidate commit before npm publication.
 
 Evidence:
 
@@ -485,6 +488,9 @@ Evidence:
 | `bun run --cwd packages/najm-kit test:next16` | PASS, including the new media assertions |
 | `bun run --cwd packages/najm-kit build:preview` | pass |
 | `bun run api:check` | snapshot current (two additive lines) |
+
+Candidate feature commit: `f4f1632e1e9785b0793cc9e47e5d442568b83e01`.
+Version/release commit: `1864b83d5f39b9a6a0bf7982f2172a55ca61497a`.
 
 Built-output inspection: `NAvatarImageProps` and `NBadgeDefaults` are in
 `dist/index.d.ts`; `NNextImage`/`NNextImageProps` are in
@@ -517,38 +523,44 @@ Gate:
 
 Repository: Najm. Requires explicit owner approval.
 
-- [ ] Choose the semver after reviewing the final public and behavioral delta;
+- [x] Choose the semver after reviewing the final public and behavioral delta;
       the expected additive target is `2.10.0`, not an assumed patch.
-- [ ] Prepare the version through the repository's version-only workflow and
+- [x] Prepare the version through the repository's version-only workflow and
       review the resulting manifest/changelog diff.
-- [ ] Commit the audited candidate before packing.
-- [ ] Run the exact single-package dry-run/tarball path and inspect the packed
+- [x] Commit the audited candidate before packing.
+- [x] Run the exact single-package dry-run/tarball path and inspect the packed
       exports, declarations, chunks, CSS, README, and dependency metadata.
-- [ ] Publish only after separate explicit authorization.
-- [ ] Verify npm version, dist-tag, tarball integrity, exports, and source
+- [x] Publish only after separate explicit authorization.
+- [x] Verify npm version, dist-tag, tarball integrity, exports, and source
       commit.
 
 Gate:
 
-- [ ] The verified registry artifact, not a workspace link or local tarball,
+- [x] The verified registry artifact, not a workspace link or local tarball,
       is available for Kafil adoption.
+
+Release evidence: npm `latest` is `2.10.0`; the exact published tarball has
+SHA-256 `e072fb15ea5852c25b12142121bc5c60e7f77694ed090198cae84602eff163aa`,
+npm shasum `7994517134de8931ff26e5e2dd99bdfc94d6cd28`, and integrity
+`sha512-RIdgDwmhDb3V1vHi7czh0qpyzYxd2DliUzOyLfIr0YX0Zd83fvt+xI4pyjzhj+005Fq284j1ncr/vbn1ETh16Q==`.
+The repository verifier passed against the published artifact.
 
 ### Move 7 - migrate Kafil and delete the wrappers
 
 Repository: Kafil. Starts only after Move 6.
 
-- [ ] Pin the published Najm Kit version in root overrides and manifests and
+- [x] Pin the published Najm Kit version in root overrides and manifests and
       resolve exactly one version in `bun.lock`.
-- [ ] Configure badge defaults once in `AppProviders.tsx`, passing Kafil's
+- [x] Configure badge defaults once in `AppProviders.tsx`, passing Kafil's
       translated status-key map and current soft/pill defaults.
-- [ ] Replace every `ManagedAvatar` use with `NAvatar`, preserving source,
+- [x] Replace every `ManagedAvatar` use with `NAvatar`, preserving source,
       fallback, version, title/subtitle/meta, size, shape, and class slots.
-- [ ] Replace every `ProtectedImage` use with `NNextImage`; mark protected
+- [x] Replace every `ProtectedImage` use with `NNextImage`; mark protected
       managed-asset calls `unoptimized` explicitly and preserve layout props.
-- [ ] Replace every `StatusBadge` use with `NBadge status={...}`, preserving
+- [x] Replace every `StatusBadge` use with `NBadge status={...}`, preserving
       local size/class/icon/color overrides.
-- [ ] Keep the Kafil status formatter for non-badge text and chart labels.
-- [ ] Delete:
+- [x] Keep the Kafil status formatter for non-badge text and chart labels.
+- [x] Delete:
 
   ```text
   apps/web/src/shared/ManagedAvatar.tsx
@@ -556,22 +568,33 @@ Repository: Kafil. Starts only after Move 6.
   apps/web/src/shared/StatusBadge.tsx
   ```
 
-- [ ] Do not add aliases, renamed wrappers, prefix maps, casts, or copied
+- [x] Do not add aliases, renamed wrappers, prefix maps, casts, or copied
       generic tests under another Kafil directory.
-- [ ] Replace source-shape assertions with focused Kafil integration tests for
+- [x] Replace source-shape assertions with focused Kafil integration tests for
       provider configuration, protected direct delivery, app translation keys,
       and representative component wiring.
 - [ ] Run all web and root gates, then browser-check sponsor, staff, child,
       family, category, product, order, contribution, and applicant surfaces.
-- [ ] Verify transparent, missing, failing, fallback, cache-version, loading,
+- [x] Verify transparent, missing, failing, fallback, cache-version, loading,
       Arabic RTL, mobile, desktop, and live language-change behavior.
-- [ ] Confirm no database migration is generated.
+- [x] Confirm no database migration is generated.
 
 Gate:
 
 - [ ] Kafil contains no duplicate avatar/image/status wrapper and loses no
       delivery, fallback, translation, privacy, accessibility, or responsive
       behavior.
+
+Kafil evidence at commit `12b00e6fa7d8a2fcb36d496a7c5e2c72c6882719`:
+
+- root lint, typecheck, test, build, `db:generate`, and PostgreSQL integration
+  gates passed; `db:generate` reported no schema changes;
+- web tests passed 320/320 and the focused media Playwright workflow passed 2/2;
+- `smoke:phase6` passed all expected public, redirect, and missing-route checks;
+- the aggregate browser matrix exceeded 10 minutes and then the extended
+  20-minute bound while still progressing, so its broad surface gate is not
+  represented as passed;
+- local and remote Kafil contain only `main`, synchronized at the commit above.
 
 ## Verification commands
 
@@ -659,14 +682,14 @@ separately from package and build evidence.
       one pre-existing `person-images` doc comment noted in Move 5.
 - [ ] Focused, package, browser, Next production, build, and public API gates
       pass at one recorded Najm commit.
-- [ ] Publication is performed only after explicit authorization and registry
+- [x] Publication is performed only after explicit authorization and registry
       verification succeeds.
-- [ ] Kafil consumes the published package rather than workspace source.
-- [ ] Kafil deletes all three wrappers without adding renamed equivalents.
+- [x] Kafil consumes the published package rather than workspace source.
+- [x] Kafil deletes all three wrappers without adding renamed equivalents.
 - [ ] Kafil's protected images, fallbacks, translated statuses, responsive
       layouts, RTL behavior, authorization, and privacy projections remain
       correct.
-- [ ] No unrelated Najm or Kafil dirty-worktree change is modified.
+- [x] No unrelated Najm or Kafil dirty-worktree change is modified.
 
 ## Completion rule
 
