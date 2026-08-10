@@ -17,6 +17,33 @@
   control that opened it (WCAG 2.4.3) instead of stranding it at the top of
   the document. A caller that calls `preventDefault()` on the close event still
   owns focus entirely.
+- Added `NCredentialsCard`, a one-time handover surface for freshly generated
+  secrets. Renders a description list of fields with monospaced, break-all
+  values, an optional header icon that defaults to a check mark, an optional
+  consumer `actions` slot, and a built-in Copy button. The Copy action resolves
+  text through `copyText` when supplied or joins `${label}: ${value}` with
+  `\n` in field order otherwise. The button is disabled while a clipboard
+  write is pending; on success it swaps to a check icon and `copiedLabel`,
+  on failure to a warning icon and `copyErrorLabel`, and either state reverts
+  to idle after roughly two seconds. Header and field icons are marked
+  decorative, status is announced through a polite `aria-live` region, and
+  the Copy button renders before consumer actions so a Done-style dismiss
+  stays the last tab stop. The component never rethrows: a missing
+  `navigator.clipboard`, a rejected or synchronously thrown `writeText`, and
+  a synchronously thrown `copyText` all land in the error state with
+  `onCopyError` invoked. State updates and revert timers are guarded so
+  unmounting during a pending copy, or starting a second copy while the
+  first success state is still showing, never fire stale setters. Logical
+  spacing properties keep the layout correct under `dir="rtl"` without a
+  consumer override, and each value carries `dir="auto"` so it resolves its own
+  text direction: credentials are weak-directionality strings, and inheriting an
+  ambient `rtl` paints `+1 555 0100` as `0100 555 1+` and `p@ssw0rd!` as
+  `!p@ssw0rd` while the DOM and the copied text stay correct. A genuinely Arabic
+  value still renders right-to-left. Packaged English fallbacks ship for the three action
+  labels only; every field label, title, and description is the consumer's
+  text. Exported as `NCredentialsCard`, `NCredentialField`,
+  `NCredentialsCardProps`, and `NCredentialsCardClassNames` from the root
+  barrel and from `packages/najm-kit/src/components/data-display`.
 - Added a shared `surface` contract across `NLoadingState`, `NErrorState`, and
   `NEmptyState`. `inline` (default) preserves existing behavior; `panel` adds a
   centered minimum-height frame for table, card, dialog, and sheet bodies

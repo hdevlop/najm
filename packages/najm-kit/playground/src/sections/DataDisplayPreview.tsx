@@ -9,8 +9,9 @@ import {
   NNAvatar,
   Badge,
   NButton,
+  NCredentialsCard,
 } from 'najm-kit';
-import { Users, TrendingUp, DollarSign, ShoppingCart, Mail, Phone, MapPin, Building } from "lucide-react";
+import { Users, TrendingUp, DollarSign, ShoppingCart, Mail, Phone, MapPin, Building, KeyRound, Globe2, ShieldCheck } from "lucide-react";
 
 export default function DataDisplayPreview() {
   const [loading, setLoading] = useState(false);
@@ -104,6 +105,43 @@ export default function DataDisplayPreview() {
               ]}
             />
           </NDetailCard>
+        </div>
+      </section>
+
+      {/* NCredentialsCard */}
+      <section className="space-y-3">
+        <h3 className="text-md font-medium">NCredentialsCard</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <NCredentialsCard
+            title="Account created"
+            description="Hand these details to the operator. The password is shown once and never stored."
+            fields={[
+              { label: "Phone", value: "+1 555 0100", icon: Phone },
+              { label: "Initial password", value: "p@ssw0rd!", icon: KeyRound },
+            ]}
+          />
+          <NCredentialsCard
+            title="Provisioning bundle"
+            description="Operator handover with extra context."
+            fields={[
+              { label: "Phone", value: "+212 555 0199", icon: Phone },
+              { label: "Email", value: "ops@example.com", icon: Mail },
+              { label: "Login URL", value: "https://app.example.com/login?token=8f4e7c1a-2b9d-4f0e-9e3b-1c2d3e4f5a6b", icon: Globe2, mono: false },
+              { label: "Recovery code", value: "9e3b1c2d-3e4f-5a6b-7c8d-9e0f1a2b3c4d", icon: ShieldCheck },
+            ]}
+            actions={<NButton onClick={() => window.alert("Done")}>Done</NButton>}
+          />
+          <NCredentialsCard
+            title="Long recovery phrase"
+            description="A value that needs to wrap mid-string without breaking layout."
+            fields={[
+              {
+                label: "Passphrase",
+                value: "trail-mango-velvet-orchid-pioneer-quartz-river-falcon-summit-dragon-amber-canyon-frost-lantern-meadow",
+                icon: KeyRound,
+              },
+            ]}
+          />
         </div>
       </section>
 

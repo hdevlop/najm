@@ -1,8 +1,11 @@
 # Najm Kit Credentials Card Plan
 
-Status: **PLANNED — documentation only**
+Status: **Moves 0–5 complete. Visual acceptance passed on rendered-browser
+evidence (2026-08-11). Packed as a local candidate; not published. Move 7
+(Kafil adoption) is the remaining work.**
 
 Written: 2026-08-10
+Updated: 2026-08-11
 
 Primary package: `packages/najm-kit`
 
@@ -273,64 +276,180 @@ Behavioral requirements:
 
 ### Move 1 — Implement the component
 
-- [ ] Create `packages/najm-kit/src/components/data-display/NCredentialsCard.tsx`.
-- [ ] Implement the frozen contract. Keep the copy helper module-private.
-- [ ] Match `NDetailCard` conventions: `cn` from `../../lib/cn`, `NIcon` for
+- [x] Create `packages/najm-kit/src/components/data-display/NCredentialsCard.tsx`.
+- [x] Implement the frozen contract. Keep the copy helper module-private.
+- [x] Match `NDetailCard` conventions: `cn` from `../../lib/cn`, `NIcon` for
       icon sources, `classNames` slots, no `"use client"` directive.
-- [ ] Use `NButton` for the copy action; keep the busy/disabled path honest
+- [x] Use `NButton` for the copy action; keep the busy/disabled path honest
       while the write promise is pending.
+- Verdict corrections applied on 2026-08-10:
+  - Header icon now defaults to `circle-check` and the wrapper always renders,
+    so the contract fallback is reachable.
+  - Consumer actions render after the Copy button so the visual order is
+    Copy → Done and Tab order matches.
+  - Copy state is guarded by a `mountedRef` and a per-copy request token,
+    so a clipboard promise settling after unmount cannot schedule a revert
+    timer, and a new copy clears the previous revert timer instead of letting
+    it fire mid-pending.
+  - `copyText` is invoked inside a try/catch so a synchronous throw lands in
+    the error state and calls `onCopyError` instead of escaping the click
+    handler.
+  - Header and field icons are explicitly marked `aria-hidden="true"` for
+    every supported `NIconSource`.
 - Stop when: any code path can throw past the component, or a value is logged.
 
 ### Move 2 — Exports
 
-- [ ] Export component and types from `src/components/data-display/index.ts`.
-- [ ] Re-export both from `src/index.ts` alongside the existing data-display
+- [x] Export component and types from `src/components/data-display/index.ts`.
+- [x] Re-export both from `src/index.ts` alongside the existing data-display
       lines (`src/index.ts:188-189`).
-- [ ] Extend `test/barrel.test.ts` with a root-export assertion.
+- [x] Extend `test/barrel.test.ts` with a root-export assertion.
 - Stop when: the local barrel and the root barrel disagree.
 
 ### Move 3 — Tests
 
 Create `packages/najm-kit/test/data-display/credentials-card.test.tsx`.
 
-- [ ] Renders each field as a `dt`/`dd` pair in order.
-- [ ] Default copy text is the newline-joined `label: value` list.
-- [ ] `copyText` overrides that text.
-- [ ] Successful copy calls `onCopy`, swaps the label, and announces politely.
-- [ ] Rejected `writeText` calls `onCopyError`, shows the error label, and
+- [x] Renders each field as a `dt`/`dd` pair in order.
+- [x] Default copy text is the newline-joined `label: value` list.
+- [x] `copyText` overrides that text.
+- [x] Successful copy calls `onCopy`, swaps the label, and announces politely.
+- [x] Rejected `writeText` calls `onCopyError`, shows the error label, and
       produces no unhandled rejection.
-- [ ] Absent `navigator.clipboard` takes the same failure path.
-- [ ] `hideCopyAction` removes the button while `actions` still render.
-- [ ] Empty `fields` renders without throwing.
+- [x] Absent `navigator.clipboard` takes the same failure path.
+- [x] `hideCopyAction` removes the button while `actions` still render.
+- [x] Empty `fields` renders without throwing.
 - Note: happy-dom does not provide `navigator.clipboard`. Stub it per test and
   restore it afterwards; do not add a global stub to `test/setup.ts`.
-- [ ] `bun run --cwd packages/najm-kit test test/data-display/credentials-card.test.tsx`
+- [x] `bun test test/data-display/credentials-card.test.tsx` →
+  `21 pass, 0 fail, 83 expect() calls` (run on 2026-08-11 from
+  `packages/najm-kit/`).
+- [x] Each value carries `dir="auto"` and each label does not.
+- Additional verdict-driven tests added on 2026-08-10: default header icon,
+  explicit icon identity, decorative `aria-hidden` on header and field icons,
+  pending disabled state, two-second revert, repeated-copy timer race,
+  synchronous `copyText` failure, synchronous `clipboard.writeText` failure,
+  unmount during pending copy, Copy-before-Done DOM order, and Copy-before-Done
+  Tab order.
 
 ### Move 4 — Playground and visual proof
 
-- [ ] Add a section to `playground/src/sections/DataDisplayPreview.tsx` showing
+- [x] Add a section to `playground/src/sections/DataDisplayPreview.tsx` showing
       a two-field default, a four-field variant with custom `actions`, and a
-      long-value case.
-- [ ] `bun run --cwd packages/najm-kit dev` and check `127.0.0.1:5177`.
-- [ ] Prove light, dark, mobile width, and `dir="rtl"`. Record what was seen.
-- [ ] Show the result to the user before Move 6. Do not publish on the strength
-      of passing tests alone.
-- Stop when: any of the four visual conditions is unchecked.
+      long-value case. A dedicated docs page —
+      `playground/src/docs/pages/NCredentialsCardPage.tsx`, slug
+      `credentials-card` — renders the same three variants with per-example
+      theme, RTL, and viewport controls.
+- [x] Prove light, dark, mobile width, and `dir="rtl"`. Recorded below.
+- [x] Show the result to the user before Move 6.
+- Status: **complete on 2026-08-11**, on rendered-browser evidence.
+
+**How to re-run**
+
+```
+bun run --cwd packages/najm-kit typecheck:acceptance
+bun run --cwd packages/najm-kit test:acceptance
+```
+
+`packages/najm-kit/playwright.config.ts` builds the playground and serves it
+with `vite preview` on `127.0.0.1:5178`. It runs against a *production* build,
+not the dev server, because the suite asserts a clean console and React's
+development build narrates warnings that would force a filter wide enough to
+hide a real one. `reuseExistingServer` is `false`: a preview server left over
+from an earlier invocation keeps serving the previous bundle, which during this
+very acceptance reported green against a fix that was not in the served build.
+
+The spec is `packages/najm-kit/acceptance/credentials-card.acceptance.ts`. It is
+named `.acceptance.ts` rather than `.spec.ts` because the package's `test`
+script is a bare `bun test`, which would otherwise claim the file and run it
+under the Bun runner.
+
+**Environment**
+
+| | |
+| --- | --- |
+| Date | 2026-08-11 |
+| Runner | `@playwright/test` 1.62.1 |
+| Browser | Chromium **151.0.7922.34** (`chromium_headless_shell-1234`) |
+| Desktop project | `Desktop Chrome`, viewport 1440 × 1000 |
+| Mobile project | `Pixel 7`, viewport 390 × 844, `isMobile: true` |
+| Server | `vite preview` production build, `http://127.0.0.1:5178` |
+| Result | **15 passed, 1 skipped, 0 failed** (35 s) |
+
+The single skip is the 390px-overflow test on the desktop project, which
+`test.skip`s itself because the mobile project already covers it.
+
+**What was asserted**
+
+| Condition | Assertion (not just a screenshot) |
+| --- | --- |
+| Dark theme | Three cards render; `dt`/`dd` pairs in field order |
+| Light theme | Card background *changes* and resolves lighter, compared in OKLCH lightness |
+| 390px mobile | Every card and the document itself have ≤1px horizontal overflow |
+| RTL | Header icon moves to the trailing edge; no overflow; labels compute `rtl` while values compute `ltr`; the phone number's glyphs are read back in painted order and equal `+1 555 0100` |
+| Default two-field card | `dt` = Phone, Initial password; `dd` = the two values |
+| Custom-action card | Four fields; consumer `Done` button present |
+| Long value | No overflow of card or value box; wraps to multiple lines wherever it cannot fit on one |
+| Copy success | Label swaps to `Copied`, live region reads `Copied`, and the **clipboard is read back** and equals the expected text |
+| Clipboard denied | `writeText` stubbed to reject `NotAllowedError`; label swaps to `Copy failed`, live region matches, and no page error is raised |
+| Tab order | Real `Tab` presses from the example toolbar; `Copy` is reached, and `Done` is the immediately following stop |
+| Focus indicator | Ring geometry (`0 0 0 Npx`, non-transparent) on both buttons, plus a baseline asserting the *unfocused* button paints no ring |
+| Console | Every test fails on any `console.error` or uncaught page error. None occurred. |
+
+**Screenshots** — `docs/evidence/credentials-card/`
+
+`cards-dark-{desktop,mobile}.png`, `card-light-{desktop,mobile}.png`,
+`card-rtl-{desktop,mobile}.png`, `card-long-value-{desktop,mobile}.png`,
+`copy-success-{desktop,mobile}.png`, `copy-denied-{desktop,mobile}.png`,
+`focus-copy-{desktop,mobile}.png`, `focus-done-{desktop,mobile}.png`,
+`card-mobile-390.png`.
+
+The focus and card shots are element screenshots rather than viewport
+screenshots. The first pass captured the viewport, and the focused button
+happened to sit on the bottom edge — the ring was inside the PNG and legible to
+nobody.
+
+**Defect found and fixed by this move**
+
+Credential values are weak-directionality strings. Inside an RTL tree they
+inherited the paragraph direction and painted reordered: `+1 555 0100` as
+`0100 555 1+`, and `p@ssw0rd!` as `!p@ssw0rd`. The copied text was always
+correct, and every unit test passed, because the DOM was right — only the
+painted order was wrong. An operator reading a credential aloud, which is the
+whole purpose of this surface, would read it wrong.
+
+The `<dd>` now carries `dir="auto"`, which isolates the value and resolves its
+direction from its first strong character; a genuinely Arabic value still
+renders RTL. Covered by a unit test pinning the attribute and by the
+pixel-order assertion above. This is the class of defect no amount of happy-dom
+coverage can reach, and it is the reason Move 4 exists.
 
 ### Move 5 — Package gates
 
-- [ ] `bun run --cwd packages/najm-kit lint`
-- [ ] `bun run --cwd packages/najm-kit test`
-- [ ] `bun run --cwd packages/najm-kit build`
-- [ ] Confirm the built `dist/index.mjs` and `dist/index.d.ts` carry the new
-      exports.
-- [ ] Update `README.md` and `CHANGELOG.md`.
+- [x] `bun run --cwd packages/najm-kit lint` → exit 0 on 2026-08-10 (runs
+  `bun run typecheck && bun run typecheck:tests`).
+- [x] `bun run --cwd packages/najm-kit test` →
+  `1118 pass, 14 skip, 0 fail, 4180 expect() calls` across 113 files on
+  2026-08-11, plus `test:rsc` `7 pass, 0 fail`. The 113th file is the card's own
+  suite; the 1096/112 figure is the pre-card baseline, so the delta is exactly
+  the 21 card tests and the barrel assertion.
+- [x] `bun run --cwd packages/najm-kit build` → tsup `Build success in 3691ms`
+  and DTS `Build success in 40271ms` on 2026-08-10.
+- [x] Confirm the built `dist/index.mjs` and `dist/index.d.ts` carry the new
+      exports. Verified on 2026-08-10: `NCredentialsCard`, `NCredentialField`,
+      `NCredentialsCardProps`, `NCredentialsCardClassNames` are all present
+      in `dist/index.d.ts` and `NCredentialsCard` is in the `dist/index.mjs`
+      re-export.
+- [x] Update `README.md` and `CHANGELOG.md`. Added a `Credentials handover`
+      section to the package `README.md` and a 2.11.0 changelog entry that
+      describes `NCredentialsCard`, its labels, and the supported prop surface.
+  Done on 2026-08-10 alongside the verdict corrections.
 
 ### Move 6 — Publish
 
 - [ ] Get explicit user authorization first.
-- [ ] Publish with the patch bump. Never combine a dry run with a bump flag —
-      it bumps twice.
+- [ ] Publish with the minor bump from `2.10.0` to `2.11.0`. Never combine a
+      dry run with a bump flag — it bumps twice.
 - [ ] Verify the published tarball actually contains the export before touching
       Kafil.
 
@@ -342,9 +461,20 @@ Create `packages/najm-kit/test/data-display/credentials-card.test.tsx`.
       `packages/server/src/locales/{en,fr,ar,es}.json`: a `staff.access`
       group (`created`, `oneTimeHint`, `initialPassword`) plus the shared
       action and field labels the call site needs (`common.copyDetails`,
-      `common.copied`, `common.done`, `common.phone`). Parity is enforced by
+      `common.copyError`, `common.copied`, `common.done`, `common.phone`).
+      The `common.copyError` key is what the component's `copyErrorLabel` prop
+      binds to; without it, Arabic, French, and Spanish users fall back to
+      English failure copy. Parity is enforced by
       `packages/server/test/locale-parity.test.ts` — a missing locale fails the
-      suite.
+      suite. Suggested values:
+
+      | Key | en | fr | ar | es |
+      | --- | --- | --- | --- | --- |
+      | `common.copyDetails` | `Copy details` | `Copier les détails` | `نسخ التفاصيل` | `Copiar detalles` |
+      | `common.copyError` | `Copy failed` | `Échec de la copie` | `فشل النسخ` | `Error al copiar` |
+      | `common.copied` | `Copied` | `Copié` | `تم النسخ` | `Copiado` |
+      | `common.done` | `Done` | `Terminé` | `تم` | `Listo` |
+      | `common.phone` | `Phone` | `Téléphone` | `الهاتف` | `Teléfono` |
 - [ ] Rewrite the provision-access branch in
       `apps/web/src/features/Staff/components/StaffForms.tsx`:
 
@@ -358,9 +488,15 @@ Create `packages/najm-kit/test/data-display/credentials-card.test.tsx`.
   ]}
   copyLabel={t("common.copyDetails")}
   copiedLabel={t("common.copied")}
+  copyErrorLabel={t("common.copyError")}
   actions={<NButton onClick={() => void pop()}>{t("common.done")}</NButton>}
 />
 ```
+
+Every label is passed explicitly. `copyErrorLabel` is easy to leave out because
+the failure state is the one nobody clicks through by hand — and omitting it is
+silent: the card falls back to the packaged English `Copy failed`, so an Arabic
+operator sees Latin text only at the moment something has already gone wrong.
 
 - [ ] Delete `apps/web/src/shared/InitialCredentialsCard/`.
 - [ ] `grep -rn "InitialCredentialsCard" apps/web/src` returns nothing.

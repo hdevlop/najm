@@ -144,7 +144,7 @@ import { Form, FormInput, useNForm } from 'najm-kit';
 | Forms | Input, Textarea, Label, Select, Checkbox, RadioGroup, Switch, DateInput, FileInput, ImageInput, AvatarInput |
 | Feedback | Alert, Badge, Progress, Spinner, Toast, NLoadingState, NErrorState, NEmptyState, NForbiddenState, NNotFoundState |
 | Layout | Card, Sheet, Dialog, Popover, DropdownMenu, Tabs |
-| Data | Table (NTable), StatCard, DetailList |
+| Data | Table (NTable), StatCard, DetailList, CredentialsCard |
 | Overlays | Command palette, Tooltip, Toast |
 
 ## Images and avatars
@@ -499,6 +499,70 @@ Key behaviors:
 
 `AvatarInput` forwards every preview and accessibility prop unchanged while
 preserving its circular, size, fill, and camera-icon defaults.
+
+## Credentials handover
+
+`NCredentialsCard` renders the recurring "show a freshly generated secret
+once, let the operator hand it over, never show it again" surface. It owns
+the frame, the description-list semantics, the copy flow, the failure
+handling, and the accessible feedback. Every domain label — title,
+description, field labels, action labels, and any translated toast — stays
+with the application.
+
+```tsx
+import { NCredentialsCard, NButton } from "najm-kit";
+import { KeyRound, Phone } from "lucide-react";
+
+<NCredentialsCard
+  title={t("staff.access.created")}
+  description={t("staff.access.oneTimeHint")}
+  fields={[
+    { label: t("common.phone"), value: credentials.phone, icon: Phone },
+    { label: t("staff.access.initialPassword"), value: credentials.password, icon: KeyRound },
+  ]}
+  copyLabel={t("common.copyDetails")}
+  copiedLabel={t("common.copied")}
+  copyErrorLabel={t("common.copyError")}
+  actions={<NButton onClick={() => pop()}>{t("common.done")}</NButton>}
+/>
+```
+
+Behaviour worth knowing:
+
+- `fields` renders as a `<dl>` of `<dt>`/`<dd>` pairs. Values default to
+  monospaced and mid-string wrapping so secrets stay readable on every
+  width.
+- The header icon defaults to a check mark and is always rendered when a
+  header is shown. Pass `icon={SomeLucideIcon}` to replace it; pass any
+  supported `NIconSource` to swap in a logo, image, or remote URL.
+- The Copy button resolves text through `copyText` when supplied, otherwise
+  joins `${label}: ${value}` with `\n` in field order. The button is
+  disabled while the clipboard write is pending. Success swaps the label to
+  `copiedLabel` and a check icon; failure swaps to `copyErrorLabel` and a
+  warning icon. Either state reverts to idle after roughly two seconds.
+- The copy button renders before any consumer `actions` so a Done-style
+  dismiss stays the last tab stop and never gets pressed before the secret
+  is actually copied.
+- Missing `navigator.clipboard`, rejected `writeText`, and synchronously
+  thrown `copyText` / `writeText` all land in the error state and call
+  `onCopyError` instead of rethrowing. State updates and revert timers are
+  guarded, so unmounting during a pending copy, or starting a second copy
+  while the first success state is still showing, never fire stale setters.
+- Status is announced through a polite `aria-live` region. The visible swap
+  is the primary feedback — no toast is emitted by the component.
+- Packaged English fallbacks exist for `copyLabel`, `copiedLabel`, and
+  `copyErrorLabel` only. Title, description, and every field label are the
+  application's text; a consumer that omits them gets no text, not English.
+- Spacing uses logical properties only, so a `dir="rtl"` tree needs no
+  override. Each value also carries `dir="auto"`, isolating it from the
+  surrounding paragraph direction: a phone number or password inherited into an
+  RTL tree otherwise *paints* reordered (`+1 555 0100` as `0100 555 1+`) even
+  though the DOM and the copied text are correct. A value whose first strong
+  character is Arabic still renders right-to-left.
+
+When you only want consumer buttons and no built-in copy, pass
+`hideCopyAction`. Pass `copyText` to format the copied text differently
+(one CSV line per field, a JSON blob, a single concatenated value, …).
 
 ## Formatting
 

@@ -186,8 +186,8 @@ export { NBarChart, NChartSkeleton, NLineChart, NPieChart, NStatusBreakdown, get
 export type { NBarChartProps, NCartesianChartProps, NChartCardProps, NChartDatum, NChartItem, NChartSeries, NChartSize, NChartSkeletonProps, NChartSkeletonVariant, NLineChartProps, NPieChartProps, NStatusBreakdownProps } from "./components/Chart";
 
 // Data Display
-export { NDetailCard, NDetailItem, NDetailList, NViewToggle, NFilterBar, NRowActions, NViewBody, NContextMenu, NBulkActionsBar, useContextMenu, useStorageContextMenu } from "./components/data-display";
-export type { NDetailCardProps, NDetailCardClassNames, NDetailItemProps, NDetailListItem, NDetailListProps, NContextMenuProps, NContextMenuItem, NBulkActionsBarProps, NBulkAction, NBulkActionButton, NBulkActionSelect, ContextMenuItem, UseContextMenuResult, StorageTarget, StorageMenuAction, StorageSortOption, UseStorageContextMenuOptions, UseStorageContextMenuResult } from "./components/data-display";
+export { NDetailCard, NDetailItem, NDetailList, NViewToggle, NFilterBar, NRowActions, NViewBody, NContextMenu, NBulkActionsBar, NCredentialsCard, useContextMenu, useStorageContextMenu } from "./components/data-display";
+export type { NDetailCardProps, NDetailCardClassNames, NDetailItemProps, NDetailListItem, NDetailListProps, NContextMenuProps, NContextMenuItem, NBulkActionsBarProps, NBulkAction, NBulkActionButton, NBulkActionSelect, NCredentialField, NCredentialsCardProps, NCredentialsCardClassNames, ContextMenuItem, UseContextMenuResult, StorageTarget, StorageMenuAction, StorageSortOption, UseStorageContextMenuOptions, UseStorageContextMenuResult } from "./components/data-display";
 export { NFileTypeIcon, NFolderIcon } from "./components/data-display/NFileTypeIcon";
 export type { NFileTypeIconProps, NFolderIconProps } from "./components/data-display/NFileTypeIcon";
 

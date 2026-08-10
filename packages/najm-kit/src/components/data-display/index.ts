@@ -28,3 +28,10 @@ export type {
 
 export { NBulkActionsBar } from "./NBulkActionsBar";
 export type { NBulkActionsBarProps, NBulkAction, NBulkActionButton, NBulkActionSelect } from "./NBulkActionsBar";
+
+export { NCredentialsCard } from "./NCredentialsCard";
+export type {
+  NCredentialField,
+  NCredentialsCardProps,
+  NCredentialsCardClassNames,
+} from "./NCredentialsCard";

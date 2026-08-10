@@ -38,6 +38,7 @@ export const navGroups: NavGroup[] = [
       { slug: 'stat-card', label: 'Stat Card' },
       { slug: 'donut-card', label: 'Donut Card', badge: 'New' },
       { slug: 'charts', label: 'Charts', badge: 'New' },
+      { slug: 'credentials-card', label: 'Credentials Card', badge: 'New' },
       { slug: 'progress', label: 'Progress' },
       { slug: 'tabs', label: 'Tabs' },
       { slug: 'separator', label: 'Separator' },

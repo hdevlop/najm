@@ -146,6 +146,10 @@ describe("Root barrel import", () => {
     expect(najmUI.NDetailList).toBeDefined();
   });
 
+  test("exports NCredentialsCard component", () => {
+    expect(najmUI.NCredentialsCard).toBeDefined();
+  });
+
   test("exports NStatCard component", () => {
     expect(najmUI.NStatCard).toBeDefined();
   });

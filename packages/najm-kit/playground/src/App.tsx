@@ -41,6 +41,7 @@ import { PageHeaderPage } from './docs/pages/PageHeaderPage';
 import { GridPage } from './docs/pages/GridPage';
 import { WizardFormPage } from './docs/pages/MultiStepFormPage';
 import { ThemeJsonPage } from './docs/pages/ThemeJsonPage';
+import { NCredentialsCardPage } from './docs/pages/NCredentialsCardPage';
 
 const DEEP_DARK_TOKENS: NajmThemeTokens = {
   background: 'oklch(0.145 0.024 285.7)',
@@ -66,6 +67,7 @@ const DEEP_DARK_TOKENS: NajmThemeTokens = {
 const pageRegistry: Record<string, () => React.ReactElement> = {
   introduction: () => <IntroductionPage />,
   'theme-json-dashboard': () => <ThemeJsonPage />,
+  'credentials-card': () => <NCredentialsCardPage />,
   button: () => <ButtonPage />,
   toggle: () => <TogglePage />,
   swap: () => <SwapPage />,

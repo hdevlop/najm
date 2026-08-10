@@ -84,6 +84,8 @@
     "test": "bun test && bun run test:rsc",
     "test:rsc": "cd test/rsc && bun test --conditions react-server",
     "test:next16": "bun run build && bun integration/next16-ui-bootstrap/run.ts",
+    "test:acceptance": "playwright test",
+    "typecheck:acceptance": "tsc --noEmit -p acceptance/tsconfig.json",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "peerDependencies": {
