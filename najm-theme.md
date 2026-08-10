@@ -1233,11 +1233,38 @@ identity guard added to stop a redundant write is a *behavioural* change
 wherever that write was also doing a second job. Here `setCommitted`'s second
 job was discarding the draft.
 
+#### A third blocker, found by verifying the release from a clean checkout
+
+`bun run pub:theme:dry` was run from a **fresh worktree of the release commit**
+rather than from the development machine's tree, because the release script
+asserts a clean worktree and unrelated work was in flight. It failed — not on
+anything in this package, but on `najm-kit`, whose dts build could not resolve
+its seven `.webp` imports.
+
+The cause: `.gitignore` carried `packages/*/src/**/*.d.ts`, aimed at compiler
+output that leaks next to sources. It also matched
+`packages/najm-kit/src/person-images/assets.d.ts`, which is hand-written — it
+declares `*.webp` so `tsc` accepts what esbuild's dataurl loader resolves at
+build time. So the file had never been committed, and `najm-kit` could be built
+only on a machine that already happened to have it. A clean clone, a fresh
+worktree, or CI could not build it at all, and `najm-theme`'s release builds
+`najm-kit` first. Fixed with a narrow negation and the file committed; a sweep
+found no other source declaration in the same position.
+
+Worth stating because it is the same failure mode as the two defects above, one
+level out: the development machine's state was standing in for a contract
+nobody had verified. Release verification belongs in a checkout that has only
+what is committed.
+
 Consequences for this plan:
 
 - `najm-theme` is at `0.1.2` in the worktree with the fix, the regression test,
   and a changelog entry. `bun run api:check` reports the public API unchanged,
   which is correct for a bug fix.
+- The release is verified but **not published**: from a clean isolated checkout
+  of the release commit, `bun run pub:theme:dry` completes — build, tests,
+  `api:check`, clean-worktree assertions on both sides, `npm pack`, and
+  `npm publish --dry-run` — producing `najm-theme-0.1.2.tgz`, 23 files, 107.4 kB.
 - Kafil cannot ship against `0.1.1`. Its manifests stay pinned there until
   `0.1.2` is published, and then must be re-pinned.
 - Move 7's "publish only after explicit user authorization" applies again.
