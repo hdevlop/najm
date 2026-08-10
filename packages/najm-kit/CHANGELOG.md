@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.11.0 - 2026-08-10
 
 - Added a shared `surface` contract across `NLoadingState`, `NErrorState`, and
   `NEmptyState`. `inline` (default) preserves existing behavior; `panel` adds a
