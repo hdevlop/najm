@@ -211,3 +211,9 @@ packages/*/src/**/*.js
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.d.ts.map
 packages/*/src/**/*.js.map
+
+# Hand-written, so not what the rule above is for: the `*.webp` module shim
+# that lets `tsc` accept esbuild's dataurl imports. It is a build input, and
+# ignoring it meant najm-kit could not be built from a clean checkout at all —
+# only from a machine that already happened to have the file.
+!packages/najm-kit/src/person-images/assets.d.ts
