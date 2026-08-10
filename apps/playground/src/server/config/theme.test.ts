@@ -14,8 +14,7 @@ loadPlaygroundEnv();
 const RUNNABLE = existsSync(resolve(process.cwd(), process.env.DATABASE_URL ?? './playground.db'));
 
 const loaded = RUNNABLE ? await import('../index') : null;
-const factory = await import('./theme');
-const { factoryBranding, factoryDesign } = factory;
+const { appTheme } = await import('../../../theme');
 const server = loaded?.server;
 
 function loadPlaygroundEnv(): void {
@@ -53,12 +52,12 @@ const api = (path: string, init?: RequestInit) =>
 const request = (path: string, init?: RequestInit) => api(`/theme${path}`, init);
 
 describe.skipIf(!RUNNABLE)('public reads', () => {
-  test('serves the application factory design at revision 1', async () => {
+  test('serves the factory theme directory design at revision 1', async () => {
     const response = await request('/appearance');
     expect(response.status).toBe(200);
 
     const { data } = await response.json();
-    expect(data.designConfig).toEqual(factoryDesign);
+    expect(data.designConfig).toEqual(appTheme.appearance());
     expect(data.revision).toBe(1);
   });
 
@@ -67,17 +66,41 @@ describe.skipIf(!RUNNABLE)('public reads', () => {
     expect(Object.keys(data).sort()).toEqual(['designConfig', 'revision']);
   });
 
-  test('resolves branding, including the slots that inherit', async () => {
+  test('fills all four slots from the factory directory, under the /api base', async () => {
     const { data } = await (await request('/branding')).json();
-    const factory = factoryBranding();
 
-    expect(data.slots.sidebarLogoExpanded).toBe(factory.sidebarLogoExpanded);
-    // Neither is configured; both inherit the expanded mark, so uploading one
-    // logo changes the sidebar and the sign-in page together.
-    expect(data.slots.sidebarLogoCollapsed).toBe(factory.sidebarLogoExpanded);
-    expect(data.slots.authLogo).toBe(factory.sidebarLogoExpanded);
-    // Declared with no factory value and no fallback: null, not a broken path.
-    expect(data.slots.authHeroImage).toBeNull();
+    // The paths a browser will actually request: the plugin is mounted at
+    // `/theme` behind the server's `/api` base, and the package builds both
+    // halves. Nothing in this application names them.
+    expect(data.slots).toEqual(appTheme.branding('/api/theme'));
+    for (const path of Object.values(data.slots)) {
+      expect(path).toStartWith('/api/theme/branding/factory/');
+    }
+  });
+
+  test('serves each factory asset with its own real format', async () => {
+    const { data } = await (await request('/branding')).json();
+
+    const expected: Record<string, string> = {
+      // A deliberate mix, so one run proves both formats.
+      sidebarLogoExpanded: 'image/png',
+      sidebarLogoCollapsed: 'image/webp',
+      authLogo: 'image/webp',
+      authHeroImage: 'image/png',
+    };
+
+    for (const [slot, mimeType] of Object.entries(expected)) {
+      const asset = await api((data.slots[slot] as string).replace('/api', ''));
+      expect(asset.status).toBe(200);
+      expect(asset.headers.get('content-type')).toBe(mimeType);
+      expect(asset.headers.get('cache-control')).toContain('immutable');
+      expect(Number(asset.headers.get('content-length'))).toBe(appTheme.asset(slot)!.bytes);
+    }
+  });
+
+  test('answers 404 for a factory name the build does not ship', async () => {
+    expect((await request('/branding/factory/authLogo.0000000000000000.png')).status).toBe(404);
+    expect((await request('/branding/factory/theme.json')).status).toBe(404);
   });
 
   test('keeps storage internals out of the public projection', async () => {

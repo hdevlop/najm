@@ -1,7 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
-import type { NajmDesignConfig, NajmMode } from 'najm-kit';
+import type { NajmMode } from 'najm-kit';
 import { NajmAppProvider } from 'najm-kit/app';
+import { NThemeBrandingProvider } from 'najm-theme/react';
+import { loadServerTheme } from '@/lib/serverTheme';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/index.css';
 import { auth } from '@/lib/auth';
@@ -22,24 +24,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-/**
- * Stands in for the design an application would load from its own API. It is
- * only the *seed* — `/ui-provider` edits it live through `useNajmDesignEditor`,
- * which is the point: no provider file here owns design state.
- */
-const DESIGN: NajmDesignConfig = {
-  version: 1,
-  theme: { accent: 'emerald', radius: '0.5rem' },
-  components: {},
-  typography: { scale: 'default' },
-};
-
 export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const session = await auth.getSession().catch(() => null);
+
+  // One shared resolution for this render: the stored design and the resolved
+  // marks, or — independently, if either endpoint is unreachable — the files in
+  // `theme/`. Every layout and page below reads the same snapshot.
+  const { appearance, branding } = await loadServerTheme();
 
   const cookieStore = await cookies();
   const theme: NajmMode =
@@ -65,13 +60,15 @@ export default async function RootLayout({
               initialLanguage={language}
               initialTheme={theme}
               initialTimeZone={timeZone}
-              initialDesign={DESIGN}
+              initialDesign={appearance.designConfig}
               appName="Najm Playground"
               formDevTools
               currency="MAD"
               locales={{ en: 'en-MA', fr: 'fr-MA' }}
             >
-              {children}
+              <NThemeBrandingProvider branding={branding}>
+                {children}
+              </NThemeBrandingProvider>
             </NajmAppProvider>
           </AuthProviderWrapper>
         </QueryProvider>

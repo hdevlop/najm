@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "theme": {
+    "preset": "light",
+    "tokens": {
+      "primary": "oklch(0.55 0.18 255)",
+      "primary-foreground": "oklch(0.99 0 0)",
+      "sidebar": "oklch(0.98 0.005 255)"
+    }
+  },
+  "typography": {
+    "fontSans": "Inter, system-ui, sans-serif"
+  }
+}

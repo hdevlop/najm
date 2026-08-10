@@ -19,7 +19,10 @@ import {
   X,
   MessageSquareText,
   HardDrive,
+  PanelLeft,
+  Palette,
 } from 'lucide-react';
+import { NThemeImage } from 'najm-theme/react';
 
 type DashboardShellProps = {
   children: ReactNode;
@@ -28,6 +31,7 @@ type DashboardShellProps = {
 const navigation = [
   { href: '/dashboard', label: 'Overview', icon: LayoutDashboard },
   { href: '/dashboard/account', label: 'Account', icon: UserCircle },
+  { href: '/dashboard/theme', label: 'Theme', icon: Palette },
   { href: '/dashboard/activity', label: 'Activity', icon: Activity },
   { href: '/dashboard/chatbot', label: 'AI Chat', icon: MessageSquare },
 ];
@@ -49,6 +53,9 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const { logout, isLoading } = useLogout({ redirectTo: '/login' });
   const logoutRequestedRef = useRef(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  // Both sidebar marks are real product positions, so both need to be
+  // reachable in one visual pass.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   useAuthEvent('logout', () => {
     if (logoutRequestedRef.current || typeof window === 'undefined') return;
@@ -101,11 +108,49 @@ export function DashboardShell({ children }: DashboardShellProps) {
 
       <div className="flex w-full min-h-screen">
         {/* Desktop sidebar */}
-        <aside className="hidden w-60 flex-none border-r border-border bg-card md:flex">
-          <div className="flex h-full flex-col">
-            <div className="border-b border-border px-5 py-5">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground">Najm</p>
-              <h1 className="mt-1 text-sm font-semibold text-foreground">Playground</h1>
+        <aside
+          className={cn(
+            'hidden flex-none border-r border-border bg-card transition-[width] md:flex',
+            sidebarCollapsed ? 'w-16' : 'w-60',
+          )}
+        >
+          <div className="flex h-full w-full flex-col">
+            {/* Both sidebar marks in their real positions. Which file each one
+                resolves to — a managed upload or the `theme/` file — is the
+                package's decision, not this component's. */}
+            <div
+              className={cn(
+                'flex gap-2 border-b border-border py-5',
+                sidebarCollapsed
+                  ? 'flex-col items-center px-2'
+                  : 'flex-row items-center px-5',
+              )}
+            >
+              {sidebarCollapsed ? (
+                <NThemeImage
+                  slot="sidebarLogoCollapsed"
+                  alt="Najm Playground"
+                  className="h-8 w-8 rounded"
+                />
+              ) : (
+                <NThemeImage
+                  slot="sidebarLogoExpanded"
+                  alt="Najm Playground"
+                  className="h-8 w-auto"
+                />
+              )}
+              <button
+                type="button"
+                aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+                aria-expanded={!sidebarCollapsed}
+                onClick={() => setSidebarCollapsed((value) => !value)}
+                className={cn(
+                  'rounded p-1 text-muted-foreground transition-colors hover:bg-secondary hover:text-foreground',
+                  sidebarCollapsed ? '' : 'ms-auto',
+                )}
+              >
+                <PanelLeft size={16} />
+              </button>
             </div>
 
             <div className="border-b border-border px-4 py-4">
@@ -131,42 +176,50 @@ export function DashboardShell({ children }: DashboardShellProps) {
             </div>
 
             <nav className="flex-1 space-y-0.5 px-3 py-3">
-              <span className="px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Dashboard</span>
+              {!sidebarCollapsed && (
+                <span className="px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Dashboard</span>
+              )}
               {navigation.map((item) => {
                 const active = isActiveRoute(pathname, item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    title={sidebarCollapsed ? item.label : undefined}
                     className={cn(
                       'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      sidebarCollapsed && 'justify-center px-2',
                       active
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                     )}
                   >
                     <item.icon size={16} />
-                    {item.label}
+                    {sidebarCollapsed ? <span className="sr-only">{item.label}</span> : item.label}
                   </Link>
                 );
               })}
 
-              <span className="mt-4 block px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Studios</span>
+              {!sidebarCollapsed && (
+                <span className="mt-4 block px-3 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">Studios</span>
+              )}
               {studios.map((item) => {
                 const active = isActiveRoute(pathname, item.href);
                 return (
                   <Link
                     key={item.href}
                     href={item.href}
+                    title={sidebarCollapsed ? item.label : undefined}
                     className={cn(
                       'flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+                      sidebarCollapsed && 'justify-center px-2',
                       active
                         ? 'bg-primary/10 text-primary'
                         : 'text-muted-foreground hover:bg-secondary hover:text-foreground',
                     )}
                   >
                     <item.icon size={16} />
-                    {item.label}
+                    {sidebarCollapsed ? <span className="sr-only">{item.label}</span> : item.label}
                   </Link>
                 );
               })}

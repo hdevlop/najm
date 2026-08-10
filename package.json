@@ -14,7 +14,7 @@
   },
   "overrides": {
     "@babel/core": "7.29.7",
-    "@hono/node-server": "2.0.11",
+    "@hono/node-server": "$@hono/node-server",
     "@isaacs/brace-expansion": "5.0.1",
     "axios": "1.18.1",
     "body-parser": "2.3.0",
@@ -42,7 +42,7 @@
     "uuid": "11.1.1",
     "vite": "7.3.6",
     "ws": "8.21.1",
-    "zod": "4.4.3",
+    "zod": "$zod",
     "yaml": "2.9.0"
   },
   "main": "dist/index.js",
@@ -152,6 +152,7 @@
     "test:seq": "bun run scripts/test-sequential.ts",
     "test:node-runtime": "node scripts/node-runtime-smoke.mjs",
     "test:playground:e2e": "bun --cwd apps/playground test",
+    "test:theme:e2e": "bun run --cwd apps/playground test:e2e:theme",
     "api:snapshot": "bun scripts/check-public-api.mjs --write",
     "api:check": "bun scripts/check-public-api.mjs",
     "bench": "bun benchmarks/http.bench.ts",

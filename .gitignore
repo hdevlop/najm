@@ -216,3 +216,9 @@ packages/*/src/**/*.js.map
 # from compiler leakage. najm-kit's dts build fails without this one, so it is
 # a build input rather than an artifact and has to be tracked.
 !packages/najm-kit/src/webp.d.ts
+
+# Page snapshots written by the Playwright MCP browser tools.
+.playwright-mcp/
+
+# Branding uploads written at runtime by the theme acceptance run.
+apps/playground/storage/theme-branding-platform/

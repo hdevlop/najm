@@ -14,8 +14,7 @@ import { chatbot } from 'najm-chatbot';
 import { studioAssistant } from 'najm-chatbot/studio-assistant';
 import { whatsapp } from 'najm-whatsapp';
 import { theme } from 'najm-theme/server';
-import { themeSchema } from 'najm-theme/sqlite';
-import { factoryBranding, factoryDesign } from './theme';
+import { appTheme } from '../../../theme';
 
 /**
  * Export all plugin configurations
@@ -105,25 +104,11 @@ export const storageConfig = () => storage({ provider: 'local', basePath: 'stora
  * `publicRead: true` because the sign-in page renders the theme and the logo
  * before there is a session. Every mutation is admin-only.
  */
-export const themeConfig = () => theme({
-  features: {
-    appearance: true,
-    branding: true,
-    presets: true,
-    assetUploads: true,
-    mcp: true,
-  },
+export const themeConfig = () => theme(appTheme, {
   dialect: 'sqlite',
-  schema: themeSchema,
-  publicRead: true,
-  factory: { appearance: () => factoryDesign, branding: factoryBranding },
-  guards: {
-    manageAppearance: [isAdmin()],
-    manageBranding: [isAdmin()],
-    managePresets: [isAdmin()],
-  },
+  manage: [isAdmin()],
+  features: { mcp: true },
   storage: { namespace: 'theme-branding' },
-  diagnostics: (diagnostic) => console.warn('[theme]', diagnostic.code, diagnostic.detail ?? ''),
 });
 
 export const ragConfig = () => rag({
