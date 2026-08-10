@@ -472,7 +472,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.9.0",
+      "version": "2.10.0",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",
@@ -707,7 +707,7 @@
     },
     "packages/najm-theme": {
       "name": "najm-theme",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "najm-core": "workspace:*",
         "najm-database": "workspace:*",
