@@ -160,8 +160,19 @@ export { NErrorState } from "./components/feedback/NErrorState";
 export type { NErrorStateProps } from "./components/feedback/NErrorState";
 export { NEmptyState } from "./components/feedback/NEmptyState";
 export type { NEmptyStateProps } from "./components/feedback/NEmptyState";
+export { NForbiddenState } from "./components/feedback/NForbiddenState";
+export type { NForbiddenStateProps } from "./components/feedback/NForbiddenState";
+export { NNotFoundState } from "./components/feedback/NNotFoundState";
+export type { NNotFoundStateProps } from "./components/feedback/NNotFoundState";
 export { NErrorBoundary } from "./components/feedback/NErrorBoundary";
 export { NSkeleton, Skeleton, NStatCardSkeleton, NTableRowSkeleton, NTableSkeleton, NSkeletonChart, NSkeletonDonut, NSkeletonCalendar, NSkeletonEventList, NSkeletonWidget, NSkeletonWidgets } from "./components/feedback/NSkeletonPresets";
+export type {
+  NFeedbackDefaults,
+  NFeedbackLabelKeys,
+  NFeedbackLabels,
+} from "./components/feedback/feedbackDefaults";
+export type { NFeedbackSurface } from "./components/feedback/NFeedbackStateFrame";
+export type { NFeedbackIconSize } from "./components/feedback/feedbackIcon";
 
 // Avatar
 export { NAvatar } from "./components/Avatar";

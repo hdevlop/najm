@@ -1,5 +1,34 @@
 # Changelog
 
+## Unreleased
+
+- Added a shared `surface` contract across `NLoadingState`, `NErrorState`, and
+  `NEmptyState`. `inline` (default) preserves existing behavior; `panel` adds a
+  centered minimum-height frame for table, card, dialog, and sheet bodies
+  without a page gutter or a landmark; `page` uses the configured page
+  spacing through `NPageLayout as="div"` so it never introduces a nested
+  `<main>`. `NLoadingState.fullScreen` keeps precedence over `surface`.
+- Added `NForbiddenState` and `NNotFoundState` as first-class generic Kit
+  components. Both default to the page surface, ship token-backed default
+  icons (`ShieldOff`, `Compass`), and resolve title and description through
+  the new provider defaults. Neither knows the dashboard URL, renders a Next
+  `Link`, redirects, or writes route metadata.
+- Added `feedbackDefaults` to `NajmUIProvider`. It is inherited by
+  `NajmNextUIProvider` and `NajmAppProvider` through TypeScript — no second
+  adapter prop or translation source. Labels resolve through the existing
+  structural `t` (most specific: explicit prop > literal default > translated
+  key > packaged English). Generic error body copy and empty description
+  deliberately have no packaged fallback so the no-provider render is
+  unchanged.
+- Exported the new feedback components and props (`NLoadingStateProps`,
+  `NErrorStateProps`, `NEmptyStateProps`, `NForbiddenStateProps`,
+  `NNotFoundStateProps`, `NFeedbackSurface`, `NFeedbackDefaults`,
+  `NFeedbackLabels`, `NFeedbackLabelKeys`, `NFeedbackIconSize`) from the root
+  barrel and re-exported them directly from `najm-kit/app` so a Next Server
+  Component route can render them without authoring a local `"use client"`
+  wrapper. The root entry stays free of `"use client"` and continues to
+  share a single `NFeedbackDefaultsContext` across `index` and the adapters.
+
 ## 2.10.0 - 2026-08-10
 
 - Added a shared, failure-aware media source chain for `NAvatar`, `NImage`, and

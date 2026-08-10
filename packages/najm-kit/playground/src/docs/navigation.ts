@@ -86,6 +86,8 @@ export const navGroups: NavGroup[] = [
       { slug: 'loading-state', label: 'Loading State' },
       { slug: 'error-state', label: 'Error State' },
       { slug: 'empty-state', label: 'Empty State' },
+      { slug: 'forbidden-state', label: 'Forbidden State', badge: 'New' },
+      { slug: 'not-found-state', label: 'Not Found State', badge: 'New' },
       { slug: 'toast', label: 'Toast' },
     ],
   },

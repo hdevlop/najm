@@ -88,6 +88,14 @@ describe("Root barrel import", () => {
     expect(najmUI.NEmptyState).toBeDefined();
   });
 
+  test("exports NForbiddenState component", () => {
+    expect(najmUI.NForbiddenState).toBeDefined();
+  });
+
+  test("exports NNotFoundState component", () => {
+    expect(najmUI.NNotFoundState).toBeDefined();
+  });
+
   test("exports NConfirmDialog component", () => {
     expect(najmUI.NConfirmDialog).toBeDefined();
   });

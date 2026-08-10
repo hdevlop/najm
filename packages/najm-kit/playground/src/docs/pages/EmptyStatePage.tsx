@@ -243,6 +243,52 @@ function ProductList() {
           />
         </div>
       </Example>
+
+      <Example
+        title="Surface: panel (table body, card, dialog)"
+        description={`Use surface="panel" for empty bodies inside cards, dialogs, or sheets.`}
+        center={false}
+        previewHeight="h-[380px]"
+        code={`<NEmptyState
+  surface="panel"
+  title="No orders yet"
+  description="Place your first order."
+  icon={Inbox}
+  action={<NButton size="sm">New order</NButton>}
+/>`}
+      >
+        <div className="w-full border rounded-xl overflow-hidden h-64">
+          <NEmptyState
+            surface="panel"
+            title="No orders yet"
+            description="Place your first order."
+            icon={Inbox}
+            action={<NButton size="sm">New order</NButton>}
+          />
+        </div>
+      </Example>
+
+      <Example
+        title="Surface: page (route-level empty state)"
+        description={`Use surface="page" for route-level empty states. Renders through a non-<main> root.`}
+        center={false}
+        previewHeight="h-[380px]"
+        code={`<NEmptyState
+  surface="page"
+  title="No notifications"
+          description="You're all caught up."
+  icon={Inbox}
+/>`}
+      >
+        <div className="w-full border rounded-xl overflow-hidden">
+          <NEmptyState
+            surface="page"
+            title="No notifications"
+            description="You're all caught up."
+            icon={Inbox}
+          />
+        </div>
+      </Example>
     </ComponentPage>
   );
 }

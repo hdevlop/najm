@@ -156,6 +156,28 @@ function ProductList() {
           <NLoadingState label="Loading products..." spinnerVariant="ring" />
         </div>
       </Example>
+
+      <Example
+        title="Surface: panel (table body, dialog, sheet)"
+        description={`Use surface="panel" when the loading state lives inside a card, dialog, sheet, or table body. No page gutter, no landmark.`}
+        center={false}
+        code={`<NLoadingState surface="panel" label="Loading orders..." />`}
+      >
+        <div className="w-full border rounded-xl overflow-hidden h-64">
+          <NLoadingState surface="panel" label="Loading orders..." />
+        </div>
+      </Example>
+
+      <Example
+        title="Surface: page (full route state)"
+        description={`Use surface="page" for actual route-level states. Uses page spacing from the design config, but renders through a non-<main> root so it never nests another landmark.`}
+        center={false}
+        code={`<NLoadingState surface="page" label="Loading dashboard..." />`}
+      >
+        <div className="w-full border rounded-xl overflow-hidden">
+          <NLoadingState surface="page" label="Loading dashboard..." />
+        </div>
+      </Example>
     </ComponentPage>
   );
 }

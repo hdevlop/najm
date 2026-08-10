@@ -59,7 +59,11 @@ function collectGraph(entry: string): string {
  * Contexts a provider from one entry publishes to and a hook from another
  * reads. Each must be created exactly once across the whole output.
  */
-const SHARED_CONTEXTS = ["NajmPreferencesContext", "NBadgeDefaultsContext"];
+const SHARED_CONTEXTS = [
+  "NajmPreferencesContext",
+  "NBadgeDefaultsContext",
+  "NFeedbackDefaultsContext",
+];
 
 describeBuilt("dist shape", () => {
   test.each(SHARED_CONTEXTS)("%s is created once and reachable from every entry", (name) => {

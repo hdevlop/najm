@@ -19,6 +19,8 @@ import { SkeletonPage } from './docs/pages/SkeletonPage';
 import { LoadingStatePage } from './docs/pages/LoadingStatePage';
 import { ErrorStatePage } from './docs/pages/ErrorStatePage';
 import { EmptyStatePage } from './docs/pages/EmptyStatePage';
+import { ForbiddenStatePage } from './docs/pages/ForbiddenStatePage';
+import { NotFoundStatePage } from './docs/pages/NotFoundStatePage';
 import { ToastPage } from './docs/pages/ToastPage';
 import { InputsPage } from './docs/pages/InputsPage';
 import { DialogPage } from './docs/pages/DialogPage';
@@ -108,6 +110,8 @@ const pageRegistry: Record<string, () => React.ReactElement> = {
   'loading-state': () => <LoadingStatePage />,
   'error-state': () => <ErrorStatePage />,
   'empty-state': () => <EmptyStatePage />,
+  'forbidden-state': () => <ForbiddenStatePage />,
+  'not-found-state': () => <NotFoundStatePage />,
   toast: () => <ToastPage />,
   dialog: () => <DialogPage />,
   sheet: () => <SheetPage />,

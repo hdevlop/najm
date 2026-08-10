@@ -142,7 +142,7 @@ import { Form, FormInput, useNForm } from 'najm-kit';
 |----------|-----------|
 | Actions | NButton, IconButton, toggleVariants |
 | Forms | Input, Textarea, Label, Select, Checkbox, RadioGroup, Switch, DateInput, FileInput, ImageInput, AvatarInput |
-| Feedback | Alert, Badge, Progress, Spinner, Toast |
+| Feedback | Alert, Badge, Progress, Spinner, Toast, NLoadingState, NErrorState, NEmptyState, NForbiddenState, NNotFoundState |
 | Layout | Card, Sheet, Dialog, Popover, DropdownMenu, Tabs |
 | Data | Table (NTable), StatCard, DetailList |
 | Overlays | Command palette, Tooltip, Toast |
@@ -274,6 +274,128 @@ Statuses are matched through one rule, exported as `normalizeStatusToken`, so
 `Out-For-Delivery `, `out for delivery`, and `out_for_delivery` are the same
 key for colors, icons, and labels alike. Badge text is presentation: it renames
 nothing in the backend and validates no lifecycle transition.
+
+## Feedback states
+
+Five public state components cover the reusable cases every application
+otherwise repeats: `NLoadingState`, `NErrorState`, `NEmptyState`,
+`NForbiddenState`, and `NNotFoundState`. They share one layout frame and one
+provider-defaults channel, so an application configures its copy once and
+every consumer below inherits it.
+
+### Surfaces
+
+Three layouts, one prop. `surface` selects the frame:
+
+| `surface` | Use it for | What it does |
+| --- | --- | --- |
+| `"inline"` (default) | A small slot inside an existing component | Legacy sizing, no landmark |
+| `"panel"` | A table body, card body, dialog, or sheet | Centered with a minimum height, no page gutter, no landmark |
+| `"page"` | A real route-level state | Uses page spacing from the design config; renders through a non-`<main>` root |
+
+`NLoadingState.fullScreen` keeps its fixed viewport overlay regardless of
+surface — it always wins.
+
+```tsx
+import { NLoadingState, NErrorState, NEmptyState } from 'najm-kit';
+
+// Inline (default): drop into a card or section.
+<NLoadingState label="Loading orders..." />
+
+// Panel: table body or dialog content.
+<NEmptyState surface="panel" title="No orders yet" icon={Inbox} />
+
+// Page: route-level empty state. Never introduces a second <main>.
+<NErrorState
+  surface="page"
+  title="Dashboard unavailable"
+  message="We are working on it."
+  onRetry={() => refetch()}
+/>
+```
+
+### Provider defaults
+
+Pass one `feedbackDefaults` map to `NajmUIProvider` (or to `NajmAppProvider`
+through it) and every feedback state beneath uses it. There is one place for
+loading, empty, error, retry, forbidden, and not-found labels, and a single
+language change recomputes them all without remounting the tree.
+
+```tsx
+import { NajmAppProvider } from 'najm-kit/app';
+
+<NajmAppProvider
+  feedbackDefaults={{
+    labels: {
+      loadingLabel: 'Chargement…',
+      emptyTitle: 'Aucune donnée',
+      errorTitle: 'Une erreur est survenue',
+      retryLabel: 'Réessayer',
+      forbiddenTitle: 'Accès refusé',
+      forbiddenDescription: 'Vous n\'avez pas la permission.',
+      notFoundTitle: 'Page introuvable',
+      notFoundDescription: 'La page demandée n\'existe pas.',
+    },
+    labelKeys: {
+      emptyTitle: 'common.empty',
+      errorTitle: 'common.error',
+    },
+  }}
+>
+  <App />
+</NajmAppProvider>
+```
+
+Resolution order, most specific first:
+
+1. An explicit component prop.
+2. A literal in `feedbackDefaults.labels`.
+3. A translated `feedbackDefaults.labelKeys` value resolved through the
+   provider's existing structural `t` function.
+4. The current packaged English fallback, when that field has one.
+
+Generic `NErrorState.message` and `NEmptyState.description` deliberately have
+no packaged fallback — the no-provider render must look the same as it did
+before this contract shipped. A configured `errorMessage` opts the generic
+error state into rendering a body; absent that opt-in, the existing
+no-body render is preserved.
+
+### Forbidden and not-found
+
+Two first-class preset states for the routes every application grows:
+
+```tsx
+import { NForbiddenState, NNotFoundState } from 'najm-kit';
+
+// Forbidden: provider copy + ShieldOff icon + page surface by default.
+<NForbiddenState
+  action={<Link href="/dashboard">Back to dashboard</Link>}
+/>
+
+// Not found: provider copy + Compass icon + page surface by default.
+<NNotFoundState
+  action={<Link href="/dashboard">Back to dashboard</Link>}
+/>
+```
+
+Both are presentation only. They do not know the dashboard URL, render a
+Next `Link`, redirect, or write route metadata — those belong to the
+application's `not-found.tsx` / `forbidden/page.tsx` files.
+
+### Root and `najm-kit/app` imports
+
+Both entries export the same five state components. Pick the one that matches
+your boundary:
+
+```tsx
+// Client feature code: import from the root barrel.
+import { NEmptyState } from 'najm-kit';
+
+// Next Server Component route: import from najm-kit/app, which is the
+// Client Component boundary. A route file can render a state component
+// without authoring a local "use client" wrapper.
+import { NNotFoundState } from 'najm-kit/app';
+```
 
 ## Global form development tools
 

@@ -14,6 +14,11 @@ import type { NTableDefaults } from "../components/table/TableDefaults";
 import { NBadgeDefaultsProvider } from "../components/Badge/defaults";
 import type { NBadgeDefaults } from "../components/Badge/defaults";
 import {
+  NFeedbackDefaultsProvider,
+  resolveFeedbackDefaultsValue,
+} from "../components/feedback/feedbackDefaults";
+import type { NFeedbackDefaults } from "../components/feedback/feedbackDefaults";
+import {
   NajmPreferencesProvider,
   useNajmPreferencesContext,
   useNajmTheme,
@@ -88,6 +93,16 @@ export interface NajmUIProviderProps
    * for the same reason as `t`.
    */
   badgeDefaults?: NBadgeDefaults;
+  /**
+   * Defaults for the shared feedback state components — loading, empty, error,
+   * forbidden, and not-found. Each label resolves through the provider's `t`
+   * the same way pagination and badge labels do, so the same translator
+   * reaches every state without a second bridge.
+   *
+   * Memoize the object: a fresh identity rebuilds the resolved bundle and
+   * re-renders every feedback state beneath.
+   */
+  feedbackDefaults?: NFeedbackDefaults;
 }
 
 type UICoreProps = Pick<
@@ -98,6 +113,7 @@ type UICoreProps = Pick<
   | "paginationKeyPrefix"
   | "tableDefaults"
   | "badgeDefaults"
+  | "feedbackDefaults"
 >;
 
 /**
@@ -115,6 +131,7 @@ function NajmUICore({
   paginationKeyPrefix = DEFAULT_PAGINATION_KEY_PREFIX,
   tableDefaults,
   badgeDefaults,
+  feedbackDefaults,
 }: UICoreProps) {
   const { theme } = useNajmTheme();
   const design = useNajmDesignEditor()?.design ?? EMPTY_DESIGN;
@@ -134,6 +151,11 @@ function NajmUICore({
     return { ...tableDefaults, paginationLabels };
   }, [t, paginationKeyPrefix, tableDefaults]);
 
+  const feedbackValue = React.useMemo(
+    () => resolveFeedbackDefaultsValue(feedbackDefaults, t),
+    [feedbackDefaults, t],
+  );
+
   return (
     <NajmDesignProvider
       config={design}
@@ -146,7 +168,9 @@ function NajmUICore({
             change has to recompute labels through the same `t` the tables
             already use. */}
         <NBadgeDefaultsProvider defaults={badgeDefaults} t={t}>
-          {children}
+          <NFeedbackDefaultsProvider value={feedbackValue}>
+            {children}
+          </NFeedbackDefaultsProvider>
         </NBadgeDefaultsProvider>
       </NTableDefaultsProvider>
     </NajmDesignProvider>
@@ -181,6 +205,7 @@ export function NajmUIProvider({
   paginationKeyPrefix,
   tableDefaults,
   badgeDefaults,
+  feedbackDefaults,
   initialTheme,
   initialTimeZone,
   onThemeChange,
@@ -197,6 +222,7 @@ export function NajmUIProvider({
         paginationKeyPrefix={paginationKeyPrefix}
         tableDefaults={tableDefaults}
         badgeDefaults={badgeDefaults}
+        feedbackDefaults={feedbackDefaults}
       >
         {children}
       </NajmUICore>

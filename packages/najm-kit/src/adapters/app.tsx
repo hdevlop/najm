@@ -12,6 +12,27 @@ import type { NajmNextUIProviderProps } from './next';
 import { FormDevToolsProvider } from '../components/form/FormDevToolsContext';
 import type { FormDevToolsOptions } from '../components/form/formFill';
 
+// Re-export the feedback state components directly, not via the root barrel:
+// this entry is the Client Component boundary a Next Server Component route
+// imports, and the root barrel would drag the rest of the kit into the same
+// graph for the sake of these five exports.
+export { NLoadingState } from '../components/feedback/NLoadingState';
+export type { NLoadingStateProps } from '../components/feedback/NLoadingState';
+export { NErrorState } from '../components/feedback/NErrorState';
+export type { NErrorStateProps } from '../components/feedback/NErrorState';
+export { NEmptyState } from '../components/feedback/NEmptyState';
+export type { NEmptyStateProps } from '../components/feedback/NEmptyState';
+export { NForbiddenState } from '../components/feedback/NForbiddenState';
+export type { NForbiddenStateProps } from '../components/feedback/NForbiddenState';
+export { NNotFoundState } from '../components/feedback/NNotFoundState';
+export type { NNotFoundStateProps } from '../components/feedback/NNotFoundState';
+export type {
+  NFeedbackDefaults,
+  NFeedbackLabelKeys,
+  NFeedbackLabels,
+} from '../components/feedback/feedbackDefaults';
+export type { NFeedbackSurface } from '../components/feedback/NFeedbackStateFrame';
+
 /** Branding shown by the kit's chrome. Purely presentational values. */
 export interface NajmAppBranding {
   appName?: string;

@@ -203,6 +203,48 @@ function ProductList() {
           />
         </div>
       </Example>
+
+      <Example
+        title="Surface: panel (inside a card or dialog)"
+        description={`Use surface="panel" for errors inside a card body, dialog, or sheet. No page gutter, no landmark.`}
+        center={false}
+        code={`<NErrorState
+  surface="panel"
+  title="Failed to load orders"
+  message="The server did not respond in time."
+  onRetry={() => refetch()}
+/>`}
+      >
+        <div className="w-full border rounded-xl overflow-hidden h-64">
+          <NErrorState
+            surface="panel"
+            title="Failed to load orders"
+            message="The server did not respond in time."
+            onRetry={() => alert('refetch')}
+          />
+        </div>
+      </Example>
+
+      <Example
+        title="Surface: page (route-level error)"
+        description={`Use surface="page" for a route-level error state. Renders through a non-<main> root.`}
+        center={false}
+        code={`<NErrorState
+  surface="page"
+  title="Dashboard unavailable"
+  message="We are working on it."
+  onRetry={() => refetch()}
+/>`}
+      >
+        <div className="w-full border rounded-xl overflow-hidden">
+          <NErrorState
+            surface="page"
+            title="Dashboard unavailable"
+            message="We are working on it."
+            onRetry={() => alert('refetch')}
+          />
+        </div>
+      </Example>
     </ComponentPage>
   );
 }
