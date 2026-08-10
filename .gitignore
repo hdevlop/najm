@@ -211,3 +211,8 @@ packages/*/src/**/*.js
 packages/*/src/**/*.d.ts
 packages/*/src/**/*.d.ts.map
 packages/*/src/**/*.js.map
+
+# Hand-authored ambient declarations, which the rules above cannot tell apart
+# from compiler leakage. najm-kit's dts build fails without this one, so it is
+# a build input rather than an artifact and has to be tracked.
+!packages/najm-kit/src/webp.d.ts
