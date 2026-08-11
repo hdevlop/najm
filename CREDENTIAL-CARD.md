@@ -450,18 +450,51 @@ coverage can reach, and it is the reason Move 4 exists.
 - [ ] Get explicit user authorization first.
 - [ ] Publish with the minor bump from `2.10.0` to `2.11.0`. Never combine a
       dry run with a bump flag — it bumps twice.
-- [ ] Verify the published tarball actually contains the export before touching
-      Kafil.
+- [ ] Verify the tarball actually contains the export before Kafil ships on it.
+
+**"Before touching Kafil" meant two different things, and conflating them cost
+a cycle.** Separate them:
+
+- **Pre-publication validation** — permitted, and in fact the point. Pin Kafil's
+  manifests to the exact local tarball with an absolute `file:` path, install,
+  migrate, and run the full gate plus the browser acceptance. These are the same
+  bytes that will be published, so a defect found here is found before the
+  version number is spent. The pins are temporary and **must never be
+  committed**: an absolute path resolves only on the machine that wrote it and
+  would break every clone and the Docker build.
+- **Final registry pin** — needs explicit publication approval first. Only after
+  the package is published does Kafil pin the registry version and commit that
+  change.
+
+Move 7 below is the first of those. The registry pin is the last box in it.
 
 ### Move 7 — Kafil adoption
 
-- [ ] Bump `najm-kit` in Kafil root `overrides`, root `dependencies`, and
-      `apps/web/package.json` together; `bun install`.
-- [ ] Add keys to all four of
-      `packages/server/src/locales/{en,fr,ar,es}.json`: a `staff.access`
-      group (`created`, `oneTimeHint`, `initialPassword`) plus the shared
-      action and field labels the call site needs (`common.copyDetails`,
-      `common.copyError`, `common.copied`, `common.done`, `common.phone`).
+- [x] Pin `najm-kit` in Kafil root `overrides`, root `dependencies`,
+      `apps/web/package.json`, and — for `najm-theme` — the server and seed
+      manifests, to the local candidate tarballs; `bun install`. Temporary and
+      uncommitted. Done 2026-08-11 against
+      `najm-kit-2.11.0.tgz` (`c13b02fd…`) and `najm-theme-0.2.0.tgz`
+      (`9289f093…`).
+- [x] Add keys to all four of
+      `packages/server/src/locales/{en,fr,ar,es}.json`.
+
+      **Corrected during implementation.** This plan said `staff.access.*` and
+      `common.*` at the top level. Those are the *server* catalog. The frontend
+      `t()` is typed as `UiTranslationKey = LeafPaths<typeof en.ui>`, so a
+      top-level key does not typecheck at the call site — `tsc` rejected all
+      eight before anything ran. The keys belong under `ui`, and staff strings
+      follow the existing `ui.operator.staff.*` group the same dialog already
+      uses for `provisionAccessDescription`:
+
+      | Key | en | fr | ar | es |
+      | --- | --- | --- | --- | --- |
+      | `ui.operator.staff.accessCreated` | `Account created` | `Compte créé` | `تم إنشاء الحساب` | `Cuenta creada` |
+      | `ui.operator.staff.accessInitialPassword` | `Initial password` | `Mot de passe initial` | `كلمة المرور الأولية` | `Contraseña inicial` |
+      | `ui.operator.staff.accessOneTimeHint` | one-time handover sentence | ✓ | ✓ | ✓ |
+
+      Plus the shared action and field labels the call site needs, under
+      `ui.common`: `copyDetails`, `copyError`, `copied`, `done`, `phone`.
       The `common.copyError` key is what the component's `copyErrorLabel` prop
       binds to; without it, Arabic, French, and Spanish users fall back to
       English failure copy. Parity is enforced by
