@@ -42,6 +42,8 @@
     },
     "actions": {
       "save": "Save changes",
+      "import": "Import theme",
+      "export": "Export theme",
       "saving": "Saving…",
       "reset": "Reset to factory",
       "resetAppearance": "Reset appearance to factory",
@@ -108,6 +110,7 @@
       "brandingConflict": "Branding was changed by someone else. Reload before saving again.",
       "forbidden": "You do not have permission to change this.",
       "invalidDesign": "That design was rejected: {reason}",
+      "invalidThemeFile": "That theme file is invalid.",
       "invalidImage": "That file is not a supported image.",
       "imageTooLarge": "That image is larger than this slot allows.",
       "presetNotFound": "That saved theme no longer exists.",

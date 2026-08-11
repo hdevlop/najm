@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.11.1 - 2026-08-11
+
+- Fixed `NajmThemeProvider` precedence so an explicit runtime `mode` overrides
+  a preset stored in the design config. An explicit `preset` prop still wins,
+  allowing deliberately fixed-preset subtrees without producing mixed light
+  and dark application surfaces.
+
 ## 2.11.0 - 2026-08-10
 
 - Gave every keyboard-focusable primitive a visible focus ring, from one shared

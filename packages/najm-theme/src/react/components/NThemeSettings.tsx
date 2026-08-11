@@ -49,7 +49,13 @@ export function NThemeSettings({
     sections.push({
       key: "appearance",
       label: t("theme.settings.appearanceTab"),
-      node: <NThemeAppearanceSettings disabled={disabled} />,
+      node: (
+        <NThemeAppearanceSettings
+          disabled={disabled}
+          showFileActions={false}
+          showResetAction={false}
+        />
+      ),
     });
   }
   if (features.branding) {
@@ -63,7 +69,7 @@ export function NThemeSettings({
     sections.push({
       key: "presets",
       label: t("theme.settings.presetsTab"),
-      node: <NThemePresetSettings disabled={disabled} />,
+      node: <NThemePresetSettings disabled={disabled} showApplyAction={false} />,
     });
   }
 
@@ -92,7 +98,13 @@ export function NThemeSettings({
   return (
     <div className={`najm-theme-settings ${className ?? ""}`.trim()}>
       {body}
-      {showActions ? <NThemeSettingsActions /> : null}
+      {showActions ? (
+        <NThemeSettingsActions
+          display="compact"
+          showFileActions
+          showDiscard={false}
+        />
+      ) : null}
     </div>
   );
 }

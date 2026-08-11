@@ -41,15 +41,28 @@
 
 .najm-theme-branding-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(14rem, 1fr));
-  gap: 1.5rem;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 1rem;
 }
 
 .najm-theme-branding-slot {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  align-items: flex-start;
+  gap: 0.75rem;
   min-inline-size: 0;
+  padding: 0.875rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--card);
+}
+
+.najm-theme-branding-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.75rem;
+  inline-size: 100%;
 }
 
 .najm-theme-branding-label {
@@ -60,11 +73,20 @@
 }
 
 .najm-theme-branding-provenance,
+.najm-theme-branding-constraints,
 .najm-theme-note {
   font-size: 0.8125rem;
   line-height: 1.25rem;
   color: var(--muted-foreground);
   margin-block: 0;
+}
+
+.najm-theme-branding-provenance {
+  text-align: end;
+}
+
+.najm-theme-branding-constraints {
+  margin-block-start: -0.25rem;
 }
 
 .najm-theme-preset-apply {
@@ -96,10 +118,38 @@
   margin-inline-start: auto;
 }
 
+.najm-theme-actions-save {
+  margin-inline-start: auto;
+}
+
+/* NSheet already owns the footer divider and padding. The actions keep their
+   ordinary standalone frame everywhere else. */
+.najm-theme-actions.najm-theme-actions--sheet-footer {
+  inline-size: 100%;
+  flex-flow: row nowrap;
+  align-items: center;
+  padding-block-start: 0;
+  border-block-start: 0;
+}
+
+.najm-theme-actions--sheet-footer .najm-theme-actions-buttons {
+  flex: 1 1 auto;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  margin-inline-start: auto;
+}
+
 .najm-theme-status {
   font-size: 0.875rem;
   color: var(--muted-foreground);
   margin-block: 0;
+}
+
+.najm-theme-file-error {
+  flex-basis: 100%;
+  margin-block: 0;
+  color: var(--destructive);
+  font-size: 0.8125rem;
 }
 
 /* Colour is not the only signal — the text itself changes — but the emphasis

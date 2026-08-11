@@ -42,6 +42,8 @@
     },
     "actions": {
       "save": "Enregistrer",
+      "import": "Importer le thème",
+      "export": "Exporter le thème",
       "saving": "Enregistrement…",
       "reset": "Réinitialiser",
       "resetAppearance": "Réinitialiser l'apparence",
@@ -108,6 +110,7 @@
       "brandingConflict": "L'identité visuelle a été modifiée par quelqu'un d'autre. Rechargez avant d'enregistrer à nouveau.",
       "forbidden": "Vous n'avez pas l'autorisation de modifier cela.",
       "invalidDesign": "Ce design a été rejeté : {reason}",
+      "invalidThemeFile": "Ce fichier de thème n’est pas valide.",
       "invalidImage": "Ce fichier n'est pas une image prise en charge.",
       "imageTooLarge": "Cette image dépasse la taille autorisée pour cet emplacement.",
       "presetNotFound": "Ce thème enregistré n'existe plus.",

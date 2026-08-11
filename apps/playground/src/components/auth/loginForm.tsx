@@ -58,6 +58,10 @@ export function LoginForm({ googleEnabled = false }: { googleEnabled?: boolean }
 
   const form = useForm<Values>({
     resolver: zodResolver(schema),
+    // Give feedback after a field has actually been visited, then keep it live
+    // while the user corrects the value. The default onSubmit-only mode made
+    // the FormMessage slots look broken during ordinary keyboard/touch use.
+    mode: 'onTouched',
     defaultValues: {
       identifier: '',
       password: '',

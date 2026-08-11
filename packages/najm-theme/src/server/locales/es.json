@@ -42,6 +42,8 @@
     },
     "actions": {
       "save": "Guardar cambios",
+      "import": "Importar tema",
+      "export": "Exportar tema",
       "saving": "Guardando…",
       "reset": "Restablecer",
       "resetAppearance": "Restablecer la apariencia",
@@ -108,6 +110,7 @@
       "brandingConflict": "Otra persona cambió la identidad visual. Recarga antes de guardar de nuevo.",
       "forbidden": "No tienes permiso para cambiar esto.",
       "invalidDesign": "Ese diseño fue rechazado: {reason}",
+      "invalidThemeFile": "Ese archivo de tema no es válido.",
       "invalidImage": "Ese archivo no es una imagen compatible.",
       "imageTooLarge": "Esa imagen supera el tamaño permitido para este espacio.",
       "presetNotFound": "Ese tema guardado ya no existe.",

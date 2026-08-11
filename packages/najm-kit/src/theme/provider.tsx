@@ -123,7 +123,12 @@ export function NajmThemeProvider({
   const depth = React.useContext(NajmThemeDepthContext);
   const parentMode = React.useContext(NajmThemeModeContext);
   const parentAppearance = React.useContext(NajmAppearanceContext);
-  const effectivePreset = preset ?? config?.preset;
+  // An explicit runtime mode is the live application preference and therefore
+  // outranks a preset stored in the serializable design config. Keeping the
+  // configured preset here produced mixed pages such as `<html class="dark">`
+  // around a light scoped provider. An explicit `preset` prop still wins when
+  // a caller deliberately wants a fixed-preset subtree.
+  const effectivePreset = preset ?? (mode === undefined ? config?.preset : undefined);
   const effectiveMode = mode ?? config?.mode;
   const effectiveAccent = accent ?? config?.accent;
   const effectiveAccentOnly = accentOnly ?? config?.accentOnly;

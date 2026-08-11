@@ -95,6 +95,21 @@ describe("slot rendering", () => {
     expect(expanded.textContent).toContain("Using the built-in image");
   });
 
+  it("presents each slot as a clean card with an uncropped preview", async () => {
+    const { client } = makeFakeClient();
+    const view = await mount({ client });
+
+    const expanded = view.container.querySelector("[data-slot='sidebarLogoExpanded']")!;
+    expect(expanded.classList.contains("najm-theme-branding-slot")).toBe(true);
+    expect(expanded.querySelector("img")?.className).toContain("object-contain");
+    expect(expanded.querySelector(".najm-theme-branding-constraints")?.textContent).toContain(
+      "PNG",
+    );
+    expect(expanded.querySelector("button[aria-label='Replace — Sidebar logo']")?.className).toContain(
+      "nimage-input-compact-overlay",
+    );
+  });
+
   it("names the slot an inherited one borrows from", async () => {
     const base = brandingResponse();
     const { client } = makeFakeClient({

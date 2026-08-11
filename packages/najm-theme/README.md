@@ -537,20 +537,28 @@ NThemePresetSettings       NThemeSettingsResetButton
 - Appearance and branding save as **independent requests**. A branding failure is
   never reported as though the appearance save had rolled back, when it
   committed and is live.
-- Preset selection previews in memory; nothing persists until an explicit apply.
+- Preset selection previews in memory; nothing persists until Apply in the
+  legacy section flow or Save in the standard shared-action flow.
 - Every component takes `className`, label overrides, and a `disabled` prop.
 - **Hiding a control is never the authorization boundary.** Capabilities drive
   presentation; the guard on the route decides.
 
 ### Composition
 
-A custom tabbed sheet:
+A custom tabbed sheet using the same compact interaction as the ready-made
+composite:
 
 ```tsx
 <NThemeSettingsProvider client={themeClient}>
   <NSheet open={open} onOpenChange={setOpen} icon={Palette} title="Theme">
-    <NTabs items={tabs} />
-    <NThemeSettingsActions />
+    <NTabs
+      items={[
+        { value: "presets", label: "Saved themes", content: <NThemePresetSettings showApplyAction={false} /> },
+        { value: "appearance", label: "Appearance", content: <NThemeAppearanceSettings showFileActions={false} /> },
+        { value: "branding", label: "Branding", content: <NThemeBrandingSettings /> },
+      ]}
+    />
+    <NThemeSettingsActions display="compact" showFileActions showDiscard={false} />
   </NSheet>
 </NThemeSettingsProvider>
 ```

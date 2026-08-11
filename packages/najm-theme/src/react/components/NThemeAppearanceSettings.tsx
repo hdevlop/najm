@@ -14,6 +14,13 @@ export interface NThemeAppearanceSettingsProps {
   disabled?: boolean;
   /** Whether to render the customizer's own Theme/Typography tabs. */
   showTabs?: boolean;
+  /**
+   * Render Import/Export inside the customizer. Disable this when a shared
+   * `NThemeSettingsActions` bar owns those file actions.
+   */
+  showFileActions?: boolean;
+  /** Render the customizer's local section reset. Disable it for a shared footer. */
+  showResetAction?: boolean;
   tabs?: NThemeCustomizerProps["tabs"];
   fontOptions?: NThemeCustomizerProps["fontOptions"];
   /** Passed through to the kit's customizer for per-control wording. */
@@ -36,6 +43,8 @@ export function NThemeAppearanceSettings({
   className,
   disabled,
   showTabs,
+  showFileActions = true,
+  showResetAction = true,
   tabs,
   fontOptions,
   customizerLabels,
@@ -83,7 +92,8 @@ export function NThemeAppearanceSettings({
         // Presets have their own section with its own server-backed lifecycle,
         // so the customizer's built-in picker stays off. Rendering both would
         // give a page two preset selectors that disagree.
-        showFileActions
+        showFileActions={showFileActions}
+        showResetAction={showResetAction}
       />
     </div>
   );

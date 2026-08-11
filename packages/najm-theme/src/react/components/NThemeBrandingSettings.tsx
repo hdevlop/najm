@@ -17,10 +17,10 @@ export interface NThemeBrandingSettingsProps {
 
 /** The preview box shape per slot kind. Presentation only. */
 const ASPECT_CLASS: Record<BrandingSlotView["previewAspect"], string> = {
-  square: "aspect-square w-24",
-  wide: "aspect-[3/1] w-48",
-  panel: "aspect-[4/3] w-48",
-  natural: "w-48",
+  square: "aspect-square w-28",
+  wide: "aspect-[3/1] w-full",
+  panel: "aspect-[16/9] w-full",
+  natural: "aspect-[3/1] w-full",
 };
 
 function formatBytes(bytes: number): string {
@@ -85,6 +85,10 @@ export function NThemeBrandingSettings({
     >
       {slots.map((slot) => {
         const label = t(slot.labelKey);
+        const accepts = t("theme.branding_ui.accepts", {
+          types: formatTypes(slot.acceptedMimeTypes),
+          size: formatBytes(slot.maxBytes),
+        });
         const provenance = slot.pendingPreviewUrl
           ? t("theme.status.uploaded")
           : slot.isCustom
@@ -112,9 +116,13 @@ export function NThemeBrandingSettings({
             role="group"
             aria-label={label}
           >
-            <p className="najm-theme-branding-label">{label}</p>
+            <div className="najm-theme-branding-header">
+              <p className="najm-theme-branding-label">{label}</p>
+              <p className="najm-theme-branding-provenance" aria-live="polite">
+                {slot.uploading ? t("theme.status.uploading") : provenance}
+              </p>
+            </div>
             <ImageInput
-              title={label}
               // The local object URL while a candidate is pending, otherwise
               // whatever the server resolved — including an inherited mark, so
               // the box never looks empty when the page will show something.
@@ -127,21 +135,20 @@ export function NThemeBrandingSettings({
               allowClear={slot.isCustom || slot.pendingFileName !== null}
               disabled={readOnly || slot.uploading}
               previewClassName={ASPECT_CLASS[slot.previewAspect]}
+              imageClassName="object-contain bg-muted/30 p-2"
+              // Keep the image itself clean. On fine pointers the short
+              // replace overlay appears only on hover/focus; empty slots keep
+              // their ordinary visible upload prompt.
+              contentClassName={slot.displayPath ? "nimage-input-compact-overlay" : undefined}
               previewAlt={label}
-              subtitle={t("theme.branding_ui.accepts", {
-                types: formatTypes(slot.acceptedMimeTypes),
-                size: formatBytes(slot.maxBytes),
-              })}
+              title={slot.displayPath ? t("theme.actions.replace") : t("theme.actions.upload")}
+              replaceTitle={t("theme.actions.replace")}
+              replaceSubtitle=""
               buttonLabel={slot.displayPath ? t("theme.actions.replace") : t("theme.actions.upload")}
               clearAriaLabel={`${t("theme.actions.clear")} — ${label}`}
               replaceAriaLabel={`${t("theme.actions.replace")} — ${label}`}
             />
-            {/* Announced rather than merely coloured: "inherited from the
-                sidebar mark" is the difference between a slot that is empty and
-                one that is deliberately reusing another. */}
-            <p className="najm-theme-branding-provenance" aria-live="polite">
-              {slot.uploading ? t("theme.status.uploading") : provenance}
-            </p>
+            <p className="najm-theme-branding-constraints">{accepts}</p>
           </div>
         );
       })}

@@ -1,7 +1,14 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { NThemeSettings, NThemeSettingsProvider } from 'najm-theme/react';
+import { Palette } from 'lucide-react';
+import { NSheet } from 'najm-kit';
+import {
+  NThemeSettings,
+  NThemeSettingsActions,
+  NThemeSettingsProvider,
+} from 'najm-theme/react';
 
 /**
  * The package's settings composite, mounted under its provider.
@@ -14,10 +21,38 @@ import { NThemeSettings, NThemeSettingsProvider } from 'najm-theme/react';
  */
 export function ThemeSettingsSurface() {
   const router = useRouter();
+  const [open, setOpen] = useState(true);
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) router.push('/dashboard');
+  };
 
   return (
     <NThemeSettingsProvider onPersisted={() => router.refresh()}>
-      <NThemeSettings />
+      <NSheet
+        open={open}
+        onOpenChange={handleOpenChange}
+        icon={Palette}
+        title="Theme & branding"
+        description="Appearance, presets, and brand assets"
+        width={560}
+        classNames={{
+          body: 'p-0 lg:p-0 2xl:p-0',
+          footer: 'py-2',
+        }}
+        footer={
+          <NThemeSettingsActions
+            className="najm-theme-actions--sheet-footer"
+            display="compact"
+            showStatus={false}
+            showFileActions
+            showDiscard={false}
+          />
+        }
+      >
+        <NThemeSettings className="p-3 2xl:p-4" showActions={false} />
+      </NSheet>
     </NThemeSettingsProvider>
   );
 }

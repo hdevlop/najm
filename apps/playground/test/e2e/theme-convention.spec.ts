@@ -43,6 +43,39 @@ const HERE = path.dirname(fileURLToPath(import.meta.url));
 const FIXTURES = path.join(HERE, 'fixtures', 'theme');
 const FACTORY_URL = /^\/api\/theme\/branding\/factory\/[A-Za-z]+\.[0-9a-f]{8,}\.(png|webp)$/;
 
+/** Measures the first login label against the card it is painted on. */
+async function loginLabelContrast(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const label = document.querySelector('form label');
+    const surface = document.querySelector('form')?.parentElement;
+    if (!label || !surface) throw new Error('Login label or card was not rendered');
+
+    const toRgb = (colour: string): [number, number, number] => {
+      const canvas = document.createElement('canvas');
+      canvas.width = 1;
+      canvas.height = 1;
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+      if (!context) throw new Error('Canvas 2D context is unavailable');
+      context.fillStyle = colour;
+      context.fillRect(0, 0, 1, 1);
+      const [red, green, blue] = context.getImageData(0, 0, 1, 1).data;
+      return [red, green, blue];
+    };
+    const luminance = ([red, green, blue]: [number, number, number]) => {
+      const channels = [red, green, blue].map((channel) => {
+        const value = channel / 255;
+        return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+      });
+      return 0.2126 * channels[0]! + 0.7152 * channels[1]! + 0.0722 * channels[2]!;
+    };
+
+    const foreground = luminance(toRgb(getComputedStyle(label).color));
+    const background = luminance(toRgb(getComputedStyle(surface).backgroundColor));
+    return (Math.max(foreground, background) + 0.05)
+      / (Math.min(foreground, background) + 0.05);
+  });
+}
+
 /**
  * The upload for each slot, deliberately in the *other* format to the factory
  * file it replaces. That way one pass proves PNG and WebP both round-trip as
@@ -215,6 +248,24 @@ test.describe('desktop', () => {
   test('1. signed-out login serves both factory marks over immutable hashed URLs', async () => {
     await page.goto('/login');
 
+    const themeState = await page.evaluate(() => ({
+      documentDark: document.documentElement.classList.contains('dark'),
+      provider: document.querySelector<HTMLElement>('[data-najm-theme]')?.dataset.najmTheme ?? null,
+    }));
+    expect(themeState.provider, 'the scoped provider follows the document mode').toMatch(
+      themeState.documentDark ? /^dark(?:-|$)/ : /^light(?:-|$)/,
+    );
+    expect(
+      await loginLabelContrast(page),
+      'login label has WCAG AA contrast against its card',
+    ).toBeGreaterThanOrEqual(4.5);
+
+    const identifier = page.getByRole('textbox', { name: 'Email or phone' });
+    await identifier.fill('');
+    await identifier.focus();
+    await page.getByRole('textbox', { name: 'Password' }).focus();
+    await expect(page.getByText('Enter your email or phone', { exact: true })).toBeVisible();
+
     await expectPainted(authLogo(page), 'auth logo');
     await expectPainted(authHero(page), 'auth hero');
 
@@ -267,6 +318,14 @@ test.describe('desktop', () => {
 
   test('3. the settings composite renders every section from the package', async () => {
     await page.goto('/dashboard/theme');
+
+    const sheet = page.locator('[data-slot="sheet-content"]');
+    await expect(sheet).toBeVisible();
+    await expect(sheet.locator('[data-slot="sheet-header"]')).toContainText('Theme & branding');
+    await expect(sheet.locator('[data-slot="sheet-body"]')).toBeVisible();
+    await expect(
+      sheet.locator('[data-slot="sheet-footer"] [data-najm-theme-actions]'),
+    ).toBeVisible();
 
     for (const name of ['Appearance', 'Branding', 'Saved themes']) {
       await expect(page.getByRole('tab', { name, exact: true })).toBeVisible();

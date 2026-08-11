@@ -153,6 +153,27 @@ describe("NajmThemeProvider â€” opt-in theming", () => {
     expect(inline.getPropertyValue("--radius-md")).toBe("var(--radius)");
   });
 
+  test("explicit runtime mode overrides a preset from JSON config", () => {
+    render(
+      <NajmThemeProvider
+        config={{
+          preset: "light",
+          tokens: { primary: "oklch(0.55 0.18 255)" },
+        }}
+        mode="dark"
+      >
+        <span>x</span>
+      </NajmThemeProvider>
+    );
+
+    const host = document.querySelector("[data-najm-theme]") as HTMLElement;
+    const inline = (host as any).style;
+    expect(host.getAttribute("data-najm-theme")).toBe("dark-neutral");
+    expect(inline.getPropertyValue("--background")).toBe("oklch(0.1417 0.0044 285.819)");
+    expect(inline.getPropertyValue("--foreground")).toBe("oklch(0.9683 0.0014 286.375)");
+    expect(inline.getPropertyValue("--primary")).toBe("oklch(0.55 0.18 255)");
+  });
+
   test("accentOnly: only the accent token keys are emitted on the wrapper", () => {
     render(
       <NajmThemeProvider

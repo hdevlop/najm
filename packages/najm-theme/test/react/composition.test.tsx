@@ -201,6 +201,8 @@ describe("partial features", () => {
     const tablist = view.container.querySelector("[role='tablist']")!;
     expect(tablist).toBeTruthy();
     expect(tablist.querySelectorAll(":scope > [role='tab']")).toHaveLength(3);
+    expect(screen.queryByRole("button", { name: "Reset section" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Reset to factory" })).toBeTruthy();
   });
 });
 

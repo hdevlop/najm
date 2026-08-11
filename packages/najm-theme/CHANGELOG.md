@@ -1,5 +1,33 @@
 # najm-theme
 
+## 0.2.1
+
+The settings-surface cleanup release.
+
+### Changed
+
+- The ready-made `NThemeSettings` now has one persistence model: choosing a
+  saved theme previews it, while the compact footer Save action is the only
+  action that persists the draft.
+- Import, Export, Reset, and Save are consolidated into one icon-only action
+  bar. Reset opens a resource-named menu, keeping appearance and branding
+  restoration distinct without rendering two destructive buttons.
+- `NThemeAppearanceSettings` accepts `showFileActions={false}` so a custom
+  composition can move Import/Export into its shared footer without duplicates.
+- Branding slots render as compact single-column cards with clean, uncropped
+  previews, separate provenance/format text, and short hover/focus replacement
+  chrome.
+- The ready-made composite suppresses section-local reset controls so a custom
+  sheet can own one footer action bar without duplicate destructive actions.
+
+### Added
+
+- `display="compact"`, `showFileActions`, `exportFileName`, and
+  `onImportError` on `NThemeSettingsActions`.
+- `showResetAction` on `NThemeAppearanceSettings` for host-owned footers.
+- Localized Import/Export and invalid-theme-file labels in English, French,
+  Arabic, and Spanish.
+
 ## 0.2.0
 
 The factory theme convention. One directory replaces the callbacks, the asset
