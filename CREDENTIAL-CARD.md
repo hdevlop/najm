@@ -1,8 +1,8 @@
 # Najm Kit Credentials Card Plan
 
-Status: **Moves 0–5 complete. Visual acceptance passed on rendered-browser
-evidence (2026-08-11). Packed as a local candidate; not published. Move 7
-(Kafil adoption) is the remaining work.**
+Status: **Published as `najm-kit@2.11.0` and adopted by Kafil. Package and
+Playground acceptance are complete. Kafil's authenticated manual browser check
+remains open by explicit user decision.**
 
 Written: 2026-08-10
 Updated: 2026-08-11
@@ -447,10 +447,12 @@ coverage can reach, and it is the reason Move 4 exists.
 
 ### Move 6 — Publish
 
-- [ ] Get explicit user authorization first.
-- [ ] Publish with the minor bump from `2.10.0` to `2.11.0`. Never combine a
+- [x] Get explicit user authorization first.
+- [x] Publish with the minor bump from `2.10.0` to `2.11.0`. Never combine a
       dry run with a bump flag — it bumps twice.
-- [ ] Verify the tarball actually contains the export before Kafil ships on it.
+- [x] Verify the published registry tarball contains the export and matches the
+      candidate SHA-256
+      `c13b02fdf014c8c1c52db8c1d7b32d385ed64d36a47f414c0b170e626cfb618d`.
 
 **"Before touching Kafil" meant two different things, and conflating them cost
 a cycle.** Separate them:
@@ -508,16 +510,16 @@ Move 7 below is the first of those. The registry pin is the last box in it.
       | `common.copied` | `Copied` | `Copié` | `تم النسخ` | `Copiado` |
       | `common.done` | `Done` | `Terminé` | `تم` | `Listo` |
       | `common.phone` | `Phone` | `Téléphone` | `الهاتف` | `Teléfono` |
-- [ ] Rewrite the provision-access branch in
+- [x] Rewrite the provision-access branch in
       `apps/web/src/features/Staff/components/StaffForms.tsx`:
 
 ```tsx
 <NCredentialsCard
-  title={t("staff.access.created")}
-  description={t("staff.access.oneTimeHint")}
+  title={t("operator.staff.accessCreated")}
+  description={t("operator.staff.accessOneTimeHint")}
   fields={[
     { label: t("common.phone"), value: credentials.phone, icon: Phone },
-    { label: t("staff.access.initialPassword"), value: credentials.password, icon: KeyRound },
+    { label: t("operator.staff.accessInitialPassword"), value: credentials.password, icon: KeyRound },
   ]}
   copyLabel={t("common.copyDetails")}
   copiedLabel={t("common.copied")}
@@ -531,13 +533,17 @@ the failure state is the one nobody clicks through by hand — and omitting it i
 silent: the card falls back to the packaged English `Copy failed`, so an Arabic
 operator sees Latin text only at the moment something has already gone wrong.
 
-- [ ] Delete `apps/web/src/shared/InitialCredentialsCard/`.
-- [ ] `grep -rn "InitialCredentialsCard" apps/web/src` returns nothing.
-- [ ] Run the Kafil gate:
+- [x] Delete `apps/web/src/shared/InitialCredentialsCard/`.
+- [x] `grep -rn "InitialCredentialsCard" apps/web/src` returns nothing.
+- [x] Run the Kafil gate against the exact candidate tarballs:
       `bun run lint && bun run typecheck && bun run test && bun run build && bun run db:generate`.
       `db:generate` must produce no new migration.
+- [x] Publish, replace the temporary Kafil `file:` pins with registry versions,
+      refresh `bun.lock`, and verify `bun install --frozen-lockfile`.
 - [ ] Open the staff provision-access dialog in the running app and confirm the
-      handover in English and Arabic.
+      handover in English and Arabic. Deferred to manual acceptance by explicit
+      user instruction; no automated or browser suite was rerun after registry
+      pinning because the published bytes match the tested candidate.
 
 ### Move 8 — Evidence ledger
 

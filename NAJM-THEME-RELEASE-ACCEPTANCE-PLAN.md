@@ -1,11 +1,10 @@
 # Najm Theme 0.2 Release Acceptance and Kafil Migration Plan
 
-Status: `najm-theme@0.2.0` package implementation and Playground wiring exist in
-the local worktree. **Sections 2 to 7 are complete and evidenced** — the DX
-closeout was already implemented, and Playwright browser acceptance now passes
-on a production build, with the record in `docs/evidence/najm-theme-0.2/README.md`.
-Kafil migration (section 8) and packaging, commit, push, and publication
-(section 9) remain open.
+Status: **Published as `najm-theme@0.2.0`, pushed in Najm release PR #4, and
+registry-pinned in Kafil.** Sections 2–7 and the Kafil source migration are
+complete. Kafil's authenticated manual browser acceptance remains open by
+explicit user decision; the package and Playground evidence remains recorded
+in `docs/evidence/najm-theme-0.2/README.md`.
 
 Browser acceptance found **seven** defects that every unit gate had missed; all
 seven are fixed, re-verified, and covered by regression tests that were each run
@@ -357,51 +356,55 @@ unit tests.
 
 ## 8. Kafil migration after Playground passes
 
-Kafil remains pinned to `najm-theme@0.1.1`. Do not migrate it against a guessed
-API or publish merely to make the package installable. Validate it first against
-the exact local packed 0.2.0 candidate without committing a local-file pin.
+Kafil validated the exact local 0.2.0 candidate before publication, then moved
+to the byte-identical registry tarball. No local-file pin is committed.
 
-- [ ] Create Kafil's canonical `theme/` source with `theme.json` and four
+- [x] Create Kafil's canonical `theme/` source with `theme.json` and four
   required PNG/WebP factory assets.
-- [ ] Use the shared definition in backend registration and the final no-path
+- [x] Use the shared definition in backend registration and the final no-path
   RSC bootstrap in `apps/web/src/lib/serverTheme.ts`.
-- [ ] Delete `packages/server/src/config/themeFactory.ts`,
+- [x] Delete `packages/server/src/config/themeFactory.ts`,
   `packages/server/src/appearance.ts`, `packages/server/src/branding.ts`, and
   `packages/server/src/brandingPaths.ts` once all imports are gone.
-- [ ] Replace Kafil's local `BrandingImage` fallback map with `NThemeImage` and
+- [x] Replace Kafil's local `BrandingImage` fallback map with `NThemeImage` and
   the simplified provider contract.
-- [ ] Remove repeated factory callbacks, branding paths, `/api/theme` knowledge,
+- [x] Remove repeated factory callbacks, branding paths, `/api/theme` knowledge,
   and obsolete package exports/tests.
-- [ ] Preserve Kafil's permissions, audit sink, storage namespace, upload
+- [x] Preserve Kafil's permissions, audit sink, storage namespace, upload
   ceilings, backfill/rollback behavior, presets, and dashboard dynamic changes.
-- [ ] Keep temporary redirects for Kafil's published legacy theme paths until
+- [x] Keep temporary redirects for Kafil's published legacy theme paths until
   deployment verification closes the rollback window.
-- [ ] Run Kafil's full gate:
+- [x] Run Kafil's full gate against the exact candidate tarballs:
   `bun run lint && bun run typecheck && bun run test && bun run build && bun run db:generate`.
-- [ ] Confirm `db:generate` creates no migration unless a separately reviewed
+- [x] Confirm `db:generate` creates no migration unless a separately reviewed
   schema change is intended.
 - [ ] Run Kafil browser acceptance for auth logo/hero, expanded/collapsed
   sidebar, Settings uploads, persistence, controlled asset failure, reset,
   desktop, mobile, keyboard, RTL, console, and network behavior.
-- [ ] Store Kafil evidence under `docs/evidence/najm-theme-0.2/`.
+- [x] Store the completed and partial Kafil evidence under
+  `docs/evidence/najm-theme-0.2/`. Authenticated states remain explicitly marked
+  for manual acceptance.
 
 ## 9. Packaging, commit, push, and publication gate
 
-- [ ] Review the complete Najm worktree and separate unrelated changes.
-- [ ] Build `najm-theme` from clean output and inspect exports, declarations,
+- [x] Review the complete Najm worktree and separate unrelated changes.
+- [x] Build `najm-theme` from clean output and inspect exports, declarations,
   README, changelog, API snapshot, CSS, and `dist/theme/*`.
-- [ ] Produce and inspect the actual `najm-theme-0.2.0.tgz`; verify there is no
+- [x] Produce and inspect the actual `najm-theme-0.2.0.tgz`; verify there is no
   source-only dependency and run a clean-install smoke from that exact tarball.
-- [ ] Rerun all package, Next 16, Playground unit, production build, and browser
+- [x] Rerun all package, Next 16, Playground unit, production build, and browser
   gates against the final candidate.
-- [ ] Confirm the evidence README names the same candidate/tarball being
+- [x] Confirm the evidence README names the same candidate/tarball being
   reviewed.
-- [ ] Prepare the versioned Git commit only after the whole scoped worktree is
+- [x] Prepare the versioned Git commit only after the whole scoped worktree is
   understood and clean enough for release.
-- [ ] Ask for explicit user approval before push or npm publication.
-- [ ] After publication, pin Kafil to the registry `0.2.0`, refresh its Bun
-  lockfile, verify `bun install --frozen-lockfile`, and rerun Kafil's full and
-  browser gates before its separate commit/push.
+- [x] Ask for explicit user approval before push or npm publication.
+- [x] Publish the exact tarball and verify the registry download SHA-256 is
+  `9289f09359c297fbad460be9f2391fbdc2ed70bc5c4316285b09d33bd8a5013e`.
+- [x] Pin Kafil to registry `0.2.0`, refresh its Bun lockfile, and verify
+  `bun install --frozen-lockfile`. Full/browser gates were not rerun after the
+  registry pin at the user's explicit request; the registry bytes match the
+  already-tested candidate, and authenticated visual checks remain manual.
 
 ## 10. Definition of done
 
