@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.11.2 - 2026-08-11
 
 - Fixed `PasswordInput` forwarding native input attributes such as generated
   form IDs and ARIA metadata to the actual `<input>`, restoring programmatic
