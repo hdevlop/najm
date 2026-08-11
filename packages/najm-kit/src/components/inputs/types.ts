@@ -1,4 +1,4 @@
-import type { ComponentType, CSSProperties, ReactNode } from "react";
+import type { ComponentType, CSSProperties, InputHTMLAttributes, ReactNode } from "react";
 
 export type InputIcon = string | ReactNode | ComponentType<{ className?: string; style?: CSSProperties }>;
 
@@ -48,7 +48,7 @@ export interface NumberInputProps extends BaseProps {
   showIcon?: boolean;
 }
 
-export interface PasswordInputProps extends BaseProps {
+export interface PasswordInputProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "onChange" | "placeholder" | "type" | "value"> {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;

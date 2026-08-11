@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Fixed `PasswordInput` forwarding native input attributes such as generated
+  form IDs and ARIA metadata to the actual `<input>`, restoring programmatic
+  label association for assistive technology and browser automation.
+
 ## 2.11.1 - 2026-08-11
 
 - Fixed `NajmThemeProvider` precedence so an explicit runtime `mode` overrides
