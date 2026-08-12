@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.3 - 2026-08-12
+
+- fix(client): keep authenticated transport available during ordinary anonymous
+  hydration so credential-setup and other pre-authentication flows can run,
+  while preserving the explicit post-logout transport latch
+
 ## 3.1.2 - 2026-08-12
 
 - security(tokens): rotate refresh families with a conditional update instead

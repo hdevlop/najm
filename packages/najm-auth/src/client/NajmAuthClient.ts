@@ -341,7 +341,11 @@ export class NajmAuthClient {
 
     if (!session || !session.user) {
       // Authoritative "no session" from the server — skip the boot fetch.
-      this.api.blockAuthenticatedRequests();
+      // Anonymous hydration is not a logout event. Keep transport available
+      // for credential-setup and other pre-authentication flows unless an
+      // explicit logout already latched the client closed.
+      if (this.refreshBlocked) this.api.blockAuthenticatedRequests();
+      else this.api.allowAuthenticatedRequests();
       this.state = { ...INITIAL_STATE };
       this.notify();
       return;

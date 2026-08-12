@@ -9,6 +9,32 @@ const accessToken = `header.${Buffer.from(JSON.stringify({
 })).toString('base64url')}.signature`;
 
 describe('NajmAuthClient logout/refresh race', () => {
+  test('anonymous hydration keeps credential-setup transport available', async () => {
+    const originalFetch = globalThis.fetch;
+    const calls: string[] = [];
+    globalThis.fetch = (async (input: string | URL | Request) => {
+      calls.push(String(input));
+      return new Response(JSON.stringify({ data: { setupRequired: true } }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as typeof fetch;
+
+    try {
+      const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
+      client.hydrate(null);
+
+      await expect(client.api.get('/auth/credential-setup/setup')).resolves.toEqual({
+        data: { setupRequired: true },
+      });
+      expect(calls).toEqual(['/api/auth/credential-setup/setup']);
+
+      client.destroy();
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   test('aborts and drains an in-flight refresh before the final logout request', async () => {
     const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
     const calls: string[] = [];
@@ -74,6 +100,7 @@ describe('NajmAuthClient logout/refresh race', () => {
     try {
       const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
       await client.logout();
+      client.hydrate(null);
 
       await expect(client.api.get('/protected')).rejects.toThrow(
         'Authenticated requests unavailable after logout',
