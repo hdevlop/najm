@@ -730,6 +730,9 @@ available body. Table rows use the same header/row geometry as dynamic page
 sizing, while cards measure the active grid columns, card height, and gap. The
 loading surface also follows the loaded `bordered`, design recipe, radius,
 border color, shadow, and `classNames.content`/`classNames.cards` contract.
+The measured fit owns the initial page size. Once a reader explicitly chooses
+Rows/page, `NTable` preserves that choice and scrolls the bounded table body
+when the requested rows exceed the available height.
 
 Use `cardPagination` to choose pagination presentation whenever the effective
 rendered mode is cards:

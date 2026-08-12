@@ -87,6 +87,8 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   const contentCardPagination = useTableStore.use.cardPagination();
   const contentCalculatedPageSize = useTableStore.use.calculatedPageSize();
   const contentHasMeasuredLayout = useTableStore.use.hasMeasuredLayout();
+  const isPageSizeUserSelected = useTableStore.use.isPageSizeUserSelected();
+  const contentPagination = useTableStore.use.pagination();
   const hasNoData = useTableStore.use.hasNoData();
   const showContent = useTableStore.use.showContent();
   const classNames = useTableStore.use.classNames();
@@ -134,12 +136,15 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   const allRows = table.getRowModel().rows ?? [];
   const clampRowsToMeasuredPage = contentDynamicHeight
     && contentManualPagination
+    && !isPageSizeUserSelected
     && contentCardPagination.mode === "paged"
     && contentHasMeasuredLayout
     && contentCalculatedPageSize > 0;
   const visibleRows = clampRowsToMeasuredPage
     ? allRows.slice(0, contentCalculatedPageSize)
     : allRows;
+  const userPageNeedsScroll = isPageSizeUserSelected
+    && contentPagination.pageSize > contentCalculatedPageSize;
 
   const getSortIcon = (column: any) => {
     const dir = column.getIsSorted() as string;
@@ -162,7 +167,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
         // leftover belongs to the page, not to the table. Without
         // `dynamicHeight` the row count is the caller's, so the container has
         // to keep filling its height to stay a scroll viewport.
-        contentDynamicHeight ? "max-h-full shrink" : "flex-1",
+        contentDynamicHeight && !userPageNeedsScroll ? "max-h-full shrink" : "flex-1",
         surface.className,
         classNames?.content
       )}

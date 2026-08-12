@@ -169,6 +169,19 @@ export function calculateCardPageSize(input: CalculateCardSkeletonCountInput): n
   return rows * columns;
 }
 
+/**
+ * Generic card placeholders cannot predict the height of a consumer card.
+ * Wait for real rows so their first layout measurement owns the first page
+ * size that can be painted. Table placeholders are safe because table rows
+ * have a fixed shared geometry.
+ */
+export function shouldDeferCardPageSizeUntilRows(
+  renderedMode: TableState["viewMode"],
+  hasDataRows: boolean,
+): boolean {
+  return renderedMode === "cards" && !hasDataRows;
+}
+
 function fallbackCardColumns(width: number): number {
   if (width >= 1280) return 4;
   if (width >= 1024) return 3;
@@ -332,6 +345,7 @@ export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
   const rowCount = useTableStore.use.rowCount();
   const storePagination = useTableStore.use.pagination();
   const isPaginationControlled = useTableStore.use.isPaginationControlled();
+  const isPageSizeUserSelected = useTableStore.use.isPageSizeUserSelected();
   const setPagination = useTableStore.use.setPagination();
   // Row selection - store-driven
   const storeRowSelection = useTableStore.use.rowSelection();
@@ -507,12 +521,12 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     // onPaginationChange, overriding the pageSize they passed in. A controlled
     // `pagination` prop is the durable signal. The measured size is reported
     // below instead.
-    if (manualPagination || isPaginationControlled) return;
+    if (manualPagination || isPaginationControlled || isPageSizeUserSelected) return;
     if (dynamicHeight && renderedMode === "table") table.setPageSize(calculatedPageSize);
     if (viewMode === "cards" && cardPagination.mode === "paged") {
       table.setPageSize(data.length || 9999);
     }
-  }, [calculatedPageSize, dynamicHeight, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination, isPaginationControlled]); // table stable, layout/data drive re-runs
+  }, [calculatedPageSize, dynamicHeight, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination, isPaginationControlled, isPageSizeUserSelected]); // table stable, layout/data drive re-runs
 
   // Server-paginated tables still fill their container: report the measured
   // page size through the ordinary pagination callback, debounced so a window
@@ -542,11 +556,12 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     + `${Math.round(measuredBodyHeight / GEOMETRY_BUCKET_PX)}`;
   const reportedGeometryRef = useRef<{ key: string; count: number; target: number } | null>(null);
   useLayoutEffect(() => {
-    if (!manualPagination || !dynamicHeight) return;
+    if (!manualPagination || !dynamicHeight || isPageSizeUserSelected) return;
     if (cardPagination.mode !== "paged") return;
     if (!hasMeasuredLayout || measuredBodyHeight <= 0) return;
     if (!dynamicPageSizeTarget || dynamicPageSizeTarget < 1) return;
     if (dynamicPageSizeTarget === storePagination.pageSize) return;
+    if (shouldDeferCardPageSizeUntilRows(renderedMode, hasDataRows)) return;
     const reported = reportedGeometryRef.current;
     // Saying the same thing twice is not a second report. The effect re-runs
     // many times over one load, and while the caller has not applied the size
@@ -563,13 +578,10 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
       setPagination({ pageIndex: storePagination.pageIndex, pageSize: dynamicPageSizeTarget });
     };
 
-    // A table with no rows yet is a first load, and it always commits
-    // synchronously. `reported` alone is not a good enough test for "first":
-    // one earlier report — including one for a geometry that no longer exists —
-    // consumes the fast path for the whole mount, and every report after it
-    // waits out the debounce while the caller renders at its seeded page size.
-    // The debounce exists for resizes, which by definition happen with rows on
-    // screen, so gating on emptiness leaves that behaviour untouched.
+    // A table with no rows yet can commit synchronously because its placeholder
+    // and loaded rows share one fixed geometry. Cards return above until real
+    // rows exist: a generic placeholder height would publish the wrong size,
+    // then force the real-card correction through the resize debounce.
     if (!hasDataRows) {
       commit();
       return;
@@ -593,6 +605,7 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
   }, [
     manualPagination,
     dynamicHeight,
+    isPageSizeUserSelected,
     cardPagination.mode,
     hasMeasuredLayout,
     measuredBodyHeight,
@@ -600,6 +613,7 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     dynamicPageSizeTarget,
     storePagination.pageIndex,
     storePagination.pageSize,
+    renderedMode,
     hasDataRows,
     setPagination,
   ]);

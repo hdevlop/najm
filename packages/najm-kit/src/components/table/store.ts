@@ -127,8 +127,12 @@ export interface TableState {
   pagination: { pageIndex: number; pageSize: number };
   isPaginationControlled: boolean;
   onPaginationChange: ((pagination: { pageIndex: number; pageSize: number }) => void) | null;
-  // User-intent setter for pagination
+  /** True after the reader explicitly chooses a Rows/page value. */
+  isPageSizeUserSelected: boolean;
+  // Pagination navigation and automatic sizing.
   setPagination: (pagination: { pageIndex: number; pageSize: number }) => void;
+  // Explicit Rows/page selection. Disables automatic fit sizing for this table instance.
+  setPageSizeFromUser: (pageSize: number) => void;
   // Track if we've ever synced pagination from props
   hasSyncedPaginationFromProps: boolean;
   // Row selection
@@ -261,13 +265,26 @@ export const createTableStore = (seed?: Partial<TableState>) => {
     pagination: { pageIndex: 0, pageSize: 10 },
     isPaginationControlled: false,
     onPaginationChange: null,
-    // User-intent setter for pagination
+    isPageSizeUserSelected: false,
+    // Pagination navigation and automatic sizing.
     setPagination: (pagination: { pageIndex: number; pageSize: number }) => {
       const { isPaginationControlled, onPaginationChange } = get();
       onPaginationChange?.(pagination);
       if (!isPaginationControlled) {
         set({ pagination });
       }
+    },
+    // Rows/page is an explicit request to render that many rows. Keep the
+    // bounded NTable body as the scroll viewport instead of letting the
+    // dynamic fit measurement replace the reader's choice.
+    setPageSizeFromUser: (pageSize: number) => {
+      const { isPaginationControlled, onPaginationChange } = get();
+      const next = { pageIndex: 0, pageSize };
+      set({
+        isPageSizeUserSelected: true,
+        ...(!isPaginationControlled ? { pagination: next } : {}),
+      });
+      onPaginationChange?.(next);
     },
     // Track if we've ever synced pagination from props
     hasSyncedPaginationFromProps: false,

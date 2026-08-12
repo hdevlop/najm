@@ -4,7 +4,10 @@ import { act, render } from "@testing-library/react";
 import { renderHook } from "@testing-library/react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { NTable } from "../../src/components/table/NTable";
-import { useDynamicPageSize } from "../../src/components/table/hooks";
+import {
+  shouldDeferCardPageSizeUntilRows,
+  useDynamicPageSize,
+} from "../../src/components/table/hooks";
 import { TableStoreContext } from "../../src/components/table/TableContext";
 import { createTableStore, type TableStore } from "../../src/components/table/store";
 
@@ -59,6 +62,12 @@ function renderTable(onPaginationChange: (p: unknown) => void, data = rows) {
 const MEASURABLE_ROWS = [{ id: "1" }];
 
 describe("dynamic page size stability under manual pagination", () => {
+  test("waits for real cards before publishing the initial card page size", () => {
+    expect(shouldDeferCardPageSizeUntilRows("cards", false)).toBe(true);
+    expect(shouldDeferCardPageSizeUntilRows("cards", true)).toBe(false);
+    expect(shouldDeferCardPageSizeUntilRows("table", false)).toBe(false);
+  });
+
   test("never reports the seeded default before a real measurement", async () => {
     const store = createTableStore();
     store.getState().syncWithProps({

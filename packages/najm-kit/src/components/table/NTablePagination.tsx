@@ -251,6 +251,7 @@ export function NTablePagination() {
   const rowCount = useTableStore.use.rowCount();
   const suppliedHasNextPage = useTableStore.use.hasNextPage();
   const setPagination = useTableStore.use.setPagination();
+  const setPageSizeFromUser = useTableStore.use.setPageSizeFromUser();
   const isPaginationControlled = useTableStore.use.isPaginationControlled();
   const bordered = useTableStore.use.bordered();
   const paginationVariant = useTableStore.use.paginationVariant();
@@ -340,7 +341,7 @@ export function NTablePagination() {
 
   const handlePageSizeChange = (value: string) => {
     const newSize = Number(value);
-    setPagination({ pageIndex: 0, pageSize: newSize });
+    setPageSizeFromUser(newSize);
   };
 
   // Numbered pages invite a click on any page they render, so every one of them
