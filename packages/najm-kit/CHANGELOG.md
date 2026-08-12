@@ -1,11 +1,14 @@
 # Changelog
 
-## 2.11.3 - 2026-08-12
+## 2.11.4 - 2026-08-12
 
 - Fixed server-paginated card grids briefly rendering at a placeholder-derived
   page size before correcting to the real card height. Card mode now waits for
   real rows and publishes the measured fit before their first paint; fixed-row
   table sizing remains immediate during loading.
+
+## 2.11.3 - 2026-08-12
+
 - Fixed `NTable` replacing or clipping an explicit Rows/page choice when
   `dynamicHeight` was enabled. Automatic fit sizing still owns the initial page
   size; after the reader chooses a value, the table preserves it and scrolls

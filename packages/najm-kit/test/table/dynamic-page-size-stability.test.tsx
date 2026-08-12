@@ -5,6 +5,7 @@ import { renderHook } from "@testing-library/react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { NTable } from "../../src/components/table/NTable";
 import {
+  shouldCommitDynamicPageSizeImmediately,
   shouldDeferCardPageSizeUntilRows,
   useDynamicPageSize,
 } from "../../src/components/table/hooks";
@@ -66,6 +67,12 @@ describe("dynamic page size stability under manual pagination", () => {
     expect(shouldDeferCardPageSizeUntilRows("cards", false)).toBe(true);
     expect(shouldDeferCardPageSizeUntilRows("cards", true)).toBe(false);
     expect(shouldDeferCardPageSizeUntilRows("table", false)).toBe(false);
+  });
+
+  test("commits a discrete table/card mode change without the resize debounce", () => {
+    expect(shouldCommitDynamicPageSizeImmediately(null, "cards")).toBe(true);
+    expect(shouldCommitDynamicPageSizeImmediately("table", "cards")).toBe(true);
+    expect(shouldCommitDynamicPageSizeImmediately("cards", "cards")).toBe(false);
   });
 
   test("never reports the seeded default before a real measurement", async () => {

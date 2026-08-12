@@ -182,6 +182,13 @@ export function shouldDeferCardPageSizeUntilRows(
   return renderedMode === "cards" && !hasDataRows;
 }
 
+export function shouldCommitDynamicPageSizeImmediately(
+  reportedMode: TableState["viewMode"] | null,
+  renderedMode: TableState["viewMode"],
+): boolean {
+  return reportedMode === null || reportedMode !== renderedMode;
+}
+
 function fallbackCardColumns(width: number): number {
   if (width >= 1280) return 4;
   if (width >= 1024) return 3;
@@ -199,6 +206,7 @@ export function useDynamicPageSize(
   const isLoading = useTableStore.use.isLoading();
   const error = useTableStore.use.error();
   const hasNoData = useTableStore.use.hasNoData();
+  const hasDataRows = useTableStore.use.hasData();
   const isFilteredEmpty = useTableStore.use.isFilteredEmpty();
   const syncWithProps = useTableStore.use.syncWithProps();
   const lastMeasurementRef = useRef("");
@@ -261,12 +269,15 @@ export function useDynamicPageSize(
       const cardGap = Number.parseFloat(gridStyles?.rowGap || gridStyles?.gap || "") || DEFAULT_CARD_GAP;
       const firstCard = cardsGridEl?.querySelector<HTMLElement>("[data-ntable-loading-card], [data-row]");
       const cardRowHeight = firstCard?.offsetHeight || firstCard?.getBoundingClientRect().height || DEFAULT_CARD_HEIGHT;
-      const cardPageSize = calculateCardPageSize({
-        bodyHeight,
-        columnCount: cardColumnCount,
-        cardHeight: cardRowHeight,
-        gap: cardGap,
-      });
+      const measuredMode = effectiveViewMode ?? viewMode;
+      const cardPageSize = shouldDeferCardPageSizeUntilRows(measuredMode, hasDataRows)
+        ? 0
+        : calculateCardPageSize({
+            bodyHeight,
+            columnCount: cardColumnCount,
+            cardHeight: cardRowHeight,
+            gap: cardGap,
+          });
       const updates = {
         // Measured page sizes are published in both pagination modes. Manual
         // pagination consumes them through onPaginationChange rather than by
@@ -306,7 +317,7 @@ export function useDynamicPageSize(
     if (container.parentElement) resizeObserver.observe(container.parentElement);
 
     return () => resizeObserver.disconnect();
-  }, [dynamicHeight, effectiveViewMode, viewMode, containerRef, syncWithProps, manualPagination, isLoading, error, hasNoData, isFilteredEmpty]);
+  }, [dynamicHeight, effectiveViewMode, viewMode, containerRef, syncWithProps, manualPagination, isLoading, error, hasNoData, hasDataRows, isFilteredEmpty]);
 }
 
 export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
@@ -554,7 +565,12 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
    */
   const geometryKey = `${Math.round(measuredBodyWidth / GEOMETRY_BUCKET_PX)}x`
     + `${Math.round(measuredBodyHeight / GEOMETRY_BUCKET_PX)}`;
-  const reportedGeometryRef = useRef<{ key: string; count: number; target: number } | null>(null);
+  const reportedGeometryRef = useRef<{
+    key: string;
+    count: number;
+    target: number;
+    mode: TableState["viewMode"];
+  } | null>(null);
   useLayoutEffect(() => {
     if (!manualPagination || !dynamicHeight || isPageSizeUserSelected) return;
     if (cardPagination.mode !== "paged") return;
@@ -568,32 +584,29 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     // yet the target still differs from the store on every one of them — so
     // without this, repeated identical commits burn the whole budget below and
     // the report that matters is refused.
-    if (reported?.key === geometryKey && reported.target === dynamicPageSizeTarget) return;
-    if (reported?.key === geometryKey && reported.count >= MAX_PAGE_SIZE_REPORTS_PER_GEOMETRY) return;
+    if (reported?.key === geometryKey
+      && reported.mode === renderedMode
+      && reported.target === dynamicPageSizeTarget) return;
+    if (reported?.key === geometryKey
+      && reported.mode === renderedMode
+      && reported.count >= MAX_PAGE_SIZE_REPORTS_PER_GEOMETRY) return;
     const commit = () => {
       const current = reportedGeometryRef.current;
-      reportedGeometryRef.current = current?.key === geometryKey
-        ? { key: geometryKey, count: current.count + 1, target: dynamicPageSizeTarget }
-        : { key: geometryKey, count: 1, target: dynamicPageSizeTarget };
+      reportedGeometryRef.current = current?.key === geometryKey && current.mode === renderedMode
+        ? { key: geometryKey, count: current.count + 1, target: dynamicPageSizeTarget, mode: renderedMode }
+        : { key: geometryKey, count: 1, target: dynamicPageSizeTarget, mode: renderedMode };
       setPagination({ pageIndex: storePagination.pageIndex, pageSize: dynamicPageSizeTarget });
     };
 
-    // A table with no rows yet can commit synchronously because its placeholder
-    // and loaded rows share one fixed geometry. Cards return above until real
-    // rows exist: a generic placeholder height would publish the wrong size,
-    // then force the real-card correction through the resize debounce.
-    if (!hasDataRows) {
-      commit();
-      return;
-    }
-
-    // The first report is committed synchronously, before the browser paints.
+    // The first report and every discrete view-mode change are committed
+    // synchronously, before the browser paints. Card placeholders return above
+    // until real rows exist, so their generic height can never become a report.
     // Measurement already runs in a layout effect, but deferring the report by
     // even one task lets a frame paint at the seeded page size — a skeleton or
     // a cached list rendering 25 rows, clipped to whatever fits, then snapping
     // to the 12 that belong there. Committing here means the only page size
     // ever painted is the measured one.
-    if (!reported) {
+    if (shouldCommitDynamicPageSizeImmediately(reported?.mode ?? null, renderedMode)) {
       commit();
       return;
     }
