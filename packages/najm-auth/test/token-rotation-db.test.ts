@@ -93,4 +93,22 @@ describe('markPreviousUsed conditional UPDATE (real bun:sqlite)', () => {
     const legit = await repo.markPreviousUsed('family-1', 'prev-hash');
     expect(legit).toHaveLength(1);
   });
+
+  test('rotation cannot recreate a family deleted by logout', async () => {
+    await seedToken(db);
+    await repo.revokeFamily('family-1');
+
+    const rotated = await repo.rotateRefreshToken({
+      userId: 'user-1',
+      token: 'next-token-hash',
+      tokenFamily: 'family-1',
+      expiresAt: new Date(Date.now() + 7 * 24 * 3_600 * 1_000).toISOString(),
+      previousHash: 'current-token-hash',
+      previousValidUntil: new Date(Date.now() + 60_000).toISOString(),
+      previousUsedAt: null,
+    }, 'current-token-hash');
+
+    expect(rotated).toHaveLength(0);
+    expect(await repo.getByFamily('family-1')).toBeNull();
+  });
 });

@@ -26,7 +26,29 @@ function sleep(ms: number): Promise<void> {
 }
 
 export class FetchClient {
+  private authenticatedRequests = new Set<AbortController>();
+  private authenticatedRequestsBlocked = false;
+
   constructor(private config: FetchClientConfig) {}
+
+  /** Abort requests carrying the current session before logout invalidates it. */
+  abortAuthenticatedRequests(): void {
+    for (const controller of this.authenticatedRequests) {
+      controller.abort();
+    }
+    this.authenticatedRequests.clear();
+  }
+
+  /** Block new authenticated traffic and abort anything already in flight. */
+  blockAuthenticatedRequests(): void {
+    this.authenticatedRequestsBlocked = true;
+    this.abortAuthenticatedRequests();
+  }
+
+  /** Reopen authenticated traffic after login or authoritative hydration. */
+  allowAuthenticatedRequests(): void {
+    this.authenticatedRequestsBlocked = false;
+  }
 
   async get<T>(path: string, opts?: RequestOptions): Promise<T> {
     return this.request<T>('GET', path, opts);
@@ -97,7 +119,11 @@ export class FetchClient {
     }
   }
 
-  private doFetch(method: string, path: string, opts?: RequestOptions): Promise<Response> {
+  private async doFetch(method: string, path: string, opts?: RequestOptions): Promise<Response> {
+    if (!opts?.skipAuth && this.authenticatedRequestsBlocked) {
+      throw new Error('Authenticated requests unavailable after logout');
+    }
+
     const url = `${this.config.baseURL}${path}`;
     const headers: Record<string, string> = {
       'Accept': 'application/json',
@@ -121,19 +147,38 @@ export class FetchClient {
     }
 
     // Timeout
-    let signal = opts?.signal;
+    const controller = new AbortController();
+    const forwardedSignals: AbortSignal[] = [];
+    if (opts?.signal) forwardedSignals.push(opts.signal);
     const timeout = opts?.timeout ?? this.config.timeout;
-    if (timeout && !signal && typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal) {
-      signal = AbortSignal.timeout(timeout);
+    if (timeout && typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal) {
+      forwardedSignals.push(AbortSignal.timeout(timeout));
     }
 
-    return fetch(url, {
-      method,
-      headers,
-      body,
-      signal,
-      credentials: this.config.credentials ?? 'include',
-    });
+    const abort = () => controller.abort();
+    for (const signal of forwardedSignals) {
+      if (signal.aborted) abort();
+      else signal.addEventListener('abort', abort, { once: true });
+    }
+
+    if (!opts?.skipAuth) {
+      this.authenticatedRequests.add(controller);
+    }
+
+    try {
+      return await fetch(url, {
+        method,
+        headers,
+        body,
+        signal: controller.signal,
+        credentials: this.config.credentials ?? 'include',
+      });
+    } finally {
+      this.authenticatedRequests.delete(controller);
+      for (const signal of forwardedSignals) {
+        signal.removeEventListener('abort', abort);
+      }
+    }
   }
 
   private async parseBody(res: Response): Promise<unknown> {

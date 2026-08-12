@@ -708,7 +708,7 @@ describe('auth security regressions', () => {
         }),
         // First caller claims the slot; every later caller gets zero rows.
         markPreviousUsed: async () => (claims++ === 0 ? [{ userId: 'user-1' }] : []),
-        storeRefreshToken: async () => undefined,
+        rotateRefreshToken: async () => [{ userId: 'user-1' }],
         getRoleAndPermissions: async () => ({ roleName: 'user', permissions: [] }),
         revokeFamily: async (family: string) => { revokedFamilies.push(family); },
       },
@@ -721,6 +721,37 @@ describe('auth security regressions', () => {
     await expect(service.refreshTokens()).rejects.toThrow();
     expect(claims).toBe(2);
     expect(revokedFamilies).toEqual([]);
+  });
+
+  test('refresh cannot recreate a family deleted by concurrent logout', async () => {
+    const refreshToken = jwt.sign(
+      { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
+      authConfig.jwt.refreshSecret,
+      { expiresIn: '7d' },
+    );
+    const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
+    let upserts = 0;
+
+    const { service } = createTokenService({
+      cookie: { getRefreshToken: () => refreshToken },
+      repo: {
+        getByFamily: async () => ({
+          userId: 'user-1',
+          token: presentedHash,
+          tokenFamily: 'family-1',
+          previousHash: null,
+          previousValidUntil: null,
+          previousUsedAt: null,
+        }),
+        getRoleAndPermissions: async () => ({ roleName: 'user', permissions: [] }),
+        // Zero rows models logout deleting the family after the initial read.
+        rotateRefreshToken: async () => [],
+        storeRefreshToken: async () => { upserts += 1; },
+      },
+    });
+
+    await expect(service.refreshTokens()).rejects.toThrow();
+    expect(upserts).toBe(0);
   });
 
   test('bearer-only logout resolves the family from the access token and revokes only that session', async () => {

@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.1.2 - 2026-08-12
+
+- security(tokens): rotate refresh families with a conditional update instead
+  of an upsert, so a concurrent logout cannot be undone by recreating its
+  deleted token-family row
+- fix(client): abort and drain an in-flight refresh before the final logout
+  request, ignore refresh results from an older auth generation, and block
+  late 401 interceptors from starting a new refresh until authentication is
+  explicitly established again; abort authenticated requests that were still
+  in flight when logout began and suspend new authenticated transport until a
+  later login or authoritative authenticated hydration
+
 ## 3.1.1 - 2026-08-09
 
 - docs: explain the App Router auth boundary in prose — why `auth.ts` and

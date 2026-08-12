@@ -61,8 +61,11 @@ export class NajmAuthClient {
   private refreshTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshCircuitTimer: ReturnType<typeof setTimeout> | null = null;
   private refreshPromise: Promise<void> | null = null;
+  private refreshAbortController: AbortController | null = null;
   private fetchUserPromise: Promise<AuthUser | null> | null = null;
   private refreshFailures = 0;
+  private authGeneration = 0;
+  private refreshBlocked = false;
   private _hydrated = false;
 
   // Subscriptions (for React useSyncExternalStore)
@@ -125,6 +128,8 @@ export class NajmAuthClient {
     }
 
     const authenticated = (res as ServerResponse<TokenPair & { user?: AuthUser }>).data;
+    this.refreshBlocked = false;
+    this.api.allowAuthenticatedRequests();
     this.applyTokens(authenticated);
 
     if (authenticated.user) {
@@ -183,6 +188,8 @@ export class NajmAuthClient {
   }
 
   async completeOAuthLogin(): Promise<AuthUser> {
+    this.refreshBlocked = false;
+    this.api.allowAuthenticatedRequests();
     await this.refresh();
     const user = await this.fetchUser();
     if (!user) throw new Error('OAuth session could not be completed');
@@ -192,6 +199,14 @@ export class NajmAuthClient {
   }
 
   async logout(): Promise<void> {
+    // Prevent a refresh that started before logout from restoring cookies or
+    // in-memory state after the logout response.
+    this.authGeneration += 1;
+    this.refreshBlocked = true;
+    const pendingRefresh = this.refreshPromise;
+    this.refreshAbortController?.abort();
+    this.api.blockAuthenticatedRequests();
+
     // Optimistic: clear state FIRST for instant UI update.
     // Then await server-side invalidation — callers can still `await logout()`
     // before navigating, but UI reflects the logged-out state immediately.
@@ -200,7 +215,8 @@ export class NajmAuthClient {
     this.emit('logout', null);
 
     try {
-      await this.api.post(`${this.prefix}/logout`);
+      await pendingRefresh?.catch(() => undefined);
+      await this.api.post(`${this.prefix}/logout`, { skipAuth: true });
     } catch (err) {
       // Server invalidation failed — cache-based blacklist did not record
       // the token revocation. The refresh token will still expire naturally,
@@ -211,14 +227,23 @@ export class NajmAuthClient {
   }
 
   async refresh(): Promise<void> {
+    if (this.refreshBlocked) {
+      throw new Error('Refresh unavailable after logout');
+    }
     if (this.refreshFailures >= NajmAuthClient.MAX_REFRESH_FAILURES) {
       throw new Error('Session expired (circuit open)');
     }
 
     // Single promise lock — concurrent callers share one request
     if (!this.refreshPromise) {
-      this.refreshPromise = this._refreshWithCircuit().finally(() => {
+      const generation = this.authGeneration;
+      const controller = new AbortController();
+      this.refreshAbortController = controller;
+      this.refreshPromise = this._refreshWithCircuit(generation, controller.signal).finally(() => {
         this.refreshPromise = null;
+        if (this.refreshAbortController === controller) {
+          this.refreshAbortController = null;
+        }
       });
     }
     return this.refreshPromise;
@@ -316,11 +341,14 @@ export class NajmAuthClient {
 
     if (!session || !session.user) {
       // Authoritative "no session" from the server — skip the boot fetch.
+      this.api.blockAuthenticatedRequests();
       this.state = { ...INITIAL_STATE };
       this.notify();
       return;
     }
 
+    this.refreshBlocked = false;
+    this.api.allowAuthenticatedRequests();
     this.state = {
       ...this.state,
       user: session.user,
@@ -385,6 +413,10 @@ export class NajmAuthClient {
   // =========================================================================
 
   destroy(): void {
+    this.authGeneration += 1;
+    this.refreshAbortController?.abort();
+    this.refreshAbortController = null;
+    this.api.blockAuthenticatedRequests();
     this.clearRefreshTimer();
     this.clearRefreshCircuitTimer();
     this.tabSync?.destroy();
@@ -399,11 +431,13 @@ export class NajmAuthClient {
   // Internals
   // =========================================================================
 
-  private async _refreshWithCircuit(): Promise<void> {
+  private async _refreshWithCircuit(generation: number, signal: AbortSignal): Promise<void> {
     try {
-      await this._doRefresh();
+      const applied = await this._doRefresh(generation, signal);
+      if (!applied) return;
       this.resetRefreshFailures();
     } catch (err) {
+      if (generation !== this.authGeneration) return;
       const shouldOpenCircuit = this.registerRefreshFailure(err);
       if (shouldOpenCircuit) {
         this.resetState();
@@ -417,14 +451,16 @@ export class NajmAuthClient {
     }
   }
 
-  private async _doRefresh(): Promise<void> {
+  private async _doRefresh(generation: number, signal: AbortSignal): Promise<boolean> {
     const res = await this.api.post<ServerResponse<TokenPair>>(
       `${this.prefix}/refresh`,
-      { skipAuth: true },
+      { skipAuth: true, signal },
     );
+    if (generation !== this.authGeneration) return false;
     this.applyTokens(res.data);
     this.tabSync?.broadcastSync(this.getSyncPayload());
     this.emit('tokenRefresh', null);
+    return true;
   }
 
   private async handleUnauthorized(): Promise<string | null> {
@@ -520,12 +556,22 @@ export class NajmAuthClient {
   private handleTabMessage(msg: TabSyncMessage): void {
     switch (msg.type) {
       case 'logout':
+        this.authGeneration += 1;
+        this.refreshBlocked = true;
+        this.refreshAbortController?.abort();
+        this.api.blockAuthenticatedRequests();
         this.clearRefreshTimer();
         this.state = { ...INITIAL_STATE };
         this.notify();
         this.emit('logout', null);
         break;
       case 'sync':
+        if (msg.state.isAuthenticated) {
+          this.refreshBlocked = false;
+          this.api.allowAuthenticatedRequests();
+        } else {
+          this.api.blockAuthenticatedRequests();
+        }
         this.state = {
           ...this.state,
           accessToken: msg.state.accessToken,

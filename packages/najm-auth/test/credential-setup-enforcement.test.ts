@@ -66,6 +66,8 @@ describe('the client stays unauthenticated during credential setup', () => {
     const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
     const calls: string[] = [];
     client.api = {
+      allowAuthenticatedRequests: () => undefined,
+      blockAuthenticatedRequests: () => undefined,
       post: async (path: string) => {
         calls.push(path);
         return shape === 'top-level' ? payload : { data: payload };

@@ -54,6 +54,36 @@ export class TokenRepository {
   }
 
   /**
+   * Rotate an existing refresh-token family with compare-and-swap semantics.
+   * This can never insert a family deleted by a concurrent logout.
+   */
+  async rotateRefreshToken(tokenData: {
+    userId: string;
+    token: string;
+    tokenFamily: string;
+    expiresAt: string;
+    previousHash: string;
+    previousValidUntil: string;
+    previousUsedAt?: string | null;
+  }, expectedCurrentHash: string) {
+    return await this.db
+      .update(this.tokens)
+      .set({
+        token: tokenData.token,
+        expiresAt: tokenData.expiresAt,
+        previousHash: tokenData.previousHash,
+        previousValidUntil: tokenData.previousValidUntil,
+        previousUsedAt: tokenData.previousUsedAt ?? null,
+      })
+      .where(and(
+        eq(this.tokens.tokenFamily, tokenData.tokenFamily),
+        eq(this.tokens.userId, tokenData.userId),
+        eq(this.tokens.token, expectedCurrentHash),
+      ))
+      .returning();
+  }
+
+  /**
    * Claim the previous-token grace slot for a single family. Conditional on
    * BOTH the stored previousHash still matching the presented token AND
    * previousUsedAt being NULL. Gating on the hash (not just the flag) closes

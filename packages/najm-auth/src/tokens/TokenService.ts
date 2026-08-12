@@ -302,9 +302,7 @@ export class TokenService {
     return this.signRefreshToken({ userId: data.userId, tokenFamily: data.tokenFamily ?? nanoid(16) }).token;
   }
 
-  async generateTokens(userId: string, tokenFamily?: string) {
-    const family = tokenFamily ?? nanoid(16);
-
+  private async createTokenPair(userId: string, family: string) {
     const { roleName, permissions } = await this.tokenRepository.getRoleAndPermissions(userId);
 
     const accessTokenData = {
@@ -315,8 +313,6 @@ export class TokenService {
     };
     const access = await this.signAccessToken(accessTokenData);
     const refresh = this.signRefreshToken({ userId, tokenFamily: family });
-
-    await this.storeRefreshToken(userId, refresh.token, family);
 
     return {
       userId,
@@ -329,6 +325,13 @@ export class TokenService {
       accessTokenExpiresAt: access.expiresAt,
       refreshTokenExpiresAt: refresh.expiresAt,
     };
+  }
+
+  async generateTokens(userId: string, tokenFamily?: string) {
+    const family = tokenFamily ?? nanoid(16);
+    const generated = await this.createTokenPair(userId, family);
+    await this.storeRefreshToken(userId, generated.refreshToken, family);
+    return generated;
   }
 
   // ============ TOKEN BLACKLIST (Cache) ============
@@ -407,6 +410,32 @@ export class TokenService {
   }
 
   /**
+   * Rotate only the family row observed by refreshTokens(). This conditional
+   * update fails closed if logout deleted the family or another refresh won.
+   */
+  private async rotateTokens(userId: string, tokenFamily: string, expectedCurrentHash: string) {
+    const generated = await this.createTokenPair(userId, tokenFamily);
+    const expireInSecond = timestring(this.config.jwt.refreshExpiresIn, 's');
+    const rotated = await this.tokenRepository.rotateRefreshToken({
+      userId,
+      token: this.hashToken(generated.refreshToken),
+      tokenFamily,
+      expiresAt: new Date(Date.now() + expireInSecond * 1000).toISOString(),
+      previousHash: expectedCurrentHash,
+      previousValidUntil: new Date(
+        Date.now() + TokenService.PREVIOUS_GRACE_SECONDS * 1000,
+      ).toISOString(),
+      previousUsedAt: null,
+    }, expectedCurrentHash);
+
+    if (!rotated?.length) {
+      Err(this.t('errors.refreshTokenInvalid'), 401);
+    }
+
+    return generated;
+  }
+
+  /**
    * Refresh tokens with secure token comparison
    * Compares provided token with hashed version in database
    */
@@ -427,7 +456,7 @@ export class TokenService {
     await this.requireActiveRefreshUser(userId, tokenFamily);
 
     if (presentedHash === stored.token) {
-      return this.generateTokens(userId, tokenFamily);
+      return this.rotateTokens(userId, tokenFamily, stored.token);
     }
 
     const canRecover =
@@ -446,7 +475,7 @@ export class TokenService {
         // and rotated. Do not revoke — the winner's session is legitimate.
         Err(this.t('errors.refreshTokenInvalid'), 401);
       }
-      return this.generateTokens(userId, tokenFamily);
+      return this.rotateTokens(userId, tokenFamily, stored.token);
     }
 
     // Reuse outside the grace window: revoke only this suspect family.
