@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.11.6 - 2026-08-15
+
+- Fixed `FormInput` dropping React Hook Form's native field binding for text,
+  number, password, textarea, and time controls. These controls now forward
+  their field name, composed blur handler, and focus ref to the actual native
+  element, preserving browser form semantics, touched-state tracking, and
+  programmatic focus without changing composite-control contracts.
+
 ## 2.11.5 - 2026-08-14
 
 - Fixed numbered lists staying on an invalid final page after a deletion or
