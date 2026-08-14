@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.11.5 - 2026-08-14
+
+- Fixed numbered lists staying on an invalid final page after a deletion or
+  another mutation reduced the server total. Paged lists now clamp before
+  slicing their row buffer, render the previous valid page immediately, and
+  reconcile the controlled pagination state without showing a false empty
+  state. A genuinely empty result still remains on page one.
+- Fixed panel feedback states stretching their icon, copy, and action across
+  separate grid rows in tall table and dialog bodies. Panel content now stays
+  together in one centered vertical stack with consistent spacing.
+
 ## 2.11.4 - 2026-08-12
 
 - Fixed server-paginated card grids briefly rendering at a placeholder-derived
