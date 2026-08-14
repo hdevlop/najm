@@ -27,20 +27,15 @@ export interface SelectItemType {
   icon?: string | ComponentType<{ className?: string }>;
 }
 
-export interface TextInputProps extends BaseProps {
+export interface TextInputProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "onChange" | "placeholder" | "type" | "value"> {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
   icon?: InputIcon;
   showIcon?: boolean;
-  disabled?: boolean;
-  onKeyDown?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onKeyUp?: (e: React.KeyboardEvent<HTMLInputElement>) => void;
-  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void;
-  onFocus?: (e: React.FocusEvent<HTMLInputElement>) => void;
 }
 
-export interface NumberInputProps extends BaseProps {
+export interface NumberInputProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "onChange" | "placeholder" | "type" | "value"> {
   value: string | number;
   onChange: (value: number) => void;
   placeholder?: string;
@@ -56,7 +51,7 @@ export interface PasswordInputProps extends BaseProps, Omit<InputHTMLAttributes<
   showIcon?: boolean;
 }
 
-export interface TextAreaInputProps extends BaseProps {
+export interface TextAreaInputProps extends BaseProps, Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "className" | "onChange" | "placeholder" | "value"> {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -179,7 +174,7 @@ export interface ColorPickerInputProps extends ColorArrayInputProps {
   hideSwatches?: boolean;
 }
 
-export interface TimeInputProps extends BaseProps {
+export interface TimeInputProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "onChange" | "placeholder" | "type" | "value"> {
   value?: string;
   onChange: (value: string) => void;
   placeholder?: string;
@@ -187,7 +182,6 @@ export interface TimeInputProps extends BaseProps {
   showIcon?: boolean;
   format24?: boolean;
   showSeconds?: boolean;
-  disabled?: boolean;
 }
 
 export interface TimeZoneInputProps extends Omit<ComboboxInputProps, "items"> {

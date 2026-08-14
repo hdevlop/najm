@@ -43,10 +43,12 @@ const Inputs: Record<string, React.ComponentType<any>> = {
   slider: SliderInput,
 };
 
+const nativeFieldTypes = new Set(["text", "number", "password", "textarea", "time"]);
+
 export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, formDescription, required = false, disabled = false, readOnly = false, hidden = false, icon, iconColor, classNames, background, ...rest }) => {
   const InputComponent = Inputs[type];
   const { control } = useFormContext();
-  const { className, onChange: consumerOnChange, ...inputRest } = rest as any;
+  const { className, onChange: consumerOnChange, onBlur: consumerOnBlur, ...inputRest } = rest as any;
   const prefix = usePrefix();
   const preset = useVariantPreset();
   const contextBordered = useBordered();
@@ -86,6 +88,16 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
         field.onChange(val);
         consumerOnChange?.(val);
       };
+      const nativeFieldBinding = nativeFieldTypes.has(type)
+        ? {
+            name: field.name,
+            onBlur: (event: React.FocusEvent<HTMLElement>) => {
+              field.onBlur();
+              consumerOnBlur?.(event);
+            },
+            ref: field.ref,
+          }
+        : {};
       return (
         <FormItem className={slot.item}>
           {formLabel && (
@@ -96,7 +108,7 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
             </FormLabel>
           )}
           <FormControl>
-            <InputComponent value={field.value ?? getDefaultValue()} onChange={handleChange} status={hasError && !isHidden ? "error" : "default"} bordered={contextBordered} icon={formLabel ? undefined : icon} iconColor={formLabel ? undefined : iconColor} disabled={disabled} readOnly={readOnly} {...inputRest} className={slot.input} />
+            <InputComponent value={field.value ?? getDefaultValue()} onChange={handleChange} status={hasError && !isHidden ? "error" : "default"} bordered={contextBordered} icon={formLabel ? undefined : icon} iconColor={formLabel ? undefined : iconColor} disabled={disabled} readOnly={readOnly} {...inputRest} {...nativeFieldBinding} className={slot.input} />
           </FormControl>
           {!hasError && !disabled && !readOnly && formDescription && <FormDescription className={slot.description}>{formDescription}</FormDescription>}
           {!isHidden && <FormMessage className={slot.error} />}

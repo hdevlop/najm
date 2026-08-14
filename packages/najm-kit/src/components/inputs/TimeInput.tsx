@@ -6,7 +6,7 @@ import { getIconColorProps, resolveIcon } from "./utils";
 import { Clock } from "lucide-react";
 import type { TimeInputProps } from "./types";
 
-export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, placeholder = "", icon, showIcon = true, iconColor, className = "", variant = "default", status = "default", bordered, borderColor, format24 = true, showSeconds = false, disabled = false }) => {
+export const TimeInput = React.forwardRef<HTMLInputElement, TimeInputProps>(({ value = "", onChange, placeholder = "", icon, showIcon = true, iconColor, className = "", variant = "default", status = "default", bordered, borderColor, format24 = true, showSeconds = false, disabled = false, onBlur, ...props }, ref) => {
   const [inputValue, setInputValue] = useState(value);
   const [isValid, setIsValid] = useState(true);
 
@@ -39,7 +39,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, plac
     }
   };
 
-  const handleBlur = () => {
+  const handleBlur = (event: React.FocusEvent<HTMLInputElement>) => {
     if (inputValue) {
       let completed = inputValue;
       if (completed.length === 1) completed = "0" + completed + ":00";
@@ -47,6 +47,7 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, plac
       else if (showSeconds && completed.length === 5) completed += ":00";
       if (validateTime(completed)) { setInputValue(completed); onChange(completed); }
     }
+    onBlur?.(event);
   };
 
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
@@ -55,7 +56,9 @@ export const TimeInput: React.FC<TimeInputProps> = ({ value = "", onChange, plac
   return (
     <BaseInput variant={variant} status={currentStatus} bordered={bordered} borderColor={borderColor} className={cn("gap-2", className)}>
       {showIcon && (icon ? <span className={iconProps.className} style={iconProps.style}>{resolveIcon(icon)}</span> : <Clock className={iconProps.className} style={iconProps.style} />)}
-      <Input type="text" placeholder={placeholder || (showSeconds ? "HH:MM:SS" : "HH:MM")} value={inputValue} onChange={(e) => handleInputChange(e.target.value)} onKeyDown={(e) => { if (!/\d/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) e.preventDefault(); }} onBlur={handleBlur} disabled={disabled} className={cn("p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 placeholder:text-muted-foreground", !isValid ? "text-red-500" : "text-foreground")} />
+      <Input ref={ref} type="text" placeholder={placeholder || (showSeconds ? "HH:MM:SS" : "HH:MM")} value={inputValue} onChange={(e) => handleInputChange(e.target.value)} onKeyDown={(e) => { if (!/\d/.test(e.key) && !["Backspace", "Delete", "ArrowLeft", "ArrowRight", "Tab"].includes(e.key)) e.preventDefault(); }} onBlur={handleBlur} disabled={disabled} className={cn("p-0 border-0 shadow-none bg-transparent dark:bg-transparent focus-visible:ring-0 placeholder:text-muted-foreground", !isValid ? "text-red-500" : "text-foreground")} {...props} />
     </BaseInput>
   );
-};
+});
+
+TimeInput.displayName = "TimeInput";

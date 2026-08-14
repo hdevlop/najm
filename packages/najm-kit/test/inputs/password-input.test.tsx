@@ -25,6 +25,7 @@ describe("PasswordInput", () => {
     const input = getByLabelText("New password") as HTMLInputElement;
 
     expect(input.type).toBe("password");
+    expect(input.name).toBe("password");
     expect(input.id).not.toBe("");
     expect(input.autocomplete).toBe("new-password");
   });
