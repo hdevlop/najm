@@ -15,6 +15,7 @@ export * from './AuthGuard';
 export * from './AuthResolver';
 export * from './AuthSessionService';
 export * from './authIdentity';
+export * from './authLoginRateLimitConfig';
 export { runAsUser } from './runAsUser';
 export type { RunAsUser } from './runAsUser';
 

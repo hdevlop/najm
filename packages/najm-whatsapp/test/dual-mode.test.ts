@@ -6,6 +6,7 @@ import { auth } from 'najm-auth';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { whatsapp } from '../src/WhatsAppPlugin';
+import { createCredentialSetupTables } from './auth-test-schema';
 
 const JWT_SECRET = 'test-access-secret-that-is-at-least-32-chars!';
 const ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
@@ -19,6 +20,7 @@ async function createTestServer(mode: 'cloud' | 'baileys') {
     CREATE TABLE IF NOT EXISTS permissions (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT, resource TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT, updated_at TEXT);
     CREATE TABLE IF NOT EXISTS role_permissions (id TEXT PRIMARY KEY, role_id TEXT NOT NULL, permission_id TEXT NOT NULL, created_at TEXT, updated_at TEXT);
   `);
+  createCredentialSetupTables(rawSqlite);
 
   const { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } = await import('najm-auth/sqlite');
   const schema = {
@@ -106,6 +108,7 @@ describe('WhatsAppPlugin dual-mode', () => {
       CREATE TABLE IF NOT EXISTS permissions (id TEXT PRIMARY KEY, name TEXT NOT NULL UNIQUE, description TEXT, resource TEXT NOT NULL, action TEXT NOT NULL, created_at TEXT, updated_at TEXT);
       CREATE TABLE IF NOT EXISTS role_permissions (id TEXT PRIMARY KEY, role_id TEXT NOT NULL, permission_id TEXT NOT NULL, created_at TEXT, updated_at TEXT);
     `);
+    createCredentialSetupTables(rawSqlite);
     const { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } = await import('najm-auth/sqlite');
     const schema = {
       users: usersTable, roles: rolesTable, tokens: tokensTable,

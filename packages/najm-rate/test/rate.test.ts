@@ -54,6 +54,15 @@ describe('Basic Rate Limiting', () => {
     const res = await fetch('http://localhost:3401/test'); // 3 - blocked
 
     expect(res.status).toBe(429);
+    expect(res.headers.get('X-RateLimit-Limit')).toBe('2');
+    expect(res.headers.get('X-RateLimit-Remaining')).toBe('0');
+    expect(res.headers.get('X-RateLimit-Reset')).not.toBeNull();
+    expect(res.headers.get('Retry-After')).not.toBeNull();
+    expect(await res.json()).toEqual({
+      code: 'HTTP_429',
+      message: 'Too many requests',
+      status: 429,
+    });
   });
 
   test('should decrement remaining count correctly', async () => {

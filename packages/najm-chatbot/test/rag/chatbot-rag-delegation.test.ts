@@ -10,6 +10,7 @@ import { ChatAgent } from '../../src/agent/ChatAgent';
 import { AiSettingsService } from '../../src/ai-settings/AiSettingsService';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
+import { createCredentialSetupTables } from '../auth-test-schema';
 import { aiSettingsTable } from '../../src/schema/sqlite';
 import { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } from 'najm-auth/sqlite';
 import { chatbotToolEmbeddingsTable, chatbotToolSemanticsTable } from 'najm-rag/sqlite';
@@ -39,6 +40,7 @@ function createSchema(sqlite: Database) {
   sqlite.exec(`CREATE TABLE IF NOT EXISTS role_permissions (id TEXT PRIMARY KEY, role_id TEXT NOT NULL REFERENCES roles(id) ON DELETE CASCADE, permission_id TEXT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE, created_at TEXT, updated_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS chatbot_tool_embeddings (id TEXT PRIMARY KEY, tool_name TEXT NOT NULL UNIQUE, description TEXT NOT NULL, "group" TEXT, local_name TEXT, arg_names TEXT, annotations TEXT, fingerprint TEXT NOT NULL, embedding BLOB, created_at TEXT, updated_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS chatbot_tool_semantics (id TEXT PRIMARY KEY, tool_name TEXT NOT NULL, phrase TEXT NOT NULL, lang TEXT NOT NULL DEFAULT 'und', source TEXT, embedding BLOB, created_at TEXT, updated_at TEXT)`);
+  createCredentialSetupTables(sqlite);
 }
 
 let server: Server | undefined;

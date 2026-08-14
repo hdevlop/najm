@@ -175,16 +175,33 @@ export class RateLimitService {
       const { count, resetAt } = await this.cache.incr(rateLimitKey, windowMs);
       const remaining = Math.max(0, limit - count);
 
+      if (count > limit) {
+        const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
+        const responseHeaders = new Headers({
+          'Content-Type': 'application/json',
+          'Retry-After': String(Math.max(1, retryAfter)),
+        });
+
+        if (headers) {
+          responseHeaders.set('X-RateLimit-Limit', String(limit));
+          responseHeaders.set('X-RateLimit-Remaining', String(remaining));
+          responseHeaders.set('X-RateLimit-Reset', String(Math.ceil(resetAt / 1000)));
+        }
+
+        return new Response(JSON.stringify({
+          code: `HTTP_${statusCode}`,
+          message,
+          status: statusCode,
+        }), {
+          status: statusCode,
+          headers: responseHeaders,
+        });
+      }
+
       if (headers) {
         context.header('X-RateLimit-Limit', String(limit));
         context.header('X-RateLimit-Remaining', String(remaining));
         context.header('X-RateLimit-Reset', String(Math.ceil(resetAt / 1000)));
-      }
-
-      if (count > limit) {
-        const retryAfter = Math.ceil((resetAt - Date.now()) / 1000);
-        context.header('Retry-After', String(Math.max(1, retryAfter)));
-        Err(statusCode, message);
       }
 
       return next();

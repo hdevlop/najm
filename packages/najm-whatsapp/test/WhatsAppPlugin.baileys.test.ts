@@ -7,6 +7,7 @@ import { events } from 'najm-event';
 import { whatsapp } from '../src/WhatsAppPlugin';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
+import { createCredentialSetupTables } from './auth-test-schema';
 import {
   usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable,
 } from 'najm-auth/sqlite';
@@ -45,6 +46,7 @@ function createTables(sqlite: Database) {
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_studio_audit_logs (id TEXT PRIMARY KEY, action TEXT NOT NULL, instance_id TEXT, user_id TEXT, details TEXT, created_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_sessions (id TEXT PRIMARY KEY, instance_id TEXT NOT NULL UNIQUE, creds TEXT, created_at TEXT, updated_at TEXT)`);
   sqlite.exec(`CREATE TABLE IF NOT EXISTS whatsapp_session_keys (id TEXT PRIMARY KEY, instance_id TEXT NOT NULL, key_type TEXT NOT NULL, key_id TEXT NOT NULL, value TEXT NOT NULL)`);
+  createCredentialSetupTables(sqlite);
 }
 
 let server: Server | undefined;

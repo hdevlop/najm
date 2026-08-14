@@ -721,7 +721,7 @@ limits are active when `auth()` is registered.
 | Route | Limit | Window | Key Strategy |
 |-------|-------|--------|--------------|
 | `POST /auth/register` | 5 | 15 minutes | IP |
-| `POST /auth/login` | 5 | 15 minutes | IP |
+| `POST /auth/login` | 8 | 10 minutes | IP + hashed normalized identity |
 | `POST /auth/refresh` | 15 | 15 minutes | Cookie fingerprint |
 | `POST /auth/session/recover` | 120 | 1 minute | Cookie fingerprint |
 | `POST /auth/logout` | 10 | 15 minutes | User ID |
@@ -730,6 +730,23 @@ limits are active when `auth()` is registered.
 | `POST /auth/reset-password` | 5 | 15 minutes | IP |
 
 ### Customizing Rate Limits
+
+The login route has strict environment overrides. Values are read when the
+server imports `najm-auth`, so restart the process after changing them. Invalid
+values fail startup rather than silently weakening the limiter.
+
+```bash
+NAJM_AUTH_LOGIN_RATE_LIMIT_ENABLED=true
+NAJM_AUTH_LOGIN_RATE_LIMIT=8
+NAJM_AUTH_LOGIN_RATE_WINDOW=10m
+```
+
+`NAJM_AUTH_LOGIN_RATE_LIMIT_ENABLED=false` disables only the login-route
+limiter. Keep it enabled on public production deployments; a shorter window is
+the safer setting for a disposable production-built demo.
+
+The generic plugin configuration remains available for global limits and skip
+rules:
 
 ```typescript
 auth({

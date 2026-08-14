@@ -7,6 +7,7 @@ import { chatbot } from '../src/ChatbotPlugin';
 import { EncryptionService } from 'najm-auth';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
+import { createCredentialSetupTables } from './auth-test-schema';
 import { aiSettingsTable } from '../src/schema/sqlite';
 import { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } from 'najm-auth/sqlite';
 
@@ -64,6 +65,7 @@ function createSchema(sqlite: Database, options: { legacyAiSettings?: boolean } 
     permission_id TEXT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
     created_at TEXT, updated_at TEXT
   )`);
+  createCredentialSetupTables(sqlite);
 }
 
 let server: Server;
@@ -111,7 +113,12 @@ async function registerAndLogin(
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, password }),
   });
-  const loginBody = await loginRes.json();
+  const loginBody = await loginRes.json() as any;
+  if (!loginRes.ok || !loginBody?.data?.accessToken) {
+    throw new Error(
+      `Test login failed with ${loginRes.status}: ${loginBody?.code ?? 'unknown'} ${loginBody?.message ?? 'unknown'}`,
+    );
+  }
   return loginBody.data.accessToken as string;
 }
 

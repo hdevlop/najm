@@ -110,10 +110,13 @@ export const server = new Server()
 1. `@Validate(loginDto)` accepts `{ identifier, password }`, where identifier
    is an email or international phone number. The legacy `{ email, password }`
    payload remains supported.
-2. `@RateLimit` — 5 attempts / 15m, bucketed by IP plus SHA-256 of the
+2. `@RateLimit` — 8 attempts / 10m by default, bucketed by IP plus SHA-256 of the
    normalized identity. Different users behind one NAT do not share a bucket,
    while email case/whitespace and phone formatting cannot create bypass
-   buckets. Passwords and request bodies never appear in the cache key.
+   buckets. Passwords and request bodies never appear in the cache key. The
+   strict `NAJM_AUTH_LOGIN_RATE_LIMIT_ENABLED`,
+   `NAJM_AUTH_LOGIN_RATE_LIMIT`, and `NAJM_AUTH_LOGIN_RATE_WINDOW` environment
+   settings are resolved at startup; invalid values stop startup.
 3. Resolve normalized email case-insensitively or normalized E.164 phone, then
    fetch the auth record; if lockout expired, auto-reset
    `failedLoginAttempts`.

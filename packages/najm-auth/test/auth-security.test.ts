@@ -77,8 +77,9 @@ describe('auth security regressions', () => {
       window: '15m',
     });
     expect(getRateLimitOptions(AuthController, 'loginUser')).toMatchObject({
-      limit: 5,
-      window: '15m',
+      limit: 8,
+      window: '10m',
+      skip: false,
       message: 'Too many login attempts. Please try again later.',
     });
     expect(getRateLimitOptions(AuthController, 'forgotPassword')).toMatchObject({

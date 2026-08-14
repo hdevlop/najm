@@ -6,6 +6,7 @@ import { auth } from 'najm-auth';
 import { mcp } from 'najm-mcp';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
+import { createCredentialSetupTables } from './auth-test-schema';
 import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 import { chatbot } from '../src/ChatbotPlugin';
 import { AiSettingsService } from '../src/ai-settings/AiSettingsService';
@@ -74,6 +75,7 @@ function createSchema(sqlite: Database) {
     permission_id TEXT NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,
     created_at TEXT, updated_at TEXT
   )`);
+  createCredentialSetupTables(sqlite);
 }
 
 let server: Server | undefined;

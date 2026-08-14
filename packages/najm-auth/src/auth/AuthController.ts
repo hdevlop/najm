@@ -9,6 +9,7 @@ import { RateLimit } from 'najm-rate';
 import type { Context } from 'hono';
 import { createHash } from 'node:crypto';
 import { getRequestIdentityResolver } from '../identity/requestResolver';
+import { resolveAuthLoginRateLimitConfig } from './authLoginRateLimitConfig';
 import {
   registerDto,
   inviteUserDto,
@@ -60,6 +61,8 @@ export const authIdentityRateLimitKey = async (ctx: Context): Promise<string> =>
   return ip;
 };
 
+const loginRateLimit = resolveAuthLoginRateLimitConfig();
+
 @Controller('/auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
@@ -73,7 +76,13 @@ export class AuthController {
   }
 
   @Post('/login')
-  @RateLimit({ limit: 5, window: '15m', key: authIdentityRateLimitKey, message: 'Too many login attempts. Please try again later.' })
+  @RateLimit({
+    limit: loginRateLimit.limit,
+    window: loginRateLimit.window,
+    key: authIdentityRateLimitKey,
+    message: 'Too many login attempts. Please try again later.',
+    skip: !loginRateLimit.enabled,
+  })
   @Validate(loginDto)
   @ResMsg('auth.success.login')
   async loginUser(@Body() body: LoginDto) {
