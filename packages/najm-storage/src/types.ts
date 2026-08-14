@@ -35,6 +35,12 @@ export interface PreviewConfig {
 export interface StorageConfig {
   /** Storage backend: 'local' (filesystem) or 'database' (drizzle via @DB()). Default: 'local' */
   provider?: StorageBackend;
+  /**
+   * Register the generic storage REST controller (default: true).
+   * Set to false when the application owns its HTTP delivery routes and uses
+   * najm-storage only through StorageService or STORAGE_SERVICE.
+   */
+  routes?: boolean;
   /** Register MCP tools for file operations (default: false) */
   mcp?: boolean;
   /**

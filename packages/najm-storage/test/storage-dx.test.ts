@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { MCP_REGISTRY } from 'najm-mcp';
 import {
   FileCategory,
+  StorageController,
   StorageMcpTools,
   StorageService,
   StorageValidator,
@@ -678,6 +679,22 @@ describe('storage plugin MCP toggle', () => {
 
     const deps = (plugin.dependencies ?? []).filter((dep) => typeof dep === 'string');
     expect(deps).not.toContain('guards');
+  });
+
+  test('supports service-only registration without REST guards', () => {
+    const plugin = storage({ routes: false });
+
+    const deps = (plugin.dependencies ?? []).filter((dep) => typeof dep === 'string');
+    expect(deps).not.toContain('guards');
+    expect(plugin.services ?? []).toContain(StorageService);
+    expect(plugin.services ?? []).toContain(StorageValidator);
+    expect(plugin.services ?? []).not.toContain(StorageController);
+  });
+
+  test('still requires an explicit guard decision when Studio routes are enabled', () => {
+    expect(() => storage({ routes: false, studio: true })).toThrow(
+      'storage.guards must be configured explicitly',
+    );
   });
 
   test('requires guard plugin when storage route guards are configured', () => {

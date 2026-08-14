@@ -54,6 +54,26 @@ the application booted. Declare the symbol locally, as above, rather than
 importing it — that keeps `najm-storage` out of your module graph when the
 feature that needs it is off.
 
+## Service-only registration
+
+Applications that own their upload and delivery controllers can disable the
+generic storage REST routes while retaining `StorageService`,
+`StorageValidator`, provider configuration, events, and the stable
+`STORAGE_SERVICE` alias:
+
+```ts
+server.use(storage({
+  provider: 'local',
+  basePath: './storage',
+  routes: false,
+}));
+```
+
+This prevents the generic `/:namespace/files/*` routes from competing with
+application-owned exact routes. `studio: true` remains an HTTP surface and
+therefore still requires an explicit `guards` configuration. For a strictly
+service-only plugin, leave `studio` and `mcp` disabled.
+
 ## Browser Storage (`najm-storage/client`)
 
 Browser-only module persisting to IndexedDB — no dependencies, safe to import in SSR code (nothing touches IndexedDB until first use). Provides a **file store** (blobs by namespace/path, mirroring the server API) and **data stores** (JSON documents with indexed queries).
@@ -135,9 +155,12 @@ server.use(storage({
 }));
 ```
 
-`storage()` without `guards` throws during plugin setup. Public routes must be
-written as `storage({ guards: [] })` so accidental unauthenticated upload,
-list, serve, preview, or Studio APIs do not ship silently.
+`storage()` without `guards` throws during plugin setup whenever generic REST
+or Studio routes are enabled. Public routes must be written as
+`storage({ guards: [] })` so accidental unauthenticated upload, list, serve,
+preview, or Studio APIs do not ship silently. A service-only registration with
+`routes: false` and Studio disabled has no HTTP surface and does not require
+route guards.
 
 Other default protections:
 

@@ -13,8 +13,9 @@ import { StorageMcpTools } from './StorageMcpTools';
 import { StorageStudioController } from './StorageStudioController';
 import { AuditService } from './AuditService';
 
-const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provider' | 'mcp'>> & StorageConfig => ({
+const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provider' | 'routes' | 'mcp'>> & StorageConfig => ({
   provider: config.provider ?? 'local',
+  routes: config.routes ?? true,
   mcp: config.mcp ?? false,
   guards: config.guards,
   dialect: config.dialect,             // optional — auto-detected if omitted
@@ -38,6 +39,9 @@ const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provi
 });
 
 function assertExplicitGuards(config: StorageConfig): void {
+  const hasHttpRoutes = config.routes !== false || config.studio === true;
+  if (!hasHttpRoutes) return;
+
   if (!Object.prototype.hasOwnProperty.call(config, 'guards')) {
     throw new Error(
       'storage.guards must be configured explicitly. Pass guards such as [isAuth()] to protect storage routes, or guards: [] to intentionally expose public storage routes.',
@@ -73,16 +77,17 @@ function applyRouteGuards(guards: StorageConfig['guards'], controllers: Function
 export const storage = (config: StorageConfig = {}) => {
   assertExplicitGuards(config);
   const merged = mergeConfig(config);
-  const routeControllers = merged.studio
-    ? [StorageController, StorageStudioController]
-    : [StorageController];
+  const routeControllers = [
+    ...(merged.routes ? [StorageController] : []),
+    ...(merged.studio ? [StorageStudioController] : []),
+  ];
 
   applyRouteGuards(merged.guards, routeControllers);
 
   const builder = plugin('storage')
     .version('2.0.0')
     .depends(events())
-    .services(StorageService, StorageValidator, StorageController)
+    .services(StorageService, StorageValidator)
     // The identity-stable way in for packages that store files through this
     // plugin. The alias forwards to the same singleton registered above, so a
     // consumer loaded from a different copy of `najm-storage` writes to the
@@ -90,11 +95,15 @@ export const storage = (config: StorageConfig = {}) => {
     .alias(STORAGE_SERVICE, StorageService)
     .config(STORAGE_CONFIG, merged);
 
+  if (merged.routes) {
+    builder.services(StorageController);
+  }
+
   if (merged.provider === 'database' || merged.studio) {
     builder.requires('database');
   }
 
-  if (merged.guards?.length) {
+  if (routeControllers.length > 0 && merged.guards?.length) {
     builder.requires('guards');
   }
 
