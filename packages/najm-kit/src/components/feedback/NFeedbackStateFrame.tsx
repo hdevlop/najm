@@ -39,7 +39,8 @@ const INLINE_PADDING: Record<NFeedbackSpacingVariant, string> = {
   empty: "py-12",
 };
 
-const PANEL_BASE = "grid place-items-center min-h-64 w-full";
+const PANEL_BASE =
+  "flex min-h-64 w-full flex-col items-center justify-center gap-3";
 const PAGE_MIN = "min-h-[60vh]";
 
 /**

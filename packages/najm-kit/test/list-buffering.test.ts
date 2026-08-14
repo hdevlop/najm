@@ -38,9 +38,22 @@ describe("list row buffering", () => {
 
   test("a display page is a slice of the buffer", () => {
     expect(list).toContain(
-      "const start = pagination.pageIndex * pagination.pageSize;",
+      "const start = pageIndex * pagination.pageSize;",
     );
     expect(list).toContain("rows.slice(start, start + pagination.pageSize)");
+  });
+
+  test("a shrinking total clamps an invalid last page before slicing", () => {
+    expect(list).toContain(
+      "Math.min(pagination.pageIndex, pageCount - 1)",
+    );
+    expect(list).toContain("if (pagination.pageIndex === pageIndex) return;");
+    expect(list).toContain(
+      "pageIndex: Math.min(current.pageIndex, pageCount - 1)",
+    );
+    expect(list.indexOf("const pageIndex =")).toBeLessThan(
+      list.indexOf("const data ="),
+    );
   });
 
   test("every mode reads the same buffer", () => {

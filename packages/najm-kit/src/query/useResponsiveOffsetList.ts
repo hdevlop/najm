@@ -109,7 +109,26 @@ export function useResponsiveOffsetList<T>({
         ? "infinite"
         : "paged";
 
-  const start = pagination.pageIndex * pagination.pageSize;
+  // A mutation can shrink the result while the reader is on the last page.
+  // Derive the valid page synchronously so render never flashes an empty
+  // state, then reconcile the controlled pagination state below.
+  // With a server total the page count is exact. Without one, the honest claim
+  // is everything buffered plus one page while the buffer has more to fetch.
+  const bufferedPages = Math.max(
+    1,
+    Math.ceil(rows.length / pagination.pageSize),
+  );
+  const pageCount =
+    buffer.total !== null
+      ? Math.max(1, Math.ceil(buffer.total / pagination.pageSize))
+      : buffer.hasNextPage
+        ? bufferedPages + 1
+        : bufferedPages;
+  const pageIndex =
+    mode === "paged"
+      ? Math.min(pagination.pageIndex, pageCount - 1)
+      : pagination.pageIndex;
+  const start = pageIndex * pagination.pageSize;
   const data =
     mode === "paged" ? rows.slice(start, start + pagination.pageSize) : rows;
 
@@ -148,20 +167,15 @@ export function useResponsiveOffsetList<T>({
     [queryIdentity],
   );
 
-  // With a server total the page count is simply true. Without one, the only
-  // honest claim is "everything buffered, and one more page if the buffer has
-  // not reached the end" — which understates a long result, and is why the
-  // endpoints backing numbered pages should report a total.
-  const bufferedPages = Math.max(
-    1,
-    Math.ceil(rows.length / pagination.pageSize),
-  );
-  const pageCount =
-    buffer.total !== null
-      ? Math.max(1, Math.ceil(buffer.total / pagination.pageSize))
-      : buffer.hasNextPage
-        ? bufferedPages + 1
-        : bufferedPages;
+  // Keep the external controller aligned after the synchronous render clamp.
+  useEffect(() => {
+    if (pagination.pageIndex === pageIndex) return;
+    setPagination((current) => ({
+      ...current,
+      pageIndex: Math.min(current.pageIndex, pageCount - 1),
+      queryIdentity,
+    }));
+  }, [pageCount, pageIndex, pagination.pageIndex, queryIdentity]);
 
   return {
     cardViewport,
@@ -180,7 +194,7 @@ export function useResponsiveOffsetList<T>({
     onPaginationChange,
     pageCount,
     pagination: {
-      pageIndex: pagination.pageIndex,
+      pageIndex,
       pageSize: pagination.pageSize,
     },
     refetch: buffer.refetch,

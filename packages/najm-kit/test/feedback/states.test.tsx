@@ -177,8 +177,11 @@ describe("Move 1 — surface contract", () => {
     expect(countMain(container)).toBe(0);
     const root = container.firstElementChild as HTMLElement;
     expect(root.style.paddingInline || "").toBe("");
-    expect(root.className).toContain("grid");
-    expect(root.className).toContain("place-items-center");
+    expect(root.className).toContain("flex-col");
+    expect(root.className).toContain("items-center");
+    expect(root.className).toContain("justify-center");
+    expect(root.className).toContain("gap-3");
+    expect(root.className).not.toContain("grid");
     expect(root.className).toContain("min-h-64");
   });
 
