@@ -7,7 +7,7 @@ import { BaseInput } from "./BaseInput";
 import { getIconColorProps, resolveIcon } from "./utils";
 import type { ComboboxInputProps, SelectItemType } from "./types";
 
-export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Select...", searchPlaceholder = "Search...", emptyMessage = "No results found.", loading = false, loadingMessage = "Loading...", onSearchChange, shouldFilter = true, value, onChange, icon, showIcon = true, iconColor, items = [], className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, allowFreeText = false }) => {
+export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Select...", searchPlaceholder = "Search...", emptyMessage = "No results found.", loading = false, loadingMessage = "Loading...", onSearchChange, shouldFilter = true, value, onChange, icon, showIcon = true, iconColor, items = [], className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, allowFreeText = false, ariaLabel }) => {
   const [open, setOpen] = useState(false);
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const pointerDismissedRef = React.useRef(false);
@@ -50,6 +50,7 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
           bordered={bordered}
           borderColor={borderColor}
           role="combobox"
+          aria-label={ariaLabel}
           tabIndex={disabled ? -1 : 0}
           aria-expanded={open}
           className={cn(

@@ -86,6 +86,7 @@ export interface ComboboxInputProps extends BaseProps {
   showIcon?: boolean;
   disabled?: boolean;
   allowFreeText?: boolean;
+  ariaLabel?: string;
 }
 
 export interface MultiSelectInputProps extends BaseProps {
@@ -149,6 +150,7 @@ export interface DateInputProps extends BaseProps {
   placeholder?: string;
   icon?: InputIcon;
   showIcon?: boolean;
+  ariaLabel?: string;
 }
 
 export interface StarRatingInputProps extends BaseProps {

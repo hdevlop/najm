@@ -45,6 +45,14 @@ const Inputs: Record<string, React.ComponentType<any>> = {
 
 const nativeFieldTypes = new Set(["text", "number", "password", "textarea", "time"]);
 
+// Composite inputs render their trigger as a `BaseInput` div, so the `<label for>`
+// that FormControl wires up points at a non-labelable element and names nothing —
+// the control reaches the accessibility tree anonymous. These types carry no other
+// name source, so the form label becomes their `aria-label`. `select` is absent on
+// purpose: SelectInput already resolves `ariaLabel || placeholder`, and renaming it
+// from the label would break every consumer selecting it by placeholder today.
+const labelNamedCompositeTypes = new Set(["date", "combobox", "multiselect"]);
+
 export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, formDescription, required = false, disabled = false, readOnly = false, hidden = false, icon, iconColor, classNames, background, ...rest }) => {
   const InputComponent = Inputs[type];
   const { control } = useFormContext();
@@ -68,6 +76,9 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
     ? preset.input?.replace(/\bh-\d+\b/g, "").trim()
     : preset.input;
   const isFillAvatar = type === "avatar" && inputRest.fill === true;
+  const compositeAriaLabel = labelNamedCompositeTypes.has(type) && typeof formLabel === "string"
+    ? { ariaLabel: inputRest.ariaLabel ?? formLabel }
+    : {};
   const slot = {
     item: cn(
       preset.item,
@@ -108,7 +119,7 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
             </FormLabel>
           )}
           <FormControl>
-            <InputComponent value={field.value ?? getDefaultValue()} onChange={handleChange} status={hasError && !isHidden ? "error" : "default"} bordered={contextBordered} icon={formLabel ? undefined : icon} iconColor={formLabel ? undefined : iconColor} disabled={disabled} readOnly={readOnly} {...inputRest} {...nativeFieldBinding} className={slot.input} />
+            <InputComponent value={field.value ?? getDefaultValue()} onChange={handleChange} status={hasError && !isHidden ? "error" : "default"} bordered={contextBordered} icon={formLabel ? undefined : icon} iconColor={formLabel ? undefined : iconColor} disabled={disabled} readOnly={readOnly} {...inputRest} {...compositeAriaLabel} {...nativeFieldBinding} className={slot.input} />
           </FormControl>
           {!hasError && !disabled && !readOnly && formDescription && <FormDescription className={slot.description}>{formDescription}</FormDescription>}
           {!isHidden && <FormMessage className={slot.error} />}
