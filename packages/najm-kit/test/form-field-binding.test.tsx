@@ -58,5 +58,9 @@ describe("FormInput native field binding", () => {
     fireEvent.click(getByRole("button", { name: "Focus name" }));
 
     await waitFor(() => expect(document.activeElement).toBe(fullName));
-  }, 10_000);
+    // Generous budget on purpose. The assertion itself resolves on the first poll;
+    // the cost is mounting NForm's provider tree under happy-dom, which stretches
+    // well past 10s when the full 117-file suite is competing for the machine even
+    // though this file finishes in ~6s on its own.
+  }, 30_000);
 });
