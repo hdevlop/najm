@@ -1,5 +1,22 @@
 # Changelog
 
+## 2.11.7 - 2026-08-17
+
+- Fixed date, combobox, and multiselect `FormInput` controls reaching the
+  accessibility tree with no accessible name. These types render their trigger
+  as a styled `div`, so the `<label for>` that `FormControl` wires up pointed at
+  a non-labelable element and named nothing: screen readers announced an unnamed
+  control, and `getByRole(..., { name })` could not resolve one. The form label
+  now becomes the trigger's `aria-label`, and `DateInput` and `ComboboxInput`
+  accept an explicit `ariaLabel` to override it. `select` keeps naming itself
+  from `ariaLabel || placeholder`; renaming it would break consumers that select
+  it by placeholder today.
+- Fixed `DateInput` rendering its popover trigger as a `div`. Radix only merges
+  trigger props onto the child, so the control had no role, no tab stop, and no
+  keyboard activation — it was unreachable without a mouse. It is now a real
+  `<button type="button">`, which also keeps it from submitting the surrounding
+  form when the calendar opens.
+
 ## 2.11.6 - 2026-08-15
 
 - Fixed `FormInput` dropping React Hook Form's native field binding for text,
