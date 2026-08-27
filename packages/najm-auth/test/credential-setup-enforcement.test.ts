@@ -161,14 +161,17 @@ describe('cookie persistence recognizes Najm setup responses without configurati
     ['top-level', { nextStep: 'credential_setup', setupRequired: true, purpose: 'password', expiresAt: 'later' }],
     ['enveloped', { data: { nextStep: 'credential_setup', setupRequired: true, purpose: 'password', expiresAt: 'later' } }],
   ] as const) {
-    test(`strips session cookies from a ${shape} setup response`, async () => {
+    test(`replaces session cookies with deletions for a ${shape} setup response`, async () => {
       const handler = withAuthCookiePersistence(async () => respond(body), {
         rememberCookieName: 'app.remember',
       });
       const cookies = setCookiesOf(await handler(loginRequest()));
 
-      expect(cookies.find((c) => c.startsWith('refreshToken='))).toBeUndefined();
-      expect(cookies.find((c) => c.startsWith('najm.session='))).toBeUndefined();
+      for (const name of ['refreshToken', 'najm.session']) {
+        const deletion = cookies.find((cookie) => cookie.startsWith(`${name}=`));
+        expect(deletion).toContain(`${name}=;`);
+        expect(deletion).toContain('Max-Age=0');
+      }
       // The setup cookie itself is the point of the response.
       expect(cookies.find((c) => c.startsWith('najm.credential-setup='))).toContain('opaque');
       expect(cookies.find((c) => c.startsWith('app.remember='))).toContain('Max-Age=0');
@@ -211,7 +214,12 @@ describe('cookie persistence recognizes Najm setup responses without configurati
       },
     ));
 
-    expect(setCookiesOf(response).find((c) => c.startsWith('najm.remember=')))
+    const cookies = setCookiesOf(response);
+    expect(cookies.find((c) => c.startsWith('najm.remember=')))
       .toContain('Max-Age=0');
+    for (const name of ['refreshToken', 'najm.session']) {
+      expect(cookies.find((cookie) => cookie.startsWith(`${name}=`)))
+        .toContain('Max-Age=0');
+    }
   });
 });

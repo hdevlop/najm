@@ -53,8 +53,8 @@ export interface AuthCookiePersistenceOptions {
    * Najm's own setup response is recognized without this — supply it only to
    * cover an application-specific shape. Such a response may carry auth
    * cookies anyway, and persisting them would leave a half-authenticated
-   * browser that skips the setup step on reload. Returning `true` strips them
-   * and clears the stored choice.
+   * browser that skips the setup step on reload. Returning `true` replaces
+   * them with deletions and clears the stored choice.
    */
   isSetupResponse?: (payload: unknown) => boolean;
 }
@@ -159,6 +159,18 @@ function clearedRememberCookie(name: string, secure: boolean): string {
   ].join('; ');
 }
 
+function clearedAuthCookie(name: string, secure: boolean): string {
+  return [
+    `${name}=`,
+    'Path=/',
+    'HttpOnly',
+    'SameSite=Lax',
+    ...(secure ? ['Secure'] : []),
+    'Expires=Thu, 01 Jan 1970 00:00:00 GMT',
+    'Max-Age=0',
+  ].join('; ');
+}
+
 /**
  * Wraps a request handler so the auth cookies it issues match the user's
  * "remember me" choice.
@@ -227,15 +239,23 @@ export function withAuthCookiePersistence(
       headers as Headers & { getSetCookie(): string[] }
     ).getSetCookie();
     headers.delete('set-cookie');
+    const clearedAuthCookies = new Set<string>();
 
     for (const setCookie of setCookies) {
-      // A setup response must not leave a usable session behind, but its
-      // *deletions* still have to go through.
+      const name = cookieName(setCookie);
+      const isAuthCookie = authCookieNames.includes(name);
+
+      // Successful logout and setup completion are terminal auth boundaries.
+      // Preserve one valid upstream deletion because it may carry a custom
+      // cookie path, but never pass through a stale issuance or duplicate.
       if (
-        action.type === 'setup' &&
-        authCookieNames.includes(cookieName(setCookie)) &&
-        !isDeletionCookie(setCookie)
+        (action.type === 'clear' || action.type === 'setup') &&
+        isAuthCookie
       ) {
+        if (isDeletionCookie(setCookie) && !clearedAuthCookies.has(name)) {
+          headers.append('set-cookie', setCookie);
+          clearedAuthCookies.add(name);
+        }
         continue;
       }
 
@@ -245,6 +265,14 @@ export function withAuthCookiePersistence(
           ? makeSessionCookie(setCookie, authCookieNames)
           : setCookie,
       );
+    }
+
+    if (action.type === 'clear' || action.type === 'setup') {
+      for (const name of authCookieNames) {
+        if (!clearedAuthCookies.has(name)) {
+          headers.append('set-cookie', clearedAuthCookie(name, secure));
+        }
+      }
     }
 
     headers.append(

@@ -272,9 +272,13 @@ login, `AuthSessionService.establish()`, Google OAuth (which redirects with
 recovery — so verified-email OAuth linking cannot skip it. Marking a new
 requirement also revokes the user's current sessions.
 
-`withAuthCookiePersistence` recognizes the setup response on its own: it drops
-any session cookies the response carried, clears the remembered preference, and
-leaves the opaque setup cookie alone.
+`withAuthCookiePersistence` recognizes logout and setup boundaries on its own.
+After a successful logout it drops stale auth-cookie issuances and guarantees
+exactly one deletion for each configured auth cookie. It preserves a valid
+upstream deletion (including a custom cookie path), or synthesizes a canonical
+deletion when one is missing. A setup response gets the same auth-cookie
+deletions, clears the remembered preference, and leaves the opaque setup cookie
+alone.
 
 ### Google Sign-In
 

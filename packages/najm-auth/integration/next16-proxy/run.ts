@@ -58,6 +58,28 @@ async function runMainRecoverySuite() {
     await expectProtected(immediate, 'immediate protected navigation');
     assertSessionOnlyRecovery(immediate, admin.cookies.get('refreshToken')!);
 
+    const logout = await fetch(`${origin}/api/auth/logout`, {
+      method: 'POST',
+      headers: {
+        Cookie: [...admin.cookies]
+          .map(([name, value]) => `${name}=${value}`)
+          .join('; '),
+      },
+      redirect: 'manual',
+    });
+    assert(logout.status === 200, `logout returned ${logout.status}`);
+    for (const name of ['refreshToken', 'najm.session']) {
+      assertClearsCookie(logout, name);
+      assert(
+        setCookieHeaders(logout).filter((header) => header.startsWith(`${name}=`)).length === 1,
+        `logout did not emit exactly one ${name} deletion`,
+      );
+    }
+    assert(
+      setCookieHeaders(logout).includes('unrelated=kept; Path=/'),
+      'logout removed an unrelated cookie header',
+    );
+
     const sessionless = new Map(admin.cookies);
     sessionless.delete('najm.session');
     const recoveredMissing = await navigate(origin, '/protected', sessionless);

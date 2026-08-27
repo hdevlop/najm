@@ -20,7 +20,7 @@ function respond(
 
 const LOGIN_COOKIES = [
   'refreshToken=abc; Path=/; HttpOnly; Max-Age=604800; SameSite=Lax',
-  'najm.session=sig; Path=/; HttpOnly; Expires=Sat, 15 Aug 2026 12:00:00 GMT',
+  'najm.session=sig; Path=/; HttpOnly; Expires=Sat, 15 Aug 2099 12:00:00 GMT',
 ];
 
 function loginRequest(rememberMe: boolean, url = 'https://app.test/api/auth/login') {
@@ -147,6 +147,32 @@ describe('withAuthCookiePersistence — refresh', () => {
 });
 
 describe('withAuthCookiePersistence — logout and setup', () => {
+  test('successful logout guarantees canonical deletion of every auth cookie', async () => {
+    const handler = withAuthCookiePersistence(async () =>
+      respond([
+        'refreshToken=stale; Path=/; HttpOnly; Max-Age=604800',
+        'unrelated=kept; Path=/',
+      ]),
+    );
+    const cookies = setCookiesOf(
+      await handler(
+        new Request('https://app.test/api/auth/logout', { method: 'POST' }),
+      ),
+    );
+
+    for (const name of ['refreshToken', 'najm.session']) {
+      const matching = cookies.filter((cookie) => cookie.startsWith(`${name}=`));
+      expect(matching).toHaveLength(1);
+      expect(matching[0]).toContain(`${name}=;`);
+      expect(matching[0]).toContain('Path=/');
+      expect(matching[0]).toContain('HttpOnly');
+      expect(matching[0]).toContain('SameSite=Lax');
+      expect(matching[0]).toContain('Secure');
+      expect(matching[0]).toContain('Max-Age=0');
+    }
+    expect(cookies).toContain('unrelated=kept; Path=/');
+  });
+
   test('logout clears the stored choice', async () => {
     const handler = withAuthCookiePersistence(async () =>
       respond(['refreshToken=; Path=/; Max-Age=0']),
@@ -165,6 +191,25 @@ describe('withAuthCookiePersistence — logout and setup', () => {
     );
   });
 
+  test('logout preserves one upstream deletion with a custom cookie path', async () => {
+    const handler = withAuthCookiePersistence(async () =>
+      respond([
+        'refreshToken=; Path=/api/auth; HttpOnly; Max-Age=0',
+        'refreshToken=stale; Path=/api/auth; HttpOnly; Max-Age=604800',
+      ]),
+    );
+    const cookies = setCookiesOf(
+      await handler(
+        new Request('https://app.test/api/auth/logout', { method: 'POST' }),
+      ),
+    );
+
+    const matching = cookies.filter((cookie) => cookie.startsWith('refreshToken='));
+    expect(matching).toHaveLength(1);
+    expect(matching[0]).toContain('Path=/api/auth');
+    expect(matching[0]).toContain('Max-Age=0');
+  });
+
   test('a setup response leaves no usable session behind', async () => {
     const handler = withAuthCookiePersistence(
       async () => respond(LOGIN_COOKIES, { nextStep: 'password_setup' }),
@@ -176,8 +221,11 @@ describe('withAuthCookiePersistence — logout and setup', () => {
     );
     const cookies = setCookiesOf(await handler(loginRequest(true)));
 
-    expect(cookies.find((c) => c.startsWith('refreshToken='))).toBeUndefined();
-    expect(cookies.find((c) => c.startsWith('najm.session='))).toBeUndefined();
+    for (const name of ['refreshToken', 'najm.session']) {
+      const deletion = cookies.find((cookie) => cookie.startsWith(`${name}=`));
+      expect(deletion).toContain(`${name}=;`);
+      expect(deletion).toContain('Max-Age=0');
+    }
     expect(cookies.find((c) => c.startsWith(`${REMEMBER}=`))).toContain(
       'Max-Age=0',
     );
@@ -194,9 +242,11 @@ describe('withAuthCookiePersistence — logout and setup', () => {
     );
     const cookies = setCookiesOf(await handler(loginRequest(true)));
 
-    expect(cookies.find((c) => c.startsWith('refreshToken='))).toContain(
-      'Max-Age=0',
-    );
+    for (const name of ['refreshToken', 'najm.session']) {
+      const matching = cookies.filter((cookie) => cookie.startsWith(`${name}=`));
+      expect(matching).toHaveLength(1);
+      expect(matching[0]).toContain('Max-Age=0');
+    }
   });
 });
 
