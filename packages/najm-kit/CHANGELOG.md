@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.11.8 - 2026-08-28
+
+- Fixed `NContextMenu` leaving keyboard focus on its opener after the menu
+  appeared. The first enabled action now receives focus, disabled actions are
+  skipped, Arrow Up/Down wrap, Home/End jump to the bounds, Tab dismisses the
+  menu, and Escape restores focus to the opener. Focused actions also receive
+  the same visual treatment as hovered actions.
+
 ## 2.11.7 - 2026-08-17
 
 - Fixed date, combobox, and multiselect `FormInput` controls reaching the
