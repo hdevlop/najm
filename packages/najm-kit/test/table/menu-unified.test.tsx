@@ -107,6 +107,7 @@ describe("menu-unified.test.tsx", () => {
     await new Promise((r) => setTimeout(r, 20));
 
     expect(menuLabels(container)).toEqual(["Copy"]);
+    expect(document.activeElement).toBe(container.querySelector('[role="menuitem"]'));
     expect(Array.from(container.querySelectorAll("thead th")).map((th) => th.textContent?.trim())).not.toContain("Actions");
   });
 

@@ -29,6 +29,7 @@ export interface NContextMenuProps {
 export function NContextMenu({ x, y, items, onAction, onClose, className }: NContextMenuProps) {
   const [openSub, setOpenSub] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
+  const returnFocusRef = useRef<HTMLElement | null>(null);
   const [pos, setPos] = useState({ left: x, top: y });
 
   // Clamp menu position into the viewport synchronously to avoid a one-frame flash
@@ -48,11 +49,64 @@ export function NContextMenu({ x, y, items, onAction, onClose, className }: NCon
     );
   }, [x, y]);
 
+  useLayoutEffect(() => {
+    const activeElement = document.activeElement;
+    if (activeElement instanceof HTMLElement && !menuRef.current?.contains(activeElement)) {
+      returnFocusRef.current = activeElement;
+    }
+
+    menuRef.current
+      ?.querySelector<HTMLButtonElement>('[data-context-menu-item]:not(:disabled)')
+      ?.focus();
+  }, []);
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      e.preventDefault();
+      onClose();
+      queueMicrotask(() => returnFocusRef.current?.focus());
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
+
+  const onMenuKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    const enabledItems = Array.from(
+      menuRef.current?.querySelectorAll<HTMLButtonElement>(
+        '[data-context-menu-item]:not(:disabled)',
+      ) ?? [],
+    );
+    if (!enabledItems.length) return;
+
+    const currentIndex = enabledItems.indexOf(document.activeElement as HTMLButtonElement);
+    let nextIndex: number | null = null;
+
+    switch (e.key) {
+      case 'ArrowDown':
+        nextIndex = currentIndex < 0 ? 0 : (currentIndex + 1) % enabledItems.length;
+        break;
+      case 'ArrowUp':
+        nextIndex = currentIndex < 0
+          ? enabledItems.length - 1
+          : (currentIndex - 1 + enabledItems.length) % enabledItems.length;
+        break;
+      case 'Home':
+        nextIndex = 0;
+        break;
+      case 'End':
+        nextIndex = enabledItems.length - 1;
+        break;
+      case 'Tab':
+        onClose();
+        return;
+      default:
+        return;
+    }
+
+    e.preventDefault();
+    enabledItems[nextIndex].focus();
+  };
 
   useEffect(() => {
     const isInsideMenu = (target: EventTarget | null) =>
@@ -86,6 +140,7 @@ export function NContextMenu({ x, y, items, onAction, onClose, className }: NCon
       )}
       style={{ left: pos.left, top: pos.top }}
       onContextMenu={(e) => e.preventDefault()}
+      onKeyDown={onMenuKeyDown}
     >
       {items.map((item) => {
         const Icon = item.icon;
@@ -101,6 +156,8 @@ export function NContextMenu({ x, y, items, onAction, onClose, className }: NCon
               <button
                 type="button"
                 role="menuitem"
+                tabIndex={-1}
+                data-context-menu-item
                 disabled={item.disabled}
                 onClick={() => {
                   if (hasSub) return;
@@ -108,8 +165,8 @@ export function NContextMenu({ x, y, items, onAction, onClose, className }: NCon
                   onClose();
                 }}
                 className={cn(
-                  'flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40',
-                  item.danger && 'text-destructive hover:text-destructive',
+                  'flex w-full cursor-pointer items-center justify-between gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-40',
+                  item.danger && 'text-destructive hover:text-destructive focus:text-destructive',
                 )}
               >
                 <span className="flex items-center gap-2">
@@ -126,11 +183,12 @@ export function NContextMenu({ x, y, items, onAction, onClose, className }: NCon
                         key={sub.id}
                         type="button"
                         role="menuitem"
+                        tabIndex={-1}
                         disabled={sub.disabled}
                         onClick={() => { onAction(sub.id); onClose(); }}
                         className={cn(
-                          'flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground disabled:cursor-not-allowed disabled:opacity-40',
-                          sub.danger && 'text-destructive hover:text-destructive',
+                          'flex w-full cursor-pointer items-center gap-2 px-3 py-1.5 text-xs hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground focus:outline-none disabled:cursor-not-allowed disabled:opacity-40',
+                          sub.danger && 'text-destructive hover:text-destructive focus:text-destructive',
                         )}
                       >
                         {SubIcon && <SubIcon size={14} />} {sub.label}
