@@ -11,7 +11,7 @@ export const auth = defineAuth({
   loginRoute: '/login',
   apiBaseURL: '/api',
   authPrefix: '/auth',
-  verifyAlways: true,
+  proxySessionMode: 'authoritative',
   internalRecoveryURL: explicitInternalURL,
   onRecoveryFailure(failure) {
     console.error('NAJM_RECOVERY_FAILURE', JSON.stringify(failure));

@@ -3,7 +3,7 @@
 // ============================================================================
 //
 // One config → one import → everything you need:
-//   client, api, getSession(), middleware, config, protect
+//   client, api, getSession(), proxy, routeHandlers(), protect
 //
 // @example
 // ```ts
@@ -22,8 +22,12 @@
 // ```
 //
 // ```ts
-// // src/middleware.ts
-// export { middleware, config } from '@/lib/auth';
+// // src/proxy.ts
+// import { auth } from '@/lib/auth';
+// export default auth.proxy;
+// export const config = {
+//   matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+// };
 // ```
 //
 // ```tsx
@@ -44,7 +48,16 @@ import type { FetchClient } from '../FetchClient';
 import type { RetryConfig } from '../types';
 import type { SessionRecoveryFailure } from '../sessionRecovery';
 import { attachReactServerInternals, heldRoles, redirectsToLogin } from './internals';
-import { withAuthMiddleware } from './withAuthMiddleware';
+import {
+  withAuthMiddleware,
+  type ProxySessionMode,
+} from './withAuthMiddleware';
+import {
+  withAuthCookiePersistence,
+  type AuthCookiePersistenceOptions,
+  type AuthRouteHandler,
+  type NextAuthRouteHandlers,
+} from './authCookiePersistence';
 
 // ============================================================================
 // Config
@@ -71,7 +84,7 @@ export interface DefineAuthConfig {
   /** Network retry configuration */
   retry?: RetryConfig;
 
-  // ---------- Server / middleware ----------
+  // ---------- Server / Proxy ----------
   /** Route to redirect unauthenticated users (default: '/login') */
   loginRoute?: string;
   /** Route to redirect after login (default: '/dashboard') */
@@ -105,13 +118,22 @@ export interface DefineAuthConfig {
   recoveryURL?: string | false;
   /** Loopback-only recovery endpoint for self-hosted reverse-proxy setups. */
   internalRecoveryURL?: string;
-  /** Next.js middleware matcher (default: exclude _next, favicon, api) */
+  /**
+   * Next.js middleware matcher (default: exclude _next, favicon, api).
+   * @deprecated Next.js 16 requires a static matcher literal in `proxy.ts`.
+   */
   matcher?: string[];
   /**
    * Force authoritative refresh-session validation on every protected request.
    * Recovery reissues the signed cookie without rotating refresh tokens.
+   * @deprecated Use `proxySessionMode: 'authoritative'` instead.
    */
   verifyAlways?: boolean;
+  /**
+   * How Proxy handles a valid signed session snapshot. Defaults to `optimistic`.
+   * API and server authorization remain authoritative in either mode.
+   */
+  proxySessionMode?: ProxySessionMode;
   /** Secret-free diagnostic hook for failed server or proxy recovery. */
   onRecoveryFailure?: (failure: SessionRecoveryFailure) => void;
 }
@@ -143,10 +165,20 @@ export interface AuthKit {
    * ```
    */
   requireRole: (roles: string[]) => Promise<ServerSession>;
-  /** Generated Next.js middleware function */
+  /** Generated Next.js 16 Proxy function. */
+  proxy: (request: Request) => Promise<Response>;
+  /** @deprecated Next.js 16 renamed Middleware to Proxy. Use `proxy`. */
   middleware: (request: Request) => Promise<Response>;
-  /** Next.js middleware config with matcher */
+  /** @deprecated Next.js 16 requires a static config literal in `proxy.ts`. */
   config: { matcher: string[] };
+  /**
+   * Bind a Web Request handler to every Next.js Route Handler verb and apply
+   * Najm's login, refresh, setup, and logout cookie lifecycle consistently.
+   */
+  routeHandlers: <Args extends unknown[] = []>(
+    handler: AuthRouteHandler<Args>,
+    options?: AuthCookiePersistenceOptions,
+  ) => NextAuthRouteHandlers<Args>;
   /**
    * Protect a server component — redirects to loginRoute if unauthenticated.
    * Passes session to the wrapped component.
@@ -177,7 +209,8 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     recoveryURL,
     internalRecoveryURL,
     matcher = ['/((?!_next/static|_next/image|favicon.ico|api).*)'],
-    verifyAlways = false,
+    verifyAlways,
+    proxySessionMode,
     onRecoveryFailure,
     refreshThreshold,
     tabSync,
@@ -200,7 +233,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
   };
 
   // ---------- Lazy browser client ----------
-  // Instantiated on first access so middleware.ts (edge) and server components
+  // Instantiated on first access so proxy.ts (edge) and server components
   // that never touch `auth.client` / `auth.api` don't pay construction cost
   // (BroadcastChannel probing, FetchClient setup). NajmAuthClient itself has
   // no eager browser-only imports, so statically importing it is safe in
@@ -260,7 +293,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     return session;
   };
 
-  // ---------- middleware ----------
+  // ---------- Proxy ----------
   const middleware = withAuthMiddleware({
     protectedRoutes,
     publicRoutes,
@@ -275,8 +308,30 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     recoveryURL,
     internalRecoveryURL,
     verifyAlways,
+    proxySessionMode,
     onRecoveryFailure,
   });
+
+  // ---------- route handlers ----------
+  const routeHandlers = <Args extends unknown[] = []>(
+    handler: AuthRouteHandler<Args>,
+    options: AuthCookiePersistenceOptions = {},
+  ): NextAuthRouteHandlers<Args> => {
+    const persistentHandler = withAuthCookiePersistence(handler, {
+      ...options,
+      authCookieNames: options.authCookieNames ?? [cookieName, sessionCookieName],
+    });
+
+    return {
+      GET: persistentHandler,
+      POST: persistentHandler,
+      PUT: persistentHandler,
+      PATCH: persistentHandler,
+      DELETE: persistentHandler,
+      HEAD: persistentHandler,
+      OPTIONS: persistentHandler,
+    };
+  };
 
   // ---------- protect ----------
   const protect = <P extends Record<string, unknown> = Record<string, unknown>>(
@@ -327,8 +382,10 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
     getSession,
     requireSession,
     requireRole,
+    proxy: middleware,
     middleware,
     config: { matcher },
+    routeHandlers,
     protect,
   }, { resolveSessionOutcome, loginRoute, forbiddenRoute });
 }

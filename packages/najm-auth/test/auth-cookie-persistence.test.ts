@@ -4,6 +4,7 @@ import {
   makeSessionCookie,
   withAuthCookiePersistence,
 } from '../src/client/server/authCookiePersistence';
+import { defineAuth } from '../src/client/server/defineAuth';
 import { getSafeRedirectPath } from '../src/client/server/safeRedirect';
 
 const REMEMBER = 'najm.remember';
@@ -33,6 +34,59 @@ function loginRequest(rememberMe: boolean, url = 'https://app.test/api/auth/logi
 
 const setCookiesOf = (response: Response) =>
   (response.headers as Headers & { getSetCookie(): string[] }).getSetCookie();
+
+describe('defineAuth route handlers', () => {
+  test('binds every Next.js verb to cookie persistence with configured cookie names', async () => {
+    const auth = defineAuth({
+      cookieName: 'custom.refresh',
+      sessionCookieName: 'custom.session',
+    });
+    const routeHandlers = auth.routeHandlers(async () => respond([
+      'custom.refresh=refresh; Path=/; HttpOnly; Max-Age=604800',
+      'custom.session=session; Path=/; HttpOnly; Max-Age=300',
+    ]), { rememberCookieName: 'custom.remember' });
+
+    expect(Object.keys(routeHandlers)).toEqual([
+      'GET',
+      'POST',
+      'PUT',
+      'PATCH',
+      'DELETE',
+      'HEAD',
+      'OPTIONS',
+    ]);
+
+    const response = await routeHandlers.POST(new Request(
+      'https://app.test/api/auth/login',
+      {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ rememberMe: false }),
+      },
+    ));
+    const cookies = setCookiesOf(response);
+
+    expect(cookies.find((cookie) => cookie.startsWith('custom.refresh='))).not.toContain('Max-Age');
+    expect(cookies.find((cookie) => cookie.startsWith('custom.session='))).not.toContain('Max-Age');
+    expect(cookies.find((cookie) => cookie.startsWith('custom.remember='))).toBeDefined();
+  });
+
+  test('preserves dynamic route-handler context arguments', async () => {
+    const auth = defineAuth();
+    const context = { params: Promise.resolve({ route: ['auth', 'logout'] }) };
+    const handlers = auth.routeHandlers(async (_request, received: typeof context) => {
+      expect(received).toBe(context);
+      return Response.json({ success: true });
+    });
+
+    const response = await handlers.POST(
+      new Request('https://app.test/api/other', { method: 'POST' }),
+      context,
+    );
+
+    expect(response.status).toBe(200);
+  });
+});
 
 describe('withAuthCookiePersistence — login', () => {
   test('strips the lifetime from auth cookies when not remembered', async () => {

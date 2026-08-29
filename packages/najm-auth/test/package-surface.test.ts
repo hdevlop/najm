@@ -59,6 +59,18 @@ describe('published surface', () => {
     expect(clientTypes).toContain('LoginResult');
     expect(clientTypes).toContain('CredentialSetupPending');
   });
+
+  test('the server entry exposes the composed Next.js auth surface', () => {
+    const serverTypes = read('dist/client/server/index.d.ts');
+    for (const name of [
+      'ProxySessionMode',
+      'proxySessionMode',
+      'routeHandlers',
+      'NextAuthRouteHandlers',
+    ]) {
+      expect(serverTypes).toContain(name);
+    }
+  });
 });
 
 describe('the React-server session adapter', () => {

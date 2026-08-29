@@ -16,6 +16,8 @@ import {
   type SessionRecoveryResult,
 } from '../sessionRecovery';
 
+export type ProxySessionMode = 'optimistic' | 'authoritative';
+
 export interface AuthMiddlewareConfig {
   /** Routes that require authentication (glob patterns) */
   protectedRoutes?: string[];
@@ -42,8 +44,15 @@ export interface AuthMiddlewareConfig {
   /**
    * Force authoritative refresh-session validation on every protected request.
    * This reissues the signed session cookie without rotating refresh tokens.
+   * @deprecated Use `proxySessionMode: 'authoritative'` instead.
    */
   verifyAlways?: boolean;
+  /**
+   * How Proxy handles an otherwise valid signed session snapshot.
+   * `optimistic` verifies it locally; `authoritative` also checks refresh state.
+   * Defaults to `optimistic`.
+   */
+  proxySessionMode?: ProxySessionMode;
   /**
    * Session-recovery endpoint. Relative values resolve against the request
    * origin. Defaults to `${apiBaseURL}${authPrefix}/session/recover`.
@@ -92,11 +101,15 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
     sessionCookieName = 'najm.session',
     sessionSecret,
     sessionMaxAge,
-    verifyAlways = false,
+    verifyAlways: legacyVerifyAlways = false,
+    proxySessionMode,
     recoveryURL,
     internalRecoveryURL,
     onRecoveryFailure,
   } = config;
+  const verifyAlways = proxySessionMode === undefined
+    ? legacyVerifyAlways
+    : proxySessionMode === 'authoritative';
   const resolvedInternalRecoveryURL = resolveInternalRecoveryURL(internalRecoveryURL);
 
   return async function middleware(request: Request) {

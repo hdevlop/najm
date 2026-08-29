@@ -9,6 +9,7 @@
 export {
   withAuthMiddleware,
   type AuthMiddlewareConfig,
+  type ProxySessionMode,
 } from './server/withAuthMiddleware';
 export type {
   SessionRecoveryErrorDetails,

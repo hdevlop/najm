@@ -210,6 +210,28 @@ describe('protected browser navigation', () => {
     expect(calls[0]!.url).not.toContain('/refresh');
   });
 
+  test('proxySessionMode authoritative performs recovery for a valid snapshot', async () => {
+    const session = await signSession(claims('sponsor'));
+    const calls = mockRecovery('sponsor');
+    const response = await standardMiddleware({ proxySessionMode: 'authoritative' })(
+      request('/dashboard', cookieHeader(session)),
+    );
+
+    expectAllowed(response);
+    expect(calls).toHaveLength(1);
+  });
+
+  test('proxySessionMode optimistic trusts a valid signed snapshot', async () => {
+    const session = await signSession(claims('sponsor'));
+    const calls = mockRecovery('sponsor');
+    const response = await standardMiddleware({ proxySessionMode: 'optimistic' })(
+      request('/dashboard', cookieHeader(session)),
+    );
+
+    expectAllowed(response);
+    expect(calls).toHaveLength(0);
+  });
+
   test('public routes remain unaffected by missing or invalid cookies', async () => {
     expectAllowed(await standardMiddleware()(request('/login', 'najm.session=tampered')));
     expectAllowed(await standardMiddleware()(request('/about')));

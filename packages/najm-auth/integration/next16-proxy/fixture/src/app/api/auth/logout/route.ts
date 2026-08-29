@@ -1,6 +1,6 @@
-import { withAuthCookiePersistence } from 'najm-auth/client/server';
+import { auth } from '../../../../auth';
 
-const logoutHandler = withAuthCookiePersistence(async () => {
+const handlers = auth.routeHandlers(async () => {
   const headers = new Headers({ 'content-type': 'application/json' });
   headers.append(
     'set-cookie',
@@ -11,5 +11,5 @@ const logoutHandler = withAuthCookiePersistence(async () => {
 });
 
 export function POST(request: Request) {
-  return logoutHandler(request);
+  return handlers.POST(request);
 }

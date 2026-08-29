@@ -15,7 +15,20 @@
 // cookie below — HttpOnly, holding one bit.
 // ============================================================================
 
-type RequestHandler = (request: Request) => Promise<Response>;
+export type AuthRouteHandler<Args extends unknown[] = []> = (
+  request: Request,
+  ...args: Args
+) => Response | Promise<Response>;
+
+export interface NextAuthRouteHandlers<Args extends unknown[] = []> {
+  GET: AuthRouteHandler<Args>;
+  POST: AuthRouteHandler<Args>;
+  PUT: AuthRouteHandler<Args>;
+  PATCH: AuthRouteHandler<Args>;
+  DELETE: AuthRouteHandler<Args>;
+  HEAD: AuthRouteHandler<Args>;
+  OPTIONS: AuthRouteHandler<Args>;
+}
 
 type AuthCookieMode = 'persistent' | 'session';
 
@@ -181,10 +194,10 @@ function clearedAuthCookie(name: string, secure: boolean): string {
  * export { handler as GET, handler as POST };
  * ```
  */
-export function withAuthCookiePersistence(
-  handler: RequestHandler,
+export function withAuthCookiePersistence<Args extends unknown[] = []>(
+  handler: AuthRouteHandler<Args>,
   options: AuthCookiePersistenceOptions = {},
-): RequestHandler {
+): AuthRouteHandler<Args> {
   const {
     authCookieNames = DEFAULTS.authCookieNames,
     rememberCookieName = DEFAULTS.rememberCookieName,
@@ -289,9 +302,9 @@ export function withAuthCookiePersistence(
     });
   };
 
-  return async (request) => {
+  return async (request, ...args) => {
     let action = await resolveAction(request);
-    const response = await handler(request);
+    const response = await handler(request, ...args);
 
     // A failed login issues nothing worth rewriting, and storing a preference
     // for it would apply on the next refresh of a session that was never made.

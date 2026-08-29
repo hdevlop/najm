@@ -766,13 +766,14 @@ auth({
 
 ## Next.js App Router Structure
 
-Every App Router application keeps the same three files. Copying more than this
+Every App Router application keeps the same four files. Copying more than this
 between apps means logic that belongs in the package has leaked into them.
 
 ```text
 src/lib/auth.ts     defineAuth() configuration — browser, server, and proxy safe
 src/lib/session.ts  one createReactServerAuth() instance for Server Components
-src/proxy.ts        imports auth.ts only, and exports auth.middleware
+src/proxy.ts        exports auth.proxy plus Next's required static matcher
+src/app/api/[...route]/route.ts  binds the server through auth.routeHandlers()
 ```
 
 ```typescript
@@ -786,6 +787,7 @@ export const auth = defineAuth({
   publicRoutes: ['/', '/login'],
   protectedRoutes: ['/dashboard/:path*', '/admin/:path*'],
   roleRoutes: { '/admin/:path*': ['admin'] },
+  proxySessionMode: 'optimistic',
 });
 ```
 
@@ -804,9 +806,32 @@ export const serverAuth = createReactServerAuth(auth);
 // src/proxy.ts
 import { auth } from './lib/auth';
 
-export default auth.middleware;
-export const config = auth.config;
+export default auth.proxy;
+export const config = {
+  matcher: ['/((?!api|_next/static|_next/image|favicon.ico).*)'],
+};
 ```
+
+Next.js 16 requires the exported Proxy `config` to be a statically analyzable
+object literal. Turbopack rejects `export const config = auth.config`, so the
+matcher is the one integration value that cannot be composed at runtime.
+
+```typescript
+// src/app/api/[...route]/route.ts
+import { handle } from 'najm-core';
+import server from '@app/server';
+
+import { auth } from '../../../lib/auth';
+
+const handlers = auth.routeHandlers(handle(server));
+export const { GET, POST, PUT, PATCH, DELETE, HEAD, OPTIONS } = handlers;
+```
+
+`auth.routeHandlers()` applies the remember-me lifecycle to login, refresh,
+credential setup, and logout for every supported Next.js verb. It automatically
+uses the refresh and signed-session cookie names from `defineAuth()`; an app only
+passes an option when it intentionally customizes behavior, such as
+`{ rememberCookieName: 'school.remember' }`.
 
 ### Why `session.ts` exists
 
@@ -862,7 +887,7 @@ the same reason in mirror image:
 | the `createReactServerAuth()` module | server only | browser, Edge |
 
 `auth.client` and `auth.api` are what Client Components call, and
-`auth.middleware` is what the Edge proxy calls, so the `defineAuth()` module is
+`auth.proxy` is what the Edge proxy calls, so the `defineAuth()` module is
 always in the browser and Edge graphs. The adapter must never be. Putting both
 in one file puts the adapter everywhere `auth` already is, and the `browser`
 export condition — which exists precisely to catch this — resolves to a module
@@ -910,12 +935,18 @@ into a silently anonymous page.
 |---|---|
 | `loginRoute`, `forbiddenRoute`, route matchers, `roleRoutes` | when to redirect where |
 | cookie names, `apiBaseURL`, `authPrefix`, recovery URL | request memoization |
-| `refreshThreshold`, `tabSync`, `verifyAlways` | strict vs optional semantics |
+| `refreshThreshold`, `tabSync`, `proxySessionMode` | strict vs optional semantics |
 | — | `session.roles` / `user.role` fallback |
 | — | error classification |
 
-If a new app has to copy anything beyond the three files above, that logic
+If a new app has to copy anything beyond the four files above, that logic
 belongs in the package instead.
+
+`proxySessionMode: 'optimistic'` is the default and locally verifies the signed
+snapshot, matching Next.js guidance that Proxy is an optimistic routing boundary.
+Use `'authoritative'` only when every protected navigation must also validate
+refresh-session state. The older `verifyAlways` option and `auth.middleware`
+property remain as deprecated compatibility aliases.
 
 ### What a new app must prove
 
@@ -999,8 +1030,10 @@ throw new HttpError(403, 'Insufficient permissions for this action');
   when their public reverse-proxy origin is not reachable from the app process.
 - `onRecoveryFailure` exposes structured, secret-free recovery diagnostics
   without logging anything by default.
-- `verifyAlways` forces that authoritative check on every protected request;
-  the default bounds cached role/status staleness to `session.maxAge`.
+- `proxySessionMode: 'authoritative'` forces that check on every protected
+  request; the default `'optimistic'` mode bounds cached role/status staleness
+  to `session.maxAge`. The deprecated `verifyAlways` flag maps to the same
+  behavior for existing applications.
 
 ### Next.js 16 Reverse-Proxy Recovery
 
