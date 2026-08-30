@@ -534,14 +534,23 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     // below instead.
     if (manualPagination || isPaginationControlled || isPageSizeUserSelected) return;
     if (dynamicHeight && renderedMode === "table") table.setPageSize(calculatedPageSize);
-    if (viewMode === "cards" && cardPagination.mode === "paged") {
+    // Rendering every supplied row is the right answer only while there is no
+    // measurement to fit the grid to: either the caller opted out of sizing, or
+    // the container has not been measured yet. Once a measurement exists the
+    // effect below owns the card page size, the same way it already does for a
+    // server-paginated grid — a client-side card list used to keep this branch
+    // forever, so it pinned its page size to the whole dataset and every row
+    // landed on page one no matter how few of them fit on screen.
+    const cardsAreUnmeasured = !dynamicHeight || !hasMeasuredLayout;
+    if (viewMode === "cards" && cardPagination.mode === "paged" && cardsAreUnmeasured) {
       table.setPageSize(data.length || 9999);
     }
-  }, [calculatedPageSize, dynamicHeight, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination, isPaginationControlled, isPageSizeUserSelected]); // table stable, layout/data drive re-runs
+  }, [calculatedPageSize, dynamicHeight, hasMeasuredLayout, renderedMode, viewMode, cardPagination.mode, table, data.length, manualPagination, isPaginationControlled, isPageSizeUserSelected]); // table stable, layout/data drive re-runs
 
-  // Server-paginated tables still fill their container: report the measured
-  // page size through the ordinary pagination callback, debounced so a window
-  // resize cannot issue a request per animation frame.
+  // Tables that do not own their page size still fill their container: apply
+  // the measured size, or report it through the ordinary pagination callback
+  // when the caller is fetching, debounced so a window resize cannot issue a
+  // request per animation frame.
   const dynamicPageSizeTarget = renderedMode === "cards" ? calculatedCardPageSize : calculatedPageSize;
   /*
    * Reporting a measured page size to a server-paginated consumer refetches, so
@@ -562,6 +571,12 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
    * The timer restarts on every dependency change, so a report is sent once the
    * measurement has been quiet for the debounce window rather than on the first
    * value seen.
+   *
+   * A client-side card grid shares all of this. It cannot storm a server with
+   * refetches, but the feedback loop in (3) is a property of the measurement,
+   * not of the transport: page size decides which cards render, rendered cards
+   * are what card height is measured from. Bucketing on the container — which
+   * does not depend on the rows inside it — is what terminates that either way.
    */
   const geometryKey = `${Math.round(measuredBodyWidth / GEOMETRY_BUCKET_PX)}x`
     + `${Math.round(measuredBodyHeight / GEOMETRY_BUCKET_PX)}`;
@@ -572,7 +587,14 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     mode: TableState["viewMode"];
   } | null>(null);
   useLayoutEffect(() => {
-    if (!manualPagination || !dynamicHeight || isPageSizeUserSelected) return;
+    if (!dynamicHeight || isPageSizeUserSelected) return;
+    // Two kinds of caller reach this. A server-paginated one controls
+    // `pagination` and applies the reported size itself, so a controlled prop is
+    // expected there. A client-side card grid has no fetching to own, so the
+    // measured size is applied to the store here instead — but only when the
+    // caller is not controlling pagination, and only for cards: an uncontrolled
+    // table is already sized directly in the effect above.
+    if (!manualPagination && (isPaginationControlled || renderedMode !== "cards")) return;
     if (cardPagination.mode !== "paged") return;
     if (!hasMeasuredLayout || measuredBodyHeight <= 0) return;
     if (!dynamicPageSizeTarget || dynamicPageSizeTarget < 1) return;
@@ -617,6 +639,7 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     return () => clearTimeout(timer);
   }, [
     manualPagination,
+    isPaginationControlled,
     dynamicHeight,
     isPageSizeUserSelected,
     cardPagination.mode,
