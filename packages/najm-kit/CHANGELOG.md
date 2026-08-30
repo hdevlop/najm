@@ -1,5 +1,24 @@
 # Changelog
 
+## 2.11.9 - 2026-08-30
+
+- Fixed card grids that paginate client-side rendering their entire dataset on
+  one page. `useTable` pinned an uncontrolled paged card list to `data.length`,
+  a branch that predates the container measurement added in 2.2.0 and was never
+  reconciled with it: `calculatedCardPageSize` was measured and published, but
+  only ever applied to a server-paginated grid. A 500-row list rendered 500
+  cards on page one, reported a single page, and showed 500 as the current
+  Rows/page value. The measured size is now applied to an uncontrolled card grid
+  too, through the guards that already keep a server-paginated one stable —
+  geometry bucketing, the per-container report budget, and the deferral until
+  real cards have been measured. That loop is a property of the measurement
+  rather than of fetching: page size decides which cards render, and rendered
+  cards are what card height is measured from. Rendering every supplied row
+  stays the behavior wherever there is nothing to measure against, so
+  `dynamicHeight={false}` and a container that has not yet reported a layout are
+  unchanged, and a controlled `pagination` prop or an explicit Rows/page choice
+  still wins.
+
 ## 2.11.8 - 2026-08-28
 
 - Fixed `NContextMenu` leaving keyboard focus on its opener after the menu
