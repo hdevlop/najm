@@ -91,7 +91,7 @@ export function NSmartPasteDialog({
             onClick={handleMerge}
             disabled={!preview || preview.newCount === 0}
           >
-            <Merge className="h-3.5 w-3.5 mr-1.5" />
+            <Merge className="h-3.5 w-3.5 me-1.5" />
             {preview ? `Merge ${preview.newCount} ${itemLabel}${preview.newCount !== 1 ? 's' : ''}` : 'Merge'}
           </Button>
         </div>

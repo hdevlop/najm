@@ -271,7 +271,7 @@ function DialogChrome({
       ) : variant === "window" ? (
         <DialogHeader
           className={cn(
-            "flex-row items-center justify-between gap-3 border-b border-border bg-secondary text-left text-secondary-foreground",
+            "flex-row items-center justify-between gap-3 border-b border-border bg-secondary text-start text-secondary-foreground",
             windowHeaderSpacing[resolvedPadding],
             headerClassName
           )}

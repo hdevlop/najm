@@ -77,7 +77,7 @@ export function NDeleteDialog({
       <DialogContent
         className={cn(
           "h-auto max-w-[380px] gap-0 rounded-[18px] border border-border bg-card p-6 pt-8 shadow-2xl dark:border-0 dark:bg-[#222b38]",
-          "[&>button]:right-4 [&>button]:top-4 [&>button]:flex [&>button]:size-6 [&>button]:items-center [&>button]:justify-center",
+          "[&>button]:end-4 [&>button]:top-4 [&>button]:flex [&>button]:size-6 [&>button]:items-center [&>button]:justify-center",
           "[&>button]:rounded-full [&>button]:bg-muted [&>button]:text-muted-foreground [&>button]:opacity-100 [&>button]:ring-offset-0",
           "[&>button]:hover:bg-secondary [&>button]:hover:text-foreground dark:[&>button]:bg-[#4d5a6d] dark:[&>button]:text-white dark:[&>button]:hover:bg-[#647186] dark:[&>button]:hover:text-white",
           className

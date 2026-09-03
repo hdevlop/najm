@@ -71,7 +71,7 @@ function useResponsivePadding(value: DialogPadding | undefined): DialogPadding {
 export interface DialogContentProps extends React.ComponentProps<typeof DialogPrimitive.Content> {
   /** Controls the padding of the dialog surface. `none` also collapses the header/body/footer gap. Defaults to `sm` on mobile, `md` on desktop. */
   padding?: DialogPadding;
-  /** Hides the built-in top-right close (X). Use when the content provides its own close control (e.g. inside a page header). */
+  /** Hides the built-in close (X) in the top inline-end corner. Use when the content provides its own close control (e.g. inside a page header). */
   hideClose?: boolean;
 }
 
@@ -146,7 +146,7 @@ function DialogContent({
         >
           {children}
           {!hideClose && (
-            <DialogPrimitive.Close className="ring-offset-background cursor-pointer focus:ring-ring absolute top-4 right-4 rounded-xs text-muted-foreground hover:text-foreground transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
+            <DialogPrimitive.Close className="ring-offset-background cursor-pointer focus:ring-ring absolute top-4 end-4 rounded-xs text-muted-foreground hover:text-foreground transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
               <XIcon />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
@@ -158,7 +158,7 @@ function DialogContent({
 }
 
 function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
-  return <div data-slot="dialog-header" className={cn("flex flex-col gap-2 text-center sm:text-left", className)} {...props} />;
+  return <div data-slot="dialog-header" className={cn("flex flex-col gap-2 text-center sm:text-start", className)} {...props} />;
 }
 
 function DialogFooter({ className, ...props }: React.ComponentProps<"div">) {
