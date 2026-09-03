@@ -27,6 +27,9 @@ export const PACKAGE_TARGETS: PackageTarget[] = [
   // After najm-kit: najm-theme builds on the published kit contracts, so it
   // must be packed and published against a kit version that already exists.
   { name: 'najm-theme', workspace: 'packages/najm-theme' },
+  // Dependency-free: it only reads the consumer's filesystem and environment,
+  // so its position here is publish convenience, not an ordering constraint.
+  { name: 'najm-next', workspace: 'packages/najm-next' },
 ];
 
 export const TEST_TARGETS: PackageTarget[] = [

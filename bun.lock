@@ -59,6 +59,7 @@
         "najm-i18n": "workspace:*",
         "najm-kit": "workspace:*",
         "najm-mcp": "workspace:*",
+        "najm-next": "workspace:*",
         "najm-rag": "workspace:*",
         "najm-rate": "workspace:*",
         "najm-storage": "workspace:*",
@@ -598,6 +599,20 @@
         "najm-auth",
         "najm-validation",
       ],
+    },
+    "packages/najm-next": {
+      "name": "najm-next",
+      "version": "0.1.0",
+      "devDependencies": {
+        "@types/node": "^25.0.2",
+        "next": "16.2.11",
+        "rimraf": "^6.0.1",
+        "tsup": "^8.5.1",
+        "typescript": "^5.9.3",
+      },
+      "peerDependencies": {
+        "next": ">=15.3.0 <17",
+      },
     },
     "packages/najm-rag": {
       "name": "najm-rag",
@@ -2519,6 +2534,8 @@
     "najm-kit": ["najm-kit@workspace:packages/najm-kit"],
 
     "najm-mcp": ["najm-mcp@workspace:packages/najm-mcp"],
+
+    "najm-next": ["najm-next@workspace:packages/najm-next"],
 
     "najm-playground": ["najm-playground@workspace:apps/playground"],
 

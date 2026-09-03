@@ -40,6 +40,7 @@
     "najm-i18n": "workspace:*",
     "najm-kit": "workspace:*",
     "najm-mcp": "workspace:*",
+    "najm-next": "workspace:*",
     "najm-rag": "workspace:*",
     "najm-rate": "workspace:*",
     "najm-storage": "workspace:*",

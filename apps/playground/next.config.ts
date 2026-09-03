@@ -1,11 +1,9 @@
-import type { NextConfig } from 'next';
+import { defineNajmNextConfig } from 'najm-next/configurable';
 
-const nextConfig: NextConfig = {
+export default defineNajmNextConfig({
   env: {
     WS_NO_BUFFER_UTIL: 'true',
     WS_NO_UTF_8_VALIDATE: 'true',
   },
-  serverExternalPackages: ['reflect-metadata', 'better-sqlite3', 'sqlite-vec', '@whiskeysockets/baileys', 'sharp'],
-};
-
-export default nextConfig;
+  serverExternalPackages: ['better-sqlite3', 'sqlite-vec', '@whiskeysockets/baileys', 'sharp'],
+});
