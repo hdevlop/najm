@@ -16,11 +16,39 @@ import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Colum
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import type { ViewMode } from "./store";
+import { useResolvedToolbarLabels } from "./TableDefaults";
 import {
   DEFAULT_TABLE_HEADER_COLOR,
   DEFAULT_TABLE_HEADER_TEXT_COLOR,
   resolveTableColor,
 } from "./tableColors";
+
+/**
+ * The packaged English, applied per field so a partial bundle still localizes
+ * what it names. Mirrors how `NTablePagination` resolves its own labels.
+ */
+function useToolbarCopy() {
+  const own = useTableStore.use.toolbarLabels();
+  const labels = useResolvedToolbarLabels(own);
+
+  return React.useMemo(
+    () => ({
+      settings: labels.settings ?? "Table settings",
+      view: labels.view ?? "View",
+      columns: labels.columns ?? "Columns",
+      modeTable: labels.modeTable ?? "Table",
+      modeCards: labels.modeCards ?? "Cards",
+      modeJson: labels.modeJson ?? "JSON",
+      modeFiles: labels.modeFiles ?? "Files",
+      modeOption: labels.modeOption ?? ((mode: string) => `${mode} view`),
+      filters: labels.filters ?? "Filters",
+      filterRegion: labels.filterRegion ?? "Table filters",
+      allOption: labels.allOption ?? "All",
+      create: labels.create ?? "Create",
+    }),
+    [labels],
+  );
+}
 
 /**
  * Placeholder for a filter whose column cannot be resolved yet.
@@ -55,9 +83,10 @@ function TextFilter({ name, placeholder, icon }: { name: string; placeholder?: s
 function SelectFilter({ name, options, placeholder, inputType }: { name: string; options: any[]; placeholder?: string; inputType?: string }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
+  const copy = useToolbarCopy();
   const column = table?.getColumn?.(name);
   if (!column) return <PendingFilter placeholder={placeholder || "Filter..."} bordered={bordered} />;
-  const allOptions = [{ value: "__clear__", label: "All" }, ...options.map((o: any) => typeof o === "string" ? { value: o, label: o } : o)];
+  const allOptions = [{ value: "__clear__", label: copy.allOption }, ...options.map((o: any) => typeof o === "string" ? { value: o, label: o } : o)];
   const InputComponent = inputType === "combobox" ? ComboboxInput : SelectInput;
   return <InputComponent value={(column.getFilterValue() as string) ?? ""} onChange={(value) => column.setFilterValue(value === "" || value === "__clear__" ? undefined : value)} items={allOptions} placeholder={placeholder || "Filter..."} bordered={bordered} />;
 }
@@ -165,6 +194,7 @@ function TableAddButton({ mobile = false }: { mobile?: boolean }) {
   const onAddClick = useTableStore.use.onAddClick();
   const showAddButton = useTableStore.use.showAddButton();
   const addButtonText = useTableStore.use.addButtonText();
+  const copy = useToolbarCopy();
   const headerColor = useTableStore.use.headerColor();
   const headerTextColor = useTableStore.use.headerTextColor();
   const bordered = useTableStore.use.bordered();
@@ -184,8 +214,8 @@ function TableAddButton({ mobile = false }: { mobile?: boolean }) {
       type="button"
       onClick={onAddClick ?? undefined}
       style={btnStyle}
-      aria-label={addButtonText || "Create"}
-      title={addButtonText || "Create"}
+      aria-label={addButtonText || copy.create}
+      title={addButtonText || copy.create}
       data-bordered={bordered === false ? "false" : "true"}
       className={cn(
         "h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:opacity-90",
@@ -201,6 +231,7 @@ function TableAddButton({ mobile = false }: { mobile?: boolean }) {
 
 function MobileFiltersMenu({ filters }: { filters: any[] }) {
   const bordered = useTableStore.use.bordered();
+  const copy = useToolbarCopy();
   if (!filters.length) return null;
 
   return (
@@ -208,8 +239,8 @@ function MobileFiltersMenu({ filters }: { filters: any[] }) {
       <PopoverTrigger asChild>
         <button
           type="button"
-          aria-label="Filters"
-          title="Filters"
+          aria-label={copy.filters}
+          title={copy.filters}
           data-bordered={bordered === false ? "false" : "true"}
           className={cn(
             "flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg bg-card text-primary transition-colors hover:border-primary/70",
@@ -221,7 +252,7 @@ function MobileFiltersMenu({ filters }: { filters: any[] }) {
       </PopoverTrigger>
       <PopoverContent
         align="end"
-        aria-label="Table filters"
+        aria-label={copy.filterRegion}
         className="w-[min(20rem,calc(100vw-2rem))] space-y-3 bg-card p-3"
       >
         {filters.map((filter: any) => (
@@ -262,6 +293,7 @@ function TableSettingsMenu() {
   const cardComponent = useTableStore.use.CardComponent();
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
+  const copy = useToolbarCopy();
 
   if (!showViewToggle && !showColumnVisibility) return null;
 
@@ -271,13 +303,13 @@ function TableSettingsMenu() {
   const modeItems: { value: ViewMode; label: string; ariaLabel: string; icon: React.ReactNode }[] = [];
   if (showViewToggle) {
     if (filteredModes.includes("table"))
-      modeItems.push({ value: "table", label: "Table", ariaLabel: "Table view", icon: <List className="h-4 w-4" /> });
+      modeItems.push({ value: "table", label: copy.modeTable, ariaLabel: copy.modeOption(copy.modeTable), icon: <List className="h-4 w-4" /> });
     if (filteredModes.includes("cards") && cardComponent)
-      modeItems.push({ value: "cards", label: "Cards", ariaLabel: "Cards view", icon: <LayoutGrid className="h-4 w-4" /> });
+      modeItems.push({ value: "cards", label: copy.modeCards, ariaLabel: copy.modeOption(copy.modeCards), icon: <LayoutGrid className="h-4 w-4" /> });
     if (filteredModes.includes("json") && (jsonValue !== undefined || renderJson))
-      modeItems.push({ value: "json", label: "JSON", ariaLabel: "JSON view", icon: <Code className="h-4 w-4" /> });
+      modeItems.push({ value: "json", label: copy.modeJson, ariaLabel: copy.modeOption(copy.modeJson), icon: <Code className="h-4 w-4" /> });
     if (filteredModes.includes("files"))
-      modeItems.push({ value: "files", label: "Files", ariaLabel: "Files view", icon: <FolderOpen className="h-4 w-4" /> });
+      modeItems.push({ value: "files", label: copy.modeFiles, ariaLabel: copy.modeOption(copy.modeFiles), icon: <FolderOpen className="h-4 w-4" /> });
   }
 
   const columns = table?.getAllColumns?.().filter((c: any) => c.getCanHide()) ?? [];
@@ -287,7 +319,7 @@ function TableSettingsMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <BaseInput aria-label="Table settings" className="w-auto cursor-pointer px-3" bordered={bordered}>
+        <BaseInput aria-label={copy.settings} className="w-auto cursor-pointer px-3" bordered={bordered}>
           <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
         </BaseInput>
       </DropdownMenuTrigger>
@@ -296,7 +328,7 @@ function TableSettingsMenu() {
           <>
             <DropdownMenuLabel className="flex items-center gap-2">
               <Eye className="h-3.5 w-3.5" />
-              View
+              {copy.view}
             </DropdownMenuLabel>
             <DropdownMenuRadioGroup value={viewMode} onValueChange={(v) => setViewMode(v as ViewMode)}>
               {modeItems.map((item) => (
@@ -315,7 +347,7 @@ function TableSettingsMenu() {
           <>
             <DropdownMenuLabel className="flex items-center gap-2">
               <Columns3 className="h-3.5 w-3.5" />
-              Columns
+              {copy.columns}
             </DropdownMenuLabel>
             {columns.map((col: any) => (
               <DropdownMenuCheckboxItem

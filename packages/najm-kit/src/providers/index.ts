@@ -25,3 +25,10 @@ export {
   DEFAULT_PAGINATION_KEY_PREFIX,
 } from "./paginationLabels";
 export type { NajmTranslate } from "./paginationLabels";
+export {
+  DEFAULT_TOOLBAR_KEY_PREFIX,
+  buildToolbarLabels,
+} from "./toolbarLabels";
+export type { ToolbarKey } from "./toolbarLabels";
+export { useDocumentDirection } from "./useDocumentDirection";
+export type { NajmDirection } from "./useDocumentDirection";

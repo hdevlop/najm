@@ -168,11 +168,12 @@ export function NThemePresets({
                   key={row.value}
                   value={row.value}
                   /**
-                   * The check indicator ships anchored right. Flip the row
-                   * padding, move it left, and let the text span stretch so the
-                   * delete control can sit at the far right.
+                   * The check indicator ships anchored at the inline end. Flip
+                   * the row padding, move it to the inline start, and let the
+                   * text span stretch so the delete control can sit at the far
+                   * inline end.
                    */
-                  className="pr-2 pl-8 [&>span:first-child]:right-auto [&>span:first-child]:left-2 [&>span:first-child]:text-success [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1"
+                  className="pe-2 ps-8 [&>span:first-child]:end-auto [&>span:first-child]:start-2 [&>span:first-child]:text-success [&>span:last-child]:min-w-0 [&>span:last-child]:flex-1"
                 >
                   <span className="flex w-full min-w-0 items-center gap-2">
                     <ThemeSwatch design={row.design} />

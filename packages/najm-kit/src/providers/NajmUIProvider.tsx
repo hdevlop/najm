@@ -1,4 +1,5 @@
 import * as React from "react";
+import { DirectionProvider } from "@radix-ui/react-direction";
 
 import { cn } from "../lib/cn";
 import { NajmDesignProvider } from "../theme/design-provider";
@@ -29,6 +30,11 @@ import {
   DEFAULT_PAGINATION_KEY_PREFIX,
 } from "./paginationLabels";
 import type { NajmTranslate } from "./paginationLabels";
+import {
+  DEFAULT_TOOLBAR_KEY_PREFIX,
+  buildToolbarLabels,
+} from "./toolbarLabels";
+import { useDocumentDirection, type NajmDirection } from "./useDocumentDirection";
 import {
   EMPTY_DESIGN,
   NajmDesignEditorProvider,
@@ -81,6 +87,26 @@ export interface NajmUIProviderProps
   /** Catalog prefix for the labels. Defaults to `"common.pagination"`. */
   paginationKeyPrefix?: string;
   /**
+   * Catalog prefix for the table toolbar and settings menu. Defaults to
+   * `"common.table"`.
+   *
+   * These labels are built inside the kit rather than supplied per column, so
+   * this prefix is the only way a catalog reaches the view-mode options, the
+   * column-visibility heading, and the filter controls' accessible names.
+   */
+  toolbarKeyPrefix?: string;
+  /**
+   * Writing direction for the Radix popups beneath — menus, selects, and the
+   * rest of the portaled content.
+   *
+   * Omit it and the direction follows `<html dir>`, which is what an
+   * application already sets and what the browser lays the page out against.
+   * Radix defaults its own context to `"ltr"` and stamps that on every portaled
+   * element, so without this bridge an RTL page gets LTR popups. Pass a value
+   * only to pin one region against the document.
+   */
+  dir?: NajmDirection;
+  /**
    * Per-key overrides layered over the translated labels. Memoize it, for the
    * same reason as `t`.
    */
@@ -111,6 +137,8 @@ type UICoreProps = Pick<
   | "className"
   | "t"
   | "paginationKeyPrefix"
+  | "toolbarKeyPrefix"
+  | "dir"
   | "tableDefaults"
   | "badgeDefaults"
   | "feedbackDefaults"
@@ -129,11 +157,14 @@ function NajmUICore({
   className,
   t,
   paginationKeyPrefix = DEFAULT_PAGINATION_KEY_PREFIX,
+  toolbarKeyPrefix = DEFAULT_TOOLBAR_KEY_PREFIX,
+  dir,
   tableDefaults,
   badgeDefaults,
   feedbackDefaults,
 }: UICoreProps) {
   const { theme } = useNajmTheme();
+  const direction = useDocumentDirection(dir);
   const design = useNajmDesignEditor()?.design ?? EMPTY_DESIGN;
 
   const defaults = React.useMemo<NTableDefaults>(() => {
@@ -148,8 +179,17 @@ function NajmUICore({
     const paginationLabels =
       translated || overrides ? { ...translated, ...overrides } : undefined;
 
-    return { ...tableDefaults, paginationLabels };
-  }, [t, paginationKeyPrefix, tableDefaults]);
+    const translatedToolbar = t
+      ? buildToolbarLabels(t, toolbarKeyPrefix)
+      : undefined;
+    const toolbarOverrides = tableDefaults?.toolbarLabels;
+    const toolbarLabels =
+      translatedToolbar || toolbarOverrides
+        ? { ...translatedToolbar, ...toolbarOverrides }
+        : undefined;
+
+    return { ...tableDefaults, paginationLabels, toolbarLabels };
+  }, [t, paginationKeyPrefix, toolbarKeyPrefix, tableDefaults]);
 
   const feedbackValue = React.useMemo(
     () => resolveFeedbackDefaultsValue(feedbackDefaults, t),
@@ -162,17 +202,21 @@ function NajmUICore({
       mode={theme}
       className={cn("min-h-full", className)}
     >
-      <NTableDefaultsProvider value={defaults}>
-        {/* Mounted unconditionally so the translator reaches the badges: an
-            application can supply `statusLabelKeys` later, and a language
-            change has to recompute labels through the same `t` the tables
-            already use. */}
-        <NBadgeDefaultsProvider defaults={badgeDefaults} t={t}>
-          <NFeedbackDefaultsProvider value={feedbackValue}>
-            {children}
-          </NFeedbackDefaultsProvider>
-        </NBadgeDefaultsProvider>
-      </NTableDefaultsProvider>
+      {/* Radix reads direction from here and nowhere else. Without it every
+          portaled menu and select renders LTR inside an RTL page. */}
+      <DirectionProvider dir={direction}>
+        <NTableDefaultsProvider value={defaults}>
+          {/* Mounted unconditionally so the translator reaches the badges: an
+              application can supply `statusLabelKeys` later, and a language
+              change has to recompute labels through the same `t` the tables
+              already use. */}
+          <NBadgeDefaultsProvider defaults={badgeDefaults} t={t}>
+            <NFeedbackDefaultsProvider value={feedbackValue}>
+              {children}
+            </NFeedbackDefaultsProvider>
+          </NBadgeDefaultsProvider>
+        </NTableDefaultsProvider>
+      </DirectionProvider>
     </NajmDesignProvider>
   );
 }
@@ -203,6 +247,8 @@ export function NajmUIProvider({
   className,
   t,
   paginationKeyPrefix,
+  toolbarKeyPrefix,
+  dir,
   tableDefaults,
   badgeDefaults,
   feedbackDefaults,
@@ -220,6 +266,8 @@ export function NajmUIProvider({
         className={className}
         t={t}
         paginationKeyPrefix={paginationKeyPrefix}
+        toolbarKeyPrefix={toolbarKeyPrefix}
+        dir={dir}
         tableDefaults={tableDefaults}
         badgeDefaults={badgeDefaults}
         feedbackDefaults={feedbackDefaults}

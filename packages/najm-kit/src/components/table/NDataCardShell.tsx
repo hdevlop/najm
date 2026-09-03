@@ -54,7 +54,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
     >
       {/* Checkbox */}
       {showCheckbox && (
-      <div className={cn("absolute top-2 left-2 z-10 transition-opacity duration-200", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
+      <div className={cn("absolute top-2 start-2 z-10 transition-opacity duration-200", isSelected ? "opacity-100" : "opacity-0 group-hover:opacity-100")}>
         <Checkbox
           checked={isSelected}
           onCheckedChange={(value) => { row.toggleSelected(!!value); }}
@@ -97,7 +97,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
                   onClick={(e) => { e.stopPropagation(); actions.onView!(row.original); }}
                   className="cursor-pointer"
                 >
-                  <Eye className="h-4 w-4 mr-2" />View
+                  <Eye className="h-4 w-4 me-2" />View
                 </DropdownMenuItem>
               )}
               {actions.onEdit && (
@@ -105,7 +105,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
                   onClick={(e) => { e.stopPropagation(); actions.onEdit!(row.original); }}
                   className="cursor-pointer"
                 >
-                  <Edit className="h-4 w-4 mr-2" />Edit
+                  <Edit className="h-4 w-4 me-2" />Edit
                 </DropdownMenuItem>
               )}
               {actions.onDelete && (
@@ -113,7 +113,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
                   onClick={(e) => { e.stopPropagation(); actions.onDelete!(row.original); }}
                   className="cursor-pointer text-red-500"
                 >
-                  <Trash2 className="h-4 w-4 mr-2 text-red-500" />Delete
+                  <Trash2 className="h-4 w-4 me-2 text-red-500" />Delete
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>
@@ -129,11 +129,11 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
           aria-expanded={isExpanded}
           onClick={(e) => { e.stopPropagation(); row.toggleExpanded(); }}
           className={cn(
-            "absolute bottom-2 right-2 z-10 flex h-6 w-6 items-center justify-center rounded hover:bg-muted",
+            "absolute bottom-2 end-2 z-10 flex h-6 w-6 items-center justify-center rounded hover:bg-muted",
             bordered && "border border-border"
           )}
         >
-          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+          {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4 rtl:rotate-180" />}
         </button>
       )}
 

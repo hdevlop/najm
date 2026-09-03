@@ -26,6 +26,24 @@ export default {
       retryLoadMore: 'Retry',
       itemsLoaded: '{{count}} rows loaded',
     },
+    // Same contract as `pagination` above, read by buildToolbarLabels off the
+    // `common.table` prefix — the settings menu, the view modes, and the
+    // filter chrome are built inside the kit, so this is the only way a
+    // catalog reaches them.
+    table: {
+      settings: 'Table settings',
+      view: 'View',
+      columns: 'Columns',
+      modeTable: 'Table',
+      modeCards: 'Cards',
+      modeJson: 'JSON',
+      modeFiles: 'Files',
+      modeOption: '{{mode}} view',
+      filters: 'Filters',
+      filterRegion: 'Table filters',
+      allOption: 'All',
+      create: 'Create',
+    },
   },
   auth: {
     errors: {

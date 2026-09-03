@@ -21,6 +21,20 @@ export default {
       retryLoadMore: 'Réessayer',
       itemsLoaded: '{{count}} lignes chargées',
     },
+    table: {
+      settings: 'Réglages du tableau',
+      view: 'Affichage',
+      columns: 'Colonnes',
+      modeTable: 'Tableau',
+      modeCards: 'Cartes',
+      modeJson: 'JSON',
+      modeFiles: 'Fichiers',
+      modeOption: 'Affichage {{mode}}',
+      filters: 'Filtres',
+      filterRegion: 'Filtres du tableau',
+      allOption: 'Tous',
+      create: 'Créer',
+    },
   },
   auth: {
     errors: {

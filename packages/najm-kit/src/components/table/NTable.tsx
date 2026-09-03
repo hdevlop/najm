@@ -24,10 +24,12 @@ import type {
   NTablePaginationLabels,
   NTablePaginationVariant,
 } from "./paginationContract";
+import type { NTableToolbarLabels } from "./toolbarContract";
 export type { NTableClassNames } from "./store";
 export type { TableHeaderColor } from "./tableColors";
 export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint } from "./responsiveColumns";
 export type { NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels } from "./paginationContract";
+export type { NTableToolbarLabels } from "./toolbarContract";
 
 export interface NTableState {
   sorting: SortingState;
@@ -168,7 +170,8 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   showColumnVisibility?: boolean;
   showAddButton?: boolean;
   showViewToggle?: boolean;
-  toolbarLabels?: boolean;
+  /** Accessible names and visible copy for the toolbar and settings menu. */
+  toolbarLabels?: NTableToolbarLabels;
   dynamicHeight?: boolean;
   headerClassName?: string;
   /** CSS color or Najm token name for the table header background. Defaults to primary. */
@@ -541,7 +544,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     showColumnVisibility: props.showColumnVisibility ?? false,
     showAddButton: props.showAddButton ?? Boolean(props.onCreate),
     showViewToggle: props.showViewToggle ?? true,
-    toolbarLabels: props.toolbarLabels ?? true,
+    toolbarLabels: props.toolbarLabels ?? {},
     dynamicHeight: props.dynamicHeight ?? true,
     noResultsText: props.noResultsText ?? "No results.",
     noDataText: props.noDataText ?? "No data available",

@@ -9,6 +9,9 @@ import {
   useNajmTimeZone,
   buildPaginationLabels,
   DEFAULT_PAGINATION_KEY_PREFIX,
+  buildToolbarLabels,
+  DEFAULT_TOOLBAR_KEY_PREFIX,
+  useDocumentDirection,
 } from "../src/index";
 import { useNTableDefaults } from "../src/components/table";
 import { useNajmDesign } from "../src/theme/design-provider";
@@ -48,9 +51,41 @@ function LabelProbe() {
   );
 }
 
+function ToolbarProbe() {
+  const { toolbarLabels } = useNTableDefaults();
+  return (
+    <div>
+      <span data-testid="view">{toolbarLabels?.view ?? "—"}</span>
+      <span data-testid="mode-cards">{toolbarLabels?.modeCards ?? "—"}</span>
+      <span data-testid="mode-option">
+        {toolbarLabels?.modeOption?.("Cards") ?? "—"}
+      </span>
+    </div>
+  );
+}
+
+function DirectionProbe() {
+  const direction = useDocumentDirection();
+  return <span data-testid="direction">{direction}</span>;
+}
+
 beforeEach(() => {
   document.documentElement.className = "";
+  document.documentElement.removeAttribute("dir");
   delete document.documentElement.dataset.timeZone;
+});
+
+describe("useDocumentDirection", () => {
+  test("follows changes to the document direction", async () => {
+    const { getByTestId } = render(<DirectionProbe />);
+
+    expect(getByTestId("direction").textContent).toBe("ltr");
+    document.documentElement.dir = "rtl";
+
+    await waitFor(() =>
+      expect(getByTestId("direction").textContent).toBe("rtl"),
+    );
+  });
 });
 
 describe("buildPaginationLabels", () => {
@@ -79,6 +114,32 @@ describe("buildPaginationLabels", () => {
     );
     expect(labels.rowsSelected?.(3, 12)).toBe(
       'common.pagination.rowsSelected({"selected":3,"total":12})',
+    );
+  });
+});
+
+describe("buildToolbarLabels", () => {
+  const t = (key: string, params?: Record<string, string | number>) =>
+    params ? `${key}(${JSON.stringify(params)})` : key;
+
+  test("keys every label off the default prefix", () => {
+    const labels = buildToolbarLabels(t);
+    expect(DEFAULT_TOOLBAR_KEY_PREFIX).toBe("common.table");
+    expect(labels.view).toBe("common.table.view");
+    expect(labels.columns).toBe("common.table.columns");
+    expect(labels.modeCards).toBe("common.table.modeCards");
+    expect(labels.allOption).toBe("common.table.allOption");
+  });
+
+  test("honours a custom prefix", () => {
+    const labels = buildToolbarLabels(t, "table.chrome");
+    expect(labels.settings).toBe("table.chrome.settings");
+  });
+
+  test("interpolates the visible mode name into its accessible name", () => {
+    const labels = buildToolbarLabels(t);
+    expect(labels.modeOption?.("Cards")).toBe(
+      'common.table.modeOption({"mode":"Cards"})',
     );
   });
 });
@@ -263,6 +324,63 @@ describe("NajmUIProvider table defaults", () => {
     expect(getByTestId("rows-per-page").textContent).toBe("Per page");
     expect(getByTestId("go-to-page").textContent).toBe(
       "[common.pagination.goToPage]",
+    );
+  });
+});
+
+describe("NajmUIProvider toolbar defaults", () => {
+  test("derives toolbar labels from the same t", () => {
+    const { getByTestId } = render(
+      <NajmUIProvider design={design} t={(key) => `[${key}]`}>
+        <ToolbarProbe />
+      </NajmUIProvider>,
+    );
+
+    expect(getByTestId("view").textContent).toBe("[common.table.view]");
+    expect(getByTestId("mode-cards").textContent).toBe(
+      "[common.table.modeCards]",
+    );
+  });
+
+  test("honours toolbarKeyPrefix", () => {
+    const { getByTestId } = render(
+      <NajmUIProvider
+        design={design}
+        t={(key) => `[${key}]`}
+        toolbarKeyPrefix="table.chrome"
+      >
+        <ToolbarProbe />
+      </NajmUIProvider>,
+    );
+
+    expect(getByTestId("view").textContent).toBe("[table.chrome.view]");
+  });
+
+  test("leaves labels undefined with no t, so packaged English applies", () => {
+    const { getByTestId } = render(
+      <NajmUIProvider design={design}>
+        <ToolbarProbe />
+      </NajmUIProvider>,
+    );
+
+    expect(getByTestId("view").textContent).toBe("—");
+    expect(getByTestId("mode-option").textContent).toBe("—");
+  });
+
+  test("tableDefaults overrides one key and keeps the translated rest", () => {
+    const { getByTestId } = render(
+      <NajmUIProvider
+        design={design}
+        t={(key) => `[${key}]`}
+        tableDefaults={{ toolbarLabels: { view: "Layout" } }}
+      >
+        <ToolbarProbe />
+      </NajmUIProvider>,
+    );
+
+    expect(getByTestId("view").textContent).toBe("Layout");
+    expect(getByTestId("mode-cards").textContent).toBe(
+      "[common.table.modeCards]",
     );
   });
 });

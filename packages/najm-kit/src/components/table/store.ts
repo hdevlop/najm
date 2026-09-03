@@ -7,6 +7,7 @@ import type {
   NTablePaginationLabels,
   NTablePaginationVariant,
 } from "./paginationContract";
+import type { NTableToolbarLabels } from "./toolbarContract";
 
 export interface NTableClassNames {
   root?: string;
@@ -36,7 +37,7 @@ export interface TableState {
   showColumnVisibility: boolean;
   showAddButton: boolean;
   showViewToggle: boolean;
-  toolbarLabels: boolean;
+  toolbarLabels: NTableToolbarLabels;
   showContent: boolean;
   isTableView: boolean;
   isCardView: boolean;
@@ -224,7 +225,7 @@ export const createTableStore = (seed?: Partial<TableState>) => {
   const store = create<TableState>((set, get) => {
     const defaults = ({
     table: null, data: [], columns: [], filters: [], isLoading: false, error: null, viewMode: "table" as ViewMode,
-    showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: true, dynamicHeight: true,
+    showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: {}, dynamicHeight: true,
     showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true, isRefreshing: false,
     onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
     CardComponent: null, CardSkeletonComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,

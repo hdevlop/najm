@@ -1,6 +1,7 @@
 import React from "react";
 
 import type { NTablePaginationLabels } from "./paginationContract";
+import type { NTableToolbarLabels } from "./toolbarContract";
 
 /**
  * Defaults every `NTable` beneath the provider inherits.
@@ -11,6 +12,7 @@ import type { NTablePaginationLabels } from "./paginationContract";
  */
 export interface NTableDefaults {
   paginationLabels?: NTablePaginationLabels;
+  toolbarLabels?: NTableToolbarLabels;
 }
 
 const NTableDefaultsContext = React.createContext<NTableDefaults>({});
@@ -52,6 +54,22 @@ export function useResolvedPaginationLabels(
 ): NTablePaginationLabels {
   const defaults = useNTableDefaults();
   const inherited = defaults.paginationLabels;
+
+  return React.useMemo(
+    () => ({ ...inherited, ...own }),
+    [inherited, own],
+  );
+}
+
+/**
+ * Per-key merge for the toolbar copy, on the same terms as
+ * `useResolvedPaginationLabels`.
+ */
+export function useResolvedToolbarLabels(
+  own: NTableToolbarLabels | undefined,
+): NTableToolbarLabels {
+  const defaults = useNTableDefaults();
+  const inherited = defaults.toolbarLabels;
 
   return React.useMemo(
     () => ({ ...inherited, ...own }),

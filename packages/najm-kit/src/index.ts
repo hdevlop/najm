@@ -38,6 +38,9 @@ export {
   useNajmTheme,
   useNajmTimeZone,
   buildPaginationLabels,
+  buildToolbarLabels,
+  DEFAULT_TOOLBAR_KEY_PREFIX,
+  useDocumentDirection,
   DEFAULT_TIME_ZONE,
   DEFAULT_PAGINATION_KEY_PREFIX,
   EMPTY_DESIGN,
@@ -212,9 +215,9 @@ export { NForm, FormInput, AvatarFormInput, NFormSectionHeader, RepeatingFields,
 export type { FormInputBackground, FormInputProps, FormProps, AvatarFormInputProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta, FormDevTools, FormDevToolsConfig, FormDevToolsOptions, FormFillOverride, FormFillOverrides } from "./components/form";
 
 // Table
-export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses, buildPageItems, NTableDefaultsProvider, useNTableDefaults, createCardPagination, buildCardPaginationLabels, DEFAULT_CARD_PAGINATION_KEY_PREFIX } from "./components/table";
+export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses, buildPageItems, NTableDefaultsProvider, useNTableDefaults, useResolvedToolbarLabels, createCardPagination, buildCardPaginationLabels, DEFAULT_CARD_PAGINATION_KEY_PREFIX } from "./components/table";
 export type { ListStrategy, ResolvedListMode, CardPaginationState, CardPaginationLabels, CardPaginationKey } from "./components/table";
-export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp, NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels, NTablePageItem, NTableDefaults } from "./components/table";
+export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp, NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels, NTableToolbarLabels, NTablePageItem, NTableDefaults } from "./components/table";
 export type { NDataCardShellProps, NDataCardShellActions } from "./components/table";
 export type { NTableCardRootProps, NFileBrowserProps, NFileBrowserCardProps, NFileBrowserRenderThumbProps, FileNode, FileBrowserMode, BuildDefaultFileColumnsOptions } from "./components/table";
 
