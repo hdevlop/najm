@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.3.0 - 2026-09-04
+
+- security(rate): resolve the client address through `najm-rate`'s trusted-hop
+  boundary instead of reading `x-forwarded-for` / `x-real-ip` directly, so a
+  spoofed left-side forwarding value can no longer rotate a login, registration,
+  cookie-fingerprint, or OAuth-callback rate-limit bucket
+- feat(auth): add `cache` to `AuthPluginConfig` and forward it to the
+  package-owned `cache()` dependency, so the rate-limit store can be a shared
+  durable backend without relying on consumer plugin ordering
+
+  BREAKING for direct callers: the exported `authIdentityRateLimitKey` now
+  takes `(ctx, keyContext)`. Custom `KeyStrategy` callbacks are unaffected —
+  the second argument is additive and one-argument callbacks still type-check.
+
 ## 3.2.1 - 2026-09-03
 
 - security(auth): return the same 401 response and perform a password-hash

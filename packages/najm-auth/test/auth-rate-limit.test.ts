@@ -133,5 +133,6 @@ function rawKey(body: string): Promise<string> {
       json: () => request.json(),
     },
   } as unknown as Context;
-  return authIdentityRateLimitKey(context);
+  // The address now arrives resolved from najm-rate rather than the header.
+  return authIdentityRateLimitKey(context, { clientIp: '203.0.113.10' });
 }

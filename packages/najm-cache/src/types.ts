@@ -3,6 +3,7 @@
 // ============================================================================
 
 import type { MemoryDriverOptions } from './drivers/MemoryDriver';
+import type { RedisClient } from './drivers/RedisDriver';
 
 /**
  * Redis configuration options
@@ -24,6 +25,13 @@ export interface RedisOptions {
    * Additional ioredis options
    */
   options?: Record<string, unknown>;
+
+  /**
+   * Pre-constructed client. Advanced: supply an existing connection instead of
+   * letting the driver build one. The driver never inspects or logs the URL
+   * when a client is provided.
+   */
+  client?: RedisClient;
 }
 
 /**
@@ -50,6 +58,18 @@ export interface CachePluginConfig {
    * Memory driver options (used when driver is 'memory' or as fallback)
    */
   memory?: MemoryDriverOptions;
+
+  /**
+   * Require the selected driver instead of degrading to memory.
+   *
+   * With `required: true` a missing Redis URL, an unavailable Redis
+   * implementation, or an unreachable server becomes a startup failure. Use it
+   * wherever the cache backs a security control (rate limiting) and a silent
+   * per-process memory bucket would weaken it.
+   *
+   * Errors raised in this mode never include the URL or its credentials.
+   */
+  required?: boolean;
 }
 
 /**
@@ -59,4 +79,5 @@ export interface CacheConfig {
   driver: 'memory' | 'redis' | 'auto';
   redis?: RedisOptions;
   memory: MemoryDriverOptions;
+  required: boolean;
 }

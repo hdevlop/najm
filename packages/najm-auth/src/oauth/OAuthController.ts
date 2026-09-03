@@ -1,14 +1,12 @@
 import { createHash } from 'node:crypto';
 import { Controller, Ctx, Get, Post, Query, User } from 'najm-core';
 import type { Context } from 'hono';
-import { RateLimit } from 'najm-rate';
+import { RateLimit, type RateLimitKeyContext } from 'najm-rate';
 import { isAuth } from '../auth/AuthGuard';
 import { OAuthService } from './OAuthService';
 
-const callbackKey = (ctx: Context): string => {
-  const ip = ctx.req.header('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? ctx.req.header('x-real-ip')
-    ?? 'unknown';
+const callbackKey = (ctx: Context, { clientIp }: RateLimitKeyContext): string => {
+  const ip = clientIp;
   const state = ctx.req.query('state') ?? 'none';
   const fingerprint = createHash('sha256').update(state).digest('base64url').slice(0, 24);
   return `${ip}:${fingerprint}`;

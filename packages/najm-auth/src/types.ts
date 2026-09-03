@@ -4,6 +4,7 @@
 
 import type { ValidationPluginConfig } from 'najm-validation';
 import type { RateLimitPluginConfig } from 'najm-rate';
+import type { CachePluginConfig } from 'najm-cache';
 import type { EmailPluginConfig } from 'najm-email';
 import type { IdentityConfig, ResolvedIdentityConfig } from './identity/types';
 import type {
@@ -213,6 +214,16 @@ export type AuthPluginConfig = {
   validation?: ValidationPluginConfig;
   /** Optional config forwarded to rateLimit() dependency */
   rateLimit?: RateLimitPluginConfig;
+
+  /**
+   * Optional config forwarded to the package-owned cache() dependency.
+   *
+   * Auth registers cache() itself, so a consumer cannot configure the store by
+   * registering its own plugin first. Pass it here to select a shared, durable
+   * backend — required in production wherever the cache backs rate limiting,
+   * since a per-process memory bucket resets on every restart.
+   */
+  cache?: CachePluginConfig;
   /** Email transport used by password reset and verification flows. */
   email?: EmailPluginConfig;
   /** AES-256-GCM key for reversible encryption (e.g. API keys). Falls back to NAJM_ENCRYPTION_KEY env var. */

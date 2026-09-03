@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { Err, plugin } from 'najm-core';
-import { cache } from 'najm-cache';
+import { cache, type CachePluginConfig } from 'najm-cache';
 import { AUTH_CONFIG, AUTH_ENCRYPTION_KEY, AUTH_SCHEMA } from './auth.tokens';
 import type { AuthPluginConfig, AuthConfig, AuthSchema } from './types';
 import { authSchema as pgSchema } from './schema/pg';
@@ -200,7 +200,7 @@ export const auth = (config?: AuthPluginConfig) =>
   plugin('auth')
     .version('1.0.0')
     .depends(
-      cache(),
+      cache(config?.cache),
       cookies(),
       i18n(),
       guards(),

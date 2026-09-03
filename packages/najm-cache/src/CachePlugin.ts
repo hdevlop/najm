@@ -13,6 +13,7 @@ import type { CachePluginConfig, CacheConfig } from './types';
 const mergeConfig = (config?: CachePluginConfig): CacheConfig => {
   return {
     driver: config?.driver ?? 'auto',
+    required: config?.required ?? false,
     redis: config?.redis,
     memory: {
       maxKeys: config?.memory?.maxKeys ?? 10000,

@@ -22,6 +22,8 @@ export interface RedisClient {
   ttl(key: string): Promise<number>;
   pttl(key: string): Promise<number>;
   multi(): RedisMulti;
+  eval(script: string, numKeys: number, ...args: string[]): Promise<unknown>;
+  ping(): Promise<'PONG' | string>;
   quit(): Promise<'OK' | string>;
   status?: string;
 }
@@ -40,6 +42,8 @@ export interface RedisDriverOptions {
   keyPrefix?: string;
   /** ioredis options */
   options?: Record<string, unknown>;
+  /** Pre-constructed client; bypasses internal client creation entirely. */
+  client?: RedisClient;
 }
 
 /**
@@ -56,6 +60,26 @@ export interface RedisDriverOptions {
  * - Atomic operations (no race conditions)
  * - Automatic TTL-based expiration
  */
+/**
+ * Increment a counter and attach its expiry in one indivisible step.
+ *
+ * The previous implementation ran INCR inside MULTI and issued PEXPIRE
+ * afterwards; a process failure between the two left a counter with no TTL,
+ * which pins a rate-limit bucket open forever. Running both inside one script
+ * removes that window. The `pttl < 0` branch also repairs any key that an
+ * earlier build already left without an expiry.
+ */
+const INCR_WITH_TTL = `
+local count = redis.call('INCR', KEYS[1])
+local ttl = tonumber(ARGV[1])
+local pttl = redis.call('PTTL', KEYS[1])
+if ttl > 0 and (count == 1 or pttl < 0) then
+  redis.call('PEXPIRE', KEYS[1], ttl)
+  pttl = ttl
+end
+return {count, pttl}
+`;
+
 export class RedisDriver implements Driver {
   readonly type = 'redis' as const;
 
@@ -64,6 +88,7 @@ export class RedisDriver implements Driver {
 
   constructor(private options: RedisDriverOptions) {
     this.keyPrefix = options.keyPrefix ?? '';
+    this.client = options.client ?? null;
   }
 
   /**
@@ -130,31 +155,30 @@ export class RedisDriver implements Driver {
 
   async incr(key: string, ttlMs?: number): Promise<{ count: number; resetAt: number }> {
     const k = this.prefixKey(key);
-    const client = this.getClient();
+    const result = await this.getClient().eval(INCR_WITH_TTL, 1, k, String(ttlMs ?? 0));
 
-    // Use MULTI for atomic increment + TTL check
-    const multi = client.multi();
-    multi.incr(k);
-    multi.pttl(k);
-
-    const results = await multi.exec();
-    if (!results) {
-      throw new Error('Redis MULTI failed');
+    if (!Array.isArray(result)) {
+      throw new Error('[najm/cache] Redis counter script returned an unexpected shape');
     }
 
-    const [incrResult, ttlResult] = results;
-    const count = incrResult[1] as number;
-    let pttl = ttlResult[1] as number;
-
-    // If key is new (pttl = -1), set expiration
-    if (pttl === -1 && ttlMs) {
-      await client.pexpire(k, ttlMs);
-      pttl = ttlMs;
-    }
-
+    const count = Number(result[0]);
+    const pttl = Number(result[1]);
     const resetAt = pttl > 0 ? Date.now() + pttl : Date.now() + (ttlMs ?? 0);
 
     return { count, resetAt };
+  }
+
+  /**
+   * Connection probe. Resolves false on any failure so callers can report
+   * availability without handling — or leaking — driver-level errors.
+   */
+  async ping(): Promise<boolean> {
+    try {
+      const reply = await this.getClient().ping();
+      return typeof reply === 'string' && reply.toUpperCase() === 'PONG';
+    } catch {
+      return false;
+    }
   }
 
   async expire(key: string, ttlMs: number): Promise<boolean> {

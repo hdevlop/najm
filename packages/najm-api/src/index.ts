@@ -70,7 +70,7 @@ export type {
 
 export type { ValidationPluginConfig, ValidateInput } from 'najm-validation';
 export type { CachePluginConfig, CacheConfig, RedisOptions } from 'najm-cache';
-export type { TimeWindow, KeyStrategy, RateLimitOptions, RateLimitPluginConfig } from 'najm-rate';
+export type { TimeWindow, KeyStrategy, CustomRateLimitKey, RateLimitKeyContext, RateLimitOptions, RateLimitPluginConfig } from 'najm-rate';
 export type { CorsPluginConfig } from 'najm-cors';
 export type { CookiePluginConfig, CookieOptions } from 'najm-cookies';
 export type { I18nPluginConfig } from 'najm-i18n';

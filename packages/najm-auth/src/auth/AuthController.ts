@@ -5,7 +5,7 @@ import { AuthService } from './AuthService';
 import { isAuth } from './AuthGuard';
 import { isAdmin } from '../roles/RoleGuards';
 import { Validate } from 'najm-validation';
-import { RateLimit } from 'najm-rate';
+import { RateLimit, type RateLimitKeyContext } from 'najm-rate';
 import type { Context } from 'hono';
 import { createHash } from 'node:crypto';
 import { getRequestIdentityResolver } from '../identity/requestResolver';
@@ -28,24 +28,25 @@ import {
 const hashKeyPart = (value: string): string =>
   createHash('sha256').update(value).digest('base64url').slice(0, 32);
 
-const cookieFingerprint = () => (ctx: Context): string => {
-  const ip = ctx.req.header('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? ctx.req.header('x-real-ip')
-    ?? 'unknown';
+const cookieFingerprint = () => (ctx: Context, { clientIp }: RateLimitKeyContext): string => {
   const cookie = ctx.req.raw.headers.get('cookie') ?? '';
   const fingerprint = cookie ? hashKeyPart(cookie) : 'none';
-  return `${ip}:${fingerprint}`;
+  return `${clientIp}:${fingerprint}`;
 };
 
 /**
- * Composite key: IP + hashed normalized login/registration identity.
- * Buckets rate limits per IP+credential combo so different users
- * on the same IP (e.g. localhost, NAT) don't share a single bucket.
+ * Composite key: resolved client address + hashed normalized identity.
+ * Buckets rate limits per client+credential combo so different users
+ * on the same address (e.g. localhost, NAT) don't share a single bucket.
+ *
+ * The address arrives already resolved through the configured trusted-proxy
+ * boundary; this module must never parse forwarding headers itself.
  */
-export const authIdentityRateLimitKey = async (ctx: Context): Promise<string> => {
-  const ip = ctx.req.header('x-forwarded-for')?.split(',')[0]?.trim()
-    ?? ctx.req.header('x-real-ip')
-    ?? 'unknown';
+export const authIdentityRateLimitKey = async (
+  ctx: Context,
+  { clientIp }: RateLimitKeyContext,
+): Promise<string> => {
+  const ip = clientIp;
   try {
     const body = await ctx.req.json();
     const identity = body?.identifier ?? body?.email;

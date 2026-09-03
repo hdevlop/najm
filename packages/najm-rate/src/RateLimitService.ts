@@ -13,6 +13,7 @@ import type {
   KeyStrategy,
 } from './types';
 import { CONTEXT, HRequest, getRequestData } from 'najm-core';
+import { resolveClientAddress } from './clientAddress';
 
 // ============================================================
 // CONSTANTS
@@ -235,21 +236,24 @@ export class RateLimitService {
   // KEY GENERATION
   // ============================================================
   private async generateKey(request: HRequest, context: Context, strategy: KeyStrategy): Promise<string> {
+    // One resolution per request, shared by every strategy, so a custom key and
+    // a built-in key can never disagree about who the client is.
+    const clientIp = this.extractClientIP(request);
+
     if (typeof strategy === 'function') {
-      return strategy(context);
+      return strategy(context, { clientIp });
     }
 
     switch (strategy) {
       case 'ip':
-        return this.extractClientIP(request);
+        return clientIp;
       case 'user':
         return this.getUser()?.id ?? 'anonymous';
       case 'api-key':
         return request.headers['x-api-key'] ?? 'no-key';
       case 'user+ip': {
         const user = this.getUser();
-        const ip = this.extractClientIP(request);
-        return user?.id ? `${user.id}:${ip}` : ip;
+        return user?.id ? `${user.id}:${clientIp}` : clientIp;
       }
       default:
         return 'global';
@@ -257,13 +261,7 @@ export class RateLimitService {
   }
 
   private extractClientIP(request: HRequest): string {
-    const forwarded = request.headers['x-forwarded-for'];
-    if (forwarded) return forwarded.split(',')[0]?.trim() ?? 'unknown';
-
-    const realIp = request.headers['x-real-ip'];
-    if (realIp) return realIp;
-
-    return request.ip ?? 'unknown';
+    return resolveClientAddress(request.headers, this.config.trustedProxyHops, request.ip);
   }
 
   private buildRateLimitKey(request: HRequest, baseKey: string, scope: KeyScope): string {

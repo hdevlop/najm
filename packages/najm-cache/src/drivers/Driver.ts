@@ -66,6 +66,13 @@ export interface Driver {
   flush?(): Promise<void> | void;
 
   /**
+   * Liveness probe for stores that hold a connection.
+   * Must resolve false rather than reject, and must never surface connection
+   * details (URL, credentials) to the caller.
+   */
+  ping?(): Promise<boolean>;
+
+  /**
    * Cleanup resources (optional)
    */
   destroy?(): Promise<void> | void;

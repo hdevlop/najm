@@ -116,9 +116,9 @@ describe('identity presets', () => {
     await (await middlewareFor('ma'))(moroccoContext, async () => undefined);
     await (await middlewareFor('tn'))(tunisiaContext, async () => undefined);
 
-    expect(await authIdentityRateLimitKey(moroccoContext as never))
+    expect(await authIdentityRateLimitKey(moroccoContext as never, { clientIp: '203.0.113.7' }))
       .not.toBe('203.0.113.7');
-    expect(await authIdentityRateLimitKey(tunisiaContext as never))
+    expect(await authIdentityRateLimitKey(tunisiaContext as never, { clientIp: '203.0.113.7' }))
       .toBe('203.0.113.7');
   });
 });
@@ -133,8 +133,8 @@ describe('rate-limit bucketing uses the resolved identity', () => {
   }) as never;
 
   test('local and international forms share one bucket', async () => {
-    const local = await authIdentityRateLimitKey(contextFor('0612345678'));
-    const international = await authIdentityRateLimitKey(contextFor('+212 612 345 678'));
+    const local = await authIdentityRateLimitKey(contextFor('0612345678'), { clientIp: '203.0.113.7' });
+    const international = await authIdentityRateLimitKey(contextFor('+212 612 345 678'), { clientIp: '203.0.113.7' });
     expect(local).toBe(international);
     expect(local.startsWith('203.0.113.7:')).toBe(true);
   });
@@ -142,9 +142,11 @@ describe('rate-limit bucketing uses the resolved identity', () => {
   test('the bucket follows the configured preset', async () => {
     const withMorocco = await authIdentityRateLimitKey(
       contextFor('0612345678', createIdentityResolver({ preset: 'ma' })),
+      { clientIp: '203.0.113.7' },
     );
     const withTunisia = await authIdentityRateLimitKey(
       contextFor('0612345678', createIdentityResolver({ preset: 'tn' })),
+      { clientIp: '203.0.113.7' },
     );
 
     // Unresolvable under `tn`, so it degrades to the IP-only bucket.

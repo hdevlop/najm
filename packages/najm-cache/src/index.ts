@@ -41,11 +41,11 @@
 export { cache } from './CachePlugin';
 
 // Service
-export { CacheService } from './CacheService';
+export { CacheService, CacheConfigError } from './CacheService';
 
 // Drivers
 export { MemoryDriver, type MemoryDriverOptions } from './drivers/MemoryDriver';
-export { RedisDriver, isRedisAvailable, type RedisDriverOptions } from './drivers/RedisDriver';
+export { RedisDriver, isRedisAvailable, type RedisDriverOptions, type RedisClient } from './drivers/RedisDriver';
 export type { Driver, DriverStats } from './drivers/Driver';
 
 // Tokens

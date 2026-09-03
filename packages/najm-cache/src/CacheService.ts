@@ -10,6 +10,18 @@ import { MemoryDriver } from './drivers/MemoryDriver';
 import { RedisDriver, isRedisAvailable } from './drivers/RedisDriver';
 
 /**
+ * Configuration failure for a cache that a security control depends on.
+ * The message is deliberately value-free: it names the missing contract, never
+ * the URL, host, or credentials that would end up in logs.
+ */
+export class CacheConfigError extends Error {
+  constructor(message: string) {
+    super(`[najm/cache] ${message}`);
+    this.name = 'CacheConfigError';
+  }
+}
+
+/**
  * Cache Service - Main entry point for caching operations
  *
  * Automatically selects the appropriate driver:
@@ -46,6 +58,7 @@ export class CacheService implements Driver {
   constructor(@Inject(CACHE_CONFIG) config?: CacheConfig | null) {
     this.config = config ?? {
       driver: 'auto',
+      required: false,
       memory: {
         maxKeys: 10000,
         cleanupInterval: 60000,
@@ -77,7 +90,7 @@ export class CacheService implements Driver {
   }
 
   private createDriver(): Driver {
-    const { driver, redis, memory } = this.config;
+    const { driver, redis, memory, required } = this.config;
 
     // Explicit memory driver
     if (driver === 'memory') {
@@ -85,27 +98,62 @@ export class CacheService implements Driver {
     }
 
     // Redis driver requested
-    if (driver === 'redis' || redis?.url) {
-      if (!redis?.url) {
+    if (driver === 'redis' || redis?.url || redis?.client) {
+      if (!redis?.url && !redis?.client) {
+        if (required) {
+          throw new CacheConfigError('the redis driver requires a Redis URL; refusing to fall back to memory');
+        }
         console.warn('[najm/cache] Redis driver requested but no URL provided, using MemoryDriver');
         return new MemoryDriver(memory);
       }
 
-      if (!isRedisAvailable()) {
+      if (!redis?.client && !isRedisAvailable()) {
+        if (required) {
+          throw new CacheConfigError('the redis driver requires ioredis; refusing to fall back to memory');
+        }
         console.warn('[najm/cache] Redis URL provided but ioredis not installed, using MemoryDriver');
         console.warn('[najm/cache] Install ioredis with: bun add ioredis');
         return new MemoryDriver(memory);
       }
 
       return new RedisDriver({
-        url: redis.url,
+        url: redis.url ?? '',
         keyPrefix: redis.keyPrefix,
         options: redis.options,
+        client: redis.client,
       });
+    }
+
+    // A required cache must never resolve to an unshared per-process bucket by
+    // omission. Selecting memory has to be a deliberate choice.
+    if (required) {
+      throw new CacheConfigError('a required cache must name its driver; no Redis configuration was provided');
     }
 
     // Default: memory
     return new MemoryDriver(memory);
+  }
+
+  /**
+   * Backend liveness. Always resolves; never rejects and never surfaces
+   * connection details. Drivers without a connection are always ready.
+   */
+  async ping(): Promise<boolean> {
+    if (!this.driver.ping) return true;
+    try {
+      return await this.driver.ping();
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Assert the backend is reachable. Intended for startup and readiness paths
+   * that must fail closed. The thrown error carries no connection details.
+   */
+  async verifyReady(): Promise<void> {
+    if (await this.ping()) return;
+    throw new CacheConfigError(`the ${this._type} cache backend is not reachable`);
   }
 
   // ============================================================================

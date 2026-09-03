@@ -61,6 +61,7 @@ export const rateLimit = (config?: RateLimitPluginConfig) => {
     defaultWindow: config?.defaultWindow ?? '15m',
     keyGenerator: config?.keyGenerator ?? 'ip',
     keyPrefix: config?.keyPrefix ?? 'rl:',
+    trustedProxyHops: config?.trustedProxyHops,
     ...config,
   };
 
