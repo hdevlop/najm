@@ -33,6 +33,8 @@
       "najm-next": ["./packages/najm-next/src"],
       "najm-next/config": ["./packages/najm-next/src/config"],
       "najm-next/configurable": ["./packages/najm-next/src/configurable"],
+      "najm-next/pwa": ["./packages/najm-next/src/pwa"],
+      "najm-next/pwa/react": ["./packages/najm-next/src/pwaReact"],
       "najm-rag": ["./packages/najm-rag/src"],
       "najm-rate": ["./packages/najm-rate/src"],
       "najm-storage": ["./packages/najm-storage/src"],

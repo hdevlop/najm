@@ -14,4 +14,10 @@ export { DEFAULT_DIST_DIR, DIST_DIR_ENV, resolveDistDir } from './internal/distD
 export { NajmNextConfigError } from './internal/errors';
 export { SERVICE_WORKER_FILES, detectServiceWorkers, serviceWorkerHeaders } from './internal/serviceWorker';
 export { findWorkspaceRoot } from './internal/workspaceRoot';
+export { createNajmServiceWorker } from './pwa';
+export type {
+  NajmOfflineDocumentOptions,
+  NajmServiceWorkerOptions,
+  NajmServiceWorkerRoute,
+} from './pwa';
 export type { EnvRecord, HeaderRule, NajmNextConfigOverrides, NextConfig } from './internal/types';

@@ -1,14 +1,9 @@
-import { defineConfig } from 'tsup';
+import { defineConfig, type Options } from 'tsup';
 
-export default defineConfig({
-  entry: {
-    index: 'src/index.ts',
-    config: 'src/config.ts',
-    configurable: 'src/configurable.ts',
-  },
+const shared: Options = {
   format: ['esm'],
   target: 'es2022',
-  clean: true,
+  clean: false,
   splitting: false,
   treeshake: true,
   sourcemap: false,
@@ -24,8 +19,25 @@ export default defineConfig({
   },
   outDir: 'dist',
   outExtension: () => ({ js: '.js' }),
-  external: ['next'],
+  external: ['next', 'react'],
   esbuildOptions(options) {
     options.keepNames = true;
   },
-});
+};
+
+export default defineConfig([
+  {
+    ...shared,
+    entry: {
+      index: 'src/index.ts',
+      config: 'src/config.ts',
+      configurable: 'src/configurable.ts',
+      pwa: 'src/pwa.ts',
+    },
+  },
+  {
+    ...shared,
+    entry: { pwaReact: 'src/pwaReact.ts' },
+    treeshake: false,
+  },
+]);

@@ -7,6 +7,7 @@ import {
   NajmNextConfigError,
   assertNextCompatible,
   compareVersions,
+  createNajmServiceWorker,
   createNajmNextConfig,
   defineNajmNextConfig,
   detectServiceWorkers,
@@ -144,6 +145,50 @@ describe('service workers', () => {
       'Content-Security-Policy',
       'Service-Worker-Allowed',
     ]);
+  });
+
+  test('serves a zero-config privacy-safe worker route', async () => {
+    const response = (await import('../src/pwa')).GET();
+    const worker = await response.text();
+
+    expect(response.headers.get('content-type')).toBe('application/javascript; charset=utf-8');
+    expect(response.headers.get('cache-control')).toBe('no-cache, no-store, must-revalidate');
+    expect(response.headers.get('service-worker-allowed')).toBe('/');
+    expect(worker).toContain('request.mode !== "navigate"');
+    expect(worker).toContain('requestUrl.origin !== self.location.origin');
+    expect(worker).not.toContain('cache.put');
+    expect(worker).not.toContain('"/api/"');
+  });
+
+  test('pre-caches only explicit app shell assets and scopes cleanup to its cache id', async () => {
+    const GET = createNajmServiceWorker({
+      cacheId: 'kafil',
+      cacheVersion: 'v2',
+      offlineUrl: '/offline.html',
+      precache: ['/icons/kafil-192.png', '/offline.html'],
+    });
+    const worker = await GET().text();
+
+    expect(worker).toContain('const CACHE_PREFIX = "najm-pwa:kafil:"');
+    expect(worker).toContain('const CACHE_NAME = CACHE_PREFIX + "v2"');
+    expect(worker).toContain('const PRECACHE = ["/offline.html","/icons/kafil-192.png"]');
+    expect(worker).toContain('key.startsWith(CACHE_PREFIX) && key !== CACHE_NAME');
+    expect(worker).toContain('PRECACHE.includes(requestPath) && request.mode !== "navigate"');
+  });
+
+  test('escapes inline fallback copy and rejects cross-origin shell paths', async () => {
+    const GET = createNajmServiceWorker({
+      offlineDocument: { title: '<School & Home>' },
+    });
+    const worker = await GET().text();
+
+    expect(worker).toContain('&lt;School &amp; Home&gt;');
+    expect(() => createNajmServiceWorker({ offlineUrl: 'https://example.com/offline' })).toThrow(
+      'same-origin absolute path',
+    );
+    expect(() => createNajmServiceWorker({ precache: ['//cdn.example.com/icon.png'] })).toThrow(
+      'same-origin absolute path',
+    );
   });
 });
 

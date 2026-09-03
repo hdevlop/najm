@@ -17,7 +17,7 @@ every app forward at once.
 | --- | --- |
 | Monorepo root | Nearest ancestor that declares workspaces (or holds a lockfile), applied to both `turbopack.root` and `outputFileTracingRoot`. |
 | Build directory | `NAJM_NEXT_DIST_DIR` when set, otherwise `.next`. Absolute or escaping values are rejected. |
-| Service worker | `public/sw.js` or `public/service-worker.js`, when present, gets its content type, a no-store cache policy, a `'self'`-only CSP, and `Service-Worker-Allowed: /`. |
+| Service worker | Shared route and registration exports provide a privacy-safe offline fallback. Legacy `public/sw.js` or `public/service-worker.js` files still receive secure headers. |
 | Dev origins | Empty unless `NAJM_NEXT_DEV_ORIGINS` lists hosts. |
 | Server externals | `reflect-metadata` stays external so decorator metadata has one registry. |
 | Images | `minimumCacheTTL` of 31 days. |
@@ -66,6 +66,54 @@ Overrides merge rather than replace. `turbopack`, `images`, and `experimental`
 merge key by key; `serverExternalPackages` and `allowedDevOrigins` concatenate
 and dedupe; `headers()` runs after the preset's rules so an app rule wins a
 conflict. Every other key replaces the preset's value outright.
+
+## PWA service worker
+
+Najm owns the worker behavior and registration lifecycle. Each application only
+adds a route and mounts the client registration once:
+
+```ts
+// app/sw.js/route.ts
+export { GET } from 'najm-next/pwa';
+```
+
+```tsx
+import { NajmPwaRegistration } from 'najm-next/pwa/react';
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <html>
+      <body>
+        {children}
+        <NajmPwaRegistration />
+      </body>
+    </html>
+  );
+}
+```
+
+The default worker never caches application pages or API responses. Failed
+document navigations receive a small inline offline response. Registration is
+production-only and uses `updateViaCache: 'none'`.
+
+An application may preserve a branded static offline document and its assets:
+
+```ts
+// app/sw.js/route.ts
+import { createNajmServiceWorker } from 'najm-next/pwa';
+
+export const GET = createNajmServiceWorker({
+  cacheId: 'my-app',
+  cacheVersion: 'v1',
+  offlineUrl: '/offline.html',
+  precache: ['/icons/app-192.png'],
+});
+```
+
+Only those explicit paths are served from the cache. Cache cleanup is limited
+to the configured `cacheId`; it never deletes unrelated caches on the origin.
+For apps deployed below a base path, pass matching `scriptUrl` and `scope` props
+to `NajmPwaRegistration`.
 
 ## Environment
 
