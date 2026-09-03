@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2.1 - 2026-09-03
+
+- security(auth): return the same 401 response and perform a password-hash
+  comparison for unknown, newly locked, and already locked identities
+- feat(auth): add `publicRegistration: false` to omit the unauthenticated
+  `POST /auth/register` controller without disabling internal provisioning
+
 ## 3.1.3 - 2026-08-12
 
 - fix(client): keep authenticated transport available during ordinary anonymous

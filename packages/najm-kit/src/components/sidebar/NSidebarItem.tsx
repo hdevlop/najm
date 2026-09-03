@@ -34,9 +34,9 @@ export function NSidebarItem({
   }, [childActive]);
 
   const baseClasses = cn(
-    "flex items-center gap-3 w-full rounded-md text-sm px-2 font-medium transition-colors h-8 text-left",
-    depth > 0 && "pl-7",
-    collapsed && "pl-[calc((var(--rail,4rem)-var(--sidebar-edge-width,0px))/2-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem))]",
+    "flex items-center gap-3 w-full rounded-md text-sm px-2 font-medium transition-colors h-8 text-start",
+    depth > 0 && "ps-7",
+    collapsed && "ps-[calc((var(--rail,4rem)-var(--sidebar-edge-width,0px))/2-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem))]",
     item.disabled
       ? "opacity-50 cursor-not-allowed"
       : active
@@ -63,7 +63,7 @@ export function NSidebarItem({
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{item.label}</span>
-          {item.badge && <span className="shrink-0 ml-auto">{item.badge}</span>}
+          {item.badge && <span className="shrink-0 ms-auto">{item.badge}</span>}
           {hasChildren && (
             <ChevronDown
               className={cn("h-4 w-4 shrink-0 transition-transform", open && "rotate-180")}

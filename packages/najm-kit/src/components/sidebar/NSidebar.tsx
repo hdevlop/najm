@@ -198,9 +198,12 @@ export function NSidebar({
     setCollapsedState(!collapsed);
   }, [collapsed, setCollapsedState]);
 
-  // Drag-the-edge-to-collapse: drag left to collapse, drag right to expand.
+  // Drag-the-edge-to-collapse: drag toward the content to collapse, away from
+  // it to expand. Under `dir="rtl"` the rail sits on the left physical edge, so
+  // the gesture is measured along the inline axis rather than along x.
   const handleRailPointerDown = useCallback((e: ReactPointerEvent<HTMLButtonElement>) => {
     if (e.button !== 0) return;
+    const inlineSign = getComputedStyle(e.currentTarget).direction === "rtl" ? -1 : 1;
     const startX = e.clientX;
     const startCollapsed = collapsed;
     const threshold = 24;
@@ -208,7 +211,7 @@ export function NSidebar({
     setRailDragging(true);
 
     const onMove = (ev: PointerEvent) => {
-      const dx = ev.clientX - startX;
+      const dx = (ev.clientX - startX) * inlineSign;
       if (!resolved && !startCollapsed && dx < -threshold) {
         resolved = true;
         suppressRailClickRef.current = true;
@@ -379,7 +382,7 @@ export function NSidebar({
         className={cn(
           "relative z-10 flex flex-col h-full bg-sidebar text-sidebar-foreground transition-all duration-200 shrink-0",
           desktopClass,
-          sidebarBorderClasses(bordered, 'right'),
+          sidebarBorderClasses(bordered, 'end'),
           classNames?.sidebar,
           className
         )}
@@ -387,7 +390,7 @@ export function NSidebar({
           width: desktopCollapsed ? collapsedWidth : expandedWidth,
           ['--rail' as any]: railVar,
           ['--sidebar-edge-width' as any]: sidebarEdgeWidth,
-          ...(bordered !== false && recipe?.borderWidth ? { borderRightWidth: recipe.borderWidth } : {}),
+          ...(bordered !== false && recipe?.borderWidth ? { borderInlineEndWidth: recipe.borderWidth } : {}),
         }}
       >
         {sidebarInner}
@@ -399,10 +402,10 @@ export function NSidebar({
             data-dragging={railDragging ? "true" : undefined}
             onPointerDown={handleRailPointerDown}
             onClick={handleRailClick}
-            className="group/rail absolute inset-y-0 right-0 z-20 flex w-3 translate-x-1/2 cursor-ew-resize touch-none select-none items-center justify-center border-0 bg-transparent p-0"
+            className="group/rail absolute inset-y-0 end-0 z-20 flex w-3 translate-x-1/2 rtl:-translate-x-1/2 cursor-ew-resize touch-none select-none items-center justify-center border-0 bg-transparent p-0"
           >
             {/* full-height accent line, revealed on hover/drag */}
-            <span className="absolute inset-y-0 right-1/2 w-0.5 translate-x-1/2 bg-sidebar-ring opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100 group-data-[dragging=true]/rail:opacity-100" />
+            <span className="absolute inset-y-0 end-1/2 w-0.5 translate-x-1/2 rtl:-translate-x-1/2 bg-sidebar-ring opacity-0 transition-opacity duration-150 group-hover/rail:opacity-100 group-data-[dragging=true]/rail:opacity-100" />
             {/* centered grip handle */}
             <span className="relative h-9 w-1 rounded-full bg-sidebar-border transition-all duration-150 group-hover/rail:h-12 group-hover/rail:bg-sidebar-ring group-data-[dragging=true]/rail:bg-sidebar-ring" />
           </button>
@@ -413,11 +416,11 @@ export function NSidebar({
             onClick={handleToggleCollapsed}
             aria-label={collapsed ? expandLabel : collapseLabel}
             title={collapsed ? expandLabel : collapseLabel}
-            className="absolute right-0 top-7 z-20 flex size-6 -translate-y-1/2 translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            className="absolute end-0 top-7 z-20 flex size-6 -translate-y-1/2 translate-x-1/2 rtl:-translate-x-1/2 cursor-pointer items-center justify-center rounded-full border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
           >
             {desktopCollapsed
-              ? <ChevronRight className="h-3.5 w-3.5" />
-              : <ChevronLeft className="h-3.5 w-3.5" />}
+              ? <ChevronRight className="h-3.5 w-3.5 rtl:-scale-x-100" />
+              : <ChevronLeft className="h-3.5 w-3.5 rtl:-scale-x-100" />}
           </button>
         )}
       </aside>

@@ -75,6 +75,20 @@ describe("numbered pagination", () => {
     expect(current?.textContent?.trim()).toBe("3");
   });
 
+  test("the current page keeps the primary button foreground", () => {
+    const { container } = renderTable({
+      manualPagination: true,
+      pageCount: 4,
+      rowCount: 40,
+      pagination: { pageIndex: 1, pageSize: 10 },
+      onPaginationChange: () => {},
+    });
+
+    const current = container.querySelector('[aria-current="page"]');
+    expect(current?.classList.contains("text-primary-foreground")).toBe(true);
+    expect(current?.classList.contains("text-foreground")).toBe(false);
+  });
+
   test("clicking a page reports that page to the application", () => {
     const seen: Array<{ pageIndex: number; pageSize: number }> = [];
     const { container } = renderTable({

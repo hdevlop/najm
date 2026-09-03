@@ -11,14 +11,12 @@ import { createHash } from 'node:crypto';
 import { getRequestIdentityResolver } from '../identity/requestResolver';
 import { resolveAuthLoginRateLimitConfig } from './authLoginRateLimitConfig';
 import {
-  registerDto,
   inviteUserDto,
   loginDto,
   userIdParam,
   changePasswordDto,
   resetPasswordDto,
   confirmResetPasswordDto,
-  type RegisterDto,
   type InviteUserDto,
   type ChangePasswordDto,
   type LoginDto,
@@ -66,14 +64,6 @@ const loginRateLimit = resolveAuthLoginRateLimitConfig();
 @Controller('/auth')
 export class AuthController {
   constructor(private authService: AuthService) { }
-
-  @Post('/register')
-  @RateLimit({ limit: 5, window: '15m', key: authIdentityRateLimitKey })
-  @Validate(registerDto)
-  @ResMsg('auth.success.register')
-  async registerUser(@Body() body: RegisterDto) {
-    return this.authService.registerUser(body);
-  }
 
   @Post('/login')
   @RateLimit({

@@ -49,7 +49,7 @@ describe("appearance.borderWidth", () => {
     expect(card.className).toContain("border-0");
   });
 
-  test("BaseInput status=error wins over degree", () => {
+  test("BaseInput error state uses a destructive border and focus ring", () => {
     const { container } = render(
       <NajmThemeProvider appearance={{ borderWidth: "2px" }}>
         <BaseInput status="error">x</BaseInput>
@@ -57,6 +57,12 @@ describe("appearance.borderWidth", () => {
     );
     const wrapper = container.querySelector("[data-bordered]") as HTMLElement;
     expect(wrapper.className).toContain("border-red-600");
+    expect(wrapper.className).toContain("focus-visible:ring-[3px]");
+    expect(wrapper.className).toContain("has-[:focus-visible]:ring-[3px]");
+    expect(wrapper.className).toContain("focus-visible:ring-destructive/20");
+    expect(wrapper.className).toContain("has-[:focus-visible]:ring-destructive/20");
+    expect(wrapper.className).not.toContain("focus-visible:ring-ring/50");
+    expect(wrapper.className).not.toContain("has-[:focus-visible]:ring-ring/50");
   });
 
   test("TextInput bordered={false} drops the input border utility", () => {
@@ -82,16 +88,16 @@ describe("appearance.borderWidth", () => {
     expect(textarea.className).not.toContain("h-full");
   });
 
-  test("NSidebar desktop uses najm-border-r with border-sidebar-border", () => {
+  test("NSidebar desktop uses najm-border-e (inline-end) with border-sidebar-border", () => {
     const { container } = render(
       <NSidebar navItems={navItems} mobileOpen />
     );
     const asides = Array.from(container.querySelectorAll("aside"));
     const desktop = asides.find((a) => a.className.includes("md:flex")) as HTMLElement;
     const mobile = asides.find((a) => a.className.includes("md:hidden")) as HTMLElement;
-    expect(desktop.className).toContain("najm-border-r");
+    expect(desktop.className).toContain("najm-border-e");
     expect(desktop.className).toContain("border-sidebar-border");
-    expect(mobile.className).toContain("najm-border-r");
+    expect(mobile.className).toContain("najm-border-e");
     expect(mobile.className).toContain("border-sidebar-border");
   });
 

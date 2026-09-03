@@ -1,4 +1,4 @@
-export type NajmBorderSide = 'all' | 'top' | 'right' | 'bottom' | 'left';
+export type NajmBorderSide = 'all' | 'top' | 'right' | 'bottom' | 'left' | 'start' | 'end';
 
 const SURFACE_BORDER_CLASSES: Record<NajmBorderSide, string> = {
   all: 'najm-border border-border',
@@ -6,6 +6,8 @@ const SURFACE_BORDER_CLASSES: Record<NajmBorderSide, string> = {
   right: 'najm-border-r border-border',
   bottom: 'najm-border-b border-border',
   left: 'najm-border-l border-border',
+  start: 'najm-border-s border-border',
+  end: 'najm-border-e border-border',
 };
 
 const SIDEBAR_BORDER_CLASSES: Record<NajmBorderSide, string> = {
@@ -14,6 +16,8 @@ const SIDEBAR_BORDER_CLASSES: Record<NajmBorderSide, string> = {
   right: 'najm-border-r border-sidebar-border',
   bottom: 'najm-border-b border-sidebar-border',
   left: 'najm-border-l border-sidebar-border',
+  start: 'najm-border-s border-sidebar-border',
+  end: 'najm-border-e border-sidebar-border',
 };
 
 const BORDER_RESET_CLASSES: Record<NajmBorderSide, string> = {
@@ -22,6 +26,8 @@ const BORDER_RESET_CLASSES: Record<NajmBorderSide, string> = {
   right: 'border-r-0',
   bottom: 'border-b-0',
   left: 'border-l-0',
+  start: 'border-s-0',
+  end: 'border-e-0',
 };
 
 /**

@@ -10,6 +10,7 @@ import {
   McpResult,
   McpText,
   McpJson,
+  McpTransportService,
   McpTool,
   ToolGroup,
   mcp,
@@ -189,7 +190,7 @@ describe('najm-mcp integration', () => {
     });
 
     expect(denied.isError).toBe(true);
-    expect(denied.content?.[0]?.text).toBe('Error (FORBIDDEN): Access denied for tool: SecureOrdersController.rejectOrder');
+    expect(denied.content?.[0]?.text).toBe('Error (FORBIDDEN): Access denied');
 
     await userTransport.close();
   });
@@ -402,6 +403,49 @@ describe('najm-mcp integration', () => {
     expect(allowed.status).toBe(200);
     const body = await allowed.json();
     expect(body.name).toBe('mcp-auth');
+  });
+
+  test('najm-auth mode fails closed when a bearer cannot be resolved', async () => {
+    server = await new Server({ isolated: true })
+      .use(mcp({
+        name: 'mcp-najm-auth',
+        version: '1.0.0',
+        path: '/mcp',
+        transports: ['http'],
+        auth: { type: 'najm-auth' },
+      }))
+      .listen(5162);
+
+    const missing = await fetch('http://localhost:5162/mcp/tools');
+    const invalid = await fetch('http://localhost:5162/mcp/tools', {
+      headers: { Authorization: 'Bearer invalid-token' },
+    });
+
+    expect(missing.status).toBe(401);
+    expect(invalid.status).toBe(401);
+  });
+
+  test('najm-auth mode reuses the package resolver and returns its guard context', async () => {
+    const transport = new McpTransportService();
+    (transport as any).config = { auth: { type: 'najm-auth' } };
+    (transport as any).container = {
+      resolve: async () => ({
+        resolve: async (token: string) => token === 'valid-token'
+          ? { user: { id: 'user-1' }, role: 'operator', permissions: ['orders:read'] }
+          : false,
+      }),
+    };
+    const context = {
+      req: {
+        header: (name: string) => name === 'authorization' ? 'Bearer valid-token' : undefined,
+      },
+    };
+
+    await expect((transport as any).validateConfiguredAuth(context)).resolves.toEqual({
+      user: { id: 'user-1' },
+      role: 'operator',
+      permissions: ['orders:read'],
+    });
   });
 
   test('returns CORS headers and 204 for OPTIONS preflight', async () => {

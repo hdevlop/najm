@@ -287,9 +287,9 @@ describe("Sidebar", () => {
     const desktop = asides.find((a) => a.className.includes("md:flex")) as HTMLElement;
     const mobile = asides.find((a) => a.className.includes("md:hidden")) as HTMLElement;
 
-    expect(desktop.className).toContain("najm-border-r");
+    expect(desktop.className).toContain("najm-border-e");
     expect(desktop.className).toContain("border-sidebar-border");
-    expect(mobile.className).toContain("najm-border-r");
+    expect(mobile.className).toContain("najm-border-e");
     expect(mobile.className).toContain("border-sidebar-border");
   });
 

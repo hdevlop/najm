@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.11.10 - 2026-09-03
+
+- Fixed the selected numbered `NTable` pagination button inheriting the regular
+  foreground colour over its filled primary style. The active page now keeps
+  the primary button foreground token, which is white in the light theme.
+- Fixed focused invalid inputs combining a destructive border with the normal
+  theme focus colour. `BaseInput` now keeps the visible keyboard-focus ring but
+  colours it from the destructive token for both directly focused composite
+  controls and wrappers whose child has `:focus-visible`.
+- Made the desktop and mobile sidebar use logical inline edges, spacing, border
+  utilities, chevrons, and drag direction so the complete rail behaves
+  correctly in both LTR and RTL layouts.
+
 ## 2.11.9 - 2026-08-30
 
 - Fixed card grids that paginate client-side rendering their entire dataset on

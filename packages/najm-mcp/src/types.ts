@@ -30,6 +30,16 @@ export interface McpAuthContext {
   [key: string]: any;
 }
 
+export type McpAuthConfig =
+  | {
+    type: 'bearer' | 'api-key';
+    validate: (token: string) => McpAuthResult | Promise<McpAuthResult>;
+  }
+  | {
+    /** Reuse the installed najm-auth bearer resolver and its revocation checks. */
+    type: 'najm-auth';
+  };
+
 // ============================================================================
 // CONFIG
 // ============================================================================
@@ -40,6 +50,11 @@ export interface McpConfig {
   path?: string;
   transports?: McpTransport[];
   cors?: boolean | McpCorsConfig;
+  /**
+   * Include internal target/method names in MCP errors (default: false).
+   * Intended only for trusted development environments.
+   */
+  exposeErrorDetails?: boolean;
   /**
    * Best-effort response timeout per tool invocation, in ms (default 30000;
    * <= 0 disables it). NOTE: this races the controller method — on timeout the
@@ -70,10 +85,7 @@ export interface McpConfig {
     maxSessions?: number;
     sessionTtl?: number;
   };
-  auth?: {
-    type: 'bearer' | 'api-key';
-    validate: (token: string) => McpAuthResult | Promise<McpAuthResult>;
-  };
+  auth?: McpAuthConfig;
   oauth?: boolean | {
     issuer?: string;
     token?: string;

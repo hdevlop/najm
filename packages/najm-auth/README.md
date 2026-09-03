@@ -131,6 +131,7 @@ auth({
 
   // Registration
   defaultRole?: string | null              // Auto-assign role to new users
+  publicRegistration?: boolean             // Default: true; mounts POST /auth/register
   bcryptRounds?: number                    // Default: 10 (valid: 4-31)
 
   // Frontend
@@ -181,7 +182,7 @@ All routes are prefixed with `/auth` and auto-registered by the plugin.
 
 | Method | Path | Description | Auth |
 |--------|------|-------------|------|
-| `POST` | `/auth/register` | Register new user | None |
+| `POST` | `/auth/register` | Register new user (omitted when `publicRegistration: false`) | None |
 | `POST` | `/auth/login` | Login with email/password | None |
 | `POST` | `/auth/refresh` | Refresh access token (cookie) | None (uses refresh cookie) |
 | `POST` | `/auth/session/recover` | Reissue signed session without token rotation | Refresh cookie + recovery header |
@@ -195,6 +196,11 @@ All routes are prefixed with `/auth` and auto-registered by the plugin.
 | `GET` | `/auth/credential-setup/setup` | Read the pending setup session | Setup cookie |
 | `POST` | `/auth/credential-setup/change` | Replace the temporary credential | Setup cookie |
 | `POST` | `/auth/credential-setup/cancel` | Abandon the setup session | Setup cookie |
+
+Applications with an approval-owned onboarding flow should set
+`publicRegistration: false`. This removes the unauthenticated route while
+retaining `AuthService.registerUser()`, `provisionUser()`, and other internal
+account-management APIs for trusted application services.
 
 ### Identity presets
 

@@ -5,7 +5,7 @@ import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { DATA, FILTER, INFO, OWNER, PERMISSIONS, ROLE, USER } from 'najm-guard';
 import { MCP_CONFIG } from './tokens';
-import type { McpAuthContext, McpConfig, McpCorsConfig, McpTransport } from './types';
+import type { McpAuthContext, McpAuthResult, McpConfig, McpCorsConfig, McpTransport } from './types';
 import { McpBuilderService } from './McpBuilderService';
 import { McpRegistryService } from './McpRegistryService';
 import { createOAuthHandlers } from './oauth';
@@ -117,12 +117,7 @@ export class McpTransportService {
         return next();
       }
 
-      const token = this.extractAuthToken(c, auth.type);
-      if (!token) {
-        return c.json({ error: 'Unauthorized' }, 401);
-      }
-
-      const result = await auth.validate(token);
+      const result = await this.validateConfiguredAuth(c);
       if (!result) {
         return c.json({ error: 'Unauthorized' }, 401);
       }
@@ -415,13 +410,28 @@ export class McpTransportService {
     const auth = this.config.auth;
 
     if (auth) {
-      const token = this.extractAuthToken(c, auth.type);
-      if (!token) return undefined;
-
-      const result = await auth.validate(token);
+      const result = await this.validateConfiguredAuth(c);
       return result && typeof result === 'object' ? result as McpAuthContext : undefined;
     }
 
+    return this.resolveNajmAuthBearerContext(c);
+  }
+
+  private async validateConfiguredAuth(c: any): Promise<McpAuthResult> {
+    const auth = this.config.auth;
+    if (!auth) return false;
+
+    if (auth.type === 'najm-auth') {
+      return (await this.resolveNajmAuthBearerContext(c)) ?? false;
+    }
+
+    const token = this.extractAuthToken(c, auth.type);
+    if (!token) return false;
+
+    return auth.validate(token);
+  }
+
+  private async resolveNajmAuthBearerContext(c: any): Promise<McpAuthContext | undefined> {
     const bearer = this.extractAuthToken(c, 'bearer');
     if (!bearer) return undefined;
 

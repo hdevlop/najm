@@ -10,6 +10,8 @@ import { PasswordSetupService } from '../src/credentialSetup/PasswordSetupServic
 import { defaultCredentialSetupPasswordSchema } from '../src/credentialSetup/CredentialSetupDto';
 import { UserService } from '../src/users/UserService';
 import { authSchema as pgSchema } from '../src/schema/pg';
+import { auth } from '../src/AuthPlugin';
+import { RegistrationController } from '../src/auth/RegistrationController';
 
 const jwt = { accessSecret: 'a'.repeat(32), refreshSecret: 'b'.repeat(32) };
 
@@ -184,5 +186,22 @@ describe('provisioned phones match login lookup', () => {
       password: `a1${'x'.repeat(71)}`,
     }, { validatePasswordStrength: false })).rejects.toThrow('too long');
     expect(lengthChecked).toBe(true);
+  });
+});
+
+describe('public registration policy', () => {
+  test('registration remains mounted by default for backwards compatibility', () => {
+    const plugin = auth({ jwt, email: { provider: 'console' } });
+
+    expect(plugin.services).toContain(RegistrationController);
+    expect(resolveAuthConfig({ jwt }).publicRegistration).toBe(true);
+  });
+
+  test('publicRegistration=false omits only the public controller', () => {
+    const plugin = auth({ jwt, publicRegistration: false, email: { provider: 'console' } });
+
+    expect(plugin.services).not.toContain(RegistrationController);
+    expect(resolveAuthConfig({ jwt, publicRegistration: false }).publicRegistration).toBe(false);
+    expect(plugin.services).toContain(UserService);
   });
 });

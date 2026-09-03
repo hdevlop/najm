@@ -94,7 +94,7 @@ describe('McpToolAdapter', () => {
     expect(JSON.parse(text)).toEqual({ userId: 'user_99' });
   });
 
-  test('adapter surfaces tool errors as text without throwing', async () => {
+  test('adapter surfaces safe tool errors as text without throwing', async () => {
     @Controller('/broken')
     class BrokenController {
       @Post('/boom')
@@ -109,7 +109,8 @@ describe('McpToolAdapter', () => {
 
     const tools = buildAiSdkTools(builder, registry.tools);
     const result = await tools.boom.execute({});
-    expect(result).toContain('kaboom');
+    expect(result).toBe('Tool execution failed');
+    expect(result).not.toContain('kaboom');
   });
 
   test('adapter can block confirmation tools in read-only mode', async () => {

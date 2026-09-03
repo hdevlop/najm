@@ -26,7 +26,7 @@
 @source inline("{sm,md,lg,xl,2xl}:table-cell");
 @source inline("border-{black,white}");
 @source inline("border-{gray,slate,zinc,neutral,stone,red,orange,amber,yellow,green,teal,blue,indigo,purple}{,-600}");
-@source inline("najm-border najm-border-t najm-border-r najm-border-b najm-border-l");
+@source inline("najm-border najm-border-t najm-border-r najm-border-b najm-border-l najm-border-s najm-border-e");
 
 /* NGrid / NGridItem build column and span classes dynamically. */
 @source inline("grid-cols-{1,2,3,4,5,6,7,8,9,10,11,12}");
@@ -279,6 +279,16 @@ input:autofill {
 .najm-border-l {
   border-left-style: solid;
   border-left-width: var(--border-width);
+}
+
+.najm-border-s {
+  border-inline-start-style: solid;
+  border-inline-start-width: var(--border-width);
+}
+
+.najm-border-e {
+  border-inline-end-style: solid;
+  border-inline-end-width: var(--border-width);
 }
 
 [data-radix-popper-content-wrapper] {

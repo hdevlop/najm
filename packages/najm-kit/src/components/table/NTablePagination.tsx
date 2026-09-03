@@ -122,7 +122,7 @@ function CardLoadMorePagination({
 }
 
 const navButtonClass =
-  "h-8 w-8 p-0 text-foreground disabled:text-muted-foreground disabled:opacity-70";
+  "h-8 w-8 p-0 disabled:text-muted-foreground disabled:opacity-70";
 
 /** Chevrons point along the reading direction, so they mirror under `dir="rtl"`. */
 const chevronClass = "h-4 w-4 rtl:-scale-x-100";

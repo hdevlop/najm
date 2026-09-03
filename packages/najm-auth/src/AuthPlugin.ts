@@ -130,6 +130,7 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
     defaultRole: config?.defaultRole ?? null,
     frontendUrl: config?.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:3000',
     registrationMode: config?.registrationMode ?? 'active',
+    publicRegistration: config?.publicRegistration ?? true,
     requireVerifiedEmail: config?.requireVerifiedEmail ?? false,
     refreshCookiePath: config?.refreshCookiePath ?? '/',
     lockout: {
@@ -210,7 +211,8 @@ export const auth = (config?: AuthPluginConfig) =>
     .requires('database')
     .contributes(I18N_CONTRIBUTIONS, AUTH_LOCALES)
     .services(
-      AuthModule.AUTH_MODULE,
+      AuthModule.AUTH_CORE_MODULE,
+      config?.publicRegistration === false ? [] : AuthModule.PUBLIC_REGISTRATION_MODULE,
       OAUTH_MODULE,
       UserModule,
       RoleModule,

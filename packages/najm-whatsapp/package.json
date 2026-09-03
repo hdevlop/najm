@@ -1,6 +1,6 @@
 {
   "name": "najm-whatsapp",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "license": "MIT",
   "description": "WhatsApp plugin for Najm framework — Cloud API and Baileys engine support",
   "type": "module",

@@ -50,6 +50,8 @@ const inputVariants = cva(
 );
 
 const ERROR_BORDER = "border !border-red-600";
+const ERROR_FOCUS_RING =
+  "focus-visible:ring-destructive/20 has-[:focus-visible]:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:has-[:focus-visible]:ring-destructive/40";
 const FOCUS_INTERACTIVE_BASE = "border focus-within:border-primary";
 const HOVER_INTERACTIVE_BASE = "hover:border-primary";
 const STATIC_BASE = "border";
@@ -94,6 +96,7 @@ export const BaseInput = React.forwardRef<HTMLDivElement, BaseInputProps>(
           // fields and the multi-select trigger came out of the acceptance walk
           // as tab stops with no visible indicator at all.
           !isGhost && focusRingWithinClasses,
+          !isGhost && isError && ERROR_FOCUS_RING,
           !isGhost && borderClass,
           !isGhost && colorClass,
           className

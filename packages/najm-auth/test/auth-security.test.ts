@@ -6,6 +6,7 @@ import { PERMISSIONS, ROLE, USER } from 'najm-guard';
 import { getRateLimitOptions } from 'najm-rate';
 import { Err } from 'najm-core';
 import { AuthController } from '../src/auth/AuthController';
+import { RegistrationController } from '../src/auth/RegistrationController';
 import { AuthService } from '../src/auth/AuthService';
 import { AuthResolver } from '../src/auth/AuthResolver';
 import { CookieManager } from '../src/auth/CookieManager';
@@ -72,7 +73,7 @@ function createTokenService(overrides: {
 
 describe('auth security regressions', () => {
   test('public auth entrypoints ship brute-force rate limits', () => {
-    expect(getRateLimitOptions(AuthController, 'registerUser')).toMatchObject({
+    expect(getRateLimitOptions(RegistrationController, 'registerUser')).toMatchObject({
       limit: 5,
       window: '15m',
     });

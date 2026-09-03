@@ -111,6 +111,8 @@ export interface AuthConfig {
   frontendUrl: string;
   /** Registration mode: 'active' auto-activates, 'pending' requires admin approval (default: 'active') */
   registrationMode: 'active' | 'pending';
+  /** Whether the unauthenticated POST /auth/register route is mounted. */
+  publicRegistration: boolean;
   /** When true, users with emailVerified=false are blocked from logging in (default: false) */
   requireVerifiedEmail: boolean;
   /** Cookie path for the refresh token. Scope to the refresh endpoint to limit exposure (default: '/') */
@@ -178,6 +180,13 @@ export type AuthPluginConfig = {
   frontendUrl?: string;
   /** Registration mode: 'active' auto-activates new users, 'pending' requires admin approval (default: 'active') */
   registrationMode?: 'active' | 'pending';
+  /**
+   * Mount the unauthenticated POST /auth/register route (default: true for
+   * backwards compatibility). Set false when onboarding belongs to an
+   * application-owned approval flow. Internal AuthService provisioning stays
+   * available.
+   */
+  publicRegistration?: boolean;
   /** Block login for users whose email is not verified (default: false) */
   requireVerifiedEmail?: boolean;
   /** Cookie path for the refresh token (default: '/'). Set e.g. '/auth' to keep it off unrelated routes. */

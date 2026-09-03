@@ -360,10 +360,11 @@ import { mcp } from 'najm-mcp';
   version: string;    // required — e.g. '1.0.0'
   path?: string;      // default: '/mcp'
   transports?: ('http' | 'sse' | 'stdio')[];  // default: ['http']
-  cors?: boolean;     // default: true
-  auth?: {
+  cors?: boolean | { origin?: string | string[]; credentials?: boolean }; // default: true
+  exposeErrorDetails?: boolean; // default: false
+  auth?: { type: 'najm-auth' } | {
     type: 'bearer' | 'api-key';
-    validate: (token: string) => boolean | Promise<boolean>;
+    validate: (token: string) => boolean | McpAuthContext | Promise<boolean | McpAuthContext>;
   };
 }))
 ```
@@ -695,7 +696,9 @@ curl http://localhost:3000/mcp/tools
 > descriptions, and argument shapes require a valid token. When you rely on the
 > najm-auth Bearer fallback (no `config.auth`), discovery is **unauthenticated**
 > — tool metadata is public even though tool *execution* still resolves auth.
-> If your tool names/descriptions are sensitive, set `config.auth`.
+> If your tool names/descriptions are sensitive, set `config.auth`. Applications
+> already using `najm-auth` can set `auth: { type: 'najm-auth' }` to reuse the
+> normal bearer-token, revocation, role, and permission resolution path.
 
 ---
 
@@ -779,6 +782,18 @@ Protect your MCP endpoints with bearer tokens or API keys:
 }))
 ```
 
+With `najm-auth` installed on the same server, no custom validation callback is
+needed:
+
+```typescript
+.use(mcp({
+  name: 'my-api',
+  version: '1.0.0',
+  auth: { type: 'najm-auth' },
+  cors: false,
+}))
+```
+
 ## Security Defaults
 
 - MCP HTTP transport is unauthenticated unless `config.auth` is set or exposed
@@ -787,6 +802,8 @@ Protect your MCP endpoints with bearer tokens or API keys:
 - Discovery endpoints (`GET /mcp`, `GET /mcp/tools`) are protected only by
   `config.auth`; if tool names, descriptions, or schemas are sensitive, set
   `auth`.
+- Guard failures do not expose controller or method names unless
+  `exposeErrorDetails: true` is explicitly enabled for a trusted environment.
 - SSE is opt-in and should be used only where long-lived connections are
   expected.
 - Stdio is intended for local clients and runs as a separate process.

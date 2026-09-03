@@ -17,7 +17,7 @@ function DefaultFooter({
 }) {
   if (!onSettings && !onLogout) return null;
   const itemClass =
-    'flex h-8 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-left text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors';
+    'flex h-8 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-start text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors';
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -70,12 +70,12 @@ export function NSidebarFooter({
           onClick={onToggleCollapsed}
           className={cn(
             "flex items-center w-full cursor-pointer rounded-md text-sm font-medium transition-colors h-8 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            "gap-3 px-2 text-left"
+            "gap-3 px-2 text-start"
           )}
           aria-label={collapsed ? expandLabel : collapseLabel}
           title={collapsed ? expandLabel : collapseLabel}
         >
-          <CollapseIcon className="h-4 w-4 shrink-0" />
+          <CollapseIcon className="h-4 w-4 shrink-0 rtl:-scale-x-100" />
           {!collapsed && <span className="flex-1 truncate">{collapseLabel}</span>}
         </button>
       )}

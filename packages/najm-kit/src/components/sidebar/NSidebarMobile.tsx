@@ -27,7 +27,7 @@ export function NSidebarMobile({
           type="button"
           onClick={onOpen}
           className={cn(
-            "fixed top-3 left-3 z-50 p-2 rounded-lg bg-sidebar najm-border border-sidebar-border shadow-md text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors",
+            "fixed top-3 start-3 z-50 p-2 rounded-lg bg-sidebar najm-border border-sidebar-border shadow-md text-sidebar-foreground hover:text-sidebar-accent-foreground hover:bg-sidebar-accent transition-colors",
             mobileClass,
             hamburgerClassName,
             open && "hidden"
@@ -48,17 +48,17 @@ export function NSidebarMobile({
       <aside
         data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
         className={cn(
-          "fixed inset-y-0 left-0 z-50 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-200",
-          sidebarBorderClasses(bordered, 'right'),
+          "fixed inset-y-0 start-0 z-50 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-200",
+          sidebarBorderClasses(bordered, 'end'),
           mobileClass,
-          open ? 'translate-x-0' : '-translate-x-full'
+          open ? 'translate-x-0' : '-translate-x-full rtl:translate-x-full'
         )}
         style={{ width }}
       >
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-3 right-3 z-10 p-1 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/70"
+          className="absolute top-3 end-3 z-10 p-1 rounded-md hover:bg-sidebar-accent text-sidebar-foreground/70"
           aria-label={closeLabel}
         >
           <X className="h-4 w-4" />

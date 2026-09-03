@@ -338,9 +338,7 @@ export class AuthService {
       user.lockoutUntil = null;
     }
 
-    if (user && this.isLockoutActive(user.lockoutUntil)) {
-      Err(this.t('errors.accountLocked'), 423);
-    }
+    const isLocked = Boolean(user && this.isLockoutActive(user.lockoutUntil));
 
     // Looked up for every attempt, including unknown identifiers: skipping the
     // query when no user matched would make account existence measurable.
@@ -356,12 +354,11 @@ export class AuthService {
       : user.password;
     const isValid = await this.userValidator.comparePassword(credential, storedHash);
 
-    if (!user || !isValid) {
-      if (user) {
+    if (!user || !isValid || isLocked) {
+      if (user && !isLocked) {
         const attempts = await this.userService.incrementFailedAttempts(user.id);
         if (attempts >= this.config.lockout.maxAttempts) {
           await this.userService.setLockout(user.id, this.nextLockoutUntil());
-          Err(this.t('errors.accountLocked'), 423);
         }
       }
       Err(this.t('errors.invalidCredentials'), 401);

@@ -139,9 +139,11 @@ export class McpBuilderService {
       this.log.error?.(`MCP tool failed: ${tool.name}`, error);
 
       if (tool.catchErrors && !(error instanceof McpException)) {
-        const detail = this.errorMessage(error);
+        const detail = this.config.exposeErrorDetails === true
+          ? `: ${this.errorMessage(error)}`
+          : '';
         return {
-          content: [{ type: 'text' as const, text: `${tool.catchErrors}: ${detail}` }],
+          content: [{ type: 'text' as const, text: `${tool.catchErrors}${detail}` }],
           isError: true,
         };
       }
@@ -604,15 +606,29 @@ export class McpBuilderService {
 
   private buildErrorResult(error: unknown) {
     if (error instanceof McpException) {
+      const message = this.config.exposeErrorDetails === true
+        ? error.message
+        : this.publicErrorMessage(error);
       return {
-        content: [{ type: 'text' as const, text: `Error (${error.code}): ${error.message}` }],
+        content: [{ type: 'text' as const, text: `Error (${error.code}): ${message}` }],
         isError: true,
       };
     }
 
     return {
-      content: [{ type: 'text' as const, text: this.errorMessage(error) }],
+      content: [{
+        type: 'text' as const,
+        text: this.config.exposeErrorDetails === true
+          ? this.errorMessage(error)
+          : 'Tool execution failed',
+      }],
       isError: true,
     };
+  }
+
+  private publicErrorMessage(error: McpException): string {
+    if (error.code === McpErrorCode.FORBIDDEN) return 'Access denied';
+    if (error.code === McpErrorCode.INTERNAL) return 'Tool execution failed';
+    return error.message;
   }
 }

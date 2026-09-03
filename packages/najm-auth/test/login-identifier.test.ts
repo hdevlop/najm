@@ -13,6 +13,55 @@ const activeUser = {
 };
 
 describe('login identifier resolution', () => {
+  test('locked and unknown identities return the same safe response after a hash comparison', async () => {
+    const compared: string[] = [];
+    const locked = authService({
+      findByEmailInsensitive: async () => ({
+        ...activeUser,
+        lockoutUntil: new Date(Date.now() + 60_000).toISOString(),
+      }),
+      comparePassword: async (_candidate, hash) => {
+        compared.push(hash);
+        return true;
+      },
+    });
+    const unknown = authService({
+      comparePassword: async (_candidate, hash) => {
+        compared.push(hash);
+        return false;
+      },
+    });
+
+    await expect(locked.service.loginUser({
+      identifier: 'alice@example.test',
+      password: 'StrongPass123',
+    })).rejects.toMatchObject({ message: 'errors.invalidCredentials', status: 401 });
+    await expect(unknown.service.loginUser({
+      identifier: 'missing@example.test',
+      password: 'StrongPass123',
+    })).rejects.toMatchObject({ message: 'errors.invalidCredentials', status: 401 });
+
+    expect(compared).toEqual(['stored-hash', 'dummy-hash']);
+  });
+
+  test('the threshold attempt activates lockout without changing the public 401 response', async () => {
+    const lockouts: Array<{ userId: string; until: string }> = [];
+    const { service } = authService({
+      findByEmailInsensitive: async () => activeUser,
+      comparePassword: async () => false,
+      incrementFailedAttempts: async () => 5,
+      setLockout: async (userId, until) => { lockouts.push({ userId, until }); },
+    });
+
+    await expect(service.loginUser({
+      identifier: 'alice@example.test',
+      password: 'wrong-password',
+    })).rejects.toMatchObject({ message: 'errors.invalidCredentials', status: 401 });
+    expect(lockouts).toHaveLength(1);
+    expect(lockouts[0].userId).toBe('user-1');
+    expect(new Date(lockouts[0].until).getTime()).toBeGreaterThan(Date.now());
+  });
+
   test('can verify credentials without establishing a normal session', async () => {
     const { service, established } = authService({
       findByEmailInsensitive: async () => activeUser,
@@ -120,6 +169,9 @@ function authService(overrides: {
   findByEmailInsensitive?: (email: string) => Promise<any>;
   findByEmail?: (email: string) => Promise<any>;
   findByPhone?: (phone: string) => Promise<any>;
+  comparePassword?: (candidate: string, hash: string) => Promise<boolean>;
+  incrementFailedAttempts?: (userId: string) => Promise<number>;
+  setLockout?: (userId: string, until: string) => Promise<void>;
 } = {}) {
   const established = { count: 0 };
   const userService = {
@@ -127,8 +179,8 @@ function authService(overrides: {
     findByEmail: overrides.findByEmail ?? (async () => undefined),
     findByPhone: overrides.findByPhone ?? (async () => undefined),
     resetFailedAttempts: async () => undefined,
-    incrementFailedAttempts: async () => 1,
-    setLockout: async () => undefined,
+    incrementFailedAttempts: overrides.incrementFailedAttempts ?? (async () => 1),
+    setLockout: overrides.setLockout ?? (async () => undefined),
   };
   const authSessionService = {
     establish: async (user: Record<string, unknown>) => {
@@ -143,7 +195,7 @@ function authService(overrides: {
   const service = new AuthService(
     {} as never,
     userService as never,
-    { comparePassword: async () => true } as never,
+    { comparePassword: overrides.comparePassword ?? (async () => true) } as never,
     { hashPassword: async () => 'dummy-hash' } as never,
     {} as never,
     {} as never,

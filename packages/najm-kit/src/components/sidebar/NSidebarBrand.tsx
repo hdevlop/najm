@@ -48,9 +48,9 @@ export function NSidebarBrand({ logo, collapsed, linkComponent: Link, className 
     </>
   );
 
-  // A lone mark centres in the header; a chip or any text stays left-aligned.
+  // A lone mark centres in the header; a chip or any text stays start-aligned.
   const wrapper = cn(
-    "flex min-w-0 items-center gap-2.5 text-left",
+    "flex min-w-0 items-center gap-2.5 text-start",
     !collapsed && !showText && !isChip && "mx-auto",
   );
   const interactive = "cursor-pointer transition-opacity hover:opacity-80";

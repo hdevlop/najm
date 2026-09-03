@@ -81,6 +81,27 @@ describe('McpBuilderService.invokeTool (in-process)', () => {
     expect(called).toBe(false);
   });
 
+  test('unexpected tool errors are opaque unless diagnostics are explicitly enabled', async () => {
+    @Controller('/failures')
+    class FailureController {
+      @Post('/explode')
+      @McpTool('Explode')
+      explode() {
+        throw new Error('database-host.internal:5432');
+      }
+    }
+
+    const { builder } = await bootWith(FailureController);
+    const safe = await builder.invokeTool('explode', {});
+
+    expect(safe.content[0].text).toBe('Tool execution failed');
+    expect(safe.content[0].text).not.toContain('database-host');
+
+    (builder as any).config.exposeErrorDetails = true;
+    const diagnostic = await builder.invokeTool('explode', {});
+    expect(diagnostic.content[0].text).toBe('database-host.internal:5432');
+  });
+
   test('guard rejection: blocked guard produces FORBIDDEN error', async () => {
     @Service()
     class DenyGuard {
@@ -107,7 +128,12 @@ describe('McpBuilderService.invokeTool (in-process)', () => {
     const result = await builder.invokeTool('act', {});
 
     expect(result.isError).toBe(true);
-    expect(result.content[0].text).toContain('FORBIDDEN');
+    expect(result.content[0].text).toBe('Error (FORBIDDEN): Access denied');
+    expect(result.content[0].text).not.toContain('SecureController.act');
+
+    (builder as any).config.exposeErrorDetails = true;
+    const diagnostic = await builder.invokeTool('act', {});
+    expect(diagnostic.content[0].text).toContain('SecureController.act');
   });
 
   test('ALS propagation: @User resolves from the caller-set USER token', async () => {
