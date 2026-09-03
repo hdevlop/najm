@@ -379,6 +379,28 @@ export function sha256OfFile(path: string): string {
   return hash.digest('hex');
 }
 
+export function parseNpmPackFilename(stdout: string): string {
+  const trimmed = stdout.trim();
+  let searchFrom = trimmed.length;
+
+  while (searchFrom > 0) {
+    const start = trimmed.lastIndexOf('[', searchFrom - 1);
+    if (start === -1) break;
+
+    try {
+      const parsed = JSON.parse(trimmed.slice(start)) as Array<{ filename?: unknown }>;
+      const filename = parsed[0]?.filename;
+      if (typeof filename === 'string' && filename.length > 0) return filename;
+    } catch {
+      // Lifecycle scripts may write arbitrary stdout before npm's final JSON payload.
+    }
+
+    searchFrom = start;
+  }
+
+  throw new Error('npm pack --json did not return a tarball name');
+}
+
 export function currentCommitSha(): string | null {
   try {
     const out = execFileSync('git', ['rev-parse', 'HEAD'], {
@@ -443,9 +465,10 @@ async function packTarball(
       ['npm', 'pack', '--json', '--pack-destination', absoluteDir, '--workspace', workspace],
       `Packing ${workspace}`,
     );
-    const parsed = JSON.parse(stdout.trim()) as Array<{ filename: string }>;
-    const tarballName = parsed[0]?.filename;
-    if (!tarballName) {
+    let tarballName: string;
+    try {
+      tarballName = parseNpmPackFilename(stdout);
+    } catch {
       throw new Error(`npm pack --json did not return a tarball name for ${workspace}`);
     }
     const finalPath = resolve(absoluteDir, tarballName);

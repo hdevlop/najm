@@ -6,11 +6,35 @@ import {
   assertCleanStatus,
   bumpVersion,
   parseArgs,
+  parseNpmPackFilename,
   readPackingCommit,
   resolveTarget,
   sidecarPath,
   sha256OfFile,
 } from "./publish-package";
+
+describe("parseNpmPackFilename", () => {
+  test("reads plain npm pack JSON", () => {
+    expect(parseNpmPackFilename('[{"filename":"najm-kit-2.11.10.tgz"}]'))
+      .toBe("najm-kit-2.11.10.tgz");
+  });
+
+  test("ignores lifecycle output before npm pack JSON", () => {
+    const stdout = [
+      "> najm-rag@2.0.3 prepack",
+      "$ tsup",
+      "CLI Building entry: src/index.ts",
+      '[{"filename":"najm-rag-2.0.3.tgz"}]',
+    ].join("\n");
+
+    expect(parseNpmPackFilename(stdout)).toBe("najm-rag-2.0.3.tgz");
+  });
+
+  test("rejects output without npm pack JSON", () => {
+    expect(() => parseNpmPackFilename("CLI Build success"))
+      .toThrow(/did not return a tarball name/);
+  });
+});
 
 describe("parseArgs", () => {
   test("parses package reference", () => {
