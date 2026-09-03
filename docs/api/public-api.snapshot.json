@@ -22,7 +22,7 @@
       "export type { GuardMetadata, CreateGuardOptions, GuardPluginConfig, GuardResult, GuardReturnType, } from 'najm-guard';",
       "export type { ValidationPluginConfig, ValidateInput } from 'najm-validation';",
       "export type { CachePluginConfig, CacheConfig, RedisOptions } from 'najm-cache';",
-      "export type { TimeWindow, KeyStrategy, RateLimitOptions, RateLimitPluginConfig } from 'najm-rate';",
+      "export type { TimeWindow, KeyStrategy, CustomRateLimitKey, RateLimitKeyContext, RateLimitOptions, RateLimitPluginConfig } from 'najm-rate';",
       "export type { CorsPluginConfig } from 'najm-cors';",
       "export type { CookiePluginConfig, CookieOptions } from 'najm-cookies';",
       "export type { I18nPluginConfig } from 'najm-i18n';",
@@ -57,9 +57,9 @@
     ],
     "najm-cache": [
       "export { cache } from './CachePlugin';",
-      "export { CacheService } from './CacheService';",
+      "export { CacheService, CacheConfigError } from './CacheService';",
       "export { MemoryDriver, type MemoryDriverOptions } from './drivers/MemoryDriver';",
-      "export { RedisDriver, isRedisAvailable, type RedisDriverOptions } from './drivers/RedisDriver';",
+      "export { RedisDriver, isRedisAvailable, type RedisDriverOptions, type RedisClient } from './drivers/RedisDriver';",
       "export type { Driver, DriverStats } from './drivers/Driver';",
       "export { CACHE_CONFIG } from './tokens';",
       "export type { CachePluginConfig, CacheConfig, RedisOptions } from './types';"
@@ -372,7 +372,8 @@
       "export * from './chatDebug';"
     ],
     "najm-rate": [
-      "export type { TimeWindow, KeyStrategy, RateLimitOptions, RateLimitPluginConfig, RateLimitEntry, } from './types';",
+      "export type { TimeWindow, KeyStrategy, CustomRateLimitKey, RateLimitKeyContext, RateLimitOptions, RateLimitPluginConfig, RateLimitEntry, } from './types';",
+      "export { resolveClientAddress, normalizeAddress, UNRESOLVED_CLIENT_ADDRESS, } from './clientAddress';",
       "export { RATE_LIMIT_META, RATE_LIMIT_CONFIG, RATE_LIMIT_SKIP } from './tokens';",
       "export { RateLimit, SkipRateLimit, getRateLimitOptions, isRateLimitSkipped } from './decorator';",
       "export { rateLimit } from './RateLimitPlugin';",
