@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.1 - 2026-09-04
+
+- fix(cache): probe a required cache backend during the server `onReady`
+  lifecycle so an unreachable Redis instance rejects application startup
+  instead of being discovered only by a later readiness request.
+
 ## 2.1.0 - 2026-09-04
 
 - security(redis): increment a counter and attach its expiry in one Lua script.

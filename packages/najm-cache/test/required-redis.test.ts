@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { describe, test, expect } from "bun:test";
-import { CacheService } from "../src";
+import { Server } from "najm-core";
+import { CacheService, cache } from "../src";
 import { RedisDriver, type RedisClient } from "../src/drivers/RedisDriver";
 
 const SECRET_URL = "redis://:sup3rs3cret@cache.internal:6379/0";
@@ -159,6 +160,39 @@ describe("required Redis mode", () => {
     const service = redisService(client);
     await expect(service.ping()).resolves.toBe(false);
     await expect(service.verifyReady()).rejects.toThrow(/not reachable/i);
+  });
+
+  test("server initialization rejects an unreachable required Redis backend", async () => {
+    const client = new FakeRedis();
+    client.failPing = true;
+    const server = new Server({ isolated: true }).use(cache({
+      driver: "redis",
+      required: true,
+      redis: { url: SECRET_URL, client },
+    }));
+
+    const error = await server.init().then(
+      () => {
+        throw new Error("server initialized with an unreachable required cache");
+      },
+      (raised: Error) => raised,
+    );
+
+    expect(error.message).toMatch(/not reachable/i);
+    expect(`${error.message}\n${error.stack ?? ""}`).not.toContain(SECRET_URL);
+  });
+
+  test("server initialization probes a reachable required Redis backend", async () => {
+    const client = new FakeRedis();
+    const server = new Server({ isolated: true }).use(cache({
+      driver: "redis",
+      required: true,
+      redis: { url: SECRET_URL, client },
+    }));
+
+    await server.init();
+    expect(client.pingCalls).toBe(1);
+    await server.stop();
   });
 });
 

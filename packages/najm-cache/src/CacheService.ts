@@ -156,6 +156,17 @@ export class CacheService implements Driver {
     throw new CacheConfigError(`the ${this._type} cache backend is not reachable`);
   }
 
+  /**
+   * Required cache backends are part of application startup, not merely a
+   * later readiness observation. Refuse to mark the server ready until the
+   * selected backend has answered a live probe.
+   */
+  async onReady(): Promise<void> {
+    if (this.config.required) {
+      await this.verifyReady();
+    }
+  }
+
   // ============================================================================
   // Driver Interface Implementation
   // ============================================================================
