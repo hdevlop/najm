@@ -165,7 +165,8 @@
       "export * from './I18nPlugin';",
       "export { I18nService } from './I18nService';",
       "export { t } from './t';",
-      "export * from './translator';"
+      "export * from './translator';",
+      "export * from './defineI18n';"
     ],
     "najm-kit": [
       "export { NajmThemeProvider, useNajmAppearance, useNajmThemeMode } from \"./theme/provider\";",
@@ -262,7 +263,8 @@
       "export type { NNotFoundStateProps } from \"./components/feedback/NNotFoundState\";",
       "export { NErrorBoundary } from \"./components/feedback/NErrorBoundary\";",
       "export { NSkeleton, Skeleton, NStatCardSkeleton, NTableRowSkeleton, NTableSkeleton, NSkeletonChart, NSkeletonDonut, NSkeletonCalendar, NSkeletonEventList, NSkeletonWidget, NSkeletonWidgets } from \"./components/feedback/NSkeletonPresets\";",
-      "export type { NFeedbackDefaults, NFeedbackLabelKeys, NFeedbackLabels, } from \"./components/feedback/feedbackDefaults\";",
+      "export type { FeedbackKey, NFeedbackDefaults, NFeedbackLabelKeys, NFeedbackLabels, } from \"./components/feedback/feedbackDefaults\";",
+      "export { DEFAULT_FEEDBACK_KEY_PREFIX } from \"./components/feedback/feedbackDefaults\";",
       "export type { NFeedbackSurface } from \"./components/feedback/NFeedbackStateFrame\";",
       "export type { NFeedbackIconSize } from \"./components/feedback/feedbackIcon\";",
       "export { NAvatar } from \"./components/Avatar\";",

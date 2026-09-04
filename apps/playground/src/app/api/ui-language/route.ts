@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 
-import { translations } from '@/locales';
+import { playgroundI18n } from '@/locales';
 
 /**
  * Language cookie endpoint for `NajmAppProvider`.
@@ -17,7 +17,7 @@ import { translations } from '@/locales';
 
 export const UI_LANGUAGE_COOKIE = 'najm-ui-language';
 
-const LANGUAGES = new Set(Object.keys(translations));
+const LANGUAGES = playgroundI18n.supportedLanguages;
 
 export async function POST(request: Request) {
   let language: unknown;
@@ -27,9 +27,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Expected a JSON body' }, { status: 400 });
   }
 
-  if (typeof language !== 'string' || !LANGUAGES.has(language)) {
+  if (!playgroundI18n.isLanguage(language)) {
     return NextResponse.json(
-      { error: `language must be one of ${[...LANGUAGES].join(', ')}` },
+      { error: `language must be one of ${LANGUAGES.join(', ')}` },
       { status: 400 },
     );
   }

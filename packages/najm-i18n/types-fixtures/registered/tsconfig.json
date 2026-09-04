@@ -1,0 +1,10 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "paths": {
+      "najm-i18n": ["../../dist/index.d.ts"],
+      "najm-i18n/react": ["../../dist/react.d.ts"]
+    }
+  },
+  "include": ["*.ts"]
+}

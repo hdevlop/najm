@@ -44,6 +44,24 @@ export default {
       allOption: 'All',
       create: 'Create',
     },
+    // The kit's feedback prefix. Nine field names, one-for-one with
+    // `ResolvedFeedbackLabels`, read by every N*State beneath the provider —
+    // which is why this app passes no `feedbackDefaults` mapping at all.
+    feedback: {
+      loadingLabel: 'Loading…',
+      emptyTitle: 'Nothing here yet',
+      errorTitle: 'Something went wrong',
+      errorMessage: 'Please try again in a moment.',
+      retryLabel: 'Try again',
+      forbiddenTitle: 'Access denied',
+      forbiddenDescription: 'You do not have permission to view this page.',
+      notFoundTitle: 'Page not found',
+      notFoundDescription: 'The requested page could not be found.',
+    },
+    // Deliberately absent from `fr.ts`. With `fallbackToDefaultLanguage` on,
+    // French renders this English text; with it off, French renders the key.
+    // The i18n page shows both halves.
+    untranslated: 'Base catalog only, {{count}} pending',
   },
   auth: {
     errors: {

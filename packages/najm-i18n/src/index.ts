@@ -5,3 +5,4 @@ export * from './I18nPlugin';
 export { I18nService } from './I18nService';
 export { t } from './t';
 export * from './translator';
+export * from './defineI18n';

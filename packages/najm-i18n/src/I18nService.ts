@@ -22,6 +22,7 @@ export class I18nService {
 
    private translations: Translations = {};
    private defaultLanguage: string = 'en';
+   private fallbackToDefaultLanguage = false;
    private availableLanguages: string[] = ['en'];
    private lookupCookie: string = 'language';
    private standaloneLanguage: string = 'en';
@@ -44,6 +45,7 @@ export class I18nService {
       caches: ['cookie'],
       ignoreCase: true,
       debug: false,
+      fallbackToDefaultLanguage: false,
    };
 
    async onInit(): Promise<void> {
@@ -137,6 +139,8 @@ export class I18nService {
       this.defaultLanguage = this.parsedConfig.defaultLanguage ?? 'en';
       this.availableLanguages = this.parsedConfig.supportedLanguages ?? ['en'];
       this.lookupCookie = this.parsedConfig.lookupCookie ?? 'language';
+      this.fallbackToDefaultLanguage =
+         this.parsedConfig.fallbackToDefaultLanguage ?? false;
       this.standaloneLanguage = this.defaultLanguage;
 
       this.validateGlobalConfig();
@@ -370,6 +374,7 @@ export class I18nService {
    private translate(key: string, language: string, params?: Record<string, any>): string {
       return translate(this.translations, language, key, params, {
          defaultLanguage: this.defaultLanguage,
+         fallbackToDefaultLanguage: this.fallbackToDefaultLanguage,
       });
    }
 

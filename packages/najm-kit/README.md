@@ -352,7 +352,40 @@ Resolution order, most specific first:
 2. A literal in `feedbackDefaults.labels`.
 3. A translated `feedbackDefaults.labelKeys` value resolved through the
    provider's existing structural `t` function.
-4. The current packaged English fallback, when that field has one.
+4. `` `<prefix>.<field>` `` resolved through the same `t`, where `prefix`
+   defaults to `common.feedback`.
+5. The current packaged English fallback, when that field has one.
+
+#### The prefix convention
+
+Step 4 is the reason most applications need no `feedbackDefaults` at all. Name
+the nine catalog entries after the fields — `common.feedback.emptyTitle`,
+`common.feedback.retryLabel`, and so on — and a provider that already has a
+translator resolves every feedback state with no mapping object to write or
+memoize:
+
+```tsx
+<NajmAppProvider translations={translations} initialLanguage="fr">
+  <App />
+</NajmAppProvider>
+```
+
+Use `prefix` to point at a different branch, and `FeedbackKey<Prefix>` to type
+a translator against exactly those nine keys:
+
+```tsx
+import type { FeedbackKey } from 'najm-kit';
+
+<NajmAppProvider feedbackDefaults={{ prefix: 'app.states' }}>
+```
+
+Unlike `buildToolbarLabels` and `buildPaginationLabels`, a translator result
+equal to the key it was handed is treated as *missing* here rather than
+rendered. The prefix is a convention an application may never have adopted, so
+an unanswered key falls through to packaged English instead of painting
+`common.feedback.emptyTitle` across an empty state. The same rule applies to an
+explicit `labelKeys` entry, which makes a typo in the mapping degrade to English
+rather than to visible key text.
 
 Generic `NErrorState.message` and `NEmptyState.description` deliberately have
 no packaged fallback — the no-provider render must look the same as it did

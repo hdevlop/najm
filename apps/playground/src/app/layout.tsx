@@ -7,7 +7,7 @@ import { loadServerTheme } from '@/lib/serverTheme';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/index.css';
 import { auth } from '@/lib/auth';
-import { translations, type Locale } from '@/locales';
+import { playgroundI18n, playgroundLocales, type Locale } from '@/locales';
 import { AuthProviderWrapper } from '@/providers/AuthProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { UI_THEME_COOKIE } from '@/app/api/ui-theme/route';
@@ -39,9 +39,11 @@ export default async function RootLayout({
   const cookieStore = await cookies();
   const theme: NajmMode =
     cookieStore.get(UI_THEME_COOKIE)?.value === 'light' ? 'light' : 'dark';
-  const language = (
-    cookieStore.get(UI_LANGUAGE_COOKIE)?.value === 'fr' ? 'fr' : 'en'
-  ) satisfies Locale;
+  // One normalizer, derived from the catalog. A cookie holding a language the
+  // app no longer ships coerces to the default rather than rendering keys.
+  const language: Locale = playgroundI18n.normalizeLanguage(
+    cookieStore.get(UI_LANGUAGE_COOKIE)?.value,
+  );
   // Seeds the provider so a reload renders dates in the chosen zone rather than
   // falling back to UTC. The provider re-validates it.
   const timeZone = cookieStore.get(UI_TIME_ZONE_COOKIE)?.value;
@@ -49,6 +51,7 @@ export default async function RootLayout({
   return (
     <html
       lang={language}
+      dir={playgroundI18n.direction(language)}
       className={theme === 'dark' ? 'dark' : undefined}
       suppressHydrationWarning
     >
@@ -56,15 +59,18 @@ export default async function RootLayout({
         <QueryProvider>
           <AuthProviderWrapper initialSession={session}>
             <NajmAppProvider
-              translations={translations}
+              translations={playgroundI18n.translations}
               initialLanguage={language}
+              defaultLanguage={playgroundI18n.defaultLanguage}
+              fallbackToDefaultLanguage={playgroundI18n.fallbackToDefaultLanguage}
+              getLanguageDirection={playgroundI18n.direction}
               initialTheme={theme}
               initialTimeZone={timeZone}
               initialDesign={appearance.designConfig}
               appName="Najm Playground"
               formDevTools
               currency="MAD"
-              locales={{ en: 'en-MA', fr: 'fr-MA' }}
+              locales={playgroundLocales}
             >
               <NThemeBrandingProvider branding={branding}>
                 {children}

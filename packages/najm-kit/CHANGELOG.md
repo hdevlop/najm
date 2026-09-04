@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.11.13 - 2026-09-04
+
+- Fixed the documented `common.feedback.<field>` convention so all shared
+  loading, empty, error, forbidden, and not-found states resolve localized
+  labels without an application-owned `feedbackDefaults` key map. Missing
+  convention keys still fall back to the packaged English labels.
+- Forwarded Najm i18n's missing-key fallback and language-direction resolver
+  through `NajmAppProvider`, keeping language changes reactive for partial
+  catalogs and non-Arabic RTL languages.
+
 ## 2.11.10 - 2026-09-03
 
 - Fixed the selected numbered `NTable` pagination button inheriting the regular

@@ -171,10 +171,12 @@ export type { NNotFoundStateProps } from "./components/feedback/NNotFoundState";
 export { NErrorBoundary } from "./components/feedback/NErrorBoundary";
 export { NSkeleton, Skeleton, NStatCardSkeleton, NTableRowSkeleton, NTableSkeleton, NSkeletonChart, NSkeletonDonut, NSkeletonCalendar, NSkeletonEventList, NSkeletonWidget, NSkeletonWidgets } from "./components/feedback/NSkeletonPresets";
 export type {
+  FeedbackKey,
   NFeedbackDefaults,
   NFeedbackLabelKeys,
   NFeedbackLabels,
 } from "./components/feedback/feedbackDefaults";
+export { DEFAULT_FEEDBACK_KEY_PREFIX } from "./components/feedback/feedbackDefaults";
 export type { NFeedbackSurface } from "./components/feedback/NFeedbackStateFrame";
 export type { NFeedbackIconSize } from "./components/feedback/feedbackIcon";
 

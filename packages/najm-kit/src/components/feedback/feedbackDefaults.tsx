@@ -84,8 +84,13 @@ export interface NFeedbackDefaults {
    */
   labelKeys?: NFeedbackLabelKeys;
   /**
-   * Catalog prefix for translated keys. Keys are read as `<prefix>.<field>`.
-   * Defaults to `"common.feedback"`.
+   * Catalog prefix for translated keys, read as `<prefix>.<field>` for every
+   * field `labelKeys` does not name explicitly. Defaults to
+   * `"common.feedback"`, so an application whose catalog follows the
+   * convention supplies no `feedbackDefaults` at all.
+   *
+   * A prefix key the catalog does not answer falls through to packaged
+   * English rather than rendering the key.
    */
   prefix?: string;
 }
@@ -126,15 +131,42 @@ export function useNFeedbackDefaults(): NFeedbackDefaultsContextValue | null {
 
 export const DEFAULT_FEEDBACK_KEY_PREFIX = "common.feedback";
 
+type DefaultFeedbackPrefix = typeof DEFAULT_FEEDBACK_KEY_PREFIX;
+
+/**
+ * The nine catalog keys the feedback states read under `Prefix`, matching the
+ * `ToolbarKey` and `CardPaginationKey` conventions — same prefix, same
+ * key-per-field naming.
+ */
+export type FeedbackKey<Prefix extends string = DefaultFeedbackPrefix> =
+  | `${Prefix}.loadingLabel`
+  | `${Prefix}.emptyTitle`
+  | `${Prefix}.errorTitle`
+  | `${Prefix}.errorMessage`
+  | `${Prefix}.retryLabel`
+  | `${Prefix}.forbiddenTitle`
+  | `${Prefix}.forbiddenDescription`
+  | `${Prefix}.notFoundTitle`
+  | `${Prefix}.notFoundDescription`;
+
 /**
  * The fully resolved label bundle, ready for a feedback component to consume.
  *
  * Resolution order, most specific first:
  *   1. `labels[name]` (literal default).
  *   2. `labelKeys[name]` resolved through `t`.
- *   3. Packaged English for fields that have one. Missing fields stay
+ *   3. `<prefix>.<name>` resolved through `t`, where `prefix` defaults to
+ *      `"common.feedback"`. This is what lets an application adopt the
+ *      convention and pass no `labelKeys` at all.
+ *   4. Packaged English for fields that have one. Missing fields stay
  *      `undefined` — generic `errorMessage` and `emptyDescription` have no
  *      packaged fallback by design.
+ *
+ * Steps 2 and 3 treat a result equal to the requested key as missing. Unlike
+ * `buildToolbarLabels`, where a rendered key is the intended signal for a
+ * missing catalog entry, the prefix here is a *convention* rather than a
+ * declaration: an application that never adopted it would otherwise see
+ * `common.feedback.emptyTitle` painted across its empty states.
  *
  * Memoized on `[value.defaults, value.t]` so a language change reaches every
  * consumer without remounting and without rebuilding on unrelated identity
@@ -166,14 +198,26 @@ export function resolveFeedbackLabels(
   const labelKeys = defaults?.labelKeys;
   const prefix = defaults?.prefix ?? DEFAULT_FEEDBACK_KEY_PREFIX;
 
+  // A translator that echoes the key it was handed has no entry for it. That is
+  // the documented `NajmTranslate` contract, and it is the only signal
+  // available through a structural `t`.
+  const translated = (key: string): string | undefined => {
+    if (!t) return undefined;
+    const value = t(key);
+    return value === key ? undefined : value;
+  };
+
   const pick = (
     field: NFeedbackLabelKey,
     hasFallback: boolean,
   ): string | undefined => {
     const literal = (labels as Record<string, string | undefined> | undefined)?.[field];
     if (literal !== undefined) return literal;
+
     const key = (labelKeys as Record<string, string | undefined> | undefined)?.[field];
-    if (key && t) return t(key);
+    const fromCatalog = translated(key ?? `${prefix}.${field}`);
+    if (fromCatalog !== undefined) return fromCatalog;
+
     if (hasFallback) return ENGLISH_FEEDBACK_LABELS[field];
     return undefined;
   };

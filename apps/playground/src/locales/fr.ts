@@ -35,6 +35,18 @@ export default {
       allOption: 'Tous',
       create: 'Créer',
     },
+    // Same nine field names. `untranslated` is deliberately missing here.
+    feedback: {
+      loadingLabel: 'Chargement…',
+      emptyTitle: 'Rien pour l’instant',
+      errorTitle: 'Une erreur est survenue',
+      errorMessage: 'Veuillez réessayer dans un instant.',
+      retryLabel: 'Réessayer',
+      forbiddenTitle: 'Accès refusé',
+      forbiddenDescription: 'Vous n’avez pas la permission de voir cette page.',
+      notFoundTitle: 'Page introuvable',
+      notFoundDescription: 'La page demandée est introuvable.',
+    },
   },
   auth: {
     errors: {

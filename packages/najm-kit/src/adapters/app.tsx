@@ -27,10 +27,12 @@ export type { NForbiddenStateProps } from '../components/feedback/NForbiddenStat
 export { NNotFoundState } from '../components/feedback/NNotFoundState';
 export type { NNotFoundStateProps } from '../components/feedback/NNotFoundState';
 export type {
+  FeedbackKey,
   NFeedbackDefaults,
   NFeedbackLabelKeys,
   NFeedbackLabels,
 } from '../components/feedback/feedbackDefaults';
+export { DEFAULT_FEEDBACK_KEY_PREFIX } from '../components/feedback/feedbackDefaults';
 export type { NFeedbackSurface } from '../components/feedback/NFeedbackStateFrame';
 
 /** Branding shown by the kit's chrome. Purely presentational values. */
@@ -56,6 +58,18 @@ export interface NajmAppProviderProps
   translations?: Translations;
   initialLanguage?: string;
   defaultLanguage?: string;
+  /**
+   * Resolves a key missing from the active language against `defaultLanguage`
+   * instead of echoing the key. Forwarded to `najm-i18n`'s `I18nProvider`; see
+   * that package's "Missing-key fallback" for the full matrix.
+   *
+   * Off by default, matching the package. An application shipping an
+   * incomplete locale beside a complete one turns it on here rather than
+   * pre-merging its catalogs.
+   */
+  fallbackToDefaultLanguage?: boolean;
+  /** Maps a language to the writing direction applied to `<html>`. */
+  getLanguageDirection?: (language: string) => 'ltr' | 'rtl';
   /**
    * Where the chosen language is POSTed, as `{ language }`. Defaults to
    * `/api/ui-language`.
@@ -125,6 +139,8 @@ type InnerProps = Omit<
   | 'translations'
   | 'initialLanguage'
   | 'defaultLanguage'
+  | 'fallbackToDefaultLanguage'
+  | 'getLanguageDirection'
   | 'languageEndpoint'
   | 'appName'
   | 'formDevTools'
@@ -220,6 +236,8 @@ export function NajmAppProvider({
   translations,
   initialLanguage,
   defaultLanguage,
+  fallbackToDefaultLanguage,
+  getLanguageDirection,
   languageEndpoint = DEFAULT_LANGUAGE_ENDPOINT,
   appName,
   initialBranding,
@@ -265,6 +283,8 @@ export function NajmAppProvider({
         translations={translations}
         initialLanguage={initialLanguage ?? defaultLanguage ?? 'en'}
         defaultLanguage={defaultLanguage}
+        fallbackToDefaultLanguage={fallbackToDefaultLanguage}
+        getLanguageDirection={getLanguageDirection}
         onLanguageChange={persistLanguage}
       >
         <NajmAppUI {...props} initialBranding={seeded} />

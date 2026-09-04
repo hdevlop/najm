@@ -121,7 +121,44 @@ interface I18nOptions {
 
   // Enable debug logging
   debug?: boolean;  // Default: false
+
+  // Resolve a key missing from the detected language against defaultLanguage
+  // instead of echoing the key. See "Missing-key fallback".
+  fallbackToDefaultLanguage?: boolean;  // Default: false
 }
+```
+
+### Missing-key fallback
+
+By default a key that is absent from the active language renders as the key
+itself. That is deliberate: an untranslated string stays visible in the UI and
+in `najm-kit`'s label diagnostics instead of being papered over.
+
+An application that ships an incomplete locale beside a complete one usually
+wants the opposite — a key added to the base catalog should render readable text
+everywhere until its translation lands. Set `fallbackToDefaultLanguage: true`
+and the lookup falls through to `defaultLanguage` before echoing.
+
+The option never affects an entirely absent language. That already resolves
+against `defaultLanguage`, with or without it:
+
+| Selected language | Selected key | `fallbackToDefaultLanguage` | Result |
+| --- | --- | --- | --- |
+| exists | exists | either | selected-language value |
+| absent | default has the key | either | default-language value |
+| exists | absent | `false` / omitted | key echo |
+| exists | absent | `true` | default-language value |
+| exists | absent in both | `true` | key echo |
+
+The same option is accepted by `translate()`, `createTranslator()`, the server
+plugin, `defineI18n()`, and `I18nProvider`, so an application that uses one
+catalog on both sides configures the policy once and both paths agree.
+
+```typescript
+translate(translations, 'fr', 'orders.title', undefined, {
+  defaultLanguage: 'en',
+  fallbackToDefaultLanguage: true,
+});
 ```
 
 ### Basic Configuration
@@ -200,6 +237,100 @@ export function App() {
 The root `najm-i18n` entry remains server-safe and exposes the imperative
 `t`, `translate`, and `createTranslator` APIs. React is an optional peer and is
 loaded only through `najm-i18n/react`.
+
+### Typed keys without a wrapper hook
+
+`useTranslation<Key, Language>()` accepts explicit generics, but repeating them
+at every call site is what pushes applications into writing a wrapper hook whose
+only job is to bind them once. Register the two unions instead, in one ambient
+declaration per TypeScript program:
+
+```ts
+// najm-i18n.d.ts
+import type { TranslationKeys } from 'najm-i18n';
+import type en from '@acme/server/locales/en.json';
+
+declare module 'najm-i18n/react' {
+  interface NajmI18nRegistry {
+    key: TranslationKeys<(typeof en)['ui']>;
+    language: 'ar' | 'en' | 'es' | 'fr';
+  }
+}
+```
+
+Every direct import is then typed with no call-site generics and no app hook:
+
+```tsx
+import { useTranslation } from 'najm-i18n/react';
+
+const { t, language, changeLanguage } = useTranslation();
+t('operator.orders.title');   // checked against the catalog
+t('operator.orders.titel');   // compile error
+changeLanguage('de');         // compile error
+```
+
+`TranslationKeys<Catalog>` is exported from the root entry and produces every
+dotted path in a catalog that ends at a string. On a 1,700-key catalog it adds
+under 0.1s to a `tsc` check.
+
+**One registration per TypeScript program.** React cannot infer these unions
+from the provider — the hook and the provider are different call sites — so the
+registry is program-wide rather than per-provider. A program with a second,
+independent catalog keeps using explicit generics, which still override the
+registry:
+
+```ts
+const { t } = useTranslation<'only.this', 'de'>();
+```
+
+A program that registers nothing behaves exactly as before: both parameters
+default to `string`.
+
+## Defining a catalog once
+
+`defineI18n` is a server-safe, framework-neutral helper that binds a catalog to
+its language union, its fallback policy, and the per-language facts an
+application would otherwise re-declare in three places. It imports no React, no
+Next.js, and no `najm-core`.
+
+```ts
+import { defineI18n } from 'najm-i18n';
+import translations from '@acme/server/locales';
+
+export const appI18n = defineI18n({
+  translations,
+  defaultLanguage: 'en',
+  fallbackToDefaultLanguage: true,
+  languageMetadata: {
+    en: { locale: 'en-MA', direction: 'ltr' },
+    fr: { locale: 'fr-MA', direction: 'ltr' },
+    ar: { locale: 'ar-MA', direction: 'rtl' },
+  },
+});
+
+export const appUiI18n = appI18n.scope('ui');
+```
+
+The definition exposes:
+
+| Member | Purpose |
+| --- | --- |
+| `translations`, `defaultLanguage`, `supportedLanguages` | the catalog and its inferred, frozen language union |
+| `isLanguage(v)`, `normalizeLanguage(v)` | a type guard and a total coercion to the default |
+| `translate(lang, key, params)`, `createTranslator(lang)` | translation with the fallback policy already bound |
+| `locale(lang)`, `direction(lang)` | BCP 47 tag and writing direction from `languageMetadata` |
+| `scope(prefix)` | the same definition projected onto a nested branch |
+| `options` | config to hand straight to the `i18n()` server plugin |
+
+`scope` reuses the nested objects **by reference** — a UI scope of a 100 KB
+catalog is read on every render, so it is never cloned. A language missing the
+branch is dropped from the scope and covered by the fallback policy; a branch
+missing from the *default* language throws, because every lookup through such a
+scope would silently echo keys.
+
+`direction` is declared per language rather than derived. Arabic is not the only
+RTL language, and an application adding Hebrew or Persian should not have to
+discover a hard-coded list.
 
 ## Usage
 
