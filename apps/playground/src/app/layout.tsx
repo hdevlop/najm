@@ -67,6 +67,7 @@ export default async function RootLayout({
               initialTheme={theme}
               initialTimeZone={timeZone}
               initialDesign={appearance.designConfig}
+              initialBranding={branding}
               appName="Najm Playground"
               formDevTools
               currency="MAD"

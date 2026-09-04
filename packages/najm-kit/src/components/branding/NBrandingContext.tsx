@@ -30,6 +30,19 @@ export interface NBrandingValue {
 export interface NBrandingPayload {
   sidebarLogoExpandedPath?: string | null;
   sidebarLogoCollapsedPath?: string | null;
+  /**
+   * A slot registry, as `najm-theme` resolves branding: slot key to path.
+   *
+   * Read here so a themed application passes what `loadServerBranding()`
+   * returned straight through, rather than renaming two of its slots at the
+   * one call site that mounts the chrome. Only the two sidebar keys are read,
+   * so an auth logo, a hero, and a consumer's own slots stay out of the
+   * context the sidebar sees.
+   *
+   * Structural on purpose: the kit does not depend on `najm-theme`, and the
+   * dependency runs the other way.
+   */
+  slots?: Record<string, string | null>;
 }
 
 /** Resolved marks, an endpoint payload, or both. */
@@ -38,9 +51,9 @@ export type NBrandingInput = NBrandingValue & NBrandingPayload;
 /**
  * Projects an input onto the marks `useNBranding` publishes.
  *
- * Explicit marks win over payload fields, so an application already passing
- * `logoExpanded` — or a `ReactNode` logo, which no payload can express — is
- * unaffected by the wider input type.
+ * Explicit marks win over payload fields, which win over slots, so an
+ * application already passing `logoExpanded` — or a `ReactNode` logo, which no
+ * payload can express — is unaffected by the wider input type.
  */
 export function normalizeBranding(input?: NBrandingInput): NBrandingValue {
   if (!input) return {};
@@ -49,8 +62,10 @@ export function normalizeBranding(input?: NBrandingInput): NBrandingValue {
   // response, and spreading it would publish an auth logo path and a revision
   // through the context the sidebar reads.
   const value: NBrandingValue = {};
-  const expanded = input.logoExpanded ?? input.sidebarLogoExpandedPath;
-  const collapsed = input.logoCollapsed ?? input.sidebarLogoCollapsedPath;
+  const expanded =
+    input.logoExpanded ?? input.sidebarLogoExpandedPath ?? input.slots?.sidebarLogoExpanded;
+  const collapsed =
+    input.logoCollapsed ?? input.sidebarLogoCollapsedPath ?? input.slots?.sidebarLogoCollapsed;
 
   // Assigned only when present. `setBranding` merges its result over the
   // current marks, so writing `logoExpanded: undefined` for a patch that never

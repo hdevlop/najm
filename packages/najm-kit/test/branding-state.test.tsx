@@ -190,3 +190,66 @@ describe("branding payload input", () => {
     });
   });
 });
+
+/**
+ * What `najm-theme`'s `loadServerBranding()` returns. A slot registry, not a
+ * set of columns — the keys past the two sidebar marks are the reason the kit
+ * projects instead of spreading.
+ */
+interface ThemeBranding {
+  slots: Record<string, string | null>;
+  factory: Record<string, string | null>;
+  revision: number;
+}
+
+describe("branding slot registry input", () => {
+  const themeBranding: ThemeBranding = {
+    slots: {
+      sidebarLogoExpanded: "/api/branding/wide.webp",
+      sidebarLogoCollapsed: "/api/branding/mark.webp",
+      authLogo: "/api/branding/auth.webp",
+      authHeroImage: "/api/branding/hero.webp",
+    },
+    factory: { sidebarLogoExpanded: "/api/branding/factory/wide-abc.webp" },
+    revision: 4,
+  };
+
+  test("a themed payload passes through unchanged", () => {
+    const { getByTestId } = render(
+      <NBrandingStateProvider initialBranding={themeBranding}>
+        <PathProbe />
+      </NBrandingStateProvider>,
+    );
+
+    expect(getByTestId("expanded").textContent).toBe("/api/branding/wide.webp");
+    expect(getByTestId("collapsed").textContent).toBe("/api/branding/mark.webp");
+  });
+
+  test("only the two sidebar slots reach the context", () => {
+    // The regression this guards: an auth hero or a consumer's own slot
+    // reaching the marks the sidebar reads.
+    expect(normalizeBranding(themeBranding)).toEqual({
+      logoExpanded: "/api/branding/wide.webp",
+      logoCollapsed: "/api/branding/mark.webp",
+    });
+  });
+
+  test("a flat payload field beats the slot of the same name", () => {
+    expect(
+      normalizeBranding({ sidebarLogoExpandedPath: "/flat.png", slots: themeBranding.slots }),
+    ).toEqual({
+      logoExpanded: "/flat.png",
+      logoCollapsed: "/api/branding/mark.webp",
+    });
+  });
+
+  test("a slot resolving to nothing clears the mark, like a null path", () => {
+    // `null` is the registry saying the slot has no image, so it clears on
+    // merge exactly as `sidebarLogoExpandedPath: null` does. A slot the
+    // payload never mentions is the case that must leave a mark alone.
+    expect(normalizeBranding({ slots: { sidebarLogoExpanded: null } })).toEqual({
+      logoExpanded: null,
+    });
+    expect(normalizeBranding({ slots: { authLogo: "/auth.png" } })).toEqual({});
+  });
+});
