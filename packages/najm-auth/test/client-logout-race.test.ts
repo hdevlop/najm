@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { NajmAuthClient } from '../src/client/NajmAuthClient';
+import { AuthError } from '../src/client/types';
 
 const accessToken = `header.${Buffer.from(JSON.stringify({
   userId: 'user-1',
@@ -112,5 +113,35 @@ describe('NajmAuthClient logout/refresh race', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  test('clears the server session immediately when refresh is rate limited', async () => {
+    const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
+    const calls: string[] = [];
+    client.api = {
+      blockAuthenticatedRequests: () => undefined,
+      allowAuthenticatedRequests: () => undefined,
+      post: async (path: string) => {
+        calls.push(path);
+        if (path === '/auth/refresh') {
+          throw new AuthError(429, 'Too many requests');
+        }
+        expect(path).toBe('/auth/logout');
+        return { data: null };
+      },
+    } as any;
+
+    await expect(client.refresh()).rejects.toThrow('Session expired (circuit open)');
+
+    expect(calls).toEqual([
+      '/auth/refresh',
+      '/auth/logout',
+    ]);
+    expect(client.getState()).toMatchObject({
+      user: null,
+      accessToken: null,
+      isAuthenticated: false,
+    });
+    client.destroy();
   });
 });

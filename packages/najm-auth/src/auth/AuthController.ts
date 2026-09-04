@@ -116,10 +116,8 @@ export class AuthController {
   }
 
   @Post('/logout')
-  @isAuth()
-  @RateLimit({ limit: 10, window: '15m', key: 'user' })
   async logoutUser(
-    @User('id') userId: string,
+    @User('id') userId: string | undefined,
     @Headers('authorization') authorization?: string
   ) {
     return this.authService.logoutUser(userId, authorization);

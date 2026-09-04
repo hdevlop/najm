@@ -216,7 +216,7 @@ export class NajmAuthClient {
 
     try {
       await pendingRefresh?.catch(() => undefined);
-      await this.api.post(`${this.prefix}/logout`, { skipAuth: true });
+      await this.requestServerLogout();
     } catch (err) {
       // Server invalidation failed — cache-based blacklist did not record
       // the token revocation. The refresh token will still expire naturally,
@@ -444,6 +444,12 @@ export class NajmAuthClient {
       if (generation !== this.authGeneration) return;
       const shouldOpenCircuit = this.registerRefreshFailure(err);
       if (shouldOpenCircuit) {
+        // The refresh limiter runs before token validation. A bucket that was
+        // exhausted by a stale-session loop can therefore return 429 without
+        // reaching TokenService's terminal cookie cleanup. Logout is an
+        // unguarded, unthrottled cleanup endpoint, so use it as the circuit's
+        // final recovery step before the browser is redirected to login.
+        await this.requestServerLogout().catch(() => undefined);
         this.resetState();
         this.emit('sessionExpired', null);
         if (err instanceof AuthError && err.status === 401) {
@@ -474,6 +480,10 @@ export class NajmAuthClient {
     } catch {
       return null;
     }
+  }
+
+  private async requestServerLogout(): Promise<void> {
+    await this.api.post(`${this.prefix}/logout`, { skipAuth: true });
   }
 
   private applyTokens(tokens: TokenPair): void {
@@ -523,7 +533,10 @@ export class NajmAuthClient {
   }
 
   private registerRefreshFailure(err: unknown): boolean {
-    if (err instanceof AuthError && err.status === 401) {
+    // These responses cannot be repaired by retrying inside the current
+    // browser session. In particular, a 429 bucket remains closed for its
+    // whole window, so repeated full-page retries only recreate the loop.
+    if (err instanceof AuthError && [401, 403, 429].includes(err.status)) {
       this.refreshFailures = NajmAuthClient.MAX_REFRESH_FAILURES;
     } else {
       this.refreshFailures += 1;

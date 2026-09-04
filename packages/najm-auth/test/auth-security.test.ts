@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { createHash } from 'crypto';
-import { PERMISSIONS, ROLE, USER } from 'najm-guard';
+import { getGuardMetadata, PERMISSIONS, ROLE, USER } from 'najm-guard';
 import { getRateLimitOptions } from 'najm-rate';
 import { Err } from 'najm-core';
 import { AuthController } from '../src/auth/AuthController';
@@ -94,6 +94,49 @@ describe('auth security regressions', () => {
       limit: 120,
       window: '1m',
     });
+    expect(getRateLimitOptions(AuthController, 'logoutUser')).toBeNull();
+    expect(getGuardMetadata(AuthController, 'logoutUser')).toEqual([]);
+  });
+
+  test('logout always clears browser cookies when no authenticated user resolves', async () => {
+    const cleared: string[] = [];
+    let revocations = 0;
+    const auth = new AuthService(
+      { logout: async () => { revocations += 1; } } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {
+        clearRefreshToken: () => cleared.push('refresh'),
+        clearSessionCookie: () => cleared.push('session'),
+      } as any,
+      {} as any,
+      {} as any,
+    );
+    (auth as any).t = (key: string) => key;
+
+    await expect(auth.logoutUser(undefined)).resolves.toMatchObject({ data: null });
+    expect(revocations).toBe(0);
+    expect(cleared).toEqual(['refresh', 'session']);
+  });
+
+  test('logout clears browser cookies even when server-side revocation fails', async () => {
+    const cleared: string[] = [];
+    const auth = new AuthService(
+      { logout: async () => { throw new Error('cache unavailable'); } } as any,
+      {} as any,
+      {} as any,
+      {} as any,
+      {
+        clearRefreshToken: () => cleared.push('refresh'),
+        clearSessionCookie: () => cleared.push('session'),
+      } as any,
+      {} as any,
+      {} as any,
+    );
+
+    await expect(auth.logoutUser('user-1')).rejects.toThrow('cache unavailable');
+    expect(cleared).toEqual(['refresh', 'session']);
   });
 
   test('recovery endpoint requires its non-browser marker and disables caching', async () => {

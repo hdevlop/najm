@@ -464,10 +464,21 @@ export class AuthService {
     return { recovered: true };
   }
 
-  async logoutUser(userId: string, authorization?: string) {
-    await this.tokenService.logout(userId, authorization);
-    this.cookieManager.clearRefreshToken();
-    this.cookieManager.clearSessionCookie();
+  async logoutUser(userId: string | undefined, authorization?: string) {
+    try {
+      // Logout must remain reachable when authentication can no longer resolve
+      // the user (inactive/deleted account, revoked family, expired token). If
+      // an identity is still available, preserve the normal server-side
+      // revocation; otherwise clearing this browser's cookies is sufficient.
+      if (userId) {
+        await this.tokenService.logout(userId, authorization);
+      }
+    } finally {
+      // Cookie deletion is the terminal recovery contract. It must survive a
+      // missing identity and even a best-effort revocation failure.
+      this.cookieManager.clearRefreshToken();
+      this.cookieManager.clearSessionCookie();
+    }
 
     return { data: null, message: this.t('auth.success.logout') };
   }
