@@ -120,7 +120,7 @@ export interface AuthClientConfig {
   timeout?: number;
 }
 
-export type OAuthProvider = 'google';
+export type OAuthProvider = 'google' | 'github';
 
 export interface OAuthLoginOptions {
   /** Same-origin frontend path after OAuth completes. */

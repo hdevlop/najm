@@ -495,13 +495,15 @@ function LogoutButton() {
 
 ### Google sign-in
 
-The framework client exposes provider-generic methods plus a Google convenience
-method:
+The framework client exposes provider-generic methods plus Google and GitHub
+convenience methods:
 
 ```ts
 auth.client.getOAuthLoginUrl('google', { returnTo: '/dashboard' });
 auth.client.loginWithGoogle({ returnTo: '/dashboard' });
+auth.client.loginWithGitHub({ returnTo: '/dashboard' });
 await auth.client.linkOAuthAccount('google', { returnTo: '/account' });
+await auth.client.linkOAuthAccount('github', { returnTo: '/account' });
 ```
 
 For React, use the headless button with your own visual component:
@@ -533,8 +535,9 @@ export default function OAuthCallbackPage() {
 }
 ```
 
-`useGoogleLogin()` exposes `loginWithGoogle`, `linkGoogle`, `isRedirecting`,
-and `error`. `useOAuthCallback()` exposes lower-level completion control.
+`useGoogleLogin()` and `useGitHubLogin()` expose provider-specific login/link
+actions, `isRedirecting`, and `error`. `useOAuthCallback()` exposes lower-level
+completion control.
 
 Only same-origin `returnTo` paths are accepted. No Najm or Google token is
 placed in the callback query string.
@@ -1054,10 +1057,10 @@ export { AuthError } from 'najm-auth/client';
 export { AuthProvider } from 'najm-auth/client/react';
 export { useAuth, useUser, useSession } from 'najm-auth/client/react';
 export { useLogin, useLogout, useRegister } from 'najm-auth/client/react';
-export { useGoogleLogin, useOAuthCallback } from 'najm-auth/client/react';
+export { useGoogleLogin, useGitHubLogin, useOAuthCallback } from 'najm-auth/client/react';
 export { usePermissions } from 'najm-auth/client/react';
 export { Can, Protected } from 'najm-auth/client/react';
-export { GoogleLoginButton, OAuthCallback } from 'najm-auth/client/react';
+export { GoogleLoginButton, GitHubLoginButton, OAuthCallback } from 'najm-auth/client/react';
 
 // najm-auth/client/server
 export { defineAuth, type DefineAuthConfig, type AuthKit } from 'najm-auth/client/server';

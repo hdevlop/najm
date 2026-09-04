@@ -2,11 +2,12 @@ import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { Injectable } from 'najm-core';
 import { CookieService } from 'najm-cookies';
 import { EncryptionService } from '../auth/EncryptionService';
+import type { OAuthProvider } from '../types';
 import type { OAuthAttempt, OAuthIntent } from './types';
 import { OAuthFlowError } from './types';
 
 const ATTEMPT_TTL_MS = 10 * 60 * 1000;
-const COOKIE_PREFIX = 'najm.oauth.google.';
+const COOKIE_PREFIX = 'najm.oauth.';
 
 @Injectable()
 export class OAuthStateService {
@@ -16,6 +17,7 @@ export class OAuthStateService {
   ) { }
 
   create(input: {
+    provider: OAuthProvider;
     intent: OAuthIntent;
     returnTo?: string;
     userId?: string;
@@ -24,7 +26,7 @@ export class OAuthStateService {
     const state = randomBytes(32).toString('base64url');
     const codeVerifier = randomBytes(48).toString('base64url');
     const attempt: OAuthAttempt = {
-      provider: 'google',
+      provider: input.provider,
       intent: input.intent,
       state,
       nonce: randomBytes(32).toString('base64url'),
@@ -35,7 +37,7 @@ export class OAuthStateService {
       createdAt: Date.now(),
     };
 
-    this.cookies.set(this.cookieName(state), this.encryption.encrypt(JSON.stringify(attempt)), {
+    this.cookies.set(this.cookieName(input.provider, state), this.encryption.encrypt(JSON.stringify(attempt)), {
       httpOnly: true,
       sameSite: 'Lax',
       path: '/',
@@ -48,10 +50,10 @@ export class OAuthStateService {
     };
   }
 
-  consume(state: string): OAuthAttempt {
+  consume(provider: OAuthProvider, state: string): OAuthAttempt {
     if (!this.isSafeState(state)) throw new OAuthFlowError('oauth_state_invalid');
 
-    const name = this.cookieName(state);
+    const name = this.cookieName(provider, state);
     const encrypted = this.cookies.get(name);
     this.cookies.delete(name, { path: '/' });
     if (!encrypted) throw new OAuthFlowError('oauth_state_invalid');
@@ -63,7 +65,7 @@ export class OAuthStateService {
       if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) {
         throw new OAuthFlowError('oauth_state_invalid');
       }
-      if (attempt.provider !== 'google' || Date.now() - attempt.createdAt > ATTEMPT_TTL_MS) {
+      if (attempt.provider !== provider || Date.now() - attempt.createdAt > ATTEMPT_TTL_MS) {
         throw new OAuthFlowError('oauth_state_invalid');
       }
       attempt.returnTo = this.validateReturnTo(attempt.returnTo);
@@ -93,8 +95,8 @@ export class OAuthStateService {
     }
   }
 
-  private cookieName(state: string): string {
-    return `${COOKIE_PREFIX}${state}`;
+  private cookieName(provider: OAuthProvider, state: string): string {
+    return `${COOKIE_PREFIX}${provider}.${state}`;
   }
 
   private isSafeState(state: string): boolean {

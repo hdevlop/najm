@@ -491,6 +491,7 @@ describe('OAuth cannot bypass the requirement', () => {
           emailVerified: true,
         }),
       } as never,
+      {} as never,
       {
         resolveForLogin: async () => ({
           id: 'user-1',

@@ -17,8 +17,10 @@ const React = await import('react');
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/react');
 const { AuthClientContext } = await import('../src/client/react/context');
 const { GoogleLoginButton } = await import('../src/client/react/GoogleLoginButton');
+const { GitHubLoginButton } = await import('../src/client/react/GitHubLoginButton');
 const { OAuthCallback } = await import('../src/client/react/OAuthCallback');
 const { useGoogleLogin } = await import('../src/client/react/useGoogleLogin');
+const { useGitHubLogin } = await import('../src/client/react/useGitHubLogin');
 
 afterEach(() => {
   cleanup();
@@ -103,5 +105,45 @@ describe('Google OAuth React bindings', () => {
       <OAuthCallback errorFallback={({ error }) => <p>OAuth error: {error.message}</p>} />
     )));
     await waitFor(() => expect(screen.getByText('OAuth error: session unavailable')).toBeTruthy());
+  });
+});
+
+describe('GitHub OAuth React bindings', () => {
+  test('GitHubLoginButton preserves the child click handler and starts a redirect', () => {
+    const calls: string[] = [];
+    const client = {
+      loginWithGitHub: (options: unknown) => calls.push(`github:${JSON.stringify(options)}`),
+    };
+
+    render(withClient(client, (
+      <GitHubLoginButton returnTo="/dashboard">
+        <button type="button" onClick={() => calls.push('child')}>GitHub</button>
+      </GitHubLoginButton>
+    )));
+
+    fireEvent.click(screen.getByRole('button', { name: 'GitHub' }));
+    expect(calls).toEqual(['child', 'github:{"returnTo":"/dashboard"}']);
+  });
+
+  test('useGitHubLogin exposes linking failures through state and onError', async () => {
+    const errors: string[] = [];
+    const client = { linkOAuthAccount: async () => { throw new Error('link failed'); } };
+
+    function Probe() {
+      const { linkGitHub, error, isRedirecting } = useGitHubLogin({
+        onError: (value) => errors.push(value.message),
+      });
+      return (
+        <>
+          <button type="button" onClick={() => { void linkGitHub(); }}>Link GitHub</button>
+          <output>{error?.message ?? (isRedirecting ? 'loading' : 'idle')}</output>
+        </>
+      );
+    }
+
+    render(withClient(client, <Probe />));
+    fireEvent.click(screen.getByRole('button', { name: 'Link GitHub' }));
+    await waitFor(() => expect(screen.getByText('link failed')).toBeTruthy());
+    expect(errors).toEqual(['link failed']);
   });
 });

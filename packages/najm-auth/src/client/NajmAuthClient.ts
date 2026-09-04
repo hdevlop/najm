@@ -175,6 +175,10 @@ export class NajmAuthClient {
     this.loginWithOAuth('google', options);
   }
 
+  loginWithGitHub(options?: OAuthLoginOptions): void {
+    this.loginWithOAuth('github', options);
+  }
+
   async linkOAuthAccount(provider: OAuthProvider, options: OAuthLoginOptions = {}): Promise<void> {
     const query = options.returnTo
       ? `?${new URLSearchParams({ returnTo: this.validateReturnTo(options.returnTo) })}`

@@ -5,7 +5,7 @@ import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig } from '../types';
 import { UserService, type SanitizedUser } from '../users/UserService';
 import { OAuthAccountRepository } from './OAuthAccountRepository';
-import type { GoogleIdentity } from './types';
+import type { OAuthIdentity } from './types';
 import { OAuthFlowError } from './types';
 
 @Injectable()
@@ -18,20 +18,20 @@ export class OAuthAccountService {
   ) { }
 
   @Transaction()
-  async resolveForLogin(identity: GoogleIdentity): Promise<SanitizedUser> {
-    const linked = await this.accounts.getByProviderAccount('google', identity.providerAccountId);
+  async resolveForLogin(identity: OAuthIdentity): Promise<SanitizedUser> {
+    const linked = await this.accounts.getByProviderAccount(identity.provider, identity.providerAccountId);
     if (linked) return this.users.getById(linked.userId);
 
     const existingUser = await this.users.findByEmailInsensitive(identity.email);
     if (existingUser) {
-      if (!this.googleConfig().autoLinkVerifiedEmail) {
+      if (!this.providerConfig(identity.provider).autoLinkVerifiedEmail) {
         throw new OAuthFlowError('oauth_account_link_required', 409);
       }
       await this.createLink(existingUser.id, identity);
       return this.users.getById(existingUser.id);
     }
 
-    if (!this.googleConfig().allowSignup) {
+    if (!this.providerConfig(identity.provider).allowSignup) {
       throw new OAuthFlowError('oauth_signup_disabled', 403);
     }
 
@@ -48,17 +48,17 @@ export class OAuthAccountService {
   }
 
   @Transaction()
-  async linkUser(userId: string, identity: GoogleIdentity): Promise<SanitizedUser> {
+  async linkUser(userId: string, identity: OAuthIdentity): Promise<SanitizedUser> {
     const user = await this.users.getById(userId);
     if (user.status !== 'active') throw new OAuthFlowError('oauth_account_inactive', 403);
 
-    const providerAccount = await this.accounts.getByProviderAccount('google', identity.providerAccountId);
+    const providerAccount = await this.accounts.getByProviderAccount(identity.provider, identity.providerAccountId);
     if (providerAccount && providerAccount.userId !== userId) {
       throw new OAuthFlowError('oauth_provider_account_linked', 409);
     }
     if (providerAccount) return user;
 
-    const userProvider = await this.accounts.getByUserProvider(userId, 'google');
+    const userProvider = await this.accounts.getByUserProvider(userId, identity.provider);
     if (userProvider && userProvider.providerAccountId !== identity.providerAccountId) {
       throw new OAuthFlowError('oauth_user_provider_linked', 409);
     }
@@ -66,23 +66,23 @@ export class OAuthAccountService {
     return user;
   }
 
-  private async createLink(userId: string, identity: GoogleIdentity): Promise<void> {
+  private async createLink(userId: string, identity: OAuthIdentity): Promise<void> {
     const created = await this.accounts.create({
       userId,
-      provider: 'google',
+      provider: identity.provider,
       providerAccountId: identity.providerAccountId,
     });
     if (created) return;
 
-    const linked = await this.accounts.getByProviderAccount('google', identity.providerAccountId);
+    const linked = await this.accounts.getByProviderAccount(identity.provider, identity.providerAccountId);
     if (!linked || linked.userId !== userId) {
       throw new OAuthFlowError('oauth_provider_account_linked', 409);
     }
   }
 
-  private googleConfig() {
-    const google = this.config.oauth?.google;
-    if (!google) throw new OAuthFlowError('oauth_provider_disabled', 404);
-    return google;
+  private providerConfig(provider: OAuthIdentity['provider']) {
+    const providerConfig = this.config.oauth?.[provider];
+    if (!providerConfig) throw new OAuthFlowError('oauth_provider_disabled', 404);
+    return providerConfig;
   }
 }

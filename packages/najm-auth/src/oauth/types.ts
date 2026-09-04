@@ -14,14 +14,23 @@ export interface OAuthAttempt {
   createdAt: number;
 }
 
-export interface GoogleIdentity {
-  provider: 'google';
+export interface OAuthIdentity {
+  provider: OAuthProvider;
   providerAccountId: string;
   email: string;
   emailVerified: true;
   name?: string;
   picture?: string;
+}
+
+export interface GoogleIdentity extends OAuthIdentity {
+  provider: 'google';
   hostedDomain?: string;
+}
+
+export interface GitHubIdentity extends OAuthIdentity {
+  provider: 'github';
+  login: string;
 }
 
 export interface OAuthCallbackParams {

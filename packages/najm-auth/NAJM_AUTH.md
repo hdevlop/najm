@@ -883,6 +883,16 @@ After resolving the user, `AuthSessionService` issues the standard Najm token
 family and cookies for both password and Google login. Provider access/refresh
 tokens are not stored.
 
+### GitHub OAuth
+
+`auth({ oauth: { github: true } })` mounts the equivalent start, callback, and
+authenticated link routes under `/auth/oauth/github`. It reads
+`GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`, and optionally
+`GITHUB_CALLBACK_URL`, uses provider-scoped encrypted state plus PKCE, and
+requests `user:email`. The callback requires a verified primary address and
+uses GitHub's stable numeric user ID as the provider account key. GitHub access
+tokens are discarded after identity resolution.
+
 Built-in PostgreSQL and SQLite schemas now include `oauthAccounts`. Existing
 databases must generate and apply the corresponding Drizzle migration. A
 custom auth schema may omit the table only while OAuth remains disabled.
@@ -921,8 +931,8 @@ custom auth schema may omit the table only while OAuth remains disabled.
 | [packages/najm-auth/src/AuthPlugin.ts](packages/najm-auth/src/AuthPlugin.ts) | Plugin factory, dependency registration, config merging, schema selection |
 | [packages/najm-auth/src/auth/AuthController.ts](packages/najm-auth/src/auth/AuthController.ts) | HTTP endpoints, rate limits, validation |
 | [packages/najm-auth/src/auth/AuthService.ts](packages/najm-auth/src/auth/AuthService.ts) | Login / logout / refresh / me / password flows |
-| [packages/najm-auth/src/auth/AuthSessionService.ts](packages/najm-auth/src/auth/AuthSessionService.ts) | Shared password/Google session issuance |
-| [packages/najm-auth/src/oauth/OAuthService.ts](packages/najm-auth/src/oauth/OAuthService.ts) | Google redirect, callback, and linking orchestration |
+| [packages/najm-auth/src/auth/AuthSessionService.ts](packages/najm-auth/src/auth/AuthSessionService.ts) | Shared password/OAuth session issuance |
+| [packages/najm-auth/src/oauth/OAuthService.ts](packages/najm-auth/src/oauth/OAuthService.ts) | Provider redirect, callback, and linking orchestration |
 | [packages/najm-auth/src/oauth/OAuthAccountService.ts](packages/najm-auth/src/oauth/OAuthAccountService.ts) | Provider identity resolution and safe account linking |
 | [packages/najm-auth/src/auth/AuthResolver.ts](packages/najm-auth/src/auth/AuthResolver.ts) | Global middleware that populates ALS on every request |
 | [packages/najm-auth/src/auth/AuthGuard.ts](packages/najm-auth/src/auth/AuthGuard.ts) | `@isAuth()` |

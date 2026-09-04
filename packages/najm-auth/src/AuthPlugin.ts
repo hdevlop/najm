@@ -46,6 +46,23 @@ const validateFrontendPath = (value: string, name: string): string => {
   return value;
 };
 
+const validateCallbackUrl = (value: string, name: string): string => {
+  let callback: URL;
+  try {
+    callback = new URL(value);
+  } catch {
+    throw new Error(`${name} must be an absolute URL`);
+  }
+  const local = callback.hostname === 'localhost'
+    || callback.hostname === '127.0.0.1'
+    || callback.hostname === '[::1]'
+    || callback.hostname === '::1';
+  if (callback.protocol !== 'https:' && !(local && callback.protocol === 'http:')) {
+    throw new Error(`${name} must use HTTPS (HTTP is allowed only for localhost)`);
+  }
+  return callback.toString();
+};
+
 const resolveGoogleConfig = (config?: AuthPluginConfig) => {
   const configuredGoogle = config?.oauth?.google;
   if (!configuredGoogle) return undefined;
@@ -61,24 +78,10 @@ const resolveGoogleConfig = (config?: AuthPluginConfig) => {
     ?? process.env.GOOGLE_CALLBACK_URL
     ?? `${frontendUrl.replace(/\/$/, '')}/api/auth/oauth/google/callback`;
 
-  let callback: URL;
-  try {
-    callback = new URL(callbackUrl);
-  } catch {
-    throw new Error('auth.oauth.google.callbackUrl must be an absolute URL');
-  }
-  const local = callback.hostname === 'localhost'
-    || callback.hostname === '127.0.0.1'
-    || callback.hostname === '[::1]'
-    || callback.hostname === '::1';
-  if (callback.protocol !== 'https:' && !(local && callback.protocol === 'http:')) {
-    throw new Error('auth.oauth.google.callbackUrl must use HTTPS (HTTP is allowed only for localhost)');
-  }
-
   return {
     clientId,
     clientSecret,
-    callbackUrl: callback.toString(),
+    callbackUrl: validateCallbackUrl(callbackUrl, 'auth.oauth.google.callbackUrl'),
     frontendCallbackPath: validateFrontendPath(
       google.frontendCallbackPath ?? '/auth/oauth/callback',
       'auth.oauth.google.frontendCallbackPath',
@@ -92,6 +95,38 @@ const resolveGoogleConfig = (config?: AuthPluginConfig) => {
     allowedHostedDomains: [...new Set((google.allowedHostedDomains ?? [])
       .map((domain) => domain.trim().toLowerCase())
       .filter(Boolean))],
+  };
+};
+
+const resolveGitHubConfig = (config?: AuthPluginConfig) => {
+  const configuredGitHub = config?.oauth?.github;
+  if (!configuredGitHub) return undefined;
+  const github = configuredGitHub === true ? {} : configuredGitHub;
+
+  const clientId = github.clientId ?? process.env.GITHUB_CLIENT_ID ?? '';
+  const clientSecret = github.clientSecret ?? process.env.GITHUB_CLIENT_SECRET ?? '';
+  if (!clientId) throw Err.configRequired('auth.oauth.github', 'GITHUB_CLIENT_ID');
+  if (!clientSecret) throw Err.configRequired('auth.oauth.github', 'GITHUB_CLIENT_SECRET');
+
+  const frontendUrl = config?.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:3000';
+  const callbackUrl = github.callbackUrl
+    ?? process.env.GITHUB_CALLBACK_URL
+    ?? `${frontendUrl.replace(/\/$/, '')}/api/auth/oauth/github/callback`;
+
+  return {
+    clientId,
+    clientSecret,
+    callbackUrl: validateCallbackUrl(callbackUrl, 'auth.oauth.github.callbackUrl'),
+    frontendCallbackPath: validateFrontendPath(
+      github.frontendCallbackPath ?? '/auth/oauth/callback',
+      'auth.oauth.github.frontendCallbackPath',
+    ),
+    errorRedirectPath: validateFrontendPath(
+      github.errorRedirectPath ?? '/login',
+      'auth.oauth.github.errorRedirectPath',
+    ),
+    allowSignup: github.allowSignup ?? true,
+    autoLinkVerifiedEmail: github.autoLinkVerifiedEmail ?? false,
   };
 };
 
@@ -151,6 +186,7 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
     credentialSetup: resolveCredentialSetupConfig(config),
     oauth: {
       google: resolveGoogleConfig(config),
+      github: resolveGitHubConfig(config),
     },
   };
 
@@ -170,8 +206,8 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
 export const selectAuthSchema = (config?: AuthPluginConfig): AuthSchema => {
   // Explicit schema takes precedence
   if (config?.schema) {
-    if (config.oauth?.google && !config.schema.oauthAccounts) {
-      throw new Error('auth.schema.oauthAccounts is required when Google OAuth is enabled');
+    if ((config.oauth?.google || config.oauth?.github) && !config.schema.oauthAccounts) {
+      throw new Error('auth.schema.oauthAccounts is required when OAuth is enabled');
     }
     // The credential-setup flow is always mounted, so its two tables are part
     // of the contract rather than an opt-in. Failing at startup beats failing

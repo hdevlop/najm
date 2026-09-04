@@ -1,5 +1,7 @@
 import { GoogleOAuthProvider } from './google/GoogleOAuthProvider';
 import { GoogleTokenVerifier } from './google/GoogleTokenVerifier';
+import { GitHubOAuthProvider } from './github/GitHubOAuthProvider';
+import { GitHubOAuthController } from './GitHubOAuthController';
 import { OAuthAccountRepository } from './OAuthAccountRepository';
 import { OAuthAccountService } from './OAuthAccountService';
 import { OAuthController } from './OAuthController';
@@ -7,7 +9,9 @@ import { OAuthService } from './OAuthService';
 import { OAuthStateService } from './OAuthStateService';
 
 export type {
+  GitHubIdentity,
   GoogleIdentity,
+  OAuthIdentity,
   OAuthAttempt,
   OAuthCallbackParams,
   OAuthIntent,
@@ -20,6 +24,8 @@ export const OAUTH_MODULE = [
   OAuthStateService,
   GoogleTokenVerifier,
   GoogleOAuthProvider,
+  GitHubOAuthProvider,
   OAuthService,
   OAuthController,
+  GitHubOAuthController,
 ] as const;

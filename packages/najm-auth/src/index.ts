@@ -15,6 +15,7 @@ export type {
   TokenPair,
   AuthUser,
   GoogleOAuthConfig,
+  GitHubOAuthConfig,
   OAuthConfig,
   OAuthProvider,
 } from './types';

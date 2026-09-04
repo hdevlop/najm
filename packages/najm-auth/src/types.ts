@@ -47,7 +47,7 @@ export interface SessionCookieConfig {
   secret?: string;
 }
 
-export type OAuthProvider = 'google';
+export type OAuthProvider = 'google' | 'github';
 
 export interface GoogleOAuthConfig {
   /** Google OAuth web client ID. Falls back to GOOGLE_CLIENT_ID. */
@@ -71,12 +71,34 @@ export interface GoogleOAuthConfig {
   allowedHostedDomains?: string[];
 }
 
+export interface GitHubOAuthConfig {
+  /** GitHub OAuth App client ID. Falls back to GITHUB_CLIENT_ID. */
+  clientId?: string;
+  /** GitHub OAuth App client secret. Falls back to GITHUB_CLIENT_SECRET. */
+  clientSecret?: string;
+  /**
+   * Absolute backend callback URL registered in GitHub. Falls back to
+   * GITHUB_CALLBACK_URL, then `${frontendUrl}/api/auth/oauth/github/callback`.
+   */
+  callbackUrl?: string;
+  /** Frontend route that completes the Najm client session. */
+  frontendCallbackPath?: string;
+  /** Frontend route that receives stable OAuth errors. */
+  errorRedirectPath?: string;
+  /** Create a Najm user for a new GitHub identity (default: true). */
+  allowSignup?: boolean;
+  /** Link an existing user by verified email (default: false). */
+  autoLinkVerifiedEmail?: boolean;
+}
+
 export interface OAuthConfig {
   /**
    * Enable Google with environment defaults (`google: true`), or override
    * individual settings for split-origin deployments and policy changes.
    */
   google?: true | GoogleOAuthConfig;
+  /** Enable GitHub with environment defaults, or override provider settings. */
+  github?: true | GitHubOAuthConfig;
 }
 
 export interface ResolvedGoogleOAuthConfig {
@@ -90,8 +112,19 @@ export interface ResolvedGoogleOAuthConfig {
   allowedHostedDomains: string[];
 }
 
+export interface ResolvedGitHubOAuthConfig {
+  clientId: string;
+  clientSecret: string;
+  callbackUrl: string;
+  frontendCallbackPath: string;
+  errorRedirectPath: string;
+  allowSignup: boolean;
+  autoLinkVerifiedEmail: boolean;
+}
+
 export interface ResolvedOAuthConfig {
   google?: ResolvedGoogleOAuthConfig;
+  github?: ResolvedGitHubOAuthConfig;
 }
 
 /**

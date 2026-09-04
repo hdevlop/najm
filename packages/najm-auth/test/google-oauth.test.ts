@@ -87,6 +87,7 @@ describe('Google OAuth configuration', () => {
   test('existing auth remains valid when Google is omitted', () => {
     expect(resolveAuthConfig({ jwt: jwtConfig, encryptionKey }).oauth).toEqual({
       google: undefined,
+      github: undefined,
     });
   });
 
@@ -197,6 +198,7 @@ describe('Google OAuth state and PKCE', () => {
   test('creates and consumes an encrypted attempt once', () => {
     const { service, values } = makeStateService();
     const { attempt, codeChallenge } = service.create({
+      provider: 'google',
       intent: 'login',
       returnTo: '/dashboard?tab=profile',
     });
@@ -204,19 +206,19 @@ describe('Google OAuth state and PKCE', () => {
     expect(codeChallenge).toHaveLength(43);
     expect(values.size).toBe(1);
     expect([...values.values()][0]).not.toContain(attempt.codeVerifier);
-    expect(service.consume(attempt.state)).toMatchObject({
+    expect(service.consume('google', attempt.state)).toMatchObject({
       intent: 'login',
       returnTo: '/dashboard?tab=profile',
     });
     expect(values.size).toBe(0);
-    expect(() => service.consume(attempt.state)).toThrow(OAuthFlowError);
+    expect(() => service.consume('google', attempt.state)).toThrow(OAuthFlowError);
   });
 
   test('rejects open redirects', () => {
     const { service } = makeStateService();
-    expect(() => service.create({ intent: 'login', returnTo: '//evil.example' })).toThrow();
-    expect(() => service.create({ intent: 'login', returnTo: '/\\evil.example' })).toThrow();
-    expect(() => service.create({ intent: 'login', returnTo: 'https://evil.example' })).toThrow();
+    expect(() => service.create({ provider: 'google', intent: 'login', returnTo: '//evil.example' })).toThrow();
+    expect(() => service.create({ provider: 'google', intent: 'login', returnTo: '/\\evil.example' })).toThrow();
+    expect(() => service.create({ provider: 'google', intent: 'login', returnTo: 'https://evil.example' })).toThrow();
   });
 });
 
@@ -619,6 +621,7 @@ describe('OAuth callback orchestration', () => {
           emailVerified: true,
         }),
       } as any,
+      {} as any,
       {
         resolveForLogin: async () => ({ id: 'user-1', email: 'user@example.com', status: 'active' }),
       } as any,

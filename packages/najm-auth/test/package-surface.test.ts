@@ -45,6 +45,7 @@ describe('published surface', () => {
       'CREDENTIAL_SETUP_CODES',
       'LoginResult',
       'IdentityConfig',
+      'GitHubOAuthConfig',
     ]) {
       expect(rootTypes).toContain(name);
     }
@@ -58,6 +59,10 @@ describe('published surface', () => {
     const clientTypes = read('dist/client/index.d.ts');
     expect(clientTypes).toContain('LoginResult');
     expect(clientTypes).toContain('CredentialSetupPending');
+    expect(read('dist/index.d.ts')).toContain("type OAuthProvider = 'google' | 'github'");
+    const reactTypes = read('dist/client/react/index.d.ts');
+    expect(reactTypes).toContain('useGitHubLogin');
+    expect(reactTypes).toContain('GitHubLoginButton');
   });
 
   test('the server entry exposes the composed Next.js auth surface', () => {

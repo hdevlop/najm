@@ -98,6 +98,10 @@ GOOGLE_CLIENT_ID=<google-web-client-id>
 GOOGLE_CLIENT_SECRET=<google-web-client-secret>
 # Optional for a split frontend/API deployment. Otherwise FRONTEND_URL is used.
 GOOGLE_CALLBACK_URL=https://app.example.com/api/auth/oauth/google/callback
+# Optional GitHub sign-in
+GITHUB_CLIENT_ID=<github-oauth-app-client-id>
+GITHUB_CLIENT_SECRET=<github-oauth-app-client-secret>
+GITHUB_CALLBACK_URL=https://app.example.com/api/auth/oauth/github/callback
 ```
 
 > ⚠️ **Security:** Generate secrets with `openssl rand -base64 32`
@@ -152,7 +156,7 @@ auth({
     }
   }
 
-  // Optional Google OpenID Connect
+  // Optional external identity providers
   oauth?: {
     google?: true | {
       clientId?: string                    // Or GOOGLE_CLIENT_ID
@@ -163,6 +167,15 @@ auth({
       allowSignup?: boolean                // Default: true
       autoLinkVerifiedEmail?: boolean      // Default: false
       allowedHostedDomains?: string[]      // Validates the Google hd claim
+    }
+    github?: true | {
+      clientId?: string                    // Or GITHUB_CLIENT_ID
+      clientSecret?: string                // Or GITHUB_CLIENT_SECRET
+      callbackUrl?: string                 // Or GITHUB_CALLBACK_URL
+      frontendCallbackPath?: string        // Default: /auth/oauth/callback
+      errorRedirectPath?: string           // Default: /login
+      allowSignup?: boolean                // Default: true
+      autoLinkVerifiedEmail?: boolean      // Default: false
     }
   }
 
@@ -335,6 +348,20 @@ user has the same email but is not linked, sign-in fails with
 `oauth_account_link_required` by default. After password login, call
 `client.linkOAuthAccount('google')` to prove control of both accounts. Setting
 `autoLinkVerifiedEmail: true` opts into verified-email linking.
+
+### GitHub Sign-In
+
+Enable GitHub with `oauth: { github: true }`. Credentials come from
+`GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET`; the callback defaults to
+`${FRONTEND_URL}/api/auth/oauth/github/callback`. Register that exact callback
+on the GitHub OAuth App, and set `GITHUB_CALLBACK_URL` only for a split-origin
+deployment. GitHub login uses authorization code plus PKCE, requests
+`user:email`, requires a verified primary email, and keys the durable provider
+link by GitHub's numeric user ID.
+
+The client exposes `loginWithGitHub()`, `useGitHubLogin()`, and the headless
+`GitHubLoginButton`; the generic `linkOAuthAccount('github')` method links an
+authenticated Najm user.
 
 ### Admin Routes (all require `@isAdmin()`)
 
@@ -637,7 +664,7 @@ credential_setup_requirements
 Existing databases must generate and run a migration after upgrading so the
 new `oauth_accounts`, `credential_setup_sessions`, and
 `credential_setup_requirements` tables exist. Custom `AuthSchema` objects may
-omit `oauthAccounts` while OAuth is disabled, but Google configuration fails
+omit `oauthAccounts` while OAuth is disabled, but provider configuration fails
 fast unless the custom schema supplies it. Both credential-setup tables are
 required of a custom schema, because the setup flow is always mounted.
 

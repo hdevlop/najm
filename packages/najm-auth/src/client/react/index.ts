@@ -24,6 +24,7 @@ export { useForgotPassword } from './useForgotPassword';
 export { useResetPassword } from './useResetPassword';
 export { useChangePassword } from './useChangePassword';
 export { useGoogleLogin } from './useGoogleLogin';
+export { useGitHubLogin } from './useGitHubLogin';
 export { useOAuthCallback } from './useOAuthCallback';
 
 // Event hooks
@@ -57,4 +58,5 @@ export { SignOutButton } from './SignOutButton';
 export { LoginButton } from './LoginButton';
 export { RedirectToLogin } from './RedirectToLogin';
 export { GoogleLoginButton } from './GoogleLoginButton';
+export { GitHubLoginButton } from './GitHubLoginButton';
 export { OAuthCallback } from './OAuthCallback';

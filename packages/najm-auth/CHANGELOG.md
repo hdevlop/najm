@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- feat(auth): add GitHub OAuth App login and account linking with provider-scoped
+  state cookies, PKCE, verified-primary-email resolution, and stable GitHub user
+  IDs; expose matching client and React helpers
+
 ## 3.3.1 - 2026-09-04
 
 - fix(auth): clear terminal refresh and signed-session cookies when a refresh
