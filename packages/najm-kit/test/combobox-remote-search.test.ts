@@ -13,7 +13,7 @@ describe("ComboboxInput remote search contract", () => {
     expect(types).toContain("shouldFilter?: boolean");
     expect(types).toContain("loadingMessage?: string");
     expect(source).toContain("shouldFilter = true");
-    expect(source).toContain("<Command shouldFilter={shouldFilter}>");
+    expect(source).toMatch(/<Command\s+shouldFilter=\{shouldFilter\}/);
     expect(source).toContain("onSearchChange?.(next)");
     expect(source).toContain("loading ? loadingMessage : emptyMessage");
   });

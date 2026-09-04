@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+
+- Fixed `ComboboxInput` keyboard interaction. Enter and Space now open its
+  focusable trigger, and Enter commits the active filtered result instead of
+  doing nothing when the previously active CmdK item was filtered out. Disabled
+  comboboxes remain non-activatable.
+
 ## 2.11.14 - 2026-09-04
 
 - Added `defineNajmPreferences` to `najm-kit/server`: the language, theme, and
