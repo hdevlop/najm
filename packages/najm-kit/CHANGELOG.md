@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.11.16 - 2026-09-04
+
+- `NBrandingPayload` accepts a `slots` registry, so `NajmAppProvider` takes what
+  `najm-theme`'s `loadServerBranding()` returned as `initialBranding` unchanged
+  instead of renaming `sidebarLogoExpanded` and `sidebarLogoCollapsed` at the
+  call site. Structural — the kit still does not depend on `najm-theme`.
+  Precedence is explicit marks, then flat payload fields, then slots, and only
+  the two sidebar keys are read: an auth logo, a hero, and a consumer's own
+  slots stay out of the context the sidebar sees.
+
 ## 2.11.15 - 2026-09-04
 
 - Fixed `ComboboxInput` keyboard interaction. Enter and Space now open its
