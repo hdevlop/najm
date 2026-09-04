@@ -4,7 +4,13 @@
 
 import { Err } from '../errors';
 
-export type FetchHandler = (req: Request) => Response | Promise<Response>;
+/**
+ * `env` is the runtime's second fetch argument: the Bun `Server` under
+ * `Bun.serve`, or `{ incoming, outgoing }` under `@hono/node-server`. It is the
+ * only route to the real connection peer, so it is forwarded rather than
+ * dropped — header-derived addresses cannot stand in for it.
+ */
+export type FetchHandler = (req: Request, env?: unknown) => Response | Promise<Response>;
 
 export type ServerHandle = {
    readonly port: number;

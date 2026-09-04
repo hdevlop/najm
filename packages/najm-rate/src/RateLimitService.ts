@@ -14,6 +14,7 @@ import type {
 } from './types';
 import { CONTEXT, HRequest, getRequestData } from 'najm-core';
 import { resolveClientAddress } from './clientAddress';
+import { socketPeerAddress } from './peerAddress';
 
 // ============================================================
 // CONSTANTS
@@ -261,7 +262,13 @@ export class RateLimitService {
   }
 
   private extractClientIP(request: HRequest): string {
-    return resolveClientAddress(request.headers, this.config.trustedProxyHops, request.ip);
+    // `request.ip` is parsed out of forwarding headers, so it is client input,
+    // not a connection peer. Only the runtime binding can answer that.
+    return resolveClientAddress(
+      request.headers,
+      this.config.trustedProxyHops,
+      socketPeerAddress(this.getContext()),
+    );
   }
 
   private buildRateLimitKey(request: HRequest, baseKey: string, scope: KeyScope): string {

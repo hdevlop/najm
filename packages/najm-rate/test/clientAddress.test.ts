@@ -1,5 +1,9 @@
-import { describe, test, expect } from "bun:test";
-import { resolveClientAddress, UNRESOLVED_CLIENT_ADDRESS } from "../src/clientAddress";
+import { describe, test, expect, beforeEach, afterEach } from "bun:test";
+import {
+  resetClientAddressWarnings,
+  resolveClientAddress,
+  UNRESOLVED_CLIENT_ADDRESS,
+} from "../src/clientAddress";
 
 const resolve = (
   headers: Record<string, string | undefined>,
@@ -106,5 +110,89 @@ describe("trusted-hop client address resolution", () => {
         );
       },
     );
+  });
+});
+
+describe("misconfiguration diagnostics", () => {
+  let warnings: string[];
+  let restore: () => void;
+
+  beforeEach(() => {
+    resetClientAddressWarnings();
+    warnings = [];
+    const original = console.warn;
+    console.warn = (...args: unknown[]) => void warnings.push(args.join(" "));
+    restore = () => {
+      console.warn = original;
+    };
+  });
+
+  afterEach(() => {
+    restore();
+    resetClientAddressWarnings();
+  });
+
+  test("an unconfigured hop count announces that keys are client-controlled", () => {
+    resolve({ "x-forwarded-for": "1.2.3.4, 203.0.113.7" }, undefined);
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("trustedProxyHops is not configured");
+    expect(warnings[0]).toContain("leftmost X-Forwarded-For");
+  });
+
+  test("a chain shorter than the declared topology reports the collapse", () => {
+    expect(resolve({ "x-forwarded-for": "203.0.113.7" }, 2)).toBe(UNRESOLVED_CLIENT_ADDRESS);
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("shorter than the declared trustedProxyHops of 2");
+    expect(warnings[0]).toContain("shares one rate-limit bucket");
+  });
+
+  test("a missing chain distinguishes an absent proxy from a short one", () => {
+    expect(resolve({}, 1)).toBe(UNRESOLVED_CLIENT_ADDRESS);
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("no X-Forwarded-For header");
+  });
+
+  test("an unusable boundary element is reported without echoing it", () => {
+    const secret = "session-token-value";
+    expect(resolve({ "x-forwarded-for": `1.2.3.4, ${secret}` }, 1)).toBe(
+      UNRESOLVED_CLIENT_ADDRESS,
+    );
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("hop 1");
+    expect(warnings[0]).not.toContain(secret);
+    expect(warnings[0]).not.toContain("1.2.3.4");
+  });
+
+  test("zero hops without a usable peer address is reported", () => {
+    expect(resolve({ "x-forwarded-for": "203.0.113.7" }, 0)).toBe(UNRESOLVED_CLIENT_ADDRESS);
+
+    expect(warnings).toHaveLength(1);
+    expect(warnings[0]).toContain("trustedProxyHops is 0");
+  });
+
+  test("one cause is announced once, not once per request", () => {
+    for (let index = 0; index < 25; index += 1) {
+      resolve({ "x-forwarded-for": `10.0.0.${index}` }, 3);
+    }
+
+    expect(warnings).toHaveLength(1);
+  });
+
+  test("distinct causes are announced separately", () => {
+    resolve({ "x-forwarded-for": "203.0.113.7" }, 2);
+    resolve({}, 1);
+
+    expect(warnings).toHaveLength(2);
+  });
+
+  test("a correctly declared topology stays silent", () => {
+    expect(resolve({ "x-forwarded-for": "1.2.3.4, 203.0.113.7" }, 1)).toBe("203.0.113.7");
+    expect(resolve({}, 0, "10.0.0.1")).toBe("10.0.0.1");
+
+    expect(warnings).toEqual([]);
   });
 });

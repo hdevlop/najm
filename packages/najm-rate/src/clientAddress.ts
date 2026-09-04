@@ -83,6 +83,42 @@ export function normalizeAddress(raw: string | undefined): string | null {
   return normalizeIpv6(value);
 }
 
+/**
+ * Warnings are emitted once per distinct cause. A misdeclared topology affects
+ * every request, so repeating the message per request would flood the log
+ * without adding information.
+ *
+ * No message ever includes header content. A forwarded chain is
+ * attacker-controlled input, and these warnings are meant to be safe to ship to
+ * aggregated logs.
+ */
+const emittedWarnings = new Set<string>();
+
+function warnOnce(cause: string, message: string): void {
+  if (emittedWarnings.has(cause)) return;
+  emittedWarnings.add(cause);
+  console.warn(`[najm/rate] ${message}`);
+}
+
+/** Forget which warnings have been emitted. Intended for tests. */
+export function resetClientAddressWarnings(): void {
+  emittedWarnings.clear();
+}
+
+/**
+ * Report that a request could not be attributed to a client.
+ *
+ * `UNRESOLVED_CLIENT_ADDRESS` is a safe outcome — it never disables the limiter
+ * — but it is also indistinguishable at runtime from a correctly configured
+ * deployment, because every affected request shares one bucket instead of
+ * getting its own. That collapse is the observable symptom of a hop count that
+ * does not match the real proxy chain, so it is announced rather than absorbed.
+ */
+function unresolved(cause: string, message: string): string {
+  warnOnce(cause, `${message} Until this is corrected, every affected request shares one rate-limit bucket.`);
+  return UNRESOLVED_CLIENT_ADDRESS;
+}
+
 function assertHops(trustedProxyHops: number): void {
   if (!Number.isInteger(trustedProxyHops) || trustedProxyHops < 0) {
     throw new Error(
@@ -122,28 +158,68 @@ function legacyAddress(
  *   attacker prepends sit to the left of the boundary and are ignored.
  *   `undefined` selects the deprecated legacy path.
  * @param peerIp The socket-level remote address, when the runtime exposes one.
+ *   It must come from the connection itself. A header-derived value is client
+ *   input, and passing one here would let a client pick its own bucket at
+ *   `trustedProxyHops: 0`, which is precisely the setting that refuses headers.
  */
 export function resolveClientAddress(
   headers: Record<string, string | undefined>,
   trustedProxyHops: number | undefined,
   peerIp?: string,
 ): string {
-  if (trustedProxyHops === undefined) return legacyAddress(headers, peerIp);
+  if (trustedProxyHops === undefined) {
+    warnOnce(
+      'legacy',
+      'trustedProxyHops is not configured, so rate-limit keys fall back to the ' +
+        'leftmost X-Forwarded-For value. That value is set by the client and can ' +
+        'be rotated to mint a fresh bucket per request. Declare the number of ' +
+        'proxies in front of this application to opt into the trusted-hop contract.',
+    );
+    return legacyAddress(headers, peerIp);
+  }
 
   assertHops(trustedProxyHops);
 
   if (trustedProxyHops === 0) {
-    return normalizeAddress(peerIp) ?? UNRESOLVED_CLIENT_ADDRESS;
+    const peer = normalizeAddress(peerIp);
+    if (peer) return peer;
+    return unresolved(
+      'peer',
+      'trustedProxyHops is 0, so the socket peer address is the only trusted ' +
+        'source, but the runtime did not expose a usable one.',
+    );
   }
 
   const forwarded = headers['x-forwarded-for'];
-  if (!forwarded) return UNRESOLVED_CLIENT_ADDRESS;
+  if (!forwarded) {
+    return unresolved(
+      'missing-chain',
+      `trustedProxyHops is ${trustedProxyHops}, but requests are arriving with no ` +
+        'X-Forwarded-For header. Either the edge proxy is not setting it, or the ' +
+        'application is reachable without passing through that proxy.',
+    );
+  }
 
   const entries = forwarded.split(',');
   // The chain must actually be long enough to contain the boundary; a short
   // chain means the request did not traverse the declared topology.
-  if (entries.length < trustedProxyHops) return UNRESOLVED_CLIENT_ADDRESS;
+  if (entries.length < trustedProxyHops) {
+    return unresolved(
+      'short-chain',
+      `The forwarded chain is shorter than the declared trustedProxyHops of ` +
+        `${trustedProxyHops}, so the trusted boundary is not present in it. The ` +
+        'configured topology does not match the proxies actually in front of this ' +
+        'application.',
+    );
+  }
 
   const candidate = entries[entries.length - trustedProxyHops];
-  return normalizeAddress(candidate) ?? UNRESOLVED_CLIENT_ADDRESS;
+  const resolved = normalizeAddress(candidate);
+  if (resolved) return resolved;
+
+  return unresolved(
+    'unusable-boundary',
+    `The chain element at hop ${trustedProxyHops} is not a bare IP literal, so it ` +
+      'cannot be used as key material.',
+  );
 }

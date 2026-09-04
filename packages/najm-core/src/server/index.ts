@@ -194,10 +194,11 @@ export class Server {
       return this;
    }
 
-   private createFetchHandler(): (req: Request) => Response | Promise<Response> {
-      return (req) => {
+   private createFetchHandler(): (req: Request, env?: unknown) => Response | Promise<Response> {
+      return (req, env) => {
          try {
-            const response = this.app.fetch(req);
+            // Forward the runtime binding so `c.env` can yield the socket peer.
+            const response = this.app.fetch(req, env as Parameters<typeof this.app.fetch>[1]);
             return response instanceof Promise
                ? response.catch((error) => this.handleFetchError(error))
                : response;

@@ -156,6 +156,60 @@ describe('trusted-hop rate limiting through the middleware', () => {
     expect((await get(3464, '203.0.113.7')).status).toBe(429);
   });
 
+  test('zero hops refuses forwarded headers through the real middleware', async () => {
+    @Controller('/probe')
+    class ProbeController {
+      @Get('/')
+      @RateLimit({ limit: 1, window: '1m', key: 'ip' })
+      get() {
+        return { ok: true };
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(rateLimit({ trustedProxyHops: 0 }))
+      .load(ProbeController);
+    await server.listen(3470);
+
+    // One real client presenting two different spoofed chains. At zero hops the
+    // forwarded header carries no weight at all, so both requests are the same
+    // bucket and the second is limited.
+    expect((await get(3470, '198.51.100.10')).status).toBe(200);
+    expect((await get(3470, '192.0.2.44')).status).toBe(429);
+  });
+
+  test('zero hops keys on the connection peer, not on a parsed header', async () => {
+    const seen: string[] = [];
+
+    @Controller('/probe')
+    class ProbeController {
+      @Get('/')
+      @RateLimit({
+        limit: 50,
+        window: '1m',
+        key: (_ctx: Context, keyContext: RateLimitKeyContext) => {
+          seen.push(keyContext.clientIp);
+          return keyContext.clientIp;
+        },
+      })
+      get() {
+        return { ok: true };
+      }
+    }
+
+    server = new Server({ isolated: true })
+      .use(rateLimit({ trustedProxyHops: 0 }))
+      .load(ProbeController);
+    await server.listen(3471);
+
+    await get(3471, '192.0.2.44');
+
+    expect(seen).toHaveLength(1);
+    expect(seen[0]).not.toBe('192.0.2.44');
+    // A loopback peer supplied by the runtime, in either address family.
+    expect(['127.0.0.1', '::1']).toContain(seen[0]!);
+  });
+
   test('the fail-closed token is a stable, non-attacker-controlled value', () => {
     expect(UNRESOLVED_CLIENT_ADDRESS).toBe('unresolved');
   });
