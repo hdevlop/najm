@@ -63,6 +63,7 @@ try {
   await failureIsIsolatedAndStable();
   await theNextRequestRetries();
   await imageDeliveryIsExplicit();
+  await preferencesRoundTripThroughRealCookies();
   console.log('Next.js 16 najm-kit UI bootstrap suite: PASS');
 } finally {
   server.kill();
@@ -159,6 +160,69 @@ async function imageDeliveryIsExplicit() {
     html.includes('data-nimg="fill"'),
     'the unoptimized image lost its fill layout',
   );
+}
+
+/**
+ * A preference handler exported straight as `POST`, and the resolver reading
+ * back what it wrote.
+ *
+ * Only a real build shows this. The unit suite drives the handler with a
+ * hand-made `Request`; here Next routes the request, serializes the header it
+ * returned, and hands the cookie back to the root layout on the next
+ * navigation — the whole loop an application would otherwise hand-write.
+ */
+async function preferencesRoundTripThroughRealCookies() {
+  const defaults = await navigate('/shared');
+  assert(
+    defaults.includes('prefs:fr:light:Africa/Casablanca'),
+    'the layout did not resolve the configured defaults and language fallback',
+  );
+
+  const accepted = await fetch(`${origin}/api/ui-theme`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ theme: 'dark' }),
+  });
+  assert(accepted.status === 200, `the theme handler responded ${accepted.status}`);
+  const cookie = accepted.headers.get('set-cookie');
+  assert(
+    cookie?.startsWith('fixture-ui-theme=dark;') === true,
+    `the theme cookie was not set under its configured name: ${cookie}`,
+  );
+  assert(cookie.includes('HttpOnly'), `the theme cookie lost HttpOnly: ${cookie}`);
+
+  const rejected = await fetch(`${origin}/api/ui-timezone`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ timeZone: 'Mars/Olympus' }),
+  });
+  assert(rejected.status === 400, `an unsupported zone responded ${rejected.status}`);
+  assert(
+    rejected.headers.get('set-cookie') === null,
+    'a rejected time zone still wrote a cookie',
+  );
+
+  // A zone the old hand-written allow-lists rejected, offered by TimeZoneInput.
+  const zone = await fetch(`${origin}/api/ui-timezone`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ timeZone: 'Asia/Riyadh' }),
+  });
+  assert(zone.status === 200, `Asia/Riyadh responded ${zone.status}`);
+
+  const restored = await fetch(`${origin}/shared`, {
+    headers: {
+      accept: 'text/html',
+      cookie: 'fixture-ui-theme=dark; fixture-ui-timezone=Asia/Riyadh; fixture-ui-language=en',
+    },
+  });
+  const html = await restored.text();
+  assert(
+    html.includes('prefs:en:dark:Asia/Riyadh'),
+    'the layout did not read back the cookies the handlers wrote',
+  );
+  assert(html.includes('data-time-zone="Asia/Riyadh"'), 'the document lost its time zone');
+  assert(html.includes('lang="en"'), 'the cookie language did not beat the fallback');
 }
 
 async function navigate(path: string): Promise<string> {

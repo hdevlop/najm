@@ -103,6 +103,16 @@ describeBuilt("server entries in dist", () => {
       "UiBootstrapSnapshot",
       "parseNajmDesignConfig",
       "NajmDesignConfig",
+      "defineNajmPreferences",
+      "NajmPreferences",
+      "NajmPreferencesConfig",
+      "NajmPreferenceHandlers",
+      "NajmPreferenceI18n",
+      "NajmPreferenceSnapshot",
+      "NajmCookieReader",
+      "NAJM_TIME_ZONES",
+      "NajmTimeZone",
+      "NajmMode",
     ]) {
       expect(pure.includes(name), `expected ${name} in server/index.d.ts`).toBe(true);
     }
@@ -138,6 +148,9 @@ describeBuilt("server entries in dist", () => {
     for (const entry of ["index.mjs", "adapters/next.mjs", "adapters/app.mjs"]) {
       const graph = bundleGraph(entry);
       expect(graph, `${entry} reaches the UI bootstrap loader`).not.toContain("UiBootstrap");
+      expect(graph, `${entry} reaches the preference contract`).not.toContain(
+        "defineNajmPreferences",
+      );
       expect(graph, `${entry} imports server-only`).not.toContain("server-only");
       expect(graph, `${entry} reaches the client guard`).not.toContain(
         "is a React Server Component module",

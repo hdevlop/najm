@@ -1,5 +1,33 @@
 # Changelog
 
+## 2.11.14 - 2026-09-04
+
+- Added `defineNajmPreferences` to `najm-kit/server`: the language, theme, and
+  time-zone cookie contract every Najm application otherwise hand-writes across
+  three route handlers and a root layout. `handlers.language`, `handlers.theme`,
+  and `handlers.timeZone` export directly as Next.js `POST` handlers, and
+  `resolve(cookieStore, { languageFallback })` seeds the root layout. Pure Web
+  `Request`/`Response` and a structural cookie reader — no React, no Next import.
+- Made it convention-first. A new application passes `{ i18n }` and nothing
+  else: `light` default theme, `light | dark` the only accepted modes, `UTC`
+  default zone, the canonical `TimeZoneInput` zones, `najm-ui-*` cookie names,
+  and `HttpOnly; SameSite=Lax; Path=/; Max-Age=31536000` cookies are all
+  defaults. Applications with published cookie names or another product default
+  override only those keys. No consumer-side theme guard or normalizer.
+- Fixed the time-zone contract having two sources of truth. `TimeZoneInput`'s
+  values moved out of the component into `NAJM_TIME_ZONES`, a pure module now
+  read by the input, the resolver, and the POST handler alike, so a zone the
+  control offers can no longer be rejected by server validation. Applications
+  that pass custom `items` pass the same values as `timeZones`.
+- Exported `NAJM_TIME_ZONES`, `NAJM_DEFAULT_TIME_ZONE`, `NajmTimeZone`, and
+  `NajmMode` from `najm-kit/server`, plus `NajmPreferenceLanguage<T>` and
+  `NajmPreferenceTimeZone<T>` inferred from a configured definition, so
+  consumers declare no language, theme, or time-zone alias of their own.
+- Validated before normalizing in every handler: an unsupported value is a
+  `400` with a generic message and no `Set-Cookie`, never the default silently
+  written into a cookie. Malformed JSON, a non-object body, and a missing field
+  answer the same way, and no request content reaches the response.
+
 ## 2.11.13 - 2026-09-04
 
 - Fixed the documented `common.feedback.<field>` convention so all shared

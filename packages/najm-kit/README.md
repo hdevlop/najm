@@ -1063,3 +1063,133 @@ throws, so importing it from a Client Component fails the build with an
 explanation rather than shipping the application's fetcher and factory values
 into a browser bundle. Seed the client from the server snapshot through
 `NajmAppProvider` instead.
+
+## Language, theme, and time-zone preferences (`najm-kit/server`)
+
+Three route handlers and a root layout, as configuration. `defineNajmPreferences`
+owns the parts every application writes identically — validating a posted value,
+writing a secure cookie, answering `400` for anything else, and reading the three
+cookies back before the first paint.
+
+```ts
+// src/preferences.ts
+import { defineNajmPreferences } from "najm-kit/server";
+import { appI18n } from "@app/server/locales";
+
+export const preferences = defineNajmPreferences({ i18n: appI18n });
+```
+
+That is the whole configuration for a new application. `light` is the default
+theme, `light | dark` the only accepted modes, `UTC` the default time zone, the
+canonical `TimeZoneInput` list the accepted zones, `najm-ui-language`,
+`najm-ui-theme`, and `najm-ui-timezone` the cookie names, and the cookies are
+`HttpOnly`, `SameSite=Lax`, `Path=/`, one year. None of it is restated by the
+application, and there is no guard or normalizer to call.
+
+An application with published cookie names or a different product default
+overrides only those:
+
+```ts
+export const preferences = defineNajmPreferences({
+  i18n: appI18n,
+  defaultTimeZone: "Africa/Casablanca",
+  cookieNames: {
+    language: "app-ui-language",
+    theme: "app-ui-theme",
+    timeZone: "app-ui-timezone",
+  },
+});
+```
+
+`i18n` is structural — `supportedLanguages`, `defaultLanguage`, and
+`normalizeLanguage`. A `najm-i18n` definition satisfies it as it is, and
+`najm-i18n` stays an optional peer.
+
+### The three route files
+
+Each is one line. The handlers are `(request: Request) => Promise<Response>`,
+which is exactly a Next.js route handler.
+
+```ts
+// src/app/api/ui-language/route.ts
+import { preferences } from "@/preferences";
+export const POST = preferences.handlers.language;
+
+// src/app/api/ui-theme/route.ts
+export const POST = preferences.handlers.theme;
+
+// src/app/api/ui-timezone/route.ts
+export const POST = preferences.handlers.timeZone;
+```
+
+These are the endpoints `NajmNextUIProvider` and `NajmAppProvider` already POST
+to by default. A handler validates before it normalizes, so an unsupported value
+is a `400` with a generic message and **no** `Set-Cookie` — it never becomes the
+default written into a cookie. Malformed JSON, a non-object body, and a missing
+field are the same `400`. Nothing from the request body reaches the response.
+
+### The root layout
+
+```tsx
+// src/app/layout.tsx
+import { cookies } from "next/headers";
+import { preferences } from "@/preferences";
+
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const [cookieStore, session] = await Promise.all([cookies(), getSession()]);
+  const { language, theme, timeZone } = preferences.resolve(cookieStore, {
+    languageFallback: session?.user.language,
+  });
+
+  return (
+    <html
+      lang={language}
+      dir={appI18n.direction(language)}
+      data-time-zone={timeZone}
+      className={theme === "dark" ? "dark" : ""}
+      suppressHydrationWarning
+    >
+      <body>{children}</body>
+    </html>
+  );
+}
+```
+
+`resolve` takes anything with `get(name)` — Next's cookie store, or a plain
+object in a test. Precedence is cookie, then `languageFallback`, then the
+catalog default; an invalid or dropped cookie language falls through to the
+fallback rather than pinning the UI.
+
+### Types
+
+`NajmPreferenceLanguage<typeof preferences>` and
+`NajmPreferenceTimeZone<typeof preferences>` are inferred from the definition,
+and `NajmMode` is the theme union. An application declares no `AppLanguage`,
+`AppTheme`, or `AppTimeZone` alias of its own.
+
+### Time zones
+
+`NAJM_TIME_ZONES` is the single canonical list. `TimeZoneInput` builds its
+options from it and the default handlers accept exactly it, so a zone cannot be
+offered by the control and rejected by the server. An application that passes
+custom `items` to the input must pass the same values as `timeZones` here:
+
+```ts
+const zones = ["Europe/Paris", "Africa/Casablanca"] as const;
+
+export const preferences = defineNajmPreferences({ i18n: appI18n, timeZones: zones });
+<TimeZoneInput items={zones.map((value) => ({ value, label: "" }))} />
+```
+
+### Cookie options
+
+`cookieOptions` merges per key over the defaults. `secure` is **not** set by
+default, so these cookies survive `http://localhost` and a deployment that
+terminates TLS at the edge; an application served only over HTTPS should set it:
+
+```ts
+defineNajmPreferences({ i18n: appI18n, cookieOptions: { secure: true } });
+```
+
+The returned definition, its `cookieNames`, `cookieOptions`, `timeZones`, and
+`handlers` are all frozen.
