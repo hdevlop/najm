@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.3.1 - 2026-09-04
 
 - fix(auth): clear terminal refresh and signed-session cookies when a refresh
   session is missing, invalid, revoked, or belongs to an inactive/deleted user,
