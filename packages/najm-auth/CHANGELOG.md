@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- fix(auth): clear terminal refresh and signed-session cookies when a refresh
+  session is missing, invalid, revoked, or belongs to an inactive/deleted user,
+  preventing stale SSR hydration from looping between protected and login
+  routes; keep recognized concurrent refresh losers non-clearing so they cannot
+  erase a winning rotation
+
 ## 3.3.0 - 2026-09-04
 
 - security(rate): resolve the client address through `najm-rate`'s trusted-hop

@@ -89,6 +89,8 @@ function tokenService(options: {
   };
   const cookieManager = {
     getRefreshToken: () => options.refreshToken,
+    clearRefreshToken: () => undefined,
+    clearSessionCookie: () => undefined,
   };
   const cache = {
     get: options.cacheGet ?? (async () => null),

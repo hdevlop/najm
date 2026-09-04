@@ -135,12 +135,10 @@ export class TransactionService {
       for (const { target, propertyKey, options } of injections) {
          const methods = seen.get(target) ?? new Set<string | symbol>();
          if (methods.has(propertyKey)) {
-            this.invalidTransactionConfig(
-               target,
+            this.invalidDuplicateTransactionConfig(
                target,
                propertyKey,
                options,
-               'Duplicate transaction injection detected',
             );
          }
          methods.add(propertyKey);
@@ -161,6 +159,20 @@ export class TransactionService {
             throw Err.notFound(`Database '${dbName}' for @Transaction`);
          }
       }
+   }
+
+   private invalidDuplicateTransactionConfig(
+      target: Function | undefined,
+      propertyKey: string | symbol,
+      options: TransactionalOptions,
+   ): never {
+      const constructor = target?.name || '<unknown>';
+      const database = options?.database ?? 'default';
+
+      return Err.invalidConfig(
+         '@Transaction',
+         `Duplicate transaction injection detected; constructor=${constructor}; method=${String(propertyKey)}; database=${database}; likelyCause=the same decorator metadata was registered more than once, commonly because multiple loaded copies of najm-database are present`,
+      );
    }
 
    private invalidTransactionConfig(

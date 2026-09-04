@@ -54,6 +54,8 @@ function createTokenService(overrides: {
   };
   const cookie = {
     getRefreshToken: () => undefined,
+    clearRefreshToken: () => undefined,
+    clearSessionCookie: () => undefined,
     ...overrides.cookie,
   };
   const cache = {
@@ -221,8 +223,13 @@ describe('auth security regressions', () => {
     );
     const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
     const revoked: string[] = [];
+    const cleared: string[] = [];
     const { service } = createTokenService({
-      cookie: { getRefreshToken: () => refreshToken },
+      cookie: {
+        getRefreshToken: () => refreshToken,
+        clearRefreshToken: () => { cleared.push('refresh'); },
+        clearSessionCookie: () => { cleared.push('session'); },
+      },
       repo: {
         getByFamily: async () => ({
           userId: 'user-1',
@@ -246,6 +253,7 @@ describe('auth security regressions', () => {
     await expect(service.recoverSessionFromCookie()).rejects.toThrow();
     await expect(service.refreshTokens()).rejects.toThrow();
     expect(revoked).toEqual(['family-1', 'family-1']);
+    expect(cleared).toEqual(['refresh', 'session', 'refresh', 'session']);
   });
 
   test('deleted users cannot recover a signed session', async () => {
@@ -256,8 +264,13 @@ describe('auth security regressions', () => {
     );
     const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
     const revoked: string[] = [];
+    const cleared: string[] = [];
     const { service } = createTokenService({
-      cookie: { getRefreshToken: () => refreshToken },
+      cookie: {
+        getRefreshToken: () => refreshToken,
+        clearRefreshToken: () => { cleared.push('refresh'); },
+        clearSessionCookie: () => { cleared.push('session'); },
+      },
       repo: {
         getByFamily: async () => ({
           userId: 'deleted-user',
@@ -274,6 +287,28 @@ describe('auth security regressions', () => {
 
     await expect(service.recoverSessionFromCookie()).rejects.toThrow();
     expect(revoked).toEqual(['deleted-family']);
+    expect(cleared).toEqual(['refresh', 'session']);
+  });
+
+  test('a revoked refresh family clears the stale browser session', async () => {
+    const refreshToken = jwt.sign(
+      { userId: 'user-1', type: 'refresh', tokenFamily: 'revoked-family' },
+      authConfig.jwt.refreshSecret,
+      { expiresIn: '7d' },
+    );
+    const cleared: string[] = [];
+    const { service } = createTokenService({
+      cookie: {
+        getRefreshToken: () => refreshToken,
+        clearRefreshToken: () => { cleared.push('refresh'); },
+        clearSessionCookie: () => { cleared.push('session'); },
+      },
+      repo: { getByFamily: async () => null },
+    });
+
+    await expect(service.recoverSessionFromCookie()).rejects.toThrow();
+    await expect(service.refreshTokens()).rejects.toThrow();
+    expect(cleared).toEqual(['refresh', 'session', 'refresh', 'session']);
   });
 
   test('custom access and refresh lifetimes remain independent from session TTL', async () => {
@@ -693,10 +728,13 @@ describe('auth security regressions', () => {
     const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
     let claims = 0;
     const revokedFamilies: string[] = [];
+    const cleared: string[] = [];
 
     const { service } = createTokenService({
       cookie: {
         getRefreshToken: () => refreshToken,
+        clearRefreshToken: () => { cleared.push('refresh'); },
+        clearSessionCookie: () => { cleared.push('session'); },
       },
       repo: {
         // Presented token is the PREVIOUS (rotated) token, still in grace.
@@ -723,6 +761,7 @@ describe('auth security regressions', () => {
     await expect(service.refreshTokens()).rejects.toThrow();
     expect(claims).toBe(2);
     expect(revokedFamilies).toEqual([]);
+    expect(cleared).toEqual([]);
   });
 
   test('refresh cannot recreate a family deleted by concurrent logout', async () => {

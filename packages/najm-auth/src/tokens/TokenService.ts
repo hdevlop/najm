@@ -140,30 +140,57 @@ export class TokenService {
 
   private static readonly PREVIOUS_GRACE_SECONDS = 120;
 
+  private clearRefreshSessionCookies(): void {
+    this.cookieManager.clearRefreshToken();
+    this.cookieManager.clearSessionCookie();
+  }
+
+  private rejectRefreshSession(messageKey = 'errors.refreshTokenInvalid'): never {
+    this.clearRefreshSessionCookies();
+    Err(this.t(messageKey), 401);
+  }
+
+  private readRefreshSessionCookie(): {
+    refreshToken: string;
+    userId: string;
+    tokenFamily: string;
+  } {
+    const refreshToken = this.cookieManager.getRefreshToken();
+    if (!refreshToken) {
+      this.rejectRefreshSession('errors.refreshTokenMissing');
+    }
+
+    try {
+      return { refreshToken, ...this.verifyRefreshToken(refreshToken) };
+    } catch (error) {
+      // A malformed, expired, or legacy refresh cookie cannot become valid on
+      // retry. Remove the signed snapshot with it so SSR hydration cannot keep
+      // sending the browser back into refresh.
+      this.clearRefreshSessionCookies();
+      throw error;
+    }
+  }
+
   /**
    * Read the refresh cookie and return the userId it belongs to.
    * Validates against current/previous token state with bounded recovery.
    * Throws if the cookie is missing, invalid, or outside the grace window.
    *
-   * Intentionally side-effect-free: unlike refreshTokens(), a mismatch here
-   * does NOT revoke the suspect family. This is a read path (e.g. GET
-   * /auth/me) — a stray stale cookie on a read must not be able to destroy
-   * the active session. Reuse detection and revocation belong to the
-   * rotation path only.
+   * Intentionally does not revoke on a mismatch: unlike refreshTokens(), this
+   * is a read path (e.g. GET /auth/me), so a stray stale cookie must not be
+   * able to destroy server-side session state. Definitively invalid browser
+   * cookies are still cleared so a signed snapshot cannot cause a redirect
+   * loop.
    */
   private async resolveRefreshSessionFromCookie(): Promise<{
     userId: string;
     tokenFamily: string;
   }> {
-    const refreshToken = this.cookieManager.getRefreshToken();
-    if (!refreshToken) {
-      Err(this.t('errors.refreshTokenMissing'), 401);
-    }
-    const { userId, tokenFamily } = this.verifyRefreshToken(refreshToken);
+    const { refreshToken, userId, tokenFamily } = this.readRefreshSessionCookie();
 
     const stored = await this.tokenRepository.getByFamily(tokenFamily);
     if (!stored || stored.userId !== userId) {
-      Err(this.t('errors.refreshTokenInvalid'), 401);
+      this.rejectRefreshSession();
     }
 
     const presentedHash = this.hashToken(refreshToken);
@@ -183,7 +210,7 @@ export class TokenService {
       return { userId, tokenFamily };
     }
 
-    Err(this.t('errors.refreshTokenInvalid'), 401);
+    this.rejectRefreshSession();
   }
 
   async resolveUserFromCookie(): Promise<string> {
@@ -440,16 +467,11 @@ export class TokenService {
    * Compares provided token with hashed version in database
    */
   async refreshTokens() {
-    const refreshToken = this.cookieManager.getRefreshToken();
-    if (!refreshToken) {
-      Err(this.t('errors.refreshTokenMissing'), 401);
-    }
-
-    const { userId, tokenFamily } = this.verifyRefreshToken(refreshToken);
+    const { refreshToken, userId, tokenFamily } = this.readRefreshSessionCookie();
     const stored = await this.tokenRepository.getByFamily(tokenFamily);
 
     if (!stored || stored.userId !== userId) {
-      Err(this.t('errors.refreshTokenInvalid'), 401);
+      this.rejectRefreshSession();
     }
 
     const presentedHash = this.hashToken(refreshToken);
@@ -480,14 +502,14 @@ export class TokenService {
 
     // Reuse outside the grace window: revoke only this suspect family.
     await this.revokeSuspectRefreshFamily(userId, tokenFamily);
-    Err(this.t('errors.refreshTokenInvalid'), 401);
+    this.rejectRefreshSession();
   }
 
   private async requireActiveRefreshUser(userId: string, tokenFamily: string) {
     const user = await this.tokenRepository.getUser(userId);
     if (!user || user.status !== 'active') {
       await this.revokeFamily(tokenFamily);
-      Err(this.t('errors.refreshTokenInvalid'), 401);
+      this.rejectRefreshSession();
     }
 
     // Covers refresh and signed-session recovery alike: a requirement marked
@@ -496,8 +518,7 @@ export class TokenService {
       ?.find(userId, PASSWORD_SETUP_PURPOSE);
     if (requirement?.required) {
       await this.revokeFamily(tokenFamily);
-      this.cookieManager.clearRefreshToken();
-      this.cookieManager.clearSessionCookie();
+      this.clearRefreshSessionCookies();
       Err(this.t('errors.credentialSetupRequired'), 403);
     }
 

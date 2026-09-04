@@ -48,7 +48,20 @@ describe('@Transaction configuration hardening', () => {
       },
     };
 
-    await expect(service.activate()).rejects.toThrow(/Duplicate transaction injection detected/);
+    let duplicateError: unknown;
+    try {
+      await service.activate();
+    } catch (error) {
+      duplicateError = error;
+    }
+
+    expect(duplicateError).toBeInstanceOf(Error);
+    const duplicateMessage = (duplicateError as Error).message;
+    expect(duplicateMessage).toContain('Duplicate transaction injection detected');
+    expect(duplicateMessage).toContain('constructor=PaymentService; method=charge; database=default');
+    expect(duplicateMessage).toContain('multiple loaded copies of najm-database');
+    expect(duplicateMessage).not.toContain('expectedConstructor=');
+    expect(duplicateMessage).not.toContain('actualConstructor=');
 
     (service as any).container.getInjections = () => [
       { target: PaymentService, propertyKey: 'missing', options: {} },
