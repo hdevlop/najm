@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.11.15 - 2026-09-04
 
 - Fixed `ComboboxInput` keyboard interaction. Enter and Space now open its
   focusable trigger, and Enter commits the active filtered result instead of
