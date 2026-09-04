@@ -34,7 +34,7 @@
     ],
     "najm-auth": [
       "export { auth } from './AuthPlugin';",
-      "export type { AuthConfig, AuthPluginConfig, AuthSchema, JwtConfig, JwtPayload, TokenPair, AuthUser, GoogleOAuthConfig, OAuthConfig, OAuthProvider, } from './types';",
+      "export type { AuthConfig, AuthPluginConfig, AuthSchema, JwtConfig, JwtPayload, TokenPair, AuthUser, GoogleOAuthConfig, GitHubOAuthConfig, OAuthConfig, OAuthProvider, } from './types';",
       "export { AUTH_CONFIG, AUTH_SCHEMA, AUTH_USER, AUTH_ROLE, AUTH_PERMISSIONS, } from './auth.tokens';",
       "export { AUTH_LOCALES, AUTH_EN, AUTH_SUPPORTED_LANGUAGES, getAuthLocale, } from './locales';",
       "export * from './auth';",
