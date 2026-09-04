@@ -10,9 +10,11 @@
   package-owned `cache()` dependency, so the rate-limit store can be a shared
   durable backend without relying on consumer plugin ordering
 
-  BREAKING for direct callers: the exported `authIdentityRateLimitKey` now
-  takes `(ctx, keyContext)`. Custom `KeyStrategy` callbacks are unaffected —
-  the second argument is additive and one-argument callbacks still type-check.
+  The exported `authIdentityRateLimitKey` gains an optional second argument,
+  `(ctx, keyContext?)`. `najm-rate` always supplies it; a direct caller that
+  omits it still compiles and fails closed into the shared unresolved bucket
+  rather than reaching for a spoofable header. Custom `KeyStrategy` callbacks
+  are likewise unaffected, so this release is additive for every caller.
 
 ## 3.2.1 - 2026-09-03
 

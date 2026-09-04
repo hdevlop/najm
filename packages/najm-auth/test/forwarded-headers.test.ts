@@ -81,6 +81,17 @@ describe('forwarded headers are resolved by najm-rate, not by najm-auth', () => 
     expect(key).toBe('203.0.113.7');
   });
 
+  test('a legacy one-argument call still compiles and fails closed', async () => {
+    // Source compatibility for direct callers: omitting the resolved address
+    // must not fall back to a spoofable header.
+    const key = await authIdentityRateLimitKey(
+      contextWith({ 'x-forwarded-for': '1.2.3.4' }, { identifier: 'user@example.com' }),
+    );
+
+    expect(key.startsWith('unresolved:')).toBe(true);
+    expect(key).not.toContain('1.2.3.4');
+  });
+
   test('normalized identity equivalence survives the change', async () => {
     const upper = await authIdentityRateLimitKey(
       contextWith({}, { identifier: 'User@Example.com' }),

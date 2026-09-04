@@ -5,7 +5,7 @@ import { AuthService } from './AuthService';
 import { isAuth } from './AuthGuard';
 import { isAdmin } from '../roles/RoleGuards';
 import { Validate } from 'najm-validation';
-import { RateLimit, type RateLimitKeyContext } from 'najm-rate';
+import { RateLimit, UNRESOLVED_CLIENT_ADDRESS, type RateLimitKeyContext } from 'najm-rate';
 import type { Context } from 'hono';
 import { createHash } from 'node:crypto';
 import { getRequestIdentityResolver } from '../identity/requestResolver';
@@ -44,9 +44,13 @@ const cookieFingerprint = () => (ctx: Context, { clientIp }: RateLimitKeyContext
  */
 export const authIdentityRateLimitKey = async (
   ctx: Context,
-  { clientIp }: RateLimitKeyContext,
+  keyContext?: RateLimitKeyContext,
 ): Promise<string> => {
-  const ip = clientIp;
+  // najm-rate always supplies the resolved address. The parameter stays
+  // optional so a direct caller from an older integration still compiles, and
+  // such a call fails closed into the shared unresolved bucket rather than
+  // silently reaching for a spoofable header.
+  const ip = keyContext?.clientIp ?? UNRESOLVED_CLIENT_ADDRESS;
   try {
     const body = await ctx.req.json();
     const identity = body?.identifier ?? body?.email;
