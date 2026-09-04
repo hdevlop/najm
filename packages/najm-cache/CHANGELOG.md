@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.2 - 2026-09-04
+
+- fix(cache): attach an error listener to the package-owned ioredis client so
+  failed startup/readiness probes cannot write Redis host details to stderr;
+  callers still receive the existing value-free readiness failure.
+
 ## 2.1.1 - 2026-09-04
 
 - fix(cache): probe a required cache backend during the server `onReady`

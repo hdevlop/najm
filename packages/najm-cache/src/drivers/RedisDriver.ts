@@ -106,7 +106,7 @@ export class RedisDriver implements Driver {
         );
       }
 
-      this.client = new Redis(this.options.url, {
+      const client = new Redis(this.options.url, {
         ...this.options.options,
         keyPrefix: this.keyPrefix,
         lazyConnect: true,
@@ -116,6 +116,11 @@ export class RedisDriver implements Driver {
           return Math.min(times * 100, 2000);
         },
       });
+      // ioredis writes connection details to stderr when an `error` event has
+      // no listener. Commands still reject normally, and CacheService turns
+      // those failures into value-free errors for startup/readiness callers.
+      client.on('error', () => undefined);
+      this.client = client;
     }
     return this.client;
   }

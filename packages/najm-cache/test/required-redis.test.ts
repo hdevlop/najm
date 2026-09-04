@@ -162,6 +162,24 @@ describe("required Redis mode", () => {
     await expect(service.verifyReady()).rejects.toThrow(/not reachable/i);
   });
 
+  test("the package-owned ioredis client does not emit connection details", async () => {
+    const writes: string[] = [];
+    const original = console.error;
+    console.error = (...values: unknown[]) => writes.push(values.map(String).join(" "));
+
+    const driver = new RedisDriver({
+      url: "redis://127.0.0.1:1",
+      options: { connectTimeout: 25 },
+    });
+    try {
+      await expect(driver.ping()).resolves.toBe(false);
+      expect(writes).toEqual([]);
+    } finally {
+      console.error = original;
+      await driver.destroy().catch(() => undefined);
+    }
+  });
+
   test("server initialization rejects an unreachable required Redis backend", async () => {
     const client = new FakeRedis();
     client.failPing = true;
