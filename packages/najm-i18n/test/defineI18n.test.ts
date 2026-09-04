@@ -113,6 +113,7 @@ describe('defineI18n', () => {
 
       const ui = partial.scope('ui');
       expect(Object.keys(ui.translations)).toEqual(['en', 'fr']);
+      expect(ui.translations.fr).toBeUndefined();
       expect(ui.supportedLanguages).toEqual(['en', 'fr']);
       expect(ui.isLanguage('fr')).toBe(true);
       expect(ui.normalizeLanguage('fr')).toBe('fr');

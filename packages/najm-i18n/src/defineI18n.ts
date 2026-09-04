@@ -72,14 +72,14 @@ type ValueAtPath<Catalog, Prefix extends string> =
 
 type ScopeDictionary<Catalog, Prefix extends string> =
    string extends keyof Catalog
-      ? Record<string, unknown>
+      ? Record<string, unknown> | undefined
       : ValueAtPath<Catalog, Prefix> extends infer Value
         ? Value extends readonly unknown[]
-           ? Record<never, never>
+           ? undefined
            : Value extends Record<string, unknown>
              ? Value
-             : Record<never, never>
-        : Record<never, never>;
+             : undefined
+        : undefined;
 
 export type ScopedTranslations<
    Catalogs extends Translations,
@@ -176,8 +176,6 @@ function readScope(
       : undefined;
 }
 
-const EMPTY_SCOPE_DICTIONARY: Readonly<Record<string, never>> = Object.freeze({});
-
 export function defineI18n<
    const Catalogs extends Translations,
    const Default extends LanguageOf<Catalogs>,
@@ -273,12 +271,16 @@ export function defineI18n<
                translations[language] as Record<string, unknown>,
                prefix,
             );
-            scoped[language] = branch ?? EMPTY_SCOPE_DICTIONARY;
+            // Keep the own property even when the dictionary is absent. React
+            // enumerates it as supported, while the translator sees
+            // `undefined` and applies its unconditional whole-language
+            // fallback to the default scoped dictionary.
+            scoped[language] = branch;
          }
 
          // A missing scope in a partial locale is normal — the fallback policy
-         // Missing branches in non-default locales use the shared empty
-         // dictionary, preserving the full language union while fallback
+         // Missing branches in non-default locales stay as own `undefined`
+         // properties, preserving the full language union while fallback
          // supplies readable strings.
          return defineI18n({
             translations: scoped,

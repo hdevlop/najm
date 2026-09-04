@@ -18,7 +18,7 @@ export interface I18nCookieOptions {
 
 // Base i18n configuration options
 export interface I18nOptions {
-   translations: Record<string, Record<string, any>>;
+   translations: Translations;
    defaultLanguage?: string;
    supportedLanguages?: string[];
    order?: ('querystring' | 'header' | 'cookie' | 'path')[];
@@ -73,7 +73,10 @@ export interface I18nInjection extends InjectionDefinition {
 // Legacy alias for backward compatibility
 export type I18nRegistration = I18nInjection;
 
-export type Translations = Record<string, Record<string, unknown>>;
+export type Translations = Record<
+   string,
+   Record<string, unknown> | undefined
+>;
 
 // ============================================================================
 // CATALOG KEY TYPES
