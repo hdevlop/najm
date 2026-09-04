@@ -1,6 +1,6 @@
 {
   "name": "najm-i18n",
-  "version": "2.1.0",
+  "version": "2.1.1",
   "license": "MIT",
   "description": "I18n .",
   "type": "module",
@@ -19,6 +19,11 @@
       "types": "./dist/react.d.ts",
       "import": "./dist/react.mjs",
       "default": "./dist/react.mjs"
+    },
+    "./define": {
+      "types": "./dist/define.d.ts",
+      "import": "./dist/define.mjs",
+      "default": "./dist/define.mjs"
     },
     "./package.json": "./package.json",
     "./*": {
