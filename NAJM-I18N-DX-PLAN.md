@@ -1,8 +1,10 @@
 # Najm i18n Direct-Use and Fallback Plan
 
-**Status:** WORK UNITS 0-3 AND 5-6 IMPLEMENTED IN NAJM. Work unit 4 measured
-and deferred (see below). Work unit 7 release is in progress; work units 8-10
-follow against the exact published packages.
+**Status:** WORK UNITS 0-3 AND 5-10 IMPLEMENTED, RELEASED, AND ADOPTED. Work
+unit 4 was measured and deferred. The only remaining acceptance evidence is
+consumer browser coverage that requires each application's local PostgreSQL
+service; Kafil's server-catalog merge also remains intentionally until its
+non-English catalogs satisfy the application's strict parity rule.
 
 **Last updated:** 2026-09-04
 
@@ -319,6 +321,8 @@ but not its application-specific language preference command.
       references and reports an invalid default-language scope clearly.
 - [x] Expose plugin/provider option data without importing `najm-core`, React,
       Next.js, or Najm Kit into the helper module.
+- [x] Publish the pure helper through the client-safe `najm-i18n/define`
+      subpath so client bundles do not traverse the server/plugin root entry.
 - [x] Test inference, invalid default languages, invalid metadata keys, scoped
       keys, missing non-default scopes, reference reuse, and bound fallback.
 - [x] Document separate full server and scoped UI use from one definition.
@@ -404,54 +408,70 @@ charged every one of them.
 - [x] Check `git diff --check` and audit the diff for unrelated dirty work.
 - [x] Prepare a minor `najm-i18n` version and a patch `najm-kit` version only
       after implementation review. Version preparation is not publication.
-- [ ] Commit package changes before packing.
-- [ ] Run `bun scripts/publish-package.ts najm-i18n --pack-only` and the
+- [x] Commit package changes before packing.
+- [x] Run `bun scripts/publish-package.ts najm-i18n --pack-only` and the
       corresponding Kit command; record tarball paths, SHA-256 values, source
       commit, manifests, exports, and included declaration files.
-- [ ] Install the exact tarballs into a disposable consumer and verify imports
+- [x] Install the exact tarballs into a disposable consumer and verify imports
       from `najm-i18n`, `najm-i18n/react`, and `najm-kit/app`.
-- [ ] Stop and request explicit release authorization before any registry
+- [x] Stop and request explicit release authorization before any registry
       publication. Do not publish merely because source and tarball gates pass.
-- [ ] After authorization, publish in dependency order: `najm-i18n` before
+- [x] After authorization, publish in dependency order: `najm-i18n` before
       `najm-kit`.
-- [ ] Verify registry metadata, tarball integrity, public declarations, and
+- [x] Verify registry metadata, tarball integrity, public declarations, and
       installability independently of the source checkout.
+
+Published release evidence:
+
+- `najm-i18n@2.1.0`: SHA-256
+  `02a15278418ac26b1baf3ebc71832ef3b7291e884b49c8d5700d58642ce57dd1`.
+- `najm-kit@2.11.13`: SHA-256
+  `e47674f302a6a11c2c04a8b9d6f7d8ab937e232f6108627097ae00009abb9fb7`.
+- `najm-i18n@2.1.1`: client-safe definition-entry patch, source commit
+  `e5e75659e7f795e1b0bc8af326d8b55634128fec`, SHA-256
+  `27814cce58333b5c9491681106b2931281507b93e39cb62043e3776575e5a05c`,
+  registry integrity
+  `sha512-Fa6DVYXgNCE8jnB5TS9w6o5u6bH5gN/DSrtvUpK5arnJPjMZGGMnP72OzwQx6WuGyi/CSTIw9MaNTgzuWWZ0kw==`.
 
 ### 8. Kafil-first adoption
 
-- [ ] Pin the exact published `najm-i18n` and `najm-kit` versions in root
+- [x] Pin the exact published `najm-i18n` and `najm-kit` versions in root
       overrides and lockfile; do not test consumer acceptance against workspace
       links.
-- [ ] Add one `declare module "najm-i18n/react"` registration to the web
+- [x] Add one `declare module "najm-i18n/react"` registration to the web
       TypeScript program.
-- [ ] Enable `fallbackToDefaultLanguage` for both server and React translation
+- [x] Enable `fallbackToDefaultLanguage` for both server and React translation
       paths.
-- [ ] Replace repeated supported-language, normalization, formatting-locale,
+- [x] Replace repeated supported-language, normalization, formatting-locale,
       direction, and static translation helpers with one `defineI18n`
       definition plus its `ui` scope.
 - [ ] Remove `mergeLocale` only after tests prove per-key fallback in both paths.
-- [ ] Derive `KafilLanguage` and supported-language validation from one catalog
+      **Deferred:** Kafil's raw `fr`, `ar`, and `es` server catalogs remain
+      incomplete, while its repository contract requires strict key parity.
+      The merge stays server-side until those translations are filled; web
+      lookup and fallback are package-owned now.
+- [x] Derive `KafilLanguage` and supported-language validation from one catalog
       or canonical application constant; remove duplicate arrays.
-- [ ] Replace Kafil's nested lookup with `translate`, `createTranslator`, or a
+- [x] Replace Kafil's nested lookup with `translate`, `createTranslator`, or a
       package-provided bound translator.
-- [ ] Replace `useKafilLanguage` imports with direct
+- [x] Replace `useKafilLanguage` imports with direct
       `najm-i18n/react` imports. Preserve behavior at the two language switchers:
       unsupported values and persistence failures must remain visible rather
       than becoming unhandled promises.
-- [ ] Align locale keys with `common.feedback.<field>`, remove
+- [x] Align locale keys with `common.feedback.<field>`, remove
       `KAFIL_FEEDBACK_DEFAULTS`, and stop passing the mapping to
       `NajmAppProvider`.
-- [ ] Preserve Kafil-owned route/cookie policy, formatting locale mapping,
+- [x] Preserve Kafil-owned route/cookie policy, formatting locale mapping,
       domain copy, tests, and safe error-display policy.
-- [ ] Update focused i18n, feedback-state, status-label, applicants, theme, and
+- [x] Update focused i18n, feedback-state, status-label, applicants, theme, and
       provider-adoption tests.
-- [ ] Confirm there are no remaining imports of deleted wrappers or duplicate
+- [x] Confirm there are no remaining imports of deleted wrappers or duplicate
       traversal/interpolation implementations.
 
 ### 9. Kafil acceptance
 
-- [ ] Run focused web i18n and adoption tests while iterating.
-- [ ] Run Kafil's required root gate:
+- [x] Run focused web i18n and adoption tests while iterating.
+- [x] Run Kafil's required root gate:
 
   ```text
   bun run lint
@@ -461,30 +481,43 @@ charged every one of them.
   bun run db:generate
   ```
 
-- [ ] Require `db:generate` to produce no migration.
-- [ ] Verify `en`, `fr`, `ar`, and `es`, including an intentionally missing
+- [x] Require `db:generate` to produce no migration.
+- [x] Verify `en`, `fr`, `ar`, and `es`, including an intentionally missing
       non-English key falling back to English and a truly unknown key following
       the documented diagnostic behavior.
 - [ ] Verify Arabic RTL and language persistence across a reload.
-- [ ] Report source/test completion separately from browser/visual acceptance.
+- [x] Report source/test completion separately from browser/visual acceptance.
+
+Kafil source acceptance is commit `d06ca38f` on
+`feat/redis-rate-limit-deployment`: lint, typecheck, 761 unit tests, production
+build, and no schema drift all pass against `najm-i18n@2.1.1` and
+`najm-kit@2.11.13`. Browser/visual acceptance remains a separate environment
+gate.
 
 ### 10. School adoption, independently
 
-- [ ] Re-audit School against the published artifacts and its current dirty
+- [x] Re-audit School against the published artifacts and its current dirty
       work; do not copy Kafil's migration blindly.
-- [ ] Add School's one-time React registry and enable per-key English fallback.
-- [ ] Move consumers to direct `najm-i18n/react` imports where they need only
+- [x] Add School's one-time React registry and enable per-key English fallback.
+- [x] Move consumers to direct `najm-i18n/react` imports where they need only
       translation state.
-- [ ] Replace the current generic fallback and interpolation implementation with
+- [x] Replace the current generic fallback and interpolation implementation with
       package behavior.
-- [ ] Extract and retain authenticated preference persistence, query cache
+- [x] Extract and retain authenticated preference persistence, query cache
       updates, response messaging, and toasts in an app-owned command hook.
-- [ ] Keep School-specific catalogs, roles, routes, locale checks, and branding.
-- [ ] Do not delete `scripts/check_i18n_keys.py` until Najm offers equivalent
+- [x] Keep School-specific catalogs, roles, routes, locale checks, and branding.
+- [x] Do not delete `scripts/check_i18n_keys.py` until Najm offers equivalent
       missing-key, non-string, report, and template-generation capabilities and
       School has adopted them explicitly.
 - [ ] Run School's package, full application, i18n, build, and browser gates
       required by its active upgrade plan.
+
+School source acceptance is commit `b1e251c` on
+`feat/trusted-proxy-rate-limit-hardening`: lint (three pre-existing image
+warnings), i18n parity, 1,241 unit tests, production build, and no schema drift
+pass against the exact registry versions. The four-case Playwright upgrade
+matrix was attempted, but its fixture setup could not connect to the configured
+PostgreSQL service at `127.0.0.1:55432`; no browser assertion ran.
 
 ### 11. Optional reusable Next persistence adapter
 
