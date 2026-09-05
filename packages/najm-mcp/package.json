@@ -1,6 +1,6 @@
 {
   "name": "najm-mcp",
-  "version": "2.1.1",
+  "version": "2.1.2",
   "license": "MIT",
   "description": "MCP plugin for Najm framework",
   "type": "module",
@@ -26,7 +26,7 @@
   },
   "peerDependencies": {
     "hono": "^4.12.18",
-    "najm-auth": "workspace:*",
+    "najm-auth": "^3.2.1 || ^4.0.0",
     "najm-core": "workspace:*",
     "najm-guard": "workspace:*",
     "najm-validation": "workspace:*",
