@@ -42,6 +42,30 @@ export interface NajmAppBranding {
   logoCollapsed?: string | null;
 }
 
+/**
+ * The part of a `najm-i18n` definition this provider reads.
+ *
+ * Structural, so a whole definition satisfies it — its methods are simply
+ * extra — and named for data rather than behaviour because everything derived
+ * here (the writing direction, the formatting tags) is declared metadata.
+ *
+ * That also decides what a Server Component may pass. This provider is a
+ * Client Component, and React rejects a prop carrying functions outright, so a
+ * server layout passes `definition.snapshot` — the same fields without the
+ * methods — while a client parent passes the definition itself.
+ */
+export interface NajmAppI18n {
+  translations: Translations;
+  defaultLanguage?: string;
+  supportedLanguages?: readonly string[];
+  fallbackToDefaultLanguage?: boolean;
+  languageMetadata?: {
+    readonly [language: string]:
+      | { locale?: string; direction?: 'ltr' | 'rtl' }
+      | undefined;
+  };
+}
+
 export interface NajmAppProviderProps
   extends Omit<NajmNextUIProviderProps, 't'> {
   /**
@@ -50,13 +74,31 @@ export interface NajmAppProviderProps
    */
   formDevTools?: boolean | FormDevToolsOptions;
   /**
+   * A `najm-i18n` definition, standing in for five props: `translations`,
+   * `defaultLanguage`, `fallbackToDefaultLanguage`, `locales` and
+   * `getLanguageDirection`. All five are already declared in the definition, so
+   * an application that has one should not have to take it apart and hand the
+   * pieces back. Any of them passed explicitly still wins, which is how an
+   * application overrides one facet without abandoning the definition.
+   *
+   * From a Server Component, pass `definition.snapshot` instead — see
+   * `NajmAppI18n`.
+   *
+   * `initialLanguage` is deliberately not part of it: the active language is a
+   * per-request value no definition can know.
+   */
+  i18n?: NajmAppI18n;
+  /**
    * Catalog for `najm-i18n`. Supplying it mounts an `I18nProvider` and derives
    * the pagination labels from it, so `t` is not a prop here — the provider
    * already has the translator and passing one in would be a second source of
    * truth.
+   *
+   * Defaults to `i18n.translations`.
    */
   translations?: Translations;
   initialLanguage?: string;
+  /** Defaults to `i18n.defaultLanguage`. */
   defaultLanguage?: string;
   /**
    * Resolves a key missing from the active language against `defaultLanguage`
@@ -66,9 +108,17 @@ export interface NajmAppProviderProps
    * Off by default, matching the package. An application shipping an
    * incomplete locale beside a complete one turns it on here rather than
    * pre-merging its catalogs.
+   *
+   * Defaults to `i18n.fallbackToDefaultLanguage`.
    */
   fallbackToDefaultLanguage?: boolean;
-  /** Maps a language to the writing direction applied to `<html>`. */
+  /**
+   * Maps a language to the writing direction applied to `<html>`.
+   *
+   * Defaults to `i18n.languageMetadata`, resolving an unsupported language
+   * against `defaultLanguage` the way the definition's own `direction` does,
+   * rather than falling through to `najm-i18n`'s built-in Arabic guess.
+   */
   getLanguageDirection?: (language: string) => 'ltr' | 'rtl';
   /**
    * Where the chosen language is POSTed, as `{ language }`. Defaults to
@@ -104,6 +154,8 @@ export interface NajmAppProviderProps
    * The distinction matters because language and region are separate choices:
    * `fr` alone formats dates and separators the French way, which is not how
    * they are written in Morocco. Unmapped languages are used as-is.
+   *
+   * Defaults to the `locale` of each `i18n.languageMetadata` entry.
    */
   locales?: Record<string, string>;
   /**
@@ -136,6 +188,7 @@ const DEFAULT_LANGUAGE_ENDPOINT = '/api/ui-language';
 
 type InnerProps = Omit<
   NajmAppProviderProps,
+  | 'i18n'
   | 'translations'
   | 'initialLanguage'
   | 'defaultLanguage'
@@ -233,17 +286,49 @@ function NajmAppNoI18n({
  * `branding` props still work for applications that already do.
  */
 export function NajmAppProvider({
-  translations,
+  i18n,
+  translations = i18n?.translations,
   initialLanguage,
-  defaultLanguage,
-  fallbackToDefaultLanguage,
-  getLanguageDirection,
+  defaultLanguage = i18n?.defaultLanguage,
+  fallbackToDefaultLanguage = i18n?.fallbackToDefaultLanguage,
+  getLanguageDirection: languageDirection,
+  locales: localeTags,
   languageEndpoint = DEFAULT_LANGUAGE_ENDPOINT,
   appName,
   initialBranding,
   formDevTools,
   ...props
 }: NajmAppProviderProps) {
+  // Derived, not inlined: `I18nProvider` keys its context value on
+  // `getLanguageDirection`, so a fresh closure per render would re-render every
+  // `useTranslation()` consumer in the tree.
+  const getLanguageDirection = React.useMemo(() => {
+    if (languageDirection) return languageDirection;
+    if (!i18n) return undefined;
+
+    const metadata = i18n.languageMetadata;
+    const languages = i18n.supportedLanguages ?? Object.keys(i18n.translations);
+    const fallback = i18n.defaultLanguage;
+
+    return (language: string) => {
+      const known = languages.includes(language) ? language : (fallback ?? language);
+      return metadata?.[known]?.direction ?? 'ltr';
+    };
+  }, [i18n, languageDirection]);
+
+  const locales = React.useMemo(() => {
+    if (localeTags) return localeTags;
+    if (!i18n?.languageMetadata) return undefined;
+
+    const metadata = i18n.languageMetadata;
+    const languages = i18n.supportedLanguages ?? Object.keys(i18n.translations);
+
+    // Unmapped languages are used as-is, matching the prop's own contract.
+    return Object.fromEntries(
+      languages.map((language) => [language, metadata[language]?.locale ?? language]),
+    );
+  }, [i18n, localeTags]);
+
   const persistLanguage = React.useCallback(
     async (language: string) => {
       const response = await fetch(languageEndpoint, {
@@ -272,7 +357,7 @@ export function NajmAppProvider({
   if (!translations) {
     return (
       <FormDevToolsProvider value={formDevTools}>
-        <NajmAppNoI18n {...props} initialBranding={seeded} />
+        <NajmAppNoI18n {...props} locales={locales} initialBranding={seeded} />
       </FormDevToolsProvider>
     );
   }
@@ -287,7 +372,7 @@ export function NajmAppProvider({
         getLanguageDirection={getLanguageDirection}
         onLanguageChange={persistLanguage}
       >
-        <NajmAppUI {...props} initialBranding={seeded} />
+        <NajmAppUI {...props} locales={locales} initialBranding={seeded} />
       </I18nProvider>
     </FormDevToolsProvider>
   );

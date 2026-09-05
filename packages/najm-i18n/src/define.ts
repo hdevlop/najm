@@ -2,6 +2,7 @@ export {
   defineI18n,
   type DefineI18nOptions,
   type I18nDefinition,
+  type I18nSnapshot,
   type LanguageMetadata,
   type LanguageOf,
   type ScopedTranslations,

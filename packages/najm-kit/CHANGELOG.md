@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.11.17 - 2026-09-05
+
+- Added an `i18n` definition prop to `NajmAppProvider`, deriving translations,
+  fallback behavior, locale tags, and writing directions from one shared
+  declaration while preserving explicit prop overrides. Server Components can
+  pass the new serializable `definition.snapshot` from `najm-i18n@2.1.2`.
+
 ## 2.11.16 - 2026-09-04
 
 - `NBrandingPayload` accepts a `slots` registry, so `NajmAppProvider` takes what

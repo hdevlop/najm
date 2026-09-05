@@ -23,6 +23,25 @@ export interface LanguageMetadata {
    direction?: 'ltr' | 'rtl';
 }
 
+/**
+ * The definition's data fields, without its methods.
+ *
+ * Every field here is also on the definition, so a *client* component passes
+ * `definition` itself and a consumer reads what it needs. This exists for the
+ * one boundary where that fails: a Server Component cannot pass an object
+ * carrying functions to a client component — React rejects the whole prop, not
+ * just the methods — so a server layout passes `definition.snapshot` instead.
+ */
+export interface I18nSnapshot<Catalogs extends Translations = Translations> {
+   readonly translations: Catalogs;
+   readonly defaultLanguage: LanguageOf<Catalogs>;
+   readonly supportedLanguages: readonly LanguageOf<Catalogs>[];
+   readonly fallbackToDefaultLanguage: boolean;
+   readonly languageMetadata: Readonly<
+      Partial<Record<LanguageOf<Catalogs>, LanguageMetadata>>
+   >;
+}
+
 /** The language union a catalog object declares, from its own keys. */
 export type LanguageOf<Catalogs extends Translations> = Extract<
    keyof Catalogs,
@@ -158,8 +177,27 @@ export interface I18nDefinition<
       prefix: Prefix,
    ): I18nDefinition<ScopedTranslations<Catalogs, Prefix>, Default>;
 
+   /**
+    * The declared metadata, as data.
+    *
+    * `locale()` and `direction()` read it, but a consumer that has to *derive*
+    * something per language — a formatting-tag map, a direction resolver it
+    * owns — needs the table rather than two accessors, and a React provider
+    * needs it as data because a function cannot be a prop it re-derives from.
+    */
+   readonly languageMetadata: Readonly<
+      Partial<Record<LanguageOf<Catalogs>, LanguageMetadata>>
+   >;
+
    /** Config for `i18n()`, ready to spread into the server plugin. */
    readonly options: I18nOptions;
+
+   /**
+    * Plain-data projection, safe to pass from a Server Component to a client
+    * provider. Frozen and built once, so it can be passed as a prop without
+    * giving a memo a new identity on every render.
+    */
+   readonly snapshot: I18nSnapshot<Catalogs>;
 }
 
 function readScope(
@@ -210,10 +248,20 @@ export function defineI18n<
    const languageSet: ReadonlySet<string> = new Set(supportedLanguages as string[]);
    const translatorOptions = { defaultLanguage, fallbackToDefaultLanguage };
 
+   const frozenLanguages = Object.freeze([...supportedLanguages]);
+   const frozenMetadata = Object.freeze({ ...languageMetadata });
+   const snapshot: I18nSnapshot<Catalogs> = Object.freeze({
+      translations,
+      defaultLanguage,
+      supportedLanguages: frozenLanguages,
+      fallbackToDefaultLanguage,
+      languageMetadata: frozenMetadata,
+   });
+
    const definition: I18nDefinition<Catalogs, Default> = {
       translations,
       defaultLanguage,
-      supportedLanguages: Object.freeze([...supportedLanguages]),
+      supportedLanguages: frozenLanguages,
       fallbackToDefaultLanguage,
 
       isLanguage(value): value is LanguageOf<Catalogs> {
@@ -291,6 +339,9 @@ export function defineI18n<
             >,
          }) as unknown as I18nDefinition<ScopedTranslations<Catalogs, typeof prefix>, Default>;
       },
+
+      languageMetadata: frozenMetadata,
+      snapshot,
 
       get options(): I18nOptions {
          return {

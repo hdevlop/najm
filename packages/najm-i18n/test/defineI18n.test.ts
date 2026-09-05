@@ -141,4 +141,62 @@ describe('defineI18n', () => {
    test('supportedLanguages is frozen', () => {
       expect(Object.isFrozen(definition.supportedLanguages)).toBe(true);
    });
+
+   test('snapshot carries the declared metadata and holds no functions', () => {
+      const { snapshot } = definition;
+
+      expect(snapshot.translations).toBe(translations);
+      expect(snapshot.defaultLanguage).toBe('en');
+      expect(snapshot.fallbackToDefaultLanguage).toBe(true);
+      expect([...snapshot.supportedLanguages].sort()).toEqual(['ar', 'en', 'fr']);
+      expect(snapshot.languageMetadata.ar).toEqual({ locale: 'ar-MA', direction: 'rtl' });
+
+      // The point of the projection: a Server Component can hand this to a
+      // client provider. A single function anywhere in it would fail that.
+      expect(Object.values(snapshot).some((value) => typeof value === 'function'))
+         .toBe(false);
+      expect(JSON.parse(JSON.stringify(snapshot))).toEqual({
+         translations,
+         defaultLanguage: 'en',
+         supportedLanguages: ['en', 'fr', 'ar'],
+         fallbackToDefaultLanguage: true,
+         languageMetadata: {
+            en: { locale: 'en-MA', direction: 'ltr' },
+            fr: { locale: 'fr-MA', direction: 'ltr' },
+            ar: { locale: 'ar-MA', direction: 'rtl' },
+         },
+      });
+   });
+
+   test('exposes the declared metadata as data, shared with the snapshot', () => {
+      expect(definition.languageMetadata.ar).toEqual({ locale: 'ar-MA', direction: 'rtl' });
+      expect(definition.languageMetadata).toBe(definition.snapshot.languageMetadata);
+      expect(Object.isFrozen(definition.languageMetadata)).toBe(true);
+      expect(definition.scope('ui').languageMetadata.ar?.direction).toBe('rtl');
+   });
+
+   test('snapshot is frozen and stable across reads', () => {
+      expect(Object.isFrozen(definition.snapshot)).toBe(true);
+      // Identity matters: it is passed as a prop, and a fresh object per read
+      // would invalidate every memo keyed on it.
+      expect(definition.snapshot).toBe(definition.snapshot);
+   });
+
+   test('a scoped definition keeps the metadata', () => {
+      const ui = definition.scope('ui');
+
+      expect(ui.snapshot.languageMetadata.ar?.direction).toBe('rtl');
+      expect(ui.snapshot.defaultLanguage).toBe('en');
+      expect(ui.snapshot.fallbackToDefaultLanguage).toBe(true);
+   });
+
+   test('a definition without metadata still snapshots', () => {
+      const bare = defineI18n({
+         translations: { en: { greeting: 'Hello' } },
+         defaultLanguage: 'en',
+      });
+
+      expect(bare.snapshot.languageMetadata).toEqual({});
+      expect(bare.snapshot.fallbackToDefaultLanguage).toBe(false);
+   });
 });
