@@ -35,6 +35,24 @@ const cookieFingerprint = () => (ctx: Context, { clientIp }: RateLimitKeyContext
 };
 
 /**
+ * Read the first field a route's DTO would actually accept.
+ *
+ * A bucket must be chosen by the same value the handler goes on to act upon.
+ * Reading a field the DTO ignores lets a caller append it, land in an unrelated
+ * bucket, and keep going against one victim identity — so each route declares
+ * its own field order and nothing else is consulted. A field present but not a
+ * usable string is skipped rather than allowed to select a bucket of its own.
+ */
+const readDeclaredIdentity = (body: unknown, fields: readonly string[]): unknown => {
+  if (typeof body !== 'object' || body === null || Array.isArray(body)) return undefined;
+  for (const field of fields) {
+    const value = (body as Record<string, unknown>)[field];
+    if (typeof value === 'string' && value.trim()) return value;
+  }
+  return undefined;
+};
+
+/**
  * Composite key: resolved client address + hashed normalized identity.
  * Buckets rate limits per client+credential combo so different users
  * on the same address (e.g. localhost, NAT) don't share a single bucket.
@@ -42,7 +60,7 @@ const cookieFingerprint = () => (ctx: Context, { clientIp }: RateLimitKeyContext
  * The address arrives already resolved through the configured trusted-proxy
  * boundary; this module must never parse forwarding headers itself.
  */
-export const authIdentityRateLimitKey = async (
+const identityRateLimitKey = (fields: readonly string[]) => async (
   ctx: Context,
   keyContext?: RateLimitKeyContext,
 ): Promise<string> => {
@@ -53,7 +71,7 @@ export const authIdentityRateLimitKey = async (
   const ip = keyContext?.clientIp ?? UNRESOLVED_CLIENT_ADDRESS;
   try {
     const body = await ctx.req.json();
-    const identity = body?.identifier ?? body?.email;
+    const identity = readDeclaredIdentity(body, fields);
     const normalizedIdentity = getRequestIdentityResolver(ctx)(identity);
     if (normalizedIdentity) {
       return `${ip}:${hashKeyPart(normalizedIdentity)}`;
@@ -63,6 +81,21 @@ export const authIdentityRateLimitKey = async (
   }
   return ip;
 };
+
+/**
+ * Login's bucket. `loginDto` accepts either field, and the service reads
+ * `identifier` first, so the key follows the same order.
+ */
+export const authIdentityRateLimitKey = identityRateLimitKey(['identifier', 'email']);
+
+/**
+ * Bucket for routes whose DTO declares `email` and nothing else — password
+ * reset requests and public registration. Deliberately does NOT fall back to
+ * `identifier`: that field is discarded by validation, so honouring it would
+ * hand a caller a fresh allowance per invented value while every request still
+ * targeted the one email the handler reads.
+ */
+export const authEmailRateLimitKey = identityRateLimitKey(['email']);
 
 const loginRateLimit = resolveAuthLoginRateLimitConfig();
 
@@ -142,7 +175,7 @@ export class AuthController {
   }
 
   @Post('/forgot-password')
-  @RateLimit({ limit: 3, window: '15m', key: authIdentityRateLimitKey, message: 'Too many password reset requests. Please try again later.' })
+  @RateLimit({ limit: 3, window: '15m', key: authEmailRateLimitKey, message: 'Too many password reset requests. Please try again later.' })
   @Validate(resetPasswordDto)
   @ResMsg('auth.success.passwordResetSent')
   async forgotPassword(@Body() body: ResetPasswordDto) {

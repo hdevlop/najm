@@ -41,6 +41,7 @@ describe('authentication HTTP semantics', () => {
         jti: 'jti-1',
         tokenFamily: 'family-1',
         sessionVersion: 0,
+        tokenFamily: 'family-1',
       },
       config.jwt.accessSecret,
       { expiresIn: '1h' },

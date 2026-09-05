@@ -12,6 +12,7 @@ export async function signedSession(
     roles: [role],
     permissions: [`${role}:read`],
     sessionVersion: 0,
+    tokenFamily: `integration-family-${role}`,
     iat: issuedAt,
   });
   const encoder = new TextEncoder();

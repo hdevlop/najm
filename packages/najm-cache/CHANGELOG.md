@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- feat(cache): add atomic `compareAndDelete(key, expected)` support to the
+  memory and Redis drivers for one-time-token consumption. The Redis driver
+  compares and deletes inside one Lua evaluation; a custom driver that omits
+  the optional primitive fails closed through `CacheService` rather than
+  falling back to a racy `get()` plus `del()` pair.
+- fix(packaging): remove the advertised `./* -> ./src/*.ts` wildcard, whose
+  targets were never included by the package's `files: ["dist"]` contract;
+  all supported cache services, drivers, and types remain exported from the
+  package root.
+
 ## 2.1.2 - 2026-09-04
 
 - fix(cache): attach an error listener to the package-owned ioredis client so

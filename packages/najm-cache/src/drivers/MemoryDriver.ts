@@ -100,6 +100,27 @@ export class MemoryDriver implements Driver {
     return true;
   }
 
+  /**
+   * Compare and delete without an await between the two steps.
+   *
+   * The whole body is synchronous on purpose: an `await` here would let a
+   * second caller observe the same value before the first deleted it, which is
+   * exactly the race this primitive exists to close. Expiry is evaluated at
+   * comparison time so a lapsed entry never counts as a match.
+   */
+  async compareAndDelete(key: string, expected: string): Promise<boolean> {
+    const entry = this.data.get(key);
+    if (!entry) return false;
+
+    if (entry.expiresAt !== null && entry.expiresAt <= Date.now()) {
+      this.data.delete(key);
+      return false;
+    }
+
+    if (entry.value !== expected) return false;
+    return this.data.delete(key);
+  }
+
   async incr(key: string, ttlMs?: number): Promise<{ count: number; resetAt: number }> {
     const now = Date.now();
     const entry = this.data.get(key);

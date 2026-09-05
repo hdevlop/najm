@@ -49,13 +49,19 @@ export class TokenRepository {
           previousHash: tokenData.previousHash ?? null,
           previousValidUntil: tokenData.previousValidUntil ?? null,
           previousUsedAt: tokenData.previousUsedAt ?? null,
-        }
+        },
+        // A revoked family is a durable tombstone. It must never be revived by
+        // an issuance racing with logout, or after the cache markers are lost.
+        setWhere: and(
+          eq(this.tokens.status, 'active'),
+          eq(this.tokens.userId, tokenData.userId),
+        ),
       }).returning();
   }
 
   /**
    * Rotate an existing refresh-token family with compare-and-swap semantics.
-   * This can never insert a family deleted by a concurrent logout.
+   * This can never update a family durably revoked by a concurrent logout.
    */
   async rotateRefreshToken(tokenData: {
     userId: string;
@@ -79,6 +85,7 @@ export class TokenRepository {
         eq(this.tokens.tokenFamily, tokenData.tokenFamily),
         eq(this.tokens.userId, tokenData.userId),
         eq(this.tokens.token, expectedCurrentHash),
+        eq(this.tokens.status, 'active'),
       ))
       .returning();
   }
@@ -100,24 +107,61 @@ export class TokenRepository {
         eq(this.tokens.tokenFamily, tokenFamily),
         eq(this.tokens.previousHash, previousHash),
         isNull(this.tokens.previousUsedAt),
+        eq(this.tokens.status, 'active'),
       ))
       .returning();
   }
 
   /** Look up a single session's token row by its family identifier. */
   async getByFamily(tokenFamily: string) {
-    const [token] = await this.db.select().from(this.tokens).where(eq(this.tokens.tokenFamily, tokenFamily));
+    const [token] = await this.db
+      .select()
+      .from(this.tokens)
+      .where(and(
+        eq(this.tokens.tokenFamily, tokenFamily),
+        eq(this.tokens.status, 'active'),
+      ));
     return token ?? null;
   }
 
-  /** Revoke a single session (one family). */
+  /**
+   * Durably revoke one family without depending on physical deletion.
+   *
+   * The row remains as a tombstone until its original refresh expiry. This is
+   * what prevents a later cache loss from turning a failed/omitted cleanup
+   * delete into a valid database-backed recovery session.
+   */
   async revokeFamily(tokenFamily: string) {
-    return this.db.delete(this.tokens).where(eq(this.tokens.tokenFamily, tokenFamily)).returning();
+    return this.db
+      .update(this.tokens)
+      .set({
+        status: 'revoked',
+        previousHash: null,
+        previousValidUntil: null,
+        previousUsedAt: null,
+      })
+      .where(and(
+        eq(this.tokens.tokenFamily, tokenFamily),
+        eq(this.tokens.status, 'active'),
+      ))
+      .returning();
   }
 
-  /** Revoke every session for a user (password change/reset, logout-all). */
+  /** Durably revoke every active family for a user. */
   async revokeAllForUser(userId: string) {
-    return this.db.delete(this.tokens).where(eq(this.tokens.userId, userId)).returning();
+    return this.db
+      .update(this.tokens)
+      .set({
+        status: 'revoked',
+        previousHash: null,
+        previousValidUntil: null,
+        previousUsedAt: null,
+      })
+      .where(and(
+        eq(this.tokens.userId, userId),
+        eq(this.tokens.status, 'active'),
+      ))
+      .returning();
   }
 
   /**

@@ -105,6 +105,19 @@ export class UserRepository {
     return newUser;
   }
 
+  /**
+   * Ids of everyone holding a role. Used to end sessions when the role's
+   * permission set changes: tokens carry permissions as claims, so the holders
+   * keep exercising the old set until their sessions do.
+   */
+  async getIdsByRole(roleId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: this.users.id })
+      .from(this.users)
+      .where(eq(this.users.roleId, roleId));
+    return rows.map((row) => row.id);
+  }
+
   async update(id: string, data: Partial<NewUser>): Promise<User | undefined> {
     const [updatedUser] = await this.db.update(this.users).set(data).where(eq(this.users.id, id)).returning();
     return updatedUser;

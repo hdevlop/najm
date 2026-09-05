@@ -68,6 +68,7 @@ describe('published surface', () => {
   test('the server entry exposes the composed Next.js auth surface', () => {
     const serverTypes = read('dist/client/server/index.d.ts');
     for (const name of [
+      'AuthProxyOptions',
       'ProxySessionMode',
       'proxySessionMode',
       'routeHandlers',

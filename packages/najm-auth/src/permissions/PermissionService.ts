@@ -2,14 +2,34 @@ import { Injectable } from 'najm-core';
 import { PermissionRepository } from './PermissionRepository';
 import { PermissionValidator } from './PermissionValidator';
 import { RoleService } from '../roles/RoleService';
+import { UserRepository } from '../users/UserRepository';
+import { SessionInvalidationService } from '../tokens/SessionInvalidationService';
 
 @Injectable()
 export class PermissionService {
   constructor(
     private permissionRepository: PermissionRepository,
     private permissionValidator: PermissionValidator,
-    private roleService: RoleService
+    private roleService: RoleService,
+    private userRepository?: UserRepository,
+    private sessionInvalidation?: SessionInvalidationService,
   ) { }
+
+  /**
+   * End the sessions of everyone holding a role whose permission set changed.
+   *
+   * Access tokens and signed session snapshots both carry permissions as
+   * claims, so a permission removed from a role stays exercisable until the
+   * sessions that captured it end. This is an infrequent administrative
+   * action, and the work is proportional to the role's membership.
+   */
+  private async invalidateRoleHolders(roleId: string): Promise<void> {
+    if (!this.userRepository || !this.sessionInvalidation) return;
+    const userIds = await this.userRepository.getIdsByRole(roleId);
+    for (const userId of userIds) {
+      await this.sessionInvalidation.invalidateAccessTokens(userId);
+    }
+  }
 
   async getAll() {
     return await this.permissionRepository.getAll();
@@ -55,11 +75,15 @@ export class PermissionService {
 
   async assignPermissionToRole(roleId: string, permissionId: string) {
     await this.permissionValidator.checkRoleHasPermission(roleId, permissionId);
-    return await this.permissionRepository.assignPermissionToRole(roleId, permissionId);
+    const assigned = await this.permissionRepository.assignPermissionToRole(roleId, permissionId);
+    await this.invalidateRoleHolders(roleId);
+    return assigned;
   }
 
   async removePermissionFromRole(roleId: string, permissionId: string) {
-    return await this.permissionRepository.removePermissionFromRole(roleId, permissionId);
+    const removed = await this.permissionRepository.removePermissionFromRole(roleId, permissionId);
+    await this.invalidateRoleHolders(roleId);
+    return removed;
   }
 
   async seedDefaultPermissions(defaultPermissions) {

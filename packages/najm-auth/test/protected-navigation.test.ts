@@ -25,6 +25,7 @@ function claims(role: string, iat = Date.now()): SessionCookieClaims {
     roles: [role],
     permissions: [],
     sessionVersion: 0,
+    tokenFamily: `family-${role}`,
     iat,
   };
 }
@@ -236,6 +237,60 @@ describe('protected browser navigation', () => {
     expectAllowed(await standardMiddleware()(request('/login', 'najm.session=tampered')));
     expectAllowed(await standardMiddleware()(request('/about')));
   });
+
+  test('request header overrides reach public and authenticated renders', async () => {
+    const middleware = standardMiddleware();
+    const session = await signSession(claims('admin'));
+
+    for (const input of [
+      request('/about'),
+      request('/operator', cookieHeader(session)),
+    ]) {
+      const response = await middleware(input, {
+        requestHeaders: {
+          'content-security-policy': "script-src 'self' 'nonce-request-value'",
+          'x-nonce': 'request-value',
+        },
+      });
+
+      expectAllowed(response);
+      expect(response.headers.get('x-middleware-request-x-nonce')).toBe('request-value');
+      expect(response.headers.get('x-middleware-request-content-security-policy')).toBe(
+        "script-src 'self' 'nonce-request-value'",
+      );
+      expect(response.headers.get('x-middleware-request-cookie')).toBe(
+        input.headers.get('cookie'),
+      );
+    }
+  });
+
+  test('request header overrides survive authoritative session recovery', async () => {
+    mockRecovery('admin');
+    const response = await standardMiddleware()(request(
+      '/operator',
+      'refreshToken=valid-refresh-token',
+    ), {
+      requestHeaders: { 'x-nonce': 'recovery-nonce' },
+    });
+
+    expectAllowed(response);
+    expect(response.headers.get('x-middleware-request-x-nonce')).toBe('recovery-nonce');
+    expect(response.headers.get('x-middleware-request-cookie')).toContain(`${SESSION_COOKIE}=`);
+    expect(response.headers.get('set-cookie')).toContain(`${SESSION_COOKIE}=`);
+  });
+
+  test.each(['authorization', 'cookie'])(
+    'request header overrides cannot replace the authorized %s identity',
+    async (header) => {
+      const session = await signSession(claims('admin'));
+      await expect(standardMiddleware()(request(
+        '/operator',
+        cookieHeader(session),
+      ), {
+        requestHeaders: { [header]: 'attacker-controlled-identity' },
+      })).rejects.toThrow(`cannot override ${header}`);
+    },
+  );
 
   test('shared verifier accepts encoded cookies and rejects malformed claims', async () => {
     const session = await signSession(claims('operator'));

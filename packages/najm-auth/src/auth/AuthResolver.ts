@@ -63,6 +63,27 @@ export class AuthResolver {
       const currentVersion = await tokenService.getSessionVersion(session.user.id);
       if ((session.sessionVersion ?? 0) !== currentVersion) return false;
 
+      // The version alone is not enough: logging one device out deliberately
+      // leaves the per-user version untouched, so a saved snapshot from that
+      // device would still match it. Require the snapshot's own session to be
+      // positively live.
+      //
+      // "Not live" covers both revoked and simply-not-in-cache, which is what
+      // makes losing the cache safe here: an unproven family declines the fast
+      // path and the request falls through to the database-backed resolver
+      // below, rather than being waved through.
+      // Passing the user id makes the same lookup answer both questions: is
+      // this session live, and is it this user's session.
+      if (!await tokenService.isSessionFamilyLive(session.tokenFamily, session.user.id)) {
+        return false;
+      }
+
+      // Belt and braces for the snapshot's own account state; a deactivation
+      // bumps the version above, so this only catches a snapshot that was
+      // already wrong when written.
+      const status = (session.user as { status?: unknown }).status;
+      if (status !== undefined && status !== 'active') return false;
+
       // Mirror the DB-backed paths: USER carries role/permissions so the
       // AuthUser contract holds regardless of which path resolved.
       return {

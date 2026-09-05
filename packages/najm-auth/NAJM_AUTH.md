@@ -264,11 +264,19 @@ Rate limit: 30 / 1m by cookie fingerprint.
 
 1. Resolve the session family — from the verified Bearer access token's `tokenFamily` claim first, falling back to a verified refresh cookie that still matches its family row.
 2. Blacklist the current access token by `jti` for its remaining TTL (`auth:blacklist:<jti>`).
-3. **Mark the family revoked** → `cache.set('auth:revoked-family:<tokenFamily>', '1', accessTokenTtl)`. Every access token minted for *this* family (not just the presented one) now fails `verifyAccessToken`; other sessions are untouched.
-4. Delete that family's refresh row in DB.
+3. **Mark the family revoked** before clearing its positive liveness marker. The
+   marker lasts for the greater of the access and refresh lifetimes, so a
+   failed database write cannot become valid merely because the access-token
+   window elapsed.
+4. Update the family's refresh row to `status = revoked` and clear its grace
+   fields. The durable tombstone remains until its original expiry, preventing
+   later cache loss from reviving the session.
 5. Clear `refreshToken` + `najm.session` cookies.
 
-If no family can be resolved (legacy token, neither cookie nor Bearer present), logout falls back to a full revoke-all for the user (bump `auth:session-version:<userId>` + delete every refresh row). To terminate **all** sessions deliberately, use a password change/reset.
+If no family can be resolved (legacy token, neither cookie nor Bearer present),
+logout falls back to a full revoke-all for the user (bump
+`auth:session-version:<userId>` plus durably revoke every active refresh row).
+To terminate **all** sessions deliberately, use a password change/reset.
 
 ### Password Change / Reset
 
@@ -277,7 +285,7 @@ Both `changePassword()` and `resetPassword()` end with the same revocation cockt
 ```typescript
 await userService.update(userId, { password: newPassword });
 await tokenService.invalidateUserAccessTokens(userId);   // bump session version (all sessions)
-await tokenService.revokeAllForUser(userId);             // delete every refresh row for the user
+await tokenService.revokeAllForUser(userId);             // durably revoke every refresh family
 cookieManager.clearRefreshToken();
 cookieManager.clearSessionCookie();
 ```
@@ -502,6 +510,7 @@ export const schema = {
 | `previousHash` | SHA-256 of last token (grace window) |
 | `previousValidUntil` | timestamp — 120s after rotation |
 | `previousUsedAt` | timestamp — set when grace-window token is used (replay detection) |
+| `status` | `active`, `revoked`, or `expired`; revoked rows are durable tombstones until cleanup |
 
 ### Migration: single-session → multi-session
 
@@ -511,8 +520,8 @@ the unique key (one row per login) and embeds `tokenFamily` in every JWT.
 
 Because old refresh JWTs have no `tokenFamily`, they cannot be mapped to a family
 row — so the migration **clears existing token rows and users must log in again**.
-Access tokens issued before the deploy stay valid until they expire (default 1h);
-shorten `accessExpiresIn` ahead of the migration if that window matters.
+Family-less access tokens cannot satisfy the current positive-liveness check and
+are refused. Clients must establish a family-aware session again.
 
 Generate the canonical migration with `drizzle-kit generate` against the updated
 schema. Reference SQL for hand-rolled migrations:
@@ -904,8 +913,8 @@ custom auth schema may omit the table only while OAuth remains disabled.
 - **Don't duplicate auth tables** — always spread `...authSchema` into your combined schema.
 - **Run seeds under `server.runAs(actor, …)`** — ALS `USER` needs populating for ownership-aware inserts.
 - **Refresh endpoint is the only place that rotates** — `AuthResolver.resolveFromCookie()` is read-only to avoid races with concurrent requests.
-- **Resolver order is Bearer token → refresh cookie when an Authorization header is present; session cookie → refresh cookie otherwise** — a presented Bearer token always goes through full verification (blacklist + session version) and cannot be shadowed by a stale session cookie. Cookie-only requests get the zero-I/O session-cookie hot path. An invalid/expired/blacklisted Bearer token may still fall back to a valid refresh cookie because the refresh row is the durable session source of truth and logout/password flows revoke that row whenever access tokens are invalidated.
-- **Session cookie TTL should stay short** (5 min default) — it caches roles/permissions without checking DB or revocation cache; long TTL increases stale authz and copied-cookie revocation lag.
+- **Resolver order is Bearer token → refresh cookie when an Authorization header is present; session cookie → refresh cookie otherwise** — a presented Bearer token always goes through full verification (blacklist + session version + positive family liveness) and cannot be shadowed by a stale session cookie. Cookie-only requests verify the signed snapshot, current session version, and owning family's liveness before taking the fast path. An invalid bearer or unproven snapshot may still fall back to a valid refresh cookie because the active database row is the durable session source of truth.
+- **Session cookie TTL should stay short** (5 min default) — it caches roles and permissions, while cache-backed version and family checks make logout and security-state changes immediate. A cache miss declines the fast path and recovers through the active refresh row; it never authorizes by absence.
 - Keep `refreshCookiePath: '/'` when using automatic Next.js middleware
   recovery. Browser cookie-path rules otherwise hide the refresh cookie from
   protected page requests.
@@ -917,12 +926,12 @@ custom auth schema may omit the table only while OAuth remains disabled.
   at a private-LAN or public hostname.
 - `verifyAlways` is not a compatibility no-op: enable it only when every
   protected navigation should pay for authoritative refresh-family/user checks.
-- **Sessions are multi-device** — `tokens.tokenFamily` is unique (one row per login session) and refresh writes upsert by family. A second login creates a new family without disturbing the first; refresh rotation, logout, and stale-token-reuse revocation are all scoped to a single family. Password change/reset revoke *all* of a user's sessions.
-- **Prune abandoned sessions** — with one row per login, sessions a user never returns to would linger until expiry. Login prunes expired rows opportunistically; for users who never come back, call `authService.pruneExpiredSessions()` from a scheduled job (cron/queue) to reclaim them.
-- **Bumping session version** (`invalidateUserAccessTokens`) is the nuclear option — kills all active sessions for a user in one cache write. Use on password change / reset / account takeover.
-- **Use Redis for production revocation** — memory cache revocation state is process-local and disappears on restart.
+- **Sessions are multi-device** — `tokens.tokenFamily` is unique (one row per login session) and refresh writes update only an active family owned by the same user. A second login creates a new family without disturbing the first; refresh rotation, logout, and stale-token-reuse revocation are scoped to one family. Password change/reset durably revoke *all* families.
+- **Prune expired sessions and tombstones** — with one row per login, abandoned active rows and revoked tombstones remain until their original expiry. Login prunes them opportunistically; for users who never return, call `authService.pruneExpiredSessions()` from a scheduled job (cron/queue).
+- **Bumping session version** (`invalidateUserAccessTokens`) immediately denies existing access tokens and signed snapshots. Full security-state invalidation also revokes refresh families; use that complete contract for password changes, reset, deactivation, deletion, and role changes.
+- **Use required Redis for production revocation and liveness** — memory state is process-local and disappears on restart. Losing the auth keyspace denies bearer tokens and makes live browser sessions recover through PostgreSQL refresh rows; it never revives a revoked family.
 - **Grace window on refresh** (120s) is deliberate — shorter breaks concurrent requests, longer widens replay window.
-- **Rate-limit keys matter**: login/register hash the normalized email or international-phone identifier before it becomes part of the key; `cookieFingerprint` for refresh/me gives per-session fairness. Trust forwarded IP headers only behind a known proxy or provide custom rate-limit config.
+- **Rate-limit keys matter**: login hashes the normalized accepted identifier; registration and forgot-password hash only their normalized email. Ignored body fields cannot choose another bucket. `cookieFingerprint` for refresh/me gives per-session fairness. Trust forwarded IP headers only behind a known proxy or provide custom rate-limit config.
 
 ## Key Files
 

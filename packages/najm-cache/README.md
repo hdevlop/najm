@@ -48,7 +48,7 @@ class MyService {
   }
 
   async invalidateUser(id: string) {
-    await this.cache.delete(`user:${id}`);
+    await this.cache.del(`user:${id}`);
   }
 }
 ```
@@ -59,7 +59,8 @@ class MyService {
 |--------|-------------|
 | `get(key)` | Get a value |
 | `set(key, value, ttlMs?)` | Set a value with optional TTL |
-| `delete(key)` | Delete a key |
+| `del(key)` | Delete a key |
+| `compareAndDelete(key, expected)` | Atomically delete only when the stored value still matches |
 | `getJson<T>(key)` | Get and parse JSON |
 | `setJson(key, value, ttlMs?)` | Set JSON value |
 | `getOrSet(key, factory, ttlMs?)` | Cache-aside pattern |
@@ -69,4 +70,5 @@ class MyService {
 
 - Use Redis for multi-instance deployments; memory driver is single-instance only
 - Token blacklist in `najm-auth` uses the cache plugin — configure Redis for distributed session revocation
+- One-time-token consumers should use `compareAndDelete`; a separate `get()` then `del()` is not atomic. Custom drivers may omit the optional primitive, but `CacheService.compareAndDelete()` then fails closed instead of emulating it
 - `reflect-metadata` optional peer dependency; only needed if using DI decorators

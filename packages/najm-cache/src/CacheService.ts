@@ -208,6 +208,26 @@ export class CacheService implements Driver {
   }
 
   /**
+   * Atomically consume a key: delete it only if it still holds `expected`,
+   * and report whether *this* caller is the one that removed it.
+   *
+   * Use this for one-time tokens (password reset, invite) where a `get()` then
+   * `del()` pair would let two concurrent callers both act on the same value.
+   *
+   * Fails closed: a driver that does not implement the primitive raises rather
+   * than degrading to a non-atomic emulation, because the emulation is the bug
+   * this method exists to prevent.
+   */
+  async compareAndDelete(key: string, expected: string): Promise<boolean> {
+    if (!this.driver.compareAndDelete) {
+      throw new CacheConfigError(
+        `the ${this._type} driver does not implement atomic compare-and-delete; refusing a non-atomic fallback`,
+      );
+    }
+    return this.driver.compareAndDelete(key, expected);
+  }
+
+  /**
    * Increment a counter atomically
    * @param key - Cache key
    * @param ttlMs - TTL for new keys

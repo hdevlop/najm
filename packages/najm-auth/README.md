@@ -849,6 +849,31 @@ Next.js 16 requires the exported Proxy `config` to be a statically analyzable
 object literal. Turbopack rejects `export const config = auth.config`, so the
 matcher is the one integration value that cannot be composed at runtime.
 
+When a Proxy generates request-scoped headers for the downstream render, pass
+only the overrides as the optional second argument. Najm merges them over the
+incoming request and preserves them when session recovery replaces the cookie.
+The application still owns any matching response header:
+
+```typescript
+export default async function proxy(request: Request) {
+  const nonce = btoa(globalThis.crypto.randomUUID());
+  const policy = `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`;
+  const response = await auth.proxy(request, {
+    requestHeaders: {
+      'content-security-policy': policy,
+      'x-nonce': nonce,
+    },
+  });
+  response.headers.set('Content-Security-Policy', policy);
+  return response;
+}
+```
+
+Authentication reads the original request. `requestHeaders` controls only what
+the successful Next.js render receives. Attempts to override `cookie` or
+`authorization` fail closed; only Najm's validated recovery path may replace
+the cookie after it authorizes the recovered session.
+
 ```typescript
 // src/app/api/[...route]/route.ts
 import { handle } from 'najm-core';
@@ -1052,8 +1077,9 @@ throw new HttpError(403, 'Insufficient permissions for this action');
 - Login uses a dummy password hash for missing users to reduce timing leaks.
 - Forgot-password responses avoid email enumeration.
 - Auth routes register `najm-rate` and ship route-level brute-force limits.
-- Session cookies are signed and short-lived; server auth resolution checks
-  their session version.
+- Session cookies are signed, short-lived, and bound to their refresh-token
+  family; server auth resolution checks both the session version and positive
+  family liveness.
 - Expired signed sessions recover through authoritative, non-rotating refresh
   validation; middleware verifies the reissued HMAC before using its claims.
 - Server-side recovery sends only the configured refresh cookie and accepts
@@ -1092,17 +1118,20 @@ errors cannot change the authentication result.
 
 ### Password Reset Tokens
 
-⚠️ **Current behavior:** Reset tokens use JWT expiry (default 1h) for single-use validation. To add database-backed single-use tokens:
+Reset and invite links are signed JWTs whose `jti` is stored in the configured
+cache with the same expiry. `verifyResetToken()` atomically compares and
+deletes that value, so exactly one concurrent caller can consume a link and a
+stale link cannot delete the value for a newer one.
 
-```typescript
-// In AuthService.resetPassword():
-async resetPassword(token: string, newPassword: string) {
-  const userId = this.tokenService.verifyResetToken(token);
-  // ... update password ...
-  // Blacklist the reset token to prevent reuse
-  await this.tokenService.blacklistCurrentToken(token);
-}
-```
+`AuthService.resetPassword()` validates the replacement password before
+consumption. Once consumed, a token stays consumed even if the later user
+mutation fails; restoring it would make the link replayable, so the user must
+request a new one.
+
+The built-in memory and Redis drivers implement the required atomic primitive.
+A custom cache driver may omit `compareAndDelete()` for compatibility with
+unrelated cache usage, but reset and invite consumption then fails closed. Do
+not emulate this operation with separate `get()` and `del()` calls.
 
 ### Purpose-Bound Credential Setup
 
@@ -1152,8 +1181,9 @@ consuming it; `cancel()` revokes it and clears the cookie.
 ### Session Management
 
 - Sessions are multi-device: the token table stores one refresh row per login session (keyed by a unique `tokenFamily`), so a user can stay logged in on several devices at once. Logout and rotation are scoped to the current session; password change/reset revoke every session
+- Revocation changes the refresh row to a durable `revoked` tombstone until its original expiry. Active-session reads and rotations require `status = active`, so losing Redis cannot revive a logged-out database session; expired tombstones are removed by normal session cleanup
 - A stale refresh token presented after the 120-second rotation grace window revokes only that session's family as reuse protection
-- The signed session cookie is accepted for up to its configured TTL (5 minutes by default) without a database or revocation-cache read
+- The signed session cookie is accepted on the fast path only while Redis positively identifies its family as live and owned by the same user; an unknown cache state falls back to authoritative refresh-row recovery
 - Use `@RateLimit` on logout for DDoS protection
 
 ### Token Blacklist
@@ -1177,7 +1207,23 @@ consuming it; `cancel()` revokes it and clears the cookie.
 ```bash
 bun run test      # Run all tests
 bun run test:auth # Run auth tests only
+bun run --cwd packages/najm-auth test:real-infra # Opt-in PostgreSQL + Redis races
+bun packages/najm-auth/integration/mailpit-forgot-password/run.ts # Loopback Redis + Mailpit HTTP acceptance
 ```
+
+The real-infrastructure suite runs only with `NAJM_AUTH_REAL_INFRA=1`. Supply
+loopback-only `NAJM_AUTH_REAL_POSTGRES_URL` and `NAJM_AUTH_REAL_REDIS_URL` (or
+the conventional `DATABASE_URL` and `REDIS_URL`). It creates and drops its own
+randomly named PostgreSQL database and cleans only its unique Redis key prefix;
+remote endpoints fail before either service is touched.
+
+The Mailpit acceptance runner requires Redis on `127.0.0.1:6399`, Mailpit SMTP
+on `127.0.0.1:1025`, and the Mailpit API on `127.0.0.1:8025` by default. It
+boots the real auth plugin over HTTP with an ephemeral SQLite fixture, proves
+ignored fields and spoofed forwarding headers cannot buy more reset emails,
+and removes only its run-specific messages and Redis keys. The three endpoints
+can be changed with the `NAJM_AUTH_MAILPIT_*` variables, but non-loopback
+values fail before the fixture is created.
 
 Test files include:
 - `schema.test.ts` — Schema exports validation

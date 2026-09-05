@@ -14,6 +14,7 @@ import { Err } from 'najm-core';
 import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig } from '../types';
 import type { User } from '../schema/pg';
+import { SessionInvalidationService } from '../tokens/SessionInvalidationService';
 
 const E164_PHONE = /^\+[1-9]\d{7,14}$/;
 
@@ -34,7 +35,25 @@ export class UserService {
     private encryptionService: EncryptionService,
     private i18nService: I18nService,
     @Inject(AUTH_CONFIG) private authConfig: AuthConfig,
+    // Optional so a direct construction without the auth plugin still works;
+    // when it is absent the caller owns invalidation, which is why every
+    // in-package security path resolves this service rather than relying on it
+    // being wired by accident.
+    private sessionInvalidation?: SessionInvalidationService,
   ) { }
+
+  /**
+   * End the user's sessions after a security-relevant mutation has committed.
+   *
+   * Deactivating, deleting, or re-roling an account through the generic
+   * endpoints used to leave every already-issued token working until it
+   * expired. Invalidation belongs here, next to the write, so no caller can
+   * forget it — the application-level commands that already revoke keep doing
+   * so, and a second call is harmless.
+   */
+  private async invalidateSessions(userId: string): Promise<void> {
+    await this.sessionInvalidation?.invalidateUser(userId);
+  }
 
   private sanitizeUser(user: any): SanitizedUser | undefined {
     if (!user) return user;
@@ -200,17 +219,29 @@ export class UserService {
 
     const cleanedUpdateData = clean(updateData);
     const updatedUser = await this.userRepository.update(id, cleanedUpdateData);
-    return this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
+    const result = this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
+
+    // Only security state ends sessions. A renamed or re-avatared user stays
+    // signed in on every device.
+    if (SessionInvalidationService.affectsSecurityState(cleanedUpdateData)) {
+      await this.invalidateSessions(id);
+    }
+
+    return result;
   }
 
   async delete(id: string): Promise<SanitizedUser> {
     const user = await this.userRepository.delete(id);
-    return this.sanitizeUser(this.requireUser(user)) as SanitizedUser;
+    const result = this.sanitizeUser(this.requireUser(user)) as SanitizedUser;
+    await this.invalidateSessions(id);
+    return result;
   }
 
   async deleteAll(): Promise<SanitizedUser[]> {
     const deletedUsers = await this.userRepository.deleteAll();
-    return this.sanitizeUsers(deletedUsers);
+    const result = this.sanitizeUsers(deletedUsers);
+    await Promise.all(result.map((user) => this.invalidateSessions(user.id)));
+    return result;
   }
 
   async getRoleName(id: string): Promise<string | null> {
@@ -238,12 +269,18 @@ export class UserService {
   async assignRole(id: string, roleId?: string, roleName?: string): Promise<SanitizedUser> {
     const resolvedRoleId = await this.resolveUserRole(roleId, roleName);
     const updatedUser = await this.userRepository.update(id, { roleId: resolvedRoleId });
-    return this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
+    const result = this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
+    // Tokens carry roles and permissions as claims, so a re-roled user keeps
+    // exercising the old ones until the sessions holding them end.
+    await this.invalidateSessions(id);
+    return result;
   }
 
   async removeRole(id: string): Promise<SanitizedUser> {
     const updatedUser = await this.userRepository.update(id, { roleId: null });
-    return this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
+    const result = this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
+    await this.invalidateSessions(id);
+    return result;
   }
 
   async seedAdminUser(config?: { email?: string; password?: string; name?: string }): Promise<SanitizedUser> {

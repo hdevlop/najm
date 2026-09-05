@@ -435,6 +435,7 @@ export class AuthService {
         roles: generated.roles,
         permissions: generated.permissions,
         sessionVersion: generated.sessionVersion,
+        tokenFamily: generated.tokenFamily,
       });
     }
 
@@ -460,6 +461,7 @@ export class AuthService {
       roles: recovered.roles,
       permissions: recovered.permissions,
       sessionVersion: recovered.sessionVersion,
+      tokenFamily: recovered.tokenFamily,
     });
     return { recovered: true };
   }
@@ -516,7 +518,12 @@ export class AuthService {
    */
   async getMe(authorization?: string): Promise<SanitizedUser & { language: string }> {
     let result: SanitizedUser & { language: string };
-    let cachePayload: { roles: string[]; permissions: string[]; sessionVersion: number } | null = null;
+    let cachePayload: {
+      roles: string[];
+      permissions: string[];
+      sessionVersion: number;
+      tokenFamily: string;
+    } | null = null;
 
     if (authorization) {
       const user = await this.tokenService.getUser(authorization);
@@ -524,7 +531,17 @@ export class AuthService {
         const lang = this.i18nService.getCurrentLanguage();
         result = { ...user, language: lang };
         const token = this.tokenService.decodeAccessToken(authorization.replace(/^Bearer\s+/i, ''));
-        cachePayload = { roles: token?.roles ?? [], permissions: token?.permissions ?? [], sessionVersion: token?.sessionVersion ?? 0 };
+        cachePayload = token?.tokenFamily
+          ? {
+            roles: token.roles ?? [],
+            permissions: token.permissions ?? [],
+            sessionVersion: token.sessionVersion ?? 0,
+            tokenFamily: token.tokenFamily,
+          }
+          // A token with no family cannot produce a revocable snapshot, so
+          // /me answers without refreshing the cookie rather than writing one
+          // that revocation could not reach.
+          : null;
       } else {
         result = await this.getUserFromCookie();
       }
@@ -539,6 +556,7 @@ export class AuthService {
         roles: cachePayload.roles,
         permissions: cachePayload.permissions,
         sessionVersion: cachePayload.sessionVersion,
+        tokenFamily: cachePayload.tokenFamily,
       });
     }
 
@@ -594,8 +612,14 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const userId = await this.tokenService.verifyResetToken(token);
+    // Order matters: consuming the token is irreversible, so everything that
+    // can legitimately reject the request runs first. A weak replacement
+    // password must not burn a link the user would otherwise still be able to
+    // use. Only the caller that wins the atomic consumption proceeds to the
+    // mutation — and once consumed, the token stays consumed even if the
+    // mutation below fails; that user requests a new link.
     this.userValidator.validatePasswordStrength(newPassword);
+    const userId = await this.tokenService.verifyResetToken(token);
     await this.userService.update(userId, { password: newPassword });
     await this.tokenService.invalidateUserAccessTokens(userId);
     await this.tokenService.revokeAllForUser(userId);

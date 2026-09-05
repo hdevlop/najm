@@ -18,6 +18,20 @@ import {
 
 export type ProxySessionMode = 'optimistic' | 'authoritative';
 
+/**
+ * Per-request headers an application proxy needs to expose to the downstream
+ * Next.js render. This is primarily useful for request-scoped values such as a
+ * Content Security Policy nonce.
+ *
+ * Values are merged over the incoming request headers. Authentication always
+ * evaluates the original request, so these overrides cannot change which
+ * principal or cookie Najm authorizes. `authorization` and `cookie` are
+ * rejected here; only Najm's validated recovery path may replace the cookie.
+ */
+export interface AuthProxyOptions {
+  requestHeaders?: HeadersInit;
+}
+
 export interface AuthMiddlewareConfig {
   /** Routes that require authentication (glob patterns) */
   protectedRoutes?: string[];
@@ -112,9 +126,30 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
     : proxySessionMode === 'authoritative';
   const resolvedInternalRecoveryURL = resolveInternalRecoveryURL(internalRecoveryURL);
 
-  return async function middleware(request: Request) {
+  return async function middleware(
+    request: Request,
+    options: AuthProxyOptions = {},
+  ) {
     // Dynamic import for edge compatibility
     const { NextResponse } = await import('next/server');
+
+    const downstreamHeaders = new Headers(request.headers);
+    if (options.requestHeaders) {
+      const overrides = new Headers(options.requestHeaders);
+      for (const identityHeader of ['authorization', 'cookie']) {
+        if (overrides.has(identityHeader)) {
+          throw new TypeError(
+            `Auth proxy requestHeaders cannot override ${identityHeader}`,
+          );
+        }
+      }
+      overrides.forEach((value, key) => {
+        downstreamHeaders.set(key, value);
+      });
+    }
+    const continueRequest = () => NextResponse.next({
+      request: { headers: downstreamHeaders },
+    });
 
     const redirectToLogin = (
       returnPath: string,
@@ -138,12 +173,12 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
 
     // Skip public routes
     if (matchesAny(pathname, publicRoutes)) {
-      return NextResponse.next();
+      return continueRequest();
     }
 
     // Check if route is protected
     const isProtected = protectedRoutes.length === 0 || matchesAny(pathname, protectedRoutes);
-    if (!isProtected) return NextResponse.next();
+    if (!isProtected) return continueRequest();
 
     const cookie = request.headers.get('cookie') ?? '';
     const sessionCookie = readCookieValue(cookie, sessionCookieName);
@@ -205,17 +240,16 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
     if (recovery?.status === 'recovered') {
       // Make the recovered session visible to Server Components in this same
       // request, and persist it in the browser for subsequent navigation.
-      const requestHeaders = new Headers(request.headers);
-      requestHeaders.set(
+      downstreamHeaders.set(
         'cookie',
         replaceCookieValue(cookie, sessionCookieName, recovery.sessionCookieValue),
       );
-      const response = NextResponse.next({ request: { headers: requestHeaders } });
+      const response = continueRequest();
       response.headers.append('Set-Cookie', recovery.setCookie);
       return response;
     }
 
-    return NextResponse.next();
+    return continueRequest();
   };
 }
 

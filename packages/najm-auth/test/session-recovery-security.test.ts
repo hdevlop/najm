@@ -315,6 +315,7 @@ describe('server-side session recovery endpoint security', () => {
       roles: 'admin',
       permissions: [],
       sessionVersion: 0,
+      tokenFamily: 'family-admin',
       iat: Date.now(),
     };
     globalThis.fetch = (async () => {
@@ -387,6 +388,7 @@ async function signedSession(): Promise<string> {
     roles: ['admin'],
     permissions: ['admin:read'],
     sessionVersion: 0,
+    tokenFamily: 'family-admin',
     iat: Date.now(),
   });
   return signedValue(payload);

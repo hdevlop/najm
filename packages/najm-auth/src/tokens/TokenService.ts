@@ -6,6 +6,7 @@ import { createHash } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
 import { TokenRepository } from './TokenRepository';
+import { SessionInvalidationService } from './SessionInvalidationService';
 import timestring from 'timestring';
 import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig, JwtPayload } from '../types';
@@ -26,7 +27,20 @@ export class TokenService {
     // The repository, not the service: CredentialSetupRequirementService
     // depends on TokenService, and this side of the pair only needs a read.
     private credentialSetupRequirements?: CredentialSetupRequirementRepository,
+    // Optional so existing direct constructions keep compiling; the fallback
+    // below builds the same service over the same cache and repository, so
+    // there is exactly one implementation of invalidation either way.
+    private sessions?: SessionInvalidationService,
   ) { }
+
+  /** The shared invalidation contract — see SessionInvalidationService. */
+  private get invalidation(): SessionInvalidationService {
+    if (!this.sessions) {
+      this.sessions = new SessionInvalidationService(this.cache, this.tokenRepository);
+      (this.sessions as unknown as { config: AuthConfig }).config = this.config;
+    }
+    return this.sessions;
+  }
 
   /**
    * Get blacklist key prefix
@@ -39,16 +53,8 @@ export class TokenService {
     return 'auth:reset:';
   }
 
-  private get sessionVersionPrefix(): string {
-    return 'auth:session-version:';
-  }
-
   private sessionVersionKey(userId: string): string {
-    return `${this.sessionVersionPrefix}${userId}`;
-  }
-
-  private accessTokenTtlMs(): number {
-    return timestring(this.config.jwt.accessExpiresIn, 'ms');
+    return this.invalidation.sessionVersionKey(userId);
   }
 
   private expiresAt(expiresIn: string): number {
@@ -62,9 +68,7 @@ export class TokenService {
   }
 
   private parseSessionVersion(raw: string | null): number {
-    if (!raw) return 0;
-    const parsed = Number(raw);
-    return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+    return this.invalidation.parseSessionVersion(raw);
   }
 
   // ============ TOKEN VALIDATION ============
@@ -89,16 +93,25 @@ export class TokenService {
       Err(this.t('errors.tokenVerificationFailed'), 401);
     }
 
+    // A bearer token has to be *positively* vouched for, not merely
+    // unaccused. Every other signal here is an absence — no blacklist entry,
+    // no revocation marker, and a session version that defaults to zero — so
+    // an empty cache made a revoked token verify again. The family's liveness
+    // marker is the one signal whose absence is itself a refusal, which is
+    // what makes losing the cache fail closed: the token is denied and the
+    // client re-establishes through the database-backed refresh session.
     const sessionKey = this.sessionVersionKey(payload.userId);
     const blacklistKey = payload.jti ? `${this.blacklistPrefix}${payload.jti}` : null;
-    const familyKey = payload.tokenFamily ? this.revokedFamilyKey(payload.tokenFamily) : null;
+    const revokedKey = payload.tokenFamily ? this.revokedFamilyKey(payload.tokenFamily) : null;
+    const liveKey = payload.tokenFamily ? this.invalidation.familyKey(payload.tokenFamily) : null;
 
-    // Single batched cache read: blacklist (if jti), session version, and
-    // family-revocation marker (if the token carries a family).
+    // Single batched cache read: blacklist (if jti), session version, and the
+    // family's revocation and liveness markers (if the token carries a family).
     const keys = [
       ...(blacklistKey ? [blacklistKey] : []),
       sessionKey,
-      ...(familyKey ? [familyKey] : []),
+      ...(revokedKey ? [revokedKey] : []),
+      ...(liveKey ? [liveKey] : []),
     ];
     const values = await this.getCacheValues(keys);
     const valueByKey = new Map(keys.map((key, i) => [key, values[i]]));
@@ -106,7 +119,14 @@ export class TokenService {
     if (blacklistKey && valueByKey.get(blacklistKey) != null) {
       Err(this.t('errors.tokenRevoked'), 401);
     }
-    if (familyKey && valueByKey.get(familyKey) != null) {
+    if (revokedKey && valueByKey.get(revokedKey) != null) {
+      Err(this.t('errors.tokenRevoked'), 401);
+    }
+
+    // No family, or a family the cache cannot vouch for, or one belonging to
+    // somebody else: all refused. A token minted without a family can never
+    // satisfy this — see generateAccessToken.
+    if (!liveKey || valueByKey.get(liveKey) !== payload.userId) {
       Err(this.t('errors.tokenRevoked'), 401);
     }
 
@@ -150,6 +170,14 @@ export class TokenService {
     Err(this.t(messageKey), 401);
   }
 
+  private async assertRefreshFamilyAllowed(tokenFamily: string, userId: string): Promise<void> {
+    // Cache loss may recover through a valid database row. A known revocation
+    // must never do so: logout can record it before its database delete fails.
+    if (await this.invalidation.familyStatus(tokenFamily, userId) === 'revoked') {
+      this.rejectRefreshSession();
+    }
+  }
+
   private readRefreshSessionCookie(): {
     refreshToken: string;
     userId: string;
@@ -189,6 +217,7 @@ export class TokenService {
     const { refreshToken, userId, tokenFamily } = this.readRefreshSessionCookie();
 
     const stored = await this.tokenRepository.getByFamily(tokenFamily);
+    await this.assertRefreshFamilyAllowed(tokenFamily, userId);
     if (!stored || stored.userId !== userId) {
       this.rejectRefreshSession();
     }
@@ -234,6 +263,7 @@ export class TokenService {
       roles: user.role ? [user.role] : [],
       permissions: Array.isArray(user.permissions) ? user.permissions : [],
       sessionVersion,
+      tokenFamily,
     };
   }
 
@@ -245,7 +275,29 @@ export class TokenService {
     const token = this.extractAccessToken(auth);
     const { userId } = await this.verifyAccessToken(token);
 
-    return this.getUserById(userId);
+    return this.requireActiveUser(await this.getUserById(userId));
+  }
+
+  /**
+   * A user record is only an authorization if the account is still usable.
+   *
+   * A valid signature and an unrevoked version say the *token* is intact; they
+   * say nothing about whether the account behind it was since deactivated or
+   * deleted. Session invalidation is what normally ends such a token, but this
+   * check is what makes a truthy cached record insufficient on its own — so a
+   * missed invalidation, or a record filled into cache moments before the
+   * change, still cannot authorize a request.
+   */
+  private requireActiveUser<T extends { status?: unknown } | null | undefined>(user: T): T {
+    if (!user) {
+      Err(this.t('errors.tokenVerificationFailed'), 401);
+    }
+    // `undefined` means the projection does not carry status; only an
+    // explicitly non-active status is a rejection.
+    if (user.status !== undefined && user.status !== 'active') {
+      Err(this.t('errors.accountInactive'), 403);
+    }
+    return user;
   }
 
   async getUserById(userId: string) {
@@ -285,7 +337,9 @@ export class TokenService {
     const sessionVersion = await this.getUserSessionVersion(data.userId);
     const expiresAt = this.expiresAt(this.config.jwt.accessExpiresIn);
     if (sessionVersion > 0) {
-      await this.cache.set(this.sessionVersionKey(data.userId), String(sessionVersion), this.accessTokenTtlMs());
+      // Extend the marker's life, never rewrite its value: an invalidation
+      // landing between the read above and this line must not be undone by it.
+      await this.invalidation.touchSessionVersion(data.userId);
     }
     const token = jwt.sign(
       { ...data, jti, sessionVersion, exp: expiresAt },
@@ -304,8 +358,24 @@ export class TokenService {
   }
 
   /**
+   * Whether one session family is positively known to be live.
+   *
+   * `false` means "not proven live" — logged out, or simply not in cache — and
+   * is a reason to fall back to an authoritative check, never on its own a
+   * reason to treat a session as valid.
+   */
+  async isSessionFamilyLive(tokenFamily: string | undefined, userId?: string): Promise<boolean> {
+    return (await this.invalidation.familyStatus(tokenFamily, userId)) === 'live';
+  }
+
+  /**
    * Generate access token with unique jti for blacklist support.
    * Includes roles/permissions for client-side RBAC/PBAC.
+   *
+   * The token only verifies while its `tokenFamily` is a live session — see
+   * verifyAccessToken. A token minted without one, or for a family that has
+   * been revoked, is refused by design rather than trusted on its signature.
+   * Use generateTokens() to establish a family.
    */
   async generateAccessToken(data: { userId: string; roles?: string[]; permissions?: string[]; tokenFamily?: string }): Promise<string> {
     return (await this.signAccessToken(data)).token;
@@ -413,6 +483,7 @@ export class TokenService {
    * This prevents token theft in case of database breach
    */
   async storeRefreshToken(userId: string, refreshToken: string, tokenFamily: string): Promise<void> {
+    await this.assertRefreshFamilyAllowed(tokenFamily, userId);
     const expireInSecond = timestring(this.config.jwt.refreshExpiresIn, 's');
     const hashedToken = this.hashToken(refreshToken);
 
@@ -425,7 +496,7 @@ export class TokenService {
       ? new Date(Date.now() + TokenService.PREVIOUS_GRACE_SECONDS * 1000).toISOString()
       : null;
 
-    await this.tokenRepository.storeRefreshToken({
+    const stored = await this.tokenRepository.storeRefreshToken({
       userId,
       token: hashedToken,
       tokenFamily,
@@ -434,6 +505,17 @@ export class TokenService {
       previousValidUntil,
       previousUsedAt: null,
     });
+
+    // A conflict with a durable revoked-family tombstone returns no row. Do
+    // not mark that family live or hand its already-created tokens to the
+    // caller, even if Redis lost the revocation marker.
+    if (!stored?.length) {
+      this.rejectRefreshSession();
+    }
+
+    if (!await this.invalidation.markFamilyIssued(tokenFamily, userId)) {
+      this.rejectRefreshSession();
+    }
   }
 
   /**
@@ -459,6 +541,9 @@ export class TokenService {
       Err(this.t('errors.refreshTokenInvalid'), 401);
     }
 
+    if (!await this.invalidation.markFamilyIssued(tokenFamily, userId)) {
+      this.rejectRefreshSession();
+    }
     return generated;
   }
 
@@ -469,6 +554,7 @@ export class TokenService {
   async refreshTokens() {
     const { refreshToken, userId, tokenFamily } = this.readRefreshSessionCookie();
     const stored = await this.tokenRepository.getByFamily(tokenFamily);
+    await this.assertRefreshFamilyAllowed(tokenFamily, userId);
 
     if (!stored || stored.userId !== userId) {
       this.rejectRefreshSession();
@@ -527,18 +613,26 @@ export class TokenService {
 
   /** Revoke every refresh session for a user (password change/reset, logout-all). */
   async revokeAllForUser(userId: string) {
-    return this.tokenRepository.revokeAllForUser(userId);
+    const revoked = await this.tokenRepository.revokeAllForUser(userId);
+    if (Array.isArray(revoked)) {
+      await Promise.all(revoked
+        .map((row: { tokenFamily?: unknown }) => row?.tokenFamily)
+        .filter((family): family is string => typeof family === 'string' && !!family)
+        .map((family) => this.invalidation.markFamilyRevoked(family)));
+    }
+    return revoked;
   }
 
   /** Revoke a single refresh session (one family). */
   async revokeFamily(tokenFamily: string) {
-    await this.markFamilyRevoked(tokenFamily);
+    await this.invalidation.markFamilyRevoked(tokenFamily);
     return this.tokenRepository.revokeFamily(tokenFamily);
   }
 
   /**
    * Opportunistic cleanup of expired/abandoned sessions. With one row per
-   * family (no unique userId), abandoned logins would otherwise accumulate.
+   * family (no unique userId), expired live rows and revocation tombstones
+   * would otherwise accumulate.
    * Best-effort — never let cleanup failure break the calling flow.
    */
   async deleteExpiredSessions(): Promise<void> {
@@ -550,10 +644,7 @@ export class TokenService {
   }
 
   async invalidateUserAccessTokens(userId: string): Promise<number> {
-    const nextVersion = (await this.getUserSessionVersion(userId)) + 1;
-    await this.cache.set(this.sessionVersionKey(userId), String(nextVersion), this.accessTokenTtlMs());
-    await this.cache.del(`auth:user:${userId}`);
-    return nextVersion;
+    return this.invalidation.invalidateAccessTokens(userId);
   }
 
   async getUserFromCookie() {
@@ -562,31 +653,18 @@ export class TokenService {
     if (!user) {
       Err(this.t('errors.refreshTokenInvalid'), 401);
     }
-    return user;
-  }
-
-  private get revokedFamilyPrefix(): string {
-    return 'auth:revoked-family:';
+    return this.requireActiveUser(user);
   }
 
   private revokedFamilyKey(tokenFamily: string): string {
-    return `${this.revokedFamilyPrefix}${tokenFamily}`;
-  }
-
-  /**
-   * Mark a family as revoked in cache for the access-token TTL, so every
-   * access token minted for that family (not just the presented one) is
-   * rejected by verifyAccessToken until it would have expired anyway.
-   */
-  private async markFamilyRevoked(tokenFamily: string): Promise<void> {
-    await this.cache.set(this.revokedFamilyKey(tokenFamily), '1', this.accessTokenTtlMs());
+    return this.invalidation.revokedFamilyKey(tokenFamily);
   }
 
   /**
    * Revoke only the suspect family — NOT the whole user. Bumping the global
    * per-user session version here would kill every device's access tokens on a
-   * single family's reuse detection. Instead drop the family's refresh row and
-   * mark the family revoked so its access tokens stop verifying.
+   * single family's reuse detection. Instead durably mark the family revoked
+   * so database recovery and its access tokens both stop verifying.
    */
   private async revokeSuspectRefreshFamily(userId: string, tokenFamily: string | null): Promise<void> {
     if (tokenFamily) {
@@ -600,7 +678,7 @@ export class TokenService {
 
   /**
    * Logout the CURRENT session only — blacklist the presented access token,
-   * mark its family revoked, and delete that family's refresh row. Other
+   * mark its family revoked in cache and durably in the token row. Other
    * devices/sessions for the same user keep working. Use a password change or
    * reset (revoke-all) to terminate every session.
    *
@@ -733,8 +811,20 @@ export class TokenService {
   }
 
   /**
-   * Verify password reset token
-   * Returns userId if valid, throws error if expired/invalid
+   * Verify and CONSUME a password reset or invite token.
+   *
+   * Consumption is a single atomic compare-and-delete, so exactly one of any
+   * number of concurrent callers holding the same link is told to proceed. The
+   * earlier `get()` then `del()` pair left a window in which two callers both
+   * read the same jti, both passed, and both went on to set a password.
+   *
+   * The comparison also means a stale token cannot delete the jti of a newer
+   * one that superseded it — the newer link keeps working.
+   *
+   * Callers must finish validating the replacement password BEFORE calling
+   * this: consumption is deliberately irreversible, so a token burned by a
+   * request that then failed validation would cost the user their link for
+   * nothing.
    */
   async verifyResetToken(token: string): Promise<string> {
     let decoded: JwtPayload & { type?: string; jti?: string };
@@ -750,17 +840,25 @@ export class TokenService {
       Err(this.t('errors.invalidResetToken'));
     }
 
+    const consume = (this.cache as Partial<CacheService>).compareAndDelete;
+    if (typeof consume !== 'function') {
+      // A cache that cannot consume indivisibly must not be worked around: a
+      // get/del emulation is exactly the defect this path closes. The message
+      // stays value-free — it names the missing contract, not the backend.
+      Err.invalidOperation(
+        'Password reset requires a cache with atomic compare-and-delete',
+      );
+    }
+
     const key = `${this.resetTokenPrefix}${decoded.userId}`;
-    const storedJti = await this.cache.get(key);
-    if (!storedJti || storedJti !== decoded.jti) {
+    if (!(await consume.call(this.cache, key, decoded.jti))) {
       Err(this.t('errors.invalidResetToken'));
     }
 
-    await this.cache.del(key);
     return decoded.userId;
   }
 
   private async getUserSessionVersion(userId: string): Promise<number> {
-    return this.parseSessionVersion(await this.cache.get(this.sessionVersionKey(userId)));
+    return this.invalidation.getSessionVersion(userId);
   }
 }

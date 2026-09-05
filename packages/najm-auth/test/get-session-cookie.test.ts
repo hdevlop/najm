@@ -126,6 +126,7 @@ async function signedSession(role: string): Promise<string> {
     roles: [role],
     permissions: [`${role}:read`],
     sessionVersion: 0,
+    tokenFamily: `family-${role}`,
     iat: Date.now(),
   });
   const encoder = new TextEncoder();

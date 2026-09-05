@@ -39,6 +39,25 @@ export interface Driver {
   exists(key: string): Promise<boolean>;
 
   /**
+   * Atomically delete a key only if it still holds `expected`.
+   *
+   * This is the one-time-consumption primitive: exactly one concurrent caller
+   * can observe `true` for a given stored value. It exists because a separate
+   * `get()` + `del()` pair leaves a window in which two callers both read the
+   * same value and both proceed.
+   *
+   * Optional on the interface so third-party drivers keep compiling, but a
+   * driver that cannot implement it indivisibly must leave it undefined rather
+   * than approximate it — `CacheService.compareAndDelete()` fails closed when
+   * the primitive is missing.
+   *
+   * @returns true only for the caller whose comparison matched and whose
+   * delete removed the key. A missing, expired, or differing value returns
+   * false without deleting anything.
+   */
+  compareAndDelete?(key: string, expected: string): Promise<boolean>;
+
+  /**
    * Increment a counter (atomic)
    * Creates key with value 1 if it doesn't exist
    * @param key - Cache key

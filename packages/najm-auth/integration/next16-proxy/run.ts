@@ -49,6 +49,19 @@ async function runMainRecoverySuite() {
     NAJM_AUTH_INTERNAL_URL: `${internalOrigin}/api/auth/session/recover`,
     FIXTURE_THROW_DIAGNOSTIC: '1',
   }), async ({ origin, output }) => {
+    const firstPublicBody = await expectNonceProtected(
+      await navigate(origin, '/', new Map()),
+      'first public navigation',
+    );
+    const secondPublicBody = await expectNonceProtected(
+      await navigate(origin, '/', new Map()),
+      'second public navigation',
+    );
+    assert(
+      nonceFromBody(firstPublicBody) !== nonceFromBody(secondPublicBody),
+      'two page requests reused the same CSP nonce',
+    );
+
     const admin = await login(origin, { role: 'admin' });
     assert(admin.response.status === 200, `login failed with ${admin.response.status}`);
     assert(admin.cookies.has('refreshToken'), 'login did not issue refreshToken');
@@ -360,12 +373,44 @@ function navigate(origin: string, pathname: string, cookies: Map<string, string>
 }
 
 async function expectProtected(response: Response, label: string) {
+  const body = await expectNonceProtected(response, label);
+  assert(body.includes('Protected navigation succeeded'), `${label} did not render protected page`);
+}
+
+async function expectNonceProtected(response: Response, label: string): Promise<string> {
   const body = await response.text();
   assert(
     response.status === 200,
     `${label} returned ${response.status} (${response.headers.get('location') ?? 'no location'})`,
   );
-  assert(body.includes('Protected navigation succeeded'), `${label} did not render protected page`);
+
+  const policy = response.headers.get('content-security-policy') ?? '';
+  const policyNonce = /'nonce-([^']+)'/.exec(policy)?.[1];
+  assert(Boolean(policyNonce), `${label} did not return a nonce-based CSP`);
+  const scriptSource = policy
+    .split(';')
+    .find((directive) => directive.trim().startsWith('script-src')) ?? '';
+  assert(!scriptSource.includes("'unsafe-inline'"), `${label} allows inline script`);
+
+  const bodyNonce = nonceFromBody(body);
+  assert(bodyNonce === policyNonce, `${label} did not expose the request nonce to the render`);
+
+  const scripts = [...body.matchAll(/<script\b([^>]*)>/g)];
+  assert(scripts.length > 0, `${label} rendered no Next.js scripts`);
+  for (const script of scripts) {
+    assert(
+      script[1]?.includes(`nonce="${policyNonce}"`),
+      `${label} rendered a script without the response nonce`,
+    );
+  }
+
+  return body;
+}
+
+function nonceFromBody(body: string): string {
+  const nonce = /<body[^>]*data-nonce="([^"]+)"/.exec(body)?.[1];
+  assert(Boolean(nonce), 'rendered body did not contain the forwarded nonce');
+  return nonce;
 }
 
 function expectLoginRedirect(response: Response, label: string) {

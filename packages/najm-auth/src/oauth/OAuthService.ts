@@ -1,4 +1,4 @@
-import { Inject, Injectable, Log, type ILogger } from 'najm-core';
+import { Err, Inject, Injectable, Log, type ILogger } from 'najm-core';
 import { AUTH_CONFIG } from '../auth.tokens';
 import { AuthSessionService } from '../auth/AuthSessionService';
 import { CredentialSetupRequirementService } from '../credentialSetup/CredentialSetupRequirementService';
@@ -54,17 +54,54 @@ export class OAuthService {
     return this.finishCallback('github', params);
   }
 
+  /**
+   * Turn an expected OAuth start failure into the HTTP response it describes.
+   *
+   * `OAuthFlowError` carries the status it means — 404 for a provider that is
+   * not configured, 400 for a return path the caller chose badly — but it is a
+   * plain Error, so the framework's handler could only classify it as an
+   * unhandled 500. A disabled provider and a bad query string are ordinary
+   * client-visible outcomes, and reporting them as server faults hides real
+   * ones. Only the stable `oauth_*` code crosses the boundary; provider
+   * secrets, state, and codes never appear in it.
+   *
+   * The callback path deliberately does not go through here: it answers with a
+   * redirect carrying the same code, and that contract is unchanged.
+   */
+  private failStart(error: unknown): never {
+    if (error instanceof OAuthFlowError) {
+      Err(error.oauthCode, error.status);
+    }
+    throw error;
+  }
+
   private startLogin(provider: OAuthProvider, returnTo?: string): string {
-    this.providerConfig(provider);
-    const { attempt, codeChallenge } = this.state.create({
-      provider,
-      intent: 'login',
-      returnTo,
-    });
-    return this.provider(provider).authorizationUrl(attempt, codeChallenge);
+    try {
+      this.providerConfig(provider);
+      const { attempt, codeChallenge } = this.state.create({
+        provider,
+        intent: 'login',
+        returnTo,
+      });
+      return this.provider(provider).authorizationUrl(attempt, codeChallenge);
+    } catch (error) {
+      this.failStart(error);
+    }
   }
 
   private async startLink(
+    provider: OAuthProvider,
+    userId: string,
+    returnTo?: string,
+  ): Promise<{ authorizationUrl: string }> {
+    try {
+      return await this.buildLinkStart(provider, userId, returnTo);
+    } catch (error) {
+      this.failStart(error);
+    }
+  }
+
+  private async buildLinkStart(
     provider: OAuthProvider,
     userId: string,
     returnTo?: string,

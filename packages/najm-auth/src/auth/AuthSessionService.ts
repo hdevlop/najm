@@ -39,7 +39,7 @@ export class AuthSessionService {
     this.cookieManager.setRefreshToken(generated.refreshToken);
     await this.userService.updateLastLogin(user.id);
 
-    const { roles, permissions, sessionVersion } = generated;
+    const { roles, permissions, sessionVersion, tokenFamily } = generated;
     this.cookieManager.setSessionCookie({
       user: {
         id: user.id,
@@ -51,6 +51,7 @@ export class AuthSessionService {
       roles,
       permissions,
       sessionVersion,
+      tokenFamily,
     });
 
     const {

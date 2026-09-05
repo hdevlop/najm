@@ -80,6 +80,20 @@ end
 return {count, pttl}
 `;
 
+/**
+ * Delete a key only when it still holds the expected value.
+ *
+ * GET and DEL run inside one script so the server evaluates them without an
+ * interleaved command. A stale caller holding an older value therefore cannot
+ * delete the newer value that replaced it — the comparison fails first.
+ */
+const COMPARE_AND_DELETE = `
+if redis.call('GET', KEYS[1]) == ARGV[1] then
+  return redis.call('DEL', KEYS[1])
+end
+return 0
+`;
+
 export class RedisDriver implements Driver {
   readonly type = 'redis' as const;
 
@@ -156,6 +170,16 @@ export class RedisDriver implements Driver {
   async exists(key: string): Promise<boolean> {
     const count = await this.getClient().exists(this.prefixKey(key));
     return count > 0;
+  }
+
+  async compareAndDelete(key: string, expected: string): Promise<boolean> {
+    const deleted = await this.getClient().eval(
+      COMPARE_AND_DELETE,
+      1,
+      this.prefixKey(key),
+      expected,
+    );
+    return Number(deleted) === 1;
   }
 
   async incr(key: string, ttlMs?: number): Promise<{ count: number; resetAt: number }> {

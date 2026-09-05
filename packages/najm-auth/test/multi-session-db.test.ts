@@ -13,8 +13,9 @@ import { AuthService } from '../src/auth/AuthService';
  * End-to-end multi-session coverage against a real bun:sqlite database. The
  * full TokenRepository runs against real SQL — only the role/permission lookup
  * (irrelevant to session isolation) is stubbed, so every family-scoped CRUD
- * path (upsert-by-family, getByFamily, markPreviousUsed, revokeFamily,
- * revokeAllForUser, deleteExpired) is exercised for real.
+ * path (upsert-by-family, active getByFamily, markPreviousUsed, durable
+ * revokeFamily/revokeAllForUser tombstones, deleteExpired) is exercised for
+ * real.
  *
  * Proves the core multi-session guarantees:
  *   - independent families per login
@@ -90,6 +91,16 @@ function makeService() {
     set: async (key: string, value: string) => { cacheStore.set(key, value); },
     del: async (key: string) => { cacheStore.delete(key); return true; },
     exists: async (key: string) => cacheStore.has(key),
+    // Modelled on the real driver: compare and delete with no await between,
+    // so this stub cannot hide the race the primitive exists to close.
+    compareAndDelete: async (key: string, expected: string) =>
+      cacheStore.get(key) === expected && cacheStore.delete(key),
+    incr: async (key: string) => {
+      const count = Number(cacheStore.get(key) ?? '0') + 1;
+      cacheStore.set(key, String(count));
+      return { count, resetAt: Date.now() };
+    },
+    expire: async (key: string) => cacheStore.has(key),
   };
 
   const service = new TokenService(repo as any, cookie as any, cache as any);
@@ -101,6 +112,9 @@ function makeService() {
 
 const rowsForUser = (db: any, userId: string) =>
   db.select().from(authSchema.tokens).where(eq(authSchema.tokens.userId, userId));
+
+const activeRowsForUser = async (db: any, userId: string) =>
+  (await rowsForUser(db, userId)).filter((row: { status?: string | null }) => row.status === 'active');
 
 describe('multi-session refresh tokens (real bun:sqlite)', () => {
   let h: ReturnType<typeof makeService>;
@@ -192,18 +206,21 @@ describe('multi-session refresh tokens (real bun:sqlite)', () => {
     expect(h.cacheStore.has('auth:session-version:user-1')).toBe(false);
   });
 
-  test('revokeAllForUser deletes every session for the user only', async () => {
+  test('revokeAllForUser durably revokes every session for the user only', async () => {
     await h.service.generateTokens('user-1');
     await h.service.generateTokens('user-1');
     await h.service.generateTokens('user-2');
 
     await h.service.revokeAllForUser('user-1');
 
-    expect(await rowsForUser(h.db, 'user-1')).toHaveLength(0);
-    expect(await rowsForUser(h.db, 'user-2')).toHaveLength(1);
+    expect(await activeRowsForUser(h.db, 'user-1')).toHaveLength(0);
+    expect(await activeRowsForUser(h.db, 'user-2')).toHaveLength(1);
+    expect((await rowsForUser(h.db, 'user-1')).every(
+      (row: { status?: string | null }) => row.status === 'revoked',
+    )).toBe(true);
   });
 
-  test('public revokeFamily deletes the row and revokes its access tokens', async () => {
+  test('public revokeFamily hides the durable tombstone and revokes its access tokens', async () => {
     const live = await h.service.generateTokens('user-1');
 
     await h.service.revokeFamily(live.tokenFamily);
@@ -211,6 +228,26 @@ describe('multi-session refresh tokens (real bun:sqlite)', () => {
     expect(await h.repo.getByFamily(live.tokenFamily)).toBeNull();
     expect(h.cacheStore.has(`auth:revoked-family:${live.tokenFamily}`)).toBe(true);
     await expect(h.service.verifyAccessToken(live.accessToken)).rejects.toThrow();
+  });
+
+  test('durable revocation survives cache loss when physical deletion is unavailable', async () => {
+    const session = await h.service.generateTokens('user-1');
+
+    // This is the combined failure that a delete-based revocation could not
+    // survive: the database supports updates, but physical deletion is
+    // unavailable, then the volatile cache markers disappear.
+    (h.repo as any).db.delete = () => {
+      throw new Error('physical delete unavailable');
+    };
+
+    await h.service.revokeFamily(session.tokenFamily);
+    const [tombstone] = await rowsForUser(h.db, 'user-1');
+    expect(tombstone?.status).toBe('revoked');
+
+    h.cacheStore.clear();
+    h.cookie.value = session.refreshToken;
+    await expect(h.service.refreshTokens()).rejects.toThrow();
+    expect(await h.repo.getByFamily(session.tokenFamily)).toBeNull();
   });
 
   test('deleteExpiredSessions prunes only expired rows', async () => {
@@ -254,9 +291,9 @@ describe('multi-session refresh tokens (real bun:sqlite)', () => {
     const { token } = await h.service.generateResetToken('user-1');
     await auth.resetPassword(token, 'NewStrongPassw0rd!');
 
-    // Every session for user-1 is gone; user-2 is untouched.
-    expect(await rowsForUser(h.db, 'user-1')).toHaveLength(0);
-    expect(await rowsForUser(h.db, 'user-2')).toHaveLength(1);
+    // Every session for user-1 is durably revoked; user-2 is untouched.
+    expect(await activeRowsForUser(h.db, 'user-1')).toHaveLength(0);
+    expect(await activeRowsForUser(h.db, 'user-2')).toHaveLength(1);
     // Global per-user access-token invalidation fired (revoke-all, not per-family).
     expect(h.cacheStore.has('auth:session-version:user-1')).toBe(true);
     expect(cleared).toEqual(['refresh', 'session']);

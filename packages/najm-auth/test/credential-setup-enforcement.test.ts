@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { describe, expect, test } from 'bun:test';
 import { NajmAuthClient } from '../src/client/NajmAuthClient';
+import { CacheService } from 'najm-cache';
 import { TokenService } from '../src/tokens/TokenService';
 import { withAuthCookiePersistence } from '../src/client/server/authCookiePersistence';
 
@@ -17,11 +18,20 @@ function tokenService(requirement?: Record<string, unknown>) {
       clearRefreshToken: () => { cleared.push('refresh'); },
       clearSessionCookie: () => { cleared.push('session'); },
     } as never,
-    {} as never,
+    new CacheService({ driver: 'memory', required: false, memory: {} } as never) as never,
     { find: async () => requirement } as never,
   );
   (service as any).t = (key: string) => key;
-  (service as any).markFamilyRevoked = async () => undefined;
+  // Revocation now writes cache markers whose lifetimes come from the JWT
+  // config, so this harness has to supply one.
+  (service as any).config = {
+    jwt: {
+      accessSecret: 'access-secret-access-secret-access-secret',
+      accessExpiresIn: '1h',
+      refreshSecret: 'refresh-secret-refresh-secret-refresh-secret',
+      refreshExpiresIn: '7d',
+    },
+  };
 
   return { service, cleared, revoked };
 }

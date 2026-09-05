@@ -435,6 +435,7 @@ describe('session establishment refuses a required user', () => {
             roles: [],
             permissions: [],
             sessionVersion: 1,
+            tokenFamily: 'family-1',
           };
         },
       } as never,

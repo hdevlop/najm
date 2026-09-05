@@ -24,6 +24,11 @@ export interface SessionCookieData {
    * (password change/reset, logout-all) without hitting the database.
    */
   sessionVersion: number;
+  /**
+   * The refresh session this snapshot belongs to, so a single-device logout —
+   * which deliberately leaves the per-user version alone — can still reach it.
+   */
+  tokenFamily: string;
   /** Epoch ms when the cookie was written */
   iat: number;
 }
@@ -85,8 +90,10 @@ export class CookieManager {
 
   /**
    * Write a signed session cookie containing user data, roles, and permissions.
-   * The cookie is HMAC-signed with the configured session secret so it is tamper-proof
-   * but readable without a database query. Short TTL (5 min) ensures freshness.
+   * The cookie is HMAC-signed with the configured session secret, so its claims
+   * can be parsed without a database query. Authorization still verifies the
+   * session version and positive family liveness; a valid signature alone is
+   * never a revocation check. Short TTL (5 min) bounds claim staleness.
    */
   setSessionCookie(data: Omit<SessionCookieData, 'iat'>): void {
     const payload: SessionCookieData = { ...data, iat: Date.now() };

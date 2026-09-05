@@ -6,6 +6,7 @@ export { getServerSession } from './getServerSession';
 export { createServerClient } from './createServerClient';
 export {
   withAuthMiddleware,
+  type AuthProxyOptions,
   type ProxySessionMode,
 } from './withAuthMiddleware';
 

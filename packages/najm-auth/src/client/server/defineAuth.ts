@@ -50,6 +50,7 @@ import type { SessionRecoveryFailure } from '../sessionRecovery';
 import { attachReactServerInternals, heldRoles, redirectsToLogin } from './internals';
 import {
   withAuthMiddleware,
+  type AuthProxyOptions,
   type ProxySessionMode,
 } from './withAuthMiddleware';
 import {
@@ -166,9 +167,9 @@ export interface AuthKit {
    */
   requireRole: (roles: string[]) => Promise<ServerSession>;
   /** Generated Next.js 16 Proxy function. */
-  proxy: (request: Request) => Promise<Response>;
+  proxy: (request: Request, options?: AuthProxyOptions) => Promise<Response>;
   /** @deprecated Next.js 16 renamed Middleware to Proxy. Use `proxy`. */
-  middleware: (request: Request) => Promise<Response>;
+  middleware: (request: Request, options?: AuthProxyOptions) => Promise<Response>;
   /** @deprecated Next.js 16 requires a static config literal in `proxy.ts`. */
   config: { matcher: string[] };
   /**

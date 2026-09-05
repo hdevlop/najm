@@ -5,6 +5,7 @@ import { createHash } from 'crypto';
 import { getGuardMetadata, PERMISSIONS, ROLE, USER } from 'najm-guard';
 import { getRateLimitOptions } from 'najm-rate';
 import { Err } from 'najm-core';
+import { CacheService } from 'najm-cache';
 import { AuthController } from '../src/auth/AuthController';
 import { RegistrationController } from '../src/auth/RegistrationController';
 import { AuthService } from '../src/auth/AuthService';
@@ -58,11 +59,15 @@ function createTokenService(overrides: {
     clearSessionCookie: () => undefined,
     ...overrides.cookie,
   };
-  const cache = {
+  // A supplied CacheService is used as-is; the literal default only fills the
+  // gaps for tests that care about a single call.
+  const cache = overrides.cache instanceof CacheService ? overrides.cache : {
     get: async () => null,
     set: async () => undefined,
     del: async () => false,
     exists: async () => false,
+    incr: async () => ({ count: 1, resetAt: Date.now() }),
+    expire: async () => true,
     ...overrides.cache,
   };
 
@@ -364,6 +369,7 @@ describe('auth security regressions', () => {
         }),
         storeRefreshToken: async (value: { expiresAt: string }) => {
           storedExpiry = value.expiresAt;
+          return [{}];
         },
       },
     });
@@ -478,13 +484,17 @@ describe('auth security regressions', () => {
               roles: ['admin'],
               permissions: ['read:users'],
               sessionVersion: 0,
+              tokenFamily: 'family-1',
               iat: Date.now(),
             }),
           };
         }
         if (target === TokenService) {
-          // Cache-only version check — must NOT hit the database.
-          return { getSessionVersion: async () => 0 };
+          // Cache-only version and family checks — must NOT hit the database.
+          return {
+            getSessionVersion: async () => 0,
+            isSessionFamilyLive: async () => true,
+          };
         }
         throw new Error('unexpected resolve target');
       },
@@ -673,46 +683,75 @@ describe('auth security regressions', () => {
   });
 
   test('session version invalidation uses access-token TTL', async () => {
-    const writes: Array<{ key: string; value: string; ttl?: number }> = [];
-    const { service } = createTokenService({
-      cache: {
-        get: async () => null,
-        set: async (key: string, value: string, ttl?: number) => {
-          writes.push({ key, value, ttl });
-        },
-        del: async () => true,
-      },
-    });
+    // Asserted against the real cache rather than a write spy: the bump is an
+    // atomic increment now, and what matters is the marker it leaves behind.
+    const cache = new CacheService({ driver: 'memory', required: false, memory: {} } as never);
+    const { service } = createTokenService({ cache: cache as never });
 
     await service.invalidateUserAccessTokens('user-1');
 
-    expect(writes).toContainEqual({
-      key: 'auth:session-version:user-1',
-      value: '1',
-      ttl: 3_600_000,
-    });
+    expect(await cache.get('auth:session-version:user-1')).toBe('1');
+    const ttl = await cache.ttl('auth:session-version:user-1');
+    expect(ttl).toBeGreaterThan(3_500_000);
+    expect(ttl).toBeLessThanOrEqual(3_600_000);
+    await cache.destroy();
+  });
+
+  test('concurrent invalidations cannot settle on the same version', async () => {
+    const cache = new CacheService({ driver: 'memory', required: false, memory: {} } as never);
+    const { service } = createTokenService({ cache: cache as never });
+
+    const versions = await Promise.all([
+      service.invalidateUserAccessTokens('user-1'),
+      service.invalidateUserAccessTokens('user-1'),
+      service.invalidateUserAccessTokens('user-1'),
+    ]);
+
+    expect(new Set(versions).size).toBe(3);
+    expect(await cache.get('auth:session-version:user-1')).toBe('3');
+    await cache.destroy();
+  });
+
+  test('issuing a token cannot restore a version a concurrent invalidation bumped', async () => {
+    const cache = new CacheService({ driver: 'memory', required: false, memory: {} } as never);
+    const { service } = createTokenService({ cache: cache as never });
+
+    await service.invalidateUserAccessTokens('user-1'); // version 1
+    // Token issuance reads the version, then an invalidation lands, then
+    // issuance finishes. The finishing write must not put version 1 back.
+    const issuing = service.generateAccessToken({ userId: 'user-1' });
+    await service.invalidateUserAccessTokens('user-1'); // version 2
+    await issuing;
+
+    expect(await cache.get('auth:session-version:user-1')).toBe('2');
+    await cache.destroy();
   });
 
   test('access-token verification batches blacklist and session-version reads', async () => {
     const reads: string[][] = [];
     const { service } = createTokenService({
       cache: {
+        // Vouches for the family: verification now requires a positive
+        // liveness marker, not merely the absence of accusations.
         getMany: async (keys: string[]) => {
           reads.push(keys);
-          return [null, null];
+          return keys.map((key) => (key === 'auth:family:family-9' ? 'user-1' : null));
         },
       },
     });
     const token = jwt.sign(
-      { userId: 'user-1', jti: 'jti-1', sessionVersion: 0 },
+      { userId: 'user-1', jti: 'jti-1', sessionVersion: 0, tokenFamily: 'family-9' },
       authConfig.jwt.accessSecret,
       { expiresIn: '1h' },
     );
 
     await expect(service.verifyAccessToken(token)).resolves.toMatchObject({ userId: 'user-1' });
+    // Still exactly one round trip, now covering four keys.
     expect(reads).toEqual([[
       'auth:blacklist:jti-1',
       'auth:session-version:user-1',
+      'auth:revoked-family:family-9',
+      'auth:family:family-9',
     ]]);
   });
 
@@ -807,7 +846,7 @@ describe('auth security regressions', () => {
     expect(cleared).toEqual([]);
   });
 
-  test('refresh cannot recreate a family deleted by concurrent logout', async () => {
+  test('refresh cannot recreate a family revoked by concurrent logout', async () => {
     const refreshToken = jwt.sign(
       { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
       authConfig.jwt.refreshSecret,
@@ -828,7 +867,7 @@ describe('auth security regressions', () => {
           previousUsedAt: null,
         }),
         getRoleAndPermissions: async () => ({ roleName: 'user', permissions: [] }),
-        // Zero rows models logout deleting the family after the initial read.
+        // Zero rows models logout revoking the family after the initial read.
         rotateRefreshToken: async () => [],
         storeRefreshToken: async () => { upserts += 1; },
       },
@@ -854,7 +893,9 @@ describe('auth security regressions', () => {
         getRefreshToken: () => undefined,
       },
       cache: {
-        get: async () => null,
+        // The family is live and belongs to this user, so the presented Bearer
+        // token verifies and names the one session to end.
+        get: async (key: string) => (key === 'auth:family:family-9' ? 'user-1' : null),
         set: async (key: string) => { cacheSets.push(key); },
         del: async () => true,
         exists: async () => false,

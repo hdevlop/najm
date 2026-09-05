@@ -94,7 +94,7 @@ describe('markPreviousUsed conditional UPDATE (real bun:sqlite)', () => {
     expect(legit).toHaveLength(1);
   });
 
-  test('rotation cannot recreate a family deleted by logout', async () => {
+  test('rotation cannot recreate a family durably revoked by logout', async () => {
     await seedToken(db);
     await repo.revokeFamily('family-1');
 

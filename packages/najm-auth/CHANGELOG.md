@@ -2,9 +2,42 @@
 
 ## Unreleased
 
+- security(auth): bind signed session snapshots and bearer tokens to a
+  positively live refresh family, reject inactive users on every authorization
+  path, and centralize session invalidation for security-relevant user, role,
+  permission, password, and deletion changes
+- security(auth): consume reset and invite tokens through Najm Cache's atomic
+  compare-and-delete primitive so only one concurrent password mutation can
+  win; custom cache drivers without the primitive fail closed
+- security(rate): key forgot-password and registration throttles only from the
+  normalized email their DTOs accept, so ignored request fields cannot select
+  a fresh bucket
+- fix(oauth): map expected OAuth start failures through the framework error
+  boundary, returning 400 for invalid return paths, 404 for disabled providers,
+  and 403 for inactive account linking instead of generic 500 responses
+- security(auth): persist revoked refresh families as database tombstones and
+  require active status for lookup, rotation, grace claims, and conflicting
+  issuance, so later Redis loss cannot revive a logged-out session
+- feat(client/server): let `auth.proxy(request, { requestHeaders })` merge
+  request-scoped headers into every successful Next.js render, including the
+  session-recovery path, so consumers can adopt nonce-based CSP without
+  depending on private middleware response headers; identity-bearing cookie
+  and authorization overrides fail closed
+- test(auth): add a loopback-only HTTP, Redis, and Mailpit acceptance runner
+  proving ignored reset-request fields and spoofed forwarding headers cannot
+  buy more emails, while distinct and unknown recipients preserve their
+  intended response and delivery behavior
 - feat(auth): add GitHub OAuth App login and account linking with provider-scoped
   state cookies, PKCE, verified-primary-email resolution, and stable GitHub user
   IDs; expose matching client and React helpers
+
+**Breaking:** `SessionCookieClaims.tokenFamily` and
+`SessionCookieData.tokenFamily` are required. Cookies written by older releases
+recover through a valid refresh session or require sign-in, and access tokens
+without a live family no longer authorize. Consumers that construct session
+claims or mint standalone access tokens must migrate to the family-aware
+contract. Password reset/invite flows using a custom cache driver must provide
+atomic `compareAndDelete()` support.
 
 ## 3.3.1 - 2026-09-04
 

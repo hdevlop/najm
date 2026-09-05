@@ -5,6 +5,15 @@ export interface SessionCookieClaims {
   roles: string[];
   permissions: string[];
   sessionVersion: number;
+  /**
+   * The refresh session (device) this snapshot belongs to.
+   *
+   * Without it a snapshot is only bound to the per-user session version, which
+   * a single-device logout deliberately does not bump — so a saved cookie kept
+   * authenticating after its own session ended. Carrying the family lets the
+   * reader ask whether *this* session is still live.
+   */
+  tokenFamily: string;
   /** Epoch milliseconds when the session cookie was issued. */
   iat: number;
 }
@@ -68,6 +77,11 @@ export function parseSessionCookiePayload(
     if (!isRecord(data) || !isValidUser(data.user)) return null;
     if (!isStringArray(data.roles) || !isStringArray(data.permissions)) return null;
     if (!Number.isInteger(data.sessionVersion) || (data.sessionVersion as number) < 0) return null;
+    // Required, not optional: a cookie predating the family claim cannot be
+    // checked for revocation, so it must fail here and let the caller fall
+    // through to an authoritative refresh-backed resolve. See the migration
+    // note in verifySessionCookie's docs.
+    if (typeof data.tokenFamily !== 'string' || !data.tokenFamily) return null;
     if (!Number.isFinite(data.iat) || !Number.isInteger(data.iat) || (data.iat as number) <= 0) return null;
 
     const issuedAt = data.iat as number;
@@ -79,6 +93,7 @@ export function parseSessionCookiePayload(
       roles: [...data.roles],
       permissions: [...data.permissions],
       sessionVersion: data.sessionVersion as number,
+      tokenFamily: data.tokenFamily as string,
       iat: issuedAt,
     };
   } catch {
@@ -91,6 +106,16 @@ export function parseSessionCookiePayload(
  *
  * The cookie format is `<JSON payload>.<base64url HMAC-SHA256>`, matching
  * `CookieService.setSigned()`. No refresh or network request is performed.
+ *
+ * A verified snapshot proves only that the cookie is intact and recent. It is
+ * NOT proof that the session behind it is still live — a signature cannot
+ * observe a logout. Backend authorization must additionally confirm the family
+ * is live; an optimistic navigation proxy may rely on the snapshot alone.
+ *
+ * Compatibility: cookies written before `tokenFamily` existed fail parsing and
+ * are treated as absent. Those browsers re-establish through their refresh
+ * session on the next request, or sign in again — a one-time disruption at the
+ * upgrade, in exchange for a snapshot that revocation can reach.
  */
 export async function verifySessionCookie(
   rawCookieValue: string,
