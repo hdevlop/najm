@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.2.0 - 2026-09-05
 
 - feat(cache): add atomic `compareAndDelete(key, expected)` support to the
   memory and Redis drivers for one-time-token consumption. The Redis driver
