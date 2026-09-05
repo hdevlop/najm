@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.0.0 - 2026-09-05
 
 - security(auth): bind signed session snapshots and bearer tokens to a
   positively live refresh family, reject inactive users on every authorization
