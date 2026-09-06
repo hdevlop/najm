@@ -619,10 +619,20 @@ export class AuthService {
     // mutation — and once consumed, the token stays consumed even if the
     // mutation below fails; that user requests a new link.
     this.userValidator.validatePasswordStrength(newPassword);
-    const userId = await this.tokenService.verifyResetToken(token);
-    await this.userService.update(userId, { password: newPassword });
-    await this.tokenService.invalidateUserAccessTokens(userId);
-    await this.tokenService.revokeAllForUser(userId);
+    const consumed = await this.tokenService.consumeSetPasswordToken(token);
+    const user = await this.userService.getById(consumed.userId);
+    const acceptsInvitation = consumed.type === 'invite';
+    await this.userService.update(consumed.userId, {
+      password: newPassword,
+      ...(acceptsInvitation
+        ? {
+            emailVerified: true,
+            ...(user.status === 'pending' ? { status: 'active' as const } : {}),
+          }
+        : {}),
+    });
+    await this.tokenService.invalidateUserAccessTokens(consumed.userId);
+    await this.tokenService.revokeAllForUser(consumed.userId);
     this.cookieManager.clearRefreshToken();
     this.cookieManager.clearSessionCookie();
 

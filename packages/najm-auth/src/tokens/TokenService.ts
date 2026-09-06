@@ -15,6 +15,13 @@ import { CredentialSetupRequirementRepository } from '../credentialSetup/Credent
 import { PASSWORD_SETUP_PURPOSE } from '../credentialSetup/types';
 import { Err } from 'najm-core';
 
+export type SetPasswordTokenType = 'reset' | 'invite';
+
+export interface ConsumedSetPasswordToken {
+  userId: string;
+  type: SetPasswordTokenType;
+}
+
 @Injectable()
 export class TokenService {
   @Inject(AUTH_CONFIG) private config!: AuthConfig;
@@ -771,7 +778,7 @@ export class TokenService {
    */
   private async generateSetPasswordToken(
     userId: string,
-    type: 'reset' | 'invite',
+    type: SetPasswordTokenType,
     expiresIn: string,
   ): Promise<{ token: string; userId: string }> {
     const jti = nanoid(16);
@@ -826,7 +833,7 @@ export class TokenService {
    * request that then failed validation would cost the user their link for
    * nothing.
    */
-  async verifyResetToken(token: string): Promise<string> {
+  async consumeSetPasswordToken(token: string): Promise<ConsumedSetPasswordToken> {
     let decoded: JwtPayload & { type?: string; jti?: string };
 
     try {
@@ -855,7 +862,19 @@ export class TokenService {
       Err(this.t('errors.invalidResetToken'));
     }
 
-    return decoded.userId;
+    return {
+      userId: decoded.userId,
+      type: decoded.type as SetPasswordTokenType,
+    };
+  }
+
+  /**
+   * Backward-compatible user-id-only reset/invite token consumption.
+   * Prefer `consumeSetPasswordToken()` when the caller must distinguish an
+   * account invitation from an ordinary password reset.
+   */
+  async verifyResetToken(token: string): Promise<string> {
+    return (await this.consumeSetPasswordToken(token)).userId;
   }
 
   private async getUserSessionVersion(userId: string): Promise<number> {

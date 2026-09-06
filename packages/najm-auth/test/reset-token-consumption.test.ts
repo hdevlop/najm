@@ -92,11 +92,20 @@ function harness() {
   (validator as any).t = (key: string) => key;
 
   const passwordsSet: Array<{ userId: string; password: string }> = [];
+  const userUpdates: Array<{ userId: string; data: Record<string, unknown> }> = [];
+  let userStatus: 'active' | 'inactive' | 'pending' = 'active';
   let updateFails = false;
 
   const userService = {
+    getById: async (userId: string) => ({
+      id: userId,
+      email: `${userId}@example.com`,
+      emailVerified: false,
+      status: userStatus,
+    }),
     update: async (userId: string, data: Record<string, unknown>) => {
       if (updateFails) throw new Error('storage unavailable');
+      userUpdates.push({ userId, data });
       passwordsSet.push({ userId, password: String(data.password) });
       return undefined;
     },
@@ -115,7 +124,8 @@ function harness() {
   (auth as any).t = (key: string) => key;
 
   return {
-    db, repo, tokens, auth, cache, cookie, passwordsSet,
+    db, repo, tokens, auth, cache, cookie, passwordsSet, userUpdates,
+    setUserStatus: (status: typeof userStatus) => { userStatus = status; },
     failNextUpdates: () => { updateFails = true; },
     allowUpdates: () => { updateFails = false; },
   };
@@ -176,6 +186,49 @@ describe('one-time reset/invite token consumption', () => {
     expect(await h.cache.get('auth:session-version:user-1')).toBe('1');
   });
 
+  test('an ordinary reset preserves verification and lifecycle state', async () => {
+    h.setUserStatus('pending');
+    const { token } = await h.tokens.generateResetToken('user-1');
+
+    await h.auth.resetPassword(token, STRONG);
+
+    expect(h.userUpdates).toEqual([{
+      userId: 'user-1',
+      data: { password: STRONG },
+    }]);
+  });
+
+  test('accepting an invite verifies the email and activates a pending account', async () => {
+    h.setUserStatus('pending');
+    const { token } = await h.tokens.generateInviteToken('user-1');
+
+    await h.auth.resetPassword(token, STRONG);
+
+    expect(h.userUpdates).toEqual([{
+      userId: 'user-1',
+      data: {
+        password: STRONG,
+        emailVerified: true,
+        status: 'active',
+      },
+    }]);
+  });
+
+  test('accepting an invite verifies but does not reactivate an inactive account', async () => {
+    h.setUserStatus('inactive');
+    const { token } = await h.tokens.generateInviteToken('user-1');
+
+    await h.auth.resetPassword(token, STRONG);
+
+    expect(h.userUpdates).toEqual([{
+      userId: 'user-1',
+      data: {
+        password: STRONG,
+        emailVerified: true,
+      },
+    }]);
+  });
+
   test('a consumed token is rejected on every later use', async () => {
     const { token } = await h.tokens.generateResetToken('user-1');
     await h.auth.resetPassword(token, STRONG);
@@ -219,15 +272,18 @@ describe('one-time reset/invite token consumption', () => {
     expect(await h.tokens.verifyResetToken(fresh.token)).toBe('user-1');
   });
 
-  test('invite tokens consume through the same one-time path', async () => {
+  test('invite tokens preserve their purpose through the one-time path', async () => {
     const invite = await h.tokens.generateInviteToken('user-1');
 
     const results = await Promise.allSettled([
-      h.tokens.verifyResetToken(invite.token),
-      h.tokens.verifyResetToken(invite.token),
+      h.tokens.consumeSetPasswordToken(invite.token),
+      h.tokens.consumeSetPasswordToken(invite.token),
     ]);
 
     expect(settledOk(results)).toHaveLength(1);
+    expect(results.find((result) => result.status === 'fulfilled')).toMatchObject({
+      value: { userId: 'user-1', type: 'invite' },
+    });
     expect(h.tokens.verifyResetToken(invite.token)).rejects.toThrow();
   });
 

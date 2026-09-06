@@ -1119,14 +1119,21 @@ errors cannot change the authentication result.
 ### Password Reset Tokens
 
 Reset and invite links are signed JWTs whose `jti` is stored in the configured
-cache with the same expiry. `verifyResetToken()` atomically compares and
-deletes that value, so exactly one concurrent caller can consume a link and a
-stale link cannot delete the value for a newer one.
+cache with the same expiry. `consumeSetPasswordToken()` atomically compares and
+deletes that value while preserving whether the token was a reset or invite;
+the backward-compatible `verifyResetToken()` returns only the user id. Exactly
+one concurrent caller can consume a link, and a stale link cannot delete the
+value for a newer one.
 
 `AuthService.resetPassword()` validates the replacement password before
 consumption. Once consumed, a token stays consumed even if the later user
 mutation fails; restoring it would make the link replayable, so the user must
 request a new one.
+
+Accepting an account invitation also marks the destination email verified and
+activates the account when its status is `pending`. An ordinary password reset
+changes neither verification nor lifecycle status, and an explicitly inactive
+invited account remains inactive.
 
 The built-in memory and Redis drivers implement the required atomic primitive.
 A custom cache driver may omit `compareAndDelete()` for compatibility with

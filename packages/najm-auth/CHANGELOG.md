@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- fix(auth): treat successful one-time account-invite acceptance as proof of
+  email ownership and activate a pending invite, while ordinary password resets
+  preserve account verification and lifecycle status
+
 ## 4.0.0 - 2026-09-05
 
 - security(auth): bind signed session snapshots and bearer tokens to a

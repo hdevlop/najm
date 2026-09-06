@@ -274,7 +274,14 @@ describe('multi-session refresh tokens (real bun:sqlite)', () => {
     const cleared: string[] = [];
     const auth = new AuthService(
       h.service,                                                  // real TokenService
-      { update: async () => undefined } as any,                   // userService
+      {
+        getById: async () => ({
+          id: 'user-1',
+          status: 'active',
+          emailVerified: true,
+        }),
+        update: async () => undefined,
+      } as any,                                                   // userService
       { validatePasswordStrength: () => undefined } as any,       // userValidator
       {} as any,                                                  // encryptionService
       {                                                           // cookieManager
