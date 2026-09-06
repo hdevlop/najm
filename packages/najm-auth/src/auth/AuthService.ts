@@ -159,6 +159,8 @@ export class AuthService {
 
     const { token } = await this.tokenService.generateInviteToken(user.id);
     const inviteLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
+    const accountType = body.role?.trim().toLowerCase();
+    const accountLabel = accountType ? `${accountType} account` : 'account';
 
     // Unlike forgot-password (which stays silent to prevent enumeration), invite
     // is an admin action — surface whether the mail actually left so the caller
@@ -167,8 +169,13 @@ export class AuthService {
     try {
       await this.emailService.sendHtml(
         body.email,
-        this.t('emails.accountInvite.subject'),
+        this.t('emails.accountInvite.subject', {
+          accountLabel,
+          appName: this.config.appName,
+        }),
         accountInviteTemplate({
+          accountType,
+          appName: this.config.appName,
           inviteLink,
           userName: (user as any).name || body.email,
         })

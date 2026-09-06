@@ -140,6 +140,7 @@ auth({
 
   // Frontend
   frontendUrl?: string                     // Password reset link base URL
+  appName?: string                         // Security email brand (default: 'Your app')
 
   // Login identifier normalization (see "Identity presets")
   identity?: {
@@ -1134,6 +1135,12 @@ Accepting an account invitation also marks the destination email verified and
 activates the account when its status is `pending`. An ordinary password reset
 changes neither verification nor lifecycle status, and an explicitly inactive
 invited account remains inactive.
+
+Set `appName` on `auth()` to brand the invitation subject and email card. The
+provisioned role is presented as the account type, so a sponsor invitation can
+say “Activate your sponsor account” without application-owned HTML. The shared
+template uses inline critical styles for Gmail and keeps the raw token URL out
+of visible fallback copy.
 
 The built-in memory and Redis drivers implement the required atomic primitive.
 A custom cache driver may omit `compareAndDelete()` for compatibility with

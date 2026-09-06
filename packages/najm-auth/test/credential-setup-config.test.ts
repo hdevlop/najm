@@ -190,6 +190,15 @@ describe('provisioned phones match login lookup', () => {
 });
 
 describe('public registration policy', () => {
+  test('normalizes the product name used by account invitation emails', () => {
+    expect(resolveAuthConfig({ jwt }).appName).toBe('Your app');
+    expect(resolveAuthConfig({ jwt, appName: '  Kafil  ' }).appName).toBe('Kafil');
+    expect(() => resolveAuthConfig({ jwt, appName: 'Kafil\r\nBcc: attacker@example.test' }))
+      .toThrow('auth.appName');
+    expect(() => resolveAuthConfig({ jwt, appName: 'x'.repeat(81) }))
+      .toThrow('auth.appName');
+  });
+
   test('registration remains mounted by default for backwards compatibility', () => {
     const plugin = auth({ jwt, email: { provider: 'console' } });
 

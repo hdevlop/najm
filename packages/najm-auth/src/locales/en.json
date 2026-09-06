@@ -58,7 +58,7 @@
         "subject": "Reset your password"
       },
       "accountInvite": {
-        "subject": "You've been invited — set up your account"
+        "subject": "{{appName}}: activate your {{accountLabel}}"
       }
     }
   },

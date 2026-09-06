@@ -325,6 +325,47 @@ describe('provisioning with a required password setup', () => {
     expect(created[0].phone).toBe('0612345678');
   });
 
+  test('brands an invitation for the provisioned account role', async () => {
+    const sent: Array<{ html: string; subject: string; to: string }> = [];
+    const service = new AuthService(
+      { generateInviteToken: async () => ({ token: 'invite-token' }) } as never,
+      {
+        create: async (data: any) => ({ id: 'user-1', name: data.name, email: data.email }),
+      } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {
+        sendHtml: async (to: string, subject: string, html: string) => {
+          sent.push({ html, subject, to });
+        },
+      } as never,
+    );
+    (service as any).config = {
+      appName: 'Kafil',
+      frontendUrl: 'https://kafala360.ma',
+    };
+    (service as any).t = (
+      _key: string,
+      params: { accountLabel: string; appName: string },
+    ) => `${params.appName}: activate your ${params.accountLabel}`;
+    (service as any).logger = { error() { }, warn() { } };
+
+    await service.provisionUser({
+      email: 'sponsor@example.ma',
+      name: 'Fatima Zahra',
+      role: 'sponsor',
+    });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.to).toBe('sponsor@example.ma');
+    expect(sent[0]?.subject).toBe('Kafil: activate your sponsor account');
+    expect(sent[0]?.html).toContain('Activate your sponsor account');
+    expect(sent[0]?.html).toContain('Kafil');
+    expect(sent[0]?.html).not.toContain('Our App');
+  });
+
   test('rejects a password and a temporary credential in the same call', async () => {
     const { service, created, marked } = provisioningService();
 

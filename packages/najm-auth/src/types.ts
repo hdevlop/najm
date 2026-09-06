@@ -143,6 +143,8 @@ export interface AuthConfig {
   defaultRole: string | null;
   /** Frontend URL for password reset links (default: 'http://localhost:3000') */
   frontendUrl: string;
+  /** Product name used in security email subjects and templates. */
+  appName: string;
   /** Registration mode: 'active' auto-activates, 'pending' requires admin approval (default: 'active') */
   registrationMode: 'active' | 'pending';
   /** Whether the unauthenticated POST /auth/register route is mounted. */
@@ -212,6 +214,8 @@ export type AuthPluginConfig = {
   defaultRole?: string | null;
   /** Frontend URL for password reset links. Falls back to FRONTEND_URL env var, then 'http://localhost:3000' */
   frontendUrl?: string;
+  /** Product name used in account invitation emails (default: 'Your app'). */
+  appName?: string;
   /** Registration mode: 'active' auto-activates new users, 'pending' requires admin approval (default: 'active') */
   registrationMode?: 'active' | 'pending';
   /**

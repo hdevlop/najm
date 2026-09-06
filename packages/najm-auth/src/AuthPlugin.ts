@@ -63,6 +63,14 @@ const validateCallbackUrl = (value: string, name: string): string => {
   return callback.toString();
 };
 
+const resolveAppName = (value?: string): string => {
+  const appName = value?.trim() || 'Your app';
+  if (appName.length > 80 || /[\u0000-\u001f\u007f]/.test(appName)) {
+    throw new Error('auth.appName must be at most 80 characters without control characters');
+  }
+  return appName;
+};
+
 const resolveGoogleConfig = (config?: AuthPluginConfig) => {
   const configuredGoogle = config?.oauth?.google;
   if (!configuredGoogle) return undefined;
@@ -164,6 +172,7 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
     blacklistPrefix: config?.blacklistPrefix ?? 'auth:blacklist:',
     defaultRole: config?.defaultRole ?? null,
     frontendUrl: config?.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:3000',
+    appName: resolveAppName(config?.appName),
     registrationMode: config?.registrationMode ?? 'active',
     publicRegistration: config?.publicRegistration ?? true,
     requireVerifiedEmail: config?.requireVerifiedEmail ?? false,
