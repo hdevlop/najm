@@ -9,6 +9,9 @@ const WORKER_HEADERS = {
 const CACHE_TOKEN = /^[a-z0-9][a-z0-9._-]*$/i;
 const HEX_COLOR = /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i;
 const LANGUAGE_TAG = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
+const MAX_PUSH_NOTIFICATION_ID_LENGTH = 100;
+const MAX_PUSH_TITLE_LENGTH = 120;
+const MAX_PUSH_BODY_LENGTH = 300;
 
 export interface NajmOfflineDocumentOptions {
   backgroundColor?: string;
@@ -22,6 +25,17 @@ export interface NajmOfflineDocumentOptions {
   title?: string;
 }
 
+export interface NajmServiceWorkerPushOptions {
+  /** Default badge shown by the notification platform. */
+  badge?: string;
+  /** Fallback title used only when a valid payload supplies an empty title. */
+  defaultTitle: string;
+  /** Default notification icon. */
+  icon?: string;
+  /** Fixed same-origin destination opened after a notification click. */
+  notificationPath: string;
+}
+
 export interface NajmServiceWorkerOptions {
   /** Isolates this app's caches from other apps on the same origin. */
   cacheId?: string;
@@ -33,6 +47,8 @@ export interface NajmServiceWorkerOptions {
   offlineUrl?: string;
   /** Same-origin static assets used by the offline document. */
   precache?: readonly string[];
+  /** Optional reusable web-push behavior. */
+  push?: NajmServiceWorkerPushOptions;
 }
 
 export type NajmServiceWorkerRoute = () => Response;
@@ -104,6 +120,84 @@ function createOfflineDocument(options: NajmOfflineDocumentOptions = {}): string
 </html>`;
 }
 
+function createPushWorkerSource(options: NajmServiceWorkerPushOptions | undefined): string {
+  if (!options) return '';
+
+  const notificationPath = assertPath(options.notificationPath, 'push.notificationPath');
+  const icon = options.icon ? assertPath(options.icon, 'push.icon') : null;
+  const badge = options.badge ? assertPath(options.badge, 'push.badge') : null;
+  const defaultTitle = options.defaultTitle.trim();
+  if (!defaultTitle || defaultTitle.length > MAX_PUSH_TITLE_LENGTH) {
+    throw new TypeError(
+      `[najm-next] push.defaultTitle must contain 1-${MAX_PUSH_TITLE_LENGTH} characters.`,
+    );
+  }
+
+  return `
+const PUSH_NOTIFICATION_PATH = ${JSON.stringify(notificationPath)};
+const PUSH_DEFAULT_TITLE = ${JSON.stringify(defaultTitle)};
+const PUSH_ICON = ${JSON.stringify(icon)};
+const PUSH_BADGE = ${JSON.stringify(badge)};
+const PUSH_KEYS = new Set(["notificationId", "title", "body"]);
+
+self.addEventListener("push", (event) => {
+  let payload;
+  try {
+    payload = event.data ? event.data.json() : null;
+  } catch {
+    return;
+  }
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  if (!Object.keys(payload).every((key) => PUSH_KEYS.has(key))) return;
+  if (
+    typeof payload.notificationId !== "string" ||
+    payload.notificationId.length < 1 ||
+    payload.notificationId.length > ${MAX_PUSH_NOTIFICATION_ID_LENGTH} ||
+    typeof payload.title !== "string" ||
+    payload.title.length > ${MAX_PUSH_TITLE_LENGTH} ||
+    typeof payload.body !== "string" ||
+    payload.body.length > ${MAX_PUSH_BODY_LENGTH}
+  ) return;
+
+  const title = payload.title || PUSH_DEFAULT_TITLE;
+  const notificationOptions = {
+    body: payload.body,
+    data: { notificationId: payload.notificationId },
+    ...(PUSH_ICON ? { icon: PUSH_ICON } : {}),
+    ...(PUSH_BADGE ? { badge: PUSH_BADGE } : {}),
+  };
+  event.waitUntil(self.registration.showNotification(title, notificationOptions));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const notificationId = event.notification.data?.notificationId;
+  if (
+    typeof notificationId !== "string" ||
+    notificationId.length < 1 ||
+    notificationId.length > ${MAX_PUSH_NOTIFICATION_ID_LENGTH}
+  ) return;
+
+  const url = new URL(PUSH_NOTIFICATION_PATH, self.location.origin);
+  url.searchParams.set("focus", notificationId);
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then(async (clients) => {
+      for (const client of clients) {
+        try {
+          if (new URL(client.url).origin !== self.location.origin) continue;
+          await client.navigate(url.href);
+          return client.focus();
+        } catch {
+          continue;
+        }
+      }
+      return self.clients.openWindow(url.href);
+    }),
+  );
+});
+`;
+}
+
 function createWorkerSource(options: NajmServiceWorkerOptions): string {
   const cacheId = assertCacheToken(options.cacheId ?? 'app', 'cacheId');
   const cacheVersion = assertCacheToken(options.cacheVersion ?? 'v1', 'cacheVersion');
@@ -113,6 +207,7 @@ function createWorkerSource(options: NajmServiceWorkerOptions): string {
     ...(options.precache ?? []).map((path, index) => assertPath(path, `precache[${index}]`)),
   ])];
   const inlineDocument = createOfflineDocument(options.offlineDocument);
+  const pushWorkerSource = createPushWorkerSource(options.push);
 
   return `const CACHE_PREFIX = ${JSON.stringify(`najm-pwa:${cacheId}:`)};
 const CACHE_NAME = CACHE_PREFIX + ${JSON.stringify(cacheVersion)};
@@ -181,6 +276,7 @@ self.addEventListener("fetch", (event) => {
     }),
   );
 });
+${pushWorkerSource}
 `;
 }
 

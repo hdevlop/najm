@@ -18,6 +18,7 @@ export { createNajmServiceWorker } from './pwa';
 export type {
   NajmOfflineDocumentOptions,
   NajmServiceWorkerOptions,
+  NajmServiceWorkerPushOptions,
   NajmServiceWorkerRoute,
 } from './pwa';
 export type { EnvRecord, HeaderRule, NajmNextConfigOverrides, NextConfig } from './internal/types';

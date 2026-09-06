@@ -190,6 +190,131 @@ describe('service workers', () => {
       'same-origin absolute path',
     );
   });
+
+  test('adds typed push handling without changing the privacy-safe fetch behavior', async () => {
+    const GET = createNajmServiceWorker({
+      cacheId: 'push-app',
+      push: {
+        defaultTitle: 'Example App',
+        notificationPath: '/inbox',
+        icon: '/icons/app.png',
+        badge: '/icons/badge.png',
+      },
+    });
+    const worker = await GET().text();
+
+    expect(worker).toContain('addEventListener("push"');
+    expect(worker).toContain('addEventListener("notificationclick"');
+    expect(worker).toContain('const PUSH_NOTIFICATION_PATH = "/inbox"');
+    expect(worker).toContain('data: { notificationId: payload.notificationId }');
+    expect(worker).toContain('Object.keys(payload).every((key) => PUSH_KEYS.has(key))');
+    expect(worker).toContain('payload.notificationId.length > 100');
+    expect(worker).toContain('payload.title.length > 120');
+    expect(worker).toContain('payload.body.length > 300');
+    expect(worker).toContain('url.searchParams.set("focus", notificationId)');
+    expect(worker).toContain('new URL(client.url).origin !== self.location.origin');
+    expect(worker).not.toContain('data: { notificationId: payload.notificationId, title');
+    expect(worker).toContain('request.mode !== "navigate"');
+    expect(worker).not.toContain('cache.put');
+  });
+
+  test('executes bounded push display and same-origin click behavior', async () => {
+    const GET = createNajmServiceWorker({
+      push: {
+        defaultTitle: 'Example App',
+        notificationPath: '/inbox',
+        icon: '/icons/app.png',
+        badge: '/icons/badge.png',
+      },
+    });
+    const worker = await GET().text();
+    const handlers = new Map<string, (event: any) => void>();
+    const displayed: Array<{ title: string; options: Record<string, unknown> }> = [];
+    const navigated: string[] = [];
+    const focused: string[] = [];
+    const mockSelf = {
+      addEventListener: (type: string, handler: (event: any) => void) => handlers.set(type, handler),
+      location: { origin: 'https://app.example' },
+      registration: {
+        showNotification: async (title: string, options: Record<string, unknown>) => {
+          displayed.push({ title, options });
+        },
+      },
+      clients: {
+        matchAll: async () => [
+          {
+            url: 'https://app.example/current',
+            navigate: async (url: string) => navigated.push(url),
+            focus: async () => focused.push('existing'),
+          },
+        ],
+        openWindow: async (url: string) => focused.push(url),
+      },
+    };
+    new Function('self', 'caches', worker)(mockSelf, {});
+
+    let pushWork: Promise<unknown> | undefined;
+    handlers.get('push')?.({
+      data: {
+        json: () => ({ notificationId: 'notification-1', title: '', body: 'Body' }),
+      },
+      waitUntil: (work: Promise<unknown>) => {
+        pushWork = work;
+      },
+    });
+    await pushWork;
+    expect(displayed).toEqual([
+      {
+        title: 'Example App',
+        options: {
+          body: 'Body',
+          data: { notificationId: 'notification-1' },
+          icon: '/icons/app.png',
+          badge: '/icons/badge.png',
+        },
+      },
+    ]);
+
+    handlers.get('push')?.({
+      data: { json: () => ({ notificationId: 'notification-2', title: 'Title', body: '', url: '/private' }) },
+      waitUntil: () => {
+        throw new Error('invalid payload must not schedule work');
+      },
+    });
+    expect(displayed).toHaveLength(1);
+
+    let clickWork: Promise<unknown> | undefined;
+    handlers.get('notificationclick')?.({
+      notification: {
+        close: () => undefined,
+        data: { notificationId: 'notification-1' },
+      },
+      waitUntil: (work: Promise<unknown>) => {
+        clickWork = work;
+      },
+    });
+    await clickWork;
+    expect(navigated).toEqual(['https://app.example/inbox?focus=notification-1']);
+    expect(focused).toEqual(['existing']);
+  });
+
+  test('rejects unsafe push configuration before emitting a worker', () => {
+    expect(() =>
+      createNajmServiceWorker({
+        push: { defaultTitle: 'App', notificationPath: 'https://example.com/inbox' },
+      }),
+    ).toThrow('same-origin absolute path');
+    expect(() =>
+      createNajmServiceWorker({
+        push: { defaultTitle: '', notificationPath: '/inbox' },
+      }),
+    ).toThrow('must contain 1-120 characters');
+    expect(() =>
+      createNajmServiceWorker({
+        push: { defaultTitle: 'App', notificationPath: '/inbox', icon: '//cdn.example.com/icon.png' },
+      }),
+    ).toThrow('same-origin absolute path');
+  });
 });
 
 describe('compatibility', () => {

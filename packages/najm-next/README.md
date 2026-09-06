@@ -115,6 +115,26 @@ to the configured `cacheId`; it never deletes unrelated caches on the origin.
 For apps deployed below a base path, pass matching `scriptUrl` and `scope` props
 to `NajmPwaRegistration`.
 
+Web push is opt-in and configured by the application. The generated worker
+accepts only bounded `{ notificationId, title, body }` JSON, stores only the
+notification ID in notification data, and opens the configured same-origin
+inbox path:
+
+```ts
+export const GET = createNajmServiceWorker({
+  push: {
+    defaultTitle: 'Example App',
+    notificationPath: '/inbox',
+    icon: '/icons/app-192.png',
+    badge: '/icons/app-192.png',
+  },
+});
+```
+
+The package supplies no product copy or destination. Invalid payloads and
+cross-origin configuration are ignored or rejected before notification UI is
+shown.
+
 ## Environment
 
 | Variable | Default | Purpose |
