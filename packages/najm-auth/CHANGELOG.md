@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.0.1 - 2026-09-06
 
 - fix(auth): treat successful one-time account-invite acceptance as proof of
   email ownership and activate a pending invite, while ordinary password resets
