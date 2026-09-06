@@ -6,6 +6,8 @@
   rejection paths so strict Next.js TypeScript builds preserve the declared
   `never` contract without changing runtime behavior.
 
+## Unreleased
+
 ## 4.0.1 - 2026-09-06
 
 - fix(auth): treat successful one-time account-invite acceptance as proof of
