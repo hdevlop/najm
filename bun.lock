@@ -474,7 +474,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.11.12",
+      "version": "2.11.18",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",

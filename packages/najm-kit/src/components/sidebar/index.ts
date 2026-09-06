@@ -15,6 +15,8 @@ export type {
   NSidebarHeaderProps,
   NSidebarBrandProps,
   SidebarLogo,
+  SidebarResolvedState,
+  SidebarFooterRender,
   NSidebarContentProps,
   NSidebarSectionProps,
   NSidebarFooterProps,
@@ -27,4 +29,5 @@ export type {
   NAppShellClassNames,
   SidebarWidth,
   SidebarWidths,
+  SidebarLogoRender,
 } from './types';

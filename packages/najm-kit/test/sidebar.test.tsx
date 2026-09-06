@@ -235,6 +235,41 @@ describe("Sidebar", () => {
     expect(navItem.className).not.toContain("justify-center");
   });
 
+  test("centers built-in footer actions with the same collapsed rail inset", () => {
+    const { container } = render(
+      <NSidebar navItems={navItems} collapsed collapseButtonPosition="footer" onSettings={() => {}} />
+    );
+    const desktopSidebar = Array.from(container.querySelectorAll("aside")).find((aside) =>
+      aside.className.includes("md:flex")
+    ) as HTMLElement;
+    const settingsButton = desktopSidebar.querySelector("button[aria-label='Settings']") as HTMLButtonElement;
+    const collapseButton = desktopSidebar.querySelector("button[aria-label='Expand']") as HTMLButtonElement;
+    const navItem = desktopSidebar.querySelector("nav button") as HTMLButtonElement;
+
+    expect(settingsButton.className).toContain("var(--rail,4rem)");
+    expect(settingsButton.className).toContain("var(--sidebar-edge-width,0px)");
+    expect(collapseButton.className).toContain("var(--rail,4rem)");
+    expect(navItem.className).toContain("var(--rail,4rem)");
+  });
+
+  test("passes the resolved desktop and mobile state to a custom footer", () => {
+    const { container } = render(
+      <NSidebar
+        navItems={navItems}
+        collapsed
+        mobileOpen
+        footer={({ collapsed, isMobile }) => (
+          <span data-testid={isMobile ? "mobile-footer-state" : "desktop-footer-state"}>
+            {collapsed ? "collapsed" : "expanded"}
+          </span>
+        )}
+      />
+    );
+
+    expect(container.querySelector("[data-testid='desktop-footer-state']")?.textContent).toBe("collapsed");
+    expect(container.querySelector("[data-testid='mobile-footer-state']")?.textContent).toBe("expanded");
+  });
+
   test("collapses from the sidebar header button", () => {
     const { container } = render(<NSidebar navItems={navItems} logo={{ title: "Studio" }} />);
     const desktopSidebar = Array.from(container.querySelectorAll("aside")).find((aside) =>
@@ -376,6 +411,41 @@ describe("Sidebar", () => {
       expect(queries).toContain("(min-width: 1024px) and (max-width: 1279.98px)");
       expect(desktop.style.width).toBe("72px");
       expect(mobile.style.width).toBe("280px");
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test("passes automatic collapse to the desktop footer render prop", async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query === "(min-width: 1024px) and (max-width: 1279.98px)",
+      media: query,
+      onchange: null,
+      addListener: () => {},
+      removeListener: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      dispatchEvent: () => true,
+    })) as typeof window.matchMedia;
+
+    try {
+      const { container } = render(
+        <NSidebar
+          navItems={navItems}
+          autoCollapseAt="lg"
+          footer={({ collapsed, isMobile }) => (
+            <span data-testid={isMobile ? "mobile-auto-footer" : "desktop-auto-footer"}>
+              {collapsed ? "collapsed" : "expanded"}
+            </span>
+          )}
+        />
+      );
+
+      await waitFor(() => {
+        expect(container.querySelector("[data-testid='desktop-auto-footer']")?.textContent).toBe("collapsed");
+      });
+      expect(container.querySelector("[data-testid='mobile-auto-footer']")?.textContent).toBe("expanded");
     } finally {
       window.matchMedia = originalMatchMedia;
     }

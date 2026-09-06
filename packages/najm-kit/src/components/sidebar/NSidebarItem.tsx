@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { cn } from "../../lib/cn";
 import { ChevronDown } from "lucide-react";
 import type { SidebarItemProps, NavItem } from "./types";
+import { SIDEBAR_COLLAPSED_ITEM_INSET_CLASS } from "./layout";
 
 function defaultIsActive(item: NavItem, activePath: string): boolean {
   if (item.href) return activePath === item.href;
@@ -36,7 +37,7 @@ export function NSidebarItem({
   const baseClasses = cn(
     "flex items-center gap-3 w-full rounded-md text-sm px-2 font-medium transition-colors h-8 text-start",
     depth > 0 && "ps-7",
-    collapsed && "ps-[calc((var(--rail,4rem)-var(--sidebar-edge-width,0px))/2-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem)-var(--spacing,0.25rem))]",
+    collapsed && SIDEBAR_COLLAPSED_ITEM_INSET_CLASS,
     item.disabled
       ? "opacity-50 cursor-not-allowed"
       : active

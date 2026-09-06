@@ -317,7 +317,7 @@
       "export { NSidebarProvider, useNSidebar } from \"./components/sidebar/NSidebarContext\";",
       "export type { NSidebarHeaderProps, NSidebarBrandProps, NSidebarContentProps, NSidebarSectionProps, NSidebarFooterProps, NSidebarMobileProps, NSidebarContextValue, } from \"./components/sidebar\";",
       "export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageLayout, NPageHeader, NPageHeaderActions, NPageHeaderCompactActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet, NGrid, NGridItem } from \"./components/layout\";",
-      "export type { SidebarLogo, SidebarLogoRender } from \"./components/sidebar/types\";",
+      "export type { SidebarLogo, SidebarLogoRender, SidebarFooterRender, SidebarResolvedState } from \"./components/sidebar/types\";",
       "export type { SidebarProps, SidebarItemProps, LinkComponentType, NavItem, NavItemGroup, NAppShellClassNames, SidebarWidth, SidebarWidths, UserMenuAction, NAppShellUser, NAppShellAction, NAppShellProps, NAppCommandItem, NCommandPaletteProps, NPageLayoutProps, NPageHeaderBreakpoint, NPageHeaderProps, NGridProps, NGridItemProps, NGridCols, NGridSpan } from \"./components/layout\";"
     ],
     "najm-mcp": [

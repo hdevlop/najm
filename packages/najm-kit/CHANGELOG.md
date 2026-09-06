@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.11.18 - 2026-09-06
+
+- Added a resolved-state render-prop form of `NSidebar.footer`, matching the
+  existing logo contract. Custom footers now receive the actual desktop
+  collapsed state, including `autoCollapseAt`, while mobile drawers receive
+  their expanded state. `NAppShell.sidebarFooter` forwards the same contract.
+- Centered built-in footer and footer-collapse icons with the same border-aware
+  rail inset as navigation items.
+
 ## 2.11.17 - 2026-09-05
 
 - Added an `i18n` definition prop to `NajmAppProvider`, deriving translations,

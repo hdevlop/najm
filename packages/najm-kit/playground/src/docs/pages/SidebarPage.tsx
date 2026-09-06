@@ -20,6 +20,7 @@ import {
   GraduationCap,
   Inbox,
   LayoutDashboard,
+  LogOut,
   Plus,
   Settings,
   Shield,
@@ -239,9 +240,29 @@ function FullSidebarDemo() {
         widths={{ expanded: expandedWidth, collapsed: collapsedWidth, mobile: mobileWidth }}
         showCollapseButton
         collapseButtonPosition="edge"
-        settingsLabel="Settings"
-        onSettings={() => setSettingsOpen(true)}
-        onLogout={() => {}}
+        footer={({ collapsed }) => (
+          <div className="flex flex-col gap-1">
+            <NButton
+              aria-label="Settings"
+              className={`w-full ${collapsed ? 'justify-center' : 'justify-start'}`}
+              size="sm"
+              variant="ghost"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="size-4" />
+              {!collapsed && <span>Settings</span>}
+            </NButton>
+            <NButton
+              aria-label="Sign out"
+              className={`w-full ${collapsed ? 'justify-center' : 'justify-start'}`}
+              size="sm"
+              variant="ghost"
+            >
+              <LogOut className="size-4" />
+              {!collapsed && <span>Sign out</span>}
+            </NButton>
+          </div>
+        )}
       />
       <PagePanel active={active} onSidebarOpen={() => setMobileOpen(true)} />
       <SidebarSettingsSheet
@@ -299,9 +320,20 @@ const [mobileOpen, setMobileOpen] = React.useState(false);
     widths={{ expanded: expandedWidth, collapsed: collapsedWidth, mobile: mobileWidth }}
     showCollapseButton
     collapseButtonPosition="edge"
-    settingsLabel="Settings"
-    onSettings={() => setSettingsOpen(true)}
-    onLogout={() => {}}
+    footer={({ collapsed }) => (
+      <div className="flex flex-col gap-1">
+        <NButton
+          aria-label="Settings"
+          className={\`w-full \${collapsed ? 'justify-center' : 'justify-start'}\`}
+          size="sm"
+          variant="ghost"
+          onClick={() => setSettingsOpen(true)}
+        >
+          <Settings className="size-4" />
+          {!collapsed && <span>Settings</span>}
+        </NButton>
+      </div>
+    )}
   />
 
   <main className="min-w-0 flex-1 bg-background p-3">

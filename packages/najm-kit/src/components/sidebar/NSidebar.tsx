@@ -314,6 +314,14 @@ export function NSidebar({
   const desktopHeaderContent = renderLogo(false);
   const mobileHeaderContent = renderLogo(true);
 
+  const renderFooter = (isMobile: boolean): ReactNode => {
+    const isCollapsed = isMobile ? false : desktopCollapsed;
+    return typeof footer === "function" ? footer({ collapsed: isCollapsed, isMobile }) : footer;
+  };
+
+  const desktopFooterContent = renderFooter(false);
+  const mobileFooterContent = renderFooter(true);
+
   const contentProps = {
     groups,
     activePath,
@@ -329,7 +337,6 @@ export function NSidebar({
   };
 
   const footerProps = {
-    children: footer,
     onSettings,
     settingsLabel,
     onLogout,
@@ -346,7 +353,7 @@ export function NSidebar({
     <>
       {desktopHeaderContent && <NSidebarHeader collapsed={desktopCollapsed} classNames={classNames}>{desktopHeaderContent}</NSidebarHeader>}
       <NSidebarContent {...contentProps} />
-      <NSidebarFooter {...footerProps} />
+      <NSidebarFooter {...footerProps}>{desktopFooterContent}</NSidebarFooter>
     </>
   );
 
@@ -354,7 +361,7 @@ export function NSidebar({
     <>
       {mobileHeaderContent && <NSidebarHeader collapsed={false} classNames={classNames}>{mobileHeaderContent}</NSidebarHeader>}
       <NSidebarContent {...contentProps} collapsed={false} />
-      <NSidebarFooter {...footerProps} collapsed={false} isMobile />
+      <NSidebarFooter {...footerProps} collapsed={false} isMobile>{mobileFooterContent}</NSidebarFooter>
     </>
   );
 

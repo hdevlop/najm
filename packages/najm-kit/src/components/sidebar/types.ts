@@ -51,10 +51,18 @@ export interface SidebarWidths {
  * including `autoCollapseAt`, so consumers stop approximating it with their own
  * responsive classes.
  */
-export type SidebarLogoRender = (state: {
+export interface SidebarResolvedState {
   collapsed: boolean;
   isMobile: boolean;
-}) => ReactNode;
+}
+
+export type SidebarLogoRender = (state: SidebarResolvedState) => ReactNode;
+
+/**
+ * Render-prop form of `footer`. Receives the same resolved state as `logo`,
+ * including automatic desktop collapse and the expanded mobile drawer.
+ */
+export type SidebarFooterRender = (state: SidebarResolvedState) => ReactNode;
 
 /**
  * Declarative form of `logo`. The sidebar owns the box, the fit and the
@@ -106,7 +114,7 @@ export interface SidebarProps {
   showSectionSeparators?: boolean;
   /** Use a border instead of the default flat sidebar edge. */
   bordered?: boolean;
-  footer?: ReactNode;
+  footer?: ReactNode | SidebarFooterRender;
   className?: string;
   classNames?: NAppShellClassNames;
   mobileBreakpoint?: 'sm' | 'md' | 'lg';

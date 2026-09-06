@@ -300,7 +300,7 @@ export type {
 
 // Layout
 export { NAppShell, NSidebar, NSidebarItem, NNavbar, NCommandPalette, NPageLayout, NPageHeader, NPageHeaderActions, NPageHeaderCompactActions, NPageHeaderFilters, NPageHeaderTop, NInspectorSheet, NGrid, NGridItem } from "./components/layout";
-export type { SidebarLogo, SidebarLogoRender } from "./components/sidebar/types";
+export type { SidebarLogo, SidebarLogoRender, SidebarFooterRender, SidebarResolvedState } from "./components/sidebar/types";
 export type { SidebarProps, SidebarItemProps, LinkComponentType,   NavItem,
   NavItemGroup,
   NAppShellClassNames,

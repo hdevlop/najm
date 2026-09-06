@@ -45,7 +45,7 @@ export interface NAppShellProps extends Pick<SidebarProps, "widths"> {
   onCollapsedChange?: (collapsed: boolean) => void;
   /** Where the collapse toggle lives: a full-width button in the footer, or a small floating circle on the sidebar's edge. */
   collapseButtonPosition?: 'footer' | 'edge';
-  sidebarFooter?: ReactNode;
+  sidebarFooter?: SidebarProps["footer"];
   navbarLeft?: ReactNode;
   navbarRight?: ReactNode;
   classNames?: NAppShellClassNames;

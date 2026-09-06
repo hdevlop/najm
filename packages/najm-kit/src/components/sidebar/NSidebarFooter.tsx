@@ -1,6 +1,7 @@
 import { cn } from "../../lib/cn";
 import { Settings, LogOut, PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import type { NSidebarFooterProps } from "./types";
+import { SIDEBAR_COLLAPSED_ITEM_INSET_CLASS } from "./layout";
 
 function DefaultFooter({
   onSettings,
@@ -16,8 +17,10 @@ function DefaultFooter({
   collapsed?: boolean;
 }) {
   if (!onSettings && !onLogout) return null;
-  const itemClass =
-    'flex h-8 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-start text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors';
+  const itemClass = cn(
+    'flex h-8 w-full cursor-pointer items-center gap-3 rounded-md px-2 text-start text-sm font-medium text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors',
+    collapsed && SIDEBAR_COLLAPSED_ITEM_INSET_CLASS,
+  );
 
   return (
     <div className="flex flex-col gap-0.5">
@@ -70,7 +73,8 @@ export function NSidebarFooter({
           onClick={onToggleCollapsed}
           className={cn(
             "flex items-center w-full cursor-pointer rounded-md text-sm font-medium transition-colors h-8 text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-            "gap-3 px-2 text-start"
+            "gap-3 px-2 text-start",
+            collapsed && SIDEBAR_COLLAPSED_ITEM_INSET_CLASS,
           )}
           aria-label={collapsed ? expandLabel : collapseLabel}
           title={collapsed ? expandLabel : collapseLabel}
