@@ -224,7 +224,13 @@ export function DialogPage() {
 
   const openDelete = () => {
     void dialog.confirmDelete({
-      itemName: 'Annual_Report_2026.pdf',
+      title: 'Delete sponsor',
+      description: 'Permanently delete this sponsor account.',
+      itemName: 'Connected Sponsor A c4a-20260812-0303-7lreox',
+      itemType: 'sponsor',
+      warningText: 'Only administrators can permanently delete sponsor accounts.',
+      confirmText: 'Delete',
+      cancelText: 'Cancel',
       onConfirm: () => showResult('File deleted'),
     });
   };
@@ -482,8 +488,13 @@ dialog.custom({
         title="Confirm Delete"
         description="Use confirmDelete for destructive delete flows with a focused warning state."
         code={`dialog.confirmDelete({
-  itemName: 'Annual_Report_2026.pdf',
-  onConfirm: deleteFile,
+  title: 'Delete sponsor',
+  itemName: sponsor.name,
+  itemType: 'sponsor',
+  warningText: 'Only administrators can permanently delete sponsor accounts.',
+  confirmText: 'Delete',
+  cancelText: 'Cancel',
+  onConfirm: deleteSponsor,
 });`}
       >
         <NButton variant="destructive" onClick={openDelete}>
