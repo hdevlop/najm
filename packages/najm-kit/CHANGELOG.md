@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.11.21 - 2026-09-09
+
+- Added first-visit browser-language negotiation to `defineNajmPreferences`.
+  Applications can pass the raw `Accept-Language` header to `resolve`; explicit
+  cookies and account fallbacks retain priority, while quality weights and
+  regional language tags are matched against the configured catalog.
+
 ## 2.11.19 - 2026-09-06
 
 - Made native calendar month and year dropdowns follow the resolved Najm light

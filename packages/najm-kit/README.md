@@ -1132,13 +1132,18 @@ field are the same `400`. Nothing from the request body reaches the response.
 
 ```tsx
 // src/app/layout.tsx
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { preferences } from "@/preferences";
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const [cookieStore, session] = await Promise.all([cookies(), getSession()]);
+  const [cookieStore, requestHeaders, session] = await Promise.all([
+    cookies(),
+    headers(),
+    getSession(),
+  ]);
   const { language, theme, timeZone } = preferences.resolve(cookieStore, {
     languageFallback: session?.user.language,
+    acceptLanguage: requestHeaders.get("accept-language"),
   });
 
   return (
@@ -1156,9 +1161,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 ```
 
 `resolve` takes anything with `get(name)` — Next's cookie store, or a plain
-object in a test. Precedence is cookie, then `languageFallback`, then the
-catalog default; an invalid or dropped cookie language falls through to the
-fallback rather than pinning the UI.
+object in a test. Language precedence is cookie, then `languageFallback`, then
+the `acceptLanguage` request header, then the catalog default. Browser
+negotiation honors quality weights and regional tags; invalid stored values
+fall through rather than pinning the UI.
 
 ### Types
 

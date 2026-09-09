@@ -22,6 +22,7 @@
 // // src/app/layout.tsx
 // const { language, theme, timeZone } = preferences.resolve(await cookies(), {
 //   languageFallback: session?.user.language,
+//   acceptLanguage: (await headers()).get("accept-language"),
 // });
 // ```
 //
@@ -122,6 +123,12 @@ export interface NajmPreferenceResolveOptions {
    * valid cookie: the cookie is what the user last chose in this browser.
    */
   languageFallback?: unknown;
+  /**
+   * The raw `Accept-Language` request header. Used only after the language
+   * cookie and `languageFallback`; quality weights and regional language tags
+   * are matched against the application's supported languages.
+   */
+  acceptLanguage?: string | null;
 }
 
 /** A route handler, ready to `export const POST = ...`. */
@@ -250,6 +257,70 @@ function accepted(field: string, value: string, cookie: string): Response {
   return Response.json({ [field]: value }, { headers: { "Set-Cookie": cookie } });
 }
 
+interface AcceptedLanguageRange {
+  range: string;
+  quality: number;
+  order: number;
+}
+
+const LANGUAGE_RANGE_PATTERN = /^(?:\*|[a-z]{1,8}(?:-[a-z0-9]{1,8})*)$/i;
+const LANGUAGE_QUALITY_PATTERN = /^q\s*=\s*(0(?:\.\d{0,3})?|1(?:\.0{0,3})?)$/i;
+
+/** Parse the subset of RFC 9110 Accept-Language needed for language lookup. */
+function parseAcceptLanguage(value: string | null | undefined): AcceptedLanguageRange[] {
+  if (!value) return [];
+
+  return value
+    .split(",")
+    .map((entry, order): AcceptedLanguageRange | null => {
+      const [rawRange, ...parameters] = entry.split(";");
+      const range = rawRange?.trim().toLowerCase() ?? "";
+      if (!LANGUAGE_RANGE_PATTERN.test(range)) return null;
+
+      let quality = 1;
+      for (const rawParameter of parameters) {
+        const match = LANGUAGE_QUALITY_PATTERN.exec(rawParameter.trim());
+        if (!match) return null;
+        quality = Number(match[1]);
+      }
+
+      return { range, quality, order };
+    })
+    .filter((entry): entry is AcceptedLanguageRange => entry !== null)
+    .sort((left, right) => right.quality - left.quality || left.order - right.order);
+}
+
+function lookupAcceptedLanguage<Language extends string>(
+  value: string | null | undefined,
+  supportedLanguages: readonly Language[],
+  defaultLanguage: Language,
+): Language | undefined {
+  const supported = supportedLanguages.map((language) => ({
+    language,
+    normalized: language.toLowerCase(),
+  }));
+
+  for (const preference of parseAcceptLanguage(value)) {
+    if (preference.quality === 0) continue;
+    if (preference.range === "*") return defaultLanguage;
+
+    let candidate = preference.range;
+    while (candidate) {
+      const match = supported.find(
+        (entry) =>
+          entry.normalized === candidate || entry.normalized.startsWith(`${candidate}-`),
+      );
+      if (match) return match.language;
+
+      const separator = candidate.lastIndexOf("-");
+      if (separator === -1) break;
+      candidate = candidate.slice(0, separator);
+    }
+  }
+
+  return undefined;
+}
+
 /**
  * Configures the preference contract for one application.
  *
@@ -331,14 +402,20 @@ export function defineNajmPreferences<
     cookies: NajmCookieReader,
     options: NajmPreferenceResolveOptions = {},
   ): NajmPreferenceSnapshot<Language, TimeZone> {
-    // The cookie wins whenever it is valid; the fallback covers a first visit
-    // on a new device, where a signed-in user's stored language beats the
-    // catalog default. An invalid cookie falls through to the same path as a
-    // missing one, so a stale value from a dropped locale cannot pin the UI.
+    // The cookie wins whenever it is valid. A signed-in user's stored language
+    // then beats browser negotiation, which is only used for a first visit
+    // without an explicit or account preference. Invalid stored values fall
+    // through instead of pinning the UI or suppressing a usable browser locale.
     const languageCookie = cookies.get(cookieNames.language)?.value;
     const language = isLanguage(languageCookie)
       ? languageCookie
-      : i18n.normalizeLanguage(options.languageFallback);
+      : isLanguage(options.languageFallback)
+        ? options.languageFallback
+        : (lookupAcceptedLanguage(
+            options.acceptLanguage,
+            i18n.supportedLanguages,
+            i18n.defaultLanguage,
+          ) ?? i18n.defaultLanguage);
 
     const themeCookie = cookies.get(cookieNames.theme)?.value;
     const timeZoneCookie = cookies.get(cookieNames.timeZone)?.value;

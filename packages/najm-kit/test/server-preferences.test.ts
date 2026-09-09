@@ -236,16 +236,53 @@ describe("language", () => {
     expect(await response.json()).toEqual({ message: "Unsupported language." });
   });
 
-  test("resolution prefers the cookie, then the fallback, then the default", () => {
+  test("resolution prefers the cookie, then the fallback, then the browser, then the default", () => {
     const withCookie = preferences.resolve(cookieReader({ "najm-ui-language": "fr" }), {
       languageFallback: "ar",
+      acceptLanguage: "es-MX,es;q=0.9",
     });
     expect(withCookie.language).toBe("fr");
 
-    const withFallback = preferences.resolve(cookieReader({}), { languageFallback: "ar" });
+    const withFallback = preferences.resolve(cookieReader({}), {
+      languageFallback: "ar",
+      acceptLanguage: "es-MX,es;q=0.9",
+    });
     expect(withFallback.language).toBe("ar");
 
+    const withBrowser = preferences.resolve(cookieReader({}), {
+      acceptLanguage: "de-DE,de;q=0.9,fr-FR;q=0.8,en;q=0.7",
+    });
+    expect(withBrowser.language).toBe("fr");
+
     expect(preferences.resolve(cookieReader({})).language).toBe("en");
+  });
+
+  test("browser negotiation honors quality weights, regional tags, and stable ties", () => {
+    const cases = [
+      ["en-US;q=0.6,fr-FR;q=0.9", "fr"],
+      ["AR-ma,fr;q=0.5", "ar"],
+      ["de-DE,es-ES;q=0.8", "es"],
+      ["fr;q=0.8,es;q=0.8", "fr"],
+      ["fr;q=0,en;q=0.5", "en"],
+      ["de-DE,*;q=0.5", "en"],
+    ] as const;
+
+    for (const [acceptLanguage, expected] of cases) {
+      expect(preferences.resolve(cookieReader({}), { acceptLanguage }).language).toBe(expected);
+    }
+  });
+
+  test("invalid fallback and malformed or unsupported browser values reach the next fallback", () => {
+    expect(
+      preferences.resolve(cookieReader({}), {
+        languageFallback: "klingon",
+        acceptLanguage: "fr-FR,fr;q=0.9",
+      }).language,
+    ).toBe("fr");
+
+    for (const acceptLanguage of [null, "", "de-DE", "fr;q=2", "@@@", "fr;q=0"]) {
+      expect(preferences.resolve(cookieReader({}), { acceptLanguage }).language).toBe("en");
+    }
   });
 
   test("an invalid cookie falls through to the fallback, not to the stale value", () => {
