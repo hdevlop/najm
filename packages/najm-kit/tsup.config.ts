@@ -23,13 +23,16 @@ export default defineConfig({
     'server/index': 'src/server/index.ts',
     'server/react': 'src/server/react.ts',
     'server/reactClientGuard': 'src/server/reactClientGuard.ts',
-    // Framework-neutral person-image resolver. The seven WebP illustrations
+    // Framework-neutral person-image resolver. Package-owned WebP assets
     // are embedded as `data:image/webp;base64,…` strings via the esbuild
     // `dataurl` loader configured below, so consumers do not need to copy
     // any package file into their `public` directory or wire an asset
     // server. The published output is one module that runs anywhere
     // JavaScript runs.
     'person-images': 'src/person-images/index.ts',
+    'location/index': 'src/location/index.ts',
+    'location/leaflet': 'src/location/leaflet.tsx',
+    'location/google': 'src/location/google.tsx',
   },
   format: ['esm'],
   target: 'es2022',
@@ -71,6 +74,9 @@ export default defineConfig({
     '@codemirror/lang-json',
     '@codemirror/theme-one-dark',
     '@lezer/highlight',
+    'leaflet',
+    'leaflet/dist/leaflet.css',
+    '@googlemaps/js-api-loader',
   ],
   outExtension: () => ({ js: '.mjs' }),
   // `adapters/app` is the one entry meant to be imported by a server
@@ -89,10 +95,12 @@ export default defineConfig({
   // -context bug that `splitting: true` above exists to prevent.
   async onSuccess() {
     const { readFile, writeFile } = await import('node:fs/promises');
-    const target = resolve(__dirname, 'dist/adapters/app.mjs');
-    const source = await readFile(target, 'utf8');
-    if (!source.startsWith(`'use client'`)) {
-      await writeFile(target, `'use client';\n${source}`, 'utf8');
+    for (const relativeTarget of ['adapters/app.mjs', 'location/index.mjs', 'location/leaflet.mjs', 'location/google.mjs']) {
+      const target = resolve(__dirname, 'dist', relativeTarget);
+      const source = await readFile(target, 'utf8');
+      if (!source.startsWith(`'use client'`)) {
+        await writeFile(target, `'use client';\n${source}`, 'utf8');
+      }
     }
   },
   esbuildPlugins: [
@@ -105,10 +113,8 @@ export default defineConfig({
       },
     },
   ],
-  // Embed the seven person-illustration WebPs as base64 data URLs. The
-  // package only imports `.webp` from the `person-images` entry, so a
-  // package-wide loader is safe: a stray `.webp` import anywhere else is
-  // something to investigate rather than handle.
+  // Embed package-owned WebP assets as base64 data URLs so consumers do not
+  // need to copy marker or illustration files into their public directory.
   loader: {
     '.webp': 'dataurl',
   },

@@ -68,6 +68,9 @@ export default function Home() {
             <Button variant="outline" className="w-full" asChild>
               <Link href="/format-pagination">Formatting &amp; pagination example</Link>
             </Button>
+            <Button variant="outline" className="mt-2 w-full" asChild>
+              <Link href="/location-picker">Location picker manual test</Link>
+            </Button>
           </div>
         </div>
       </div>

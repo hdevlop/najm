@@ -63,6 +63,15 @@ describe("Root barrel import", () => {
     expect(najmUI.NForm).toBeDefined();
   });
 
+  test("exports the provider-neutral location contract", () => {
+    expect(najmUI.NLocationInput).toBeDefined();
+    expect(najmUI.NLocationDialog).toBeDefined();
+    expect(najmUI.NLocationProvider).toBeDefined();
+    expect(najmUI.FormLocationInput).toBeDefined();
+    expect(typeof najmUI.normalizeLocationValue).toBe("function");
+    expect(typeof najmUI.isCompleteCoordinatePair).toBe("function");
+  });
+
   test("exports schema-driven form development tools", () => {
     expect(typeof najmUI.buildFormFill).toBe("function");
     expect(najmUI.FormDevToolsProvider).toBeDefined();

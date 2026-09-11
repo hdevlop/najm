@@ -87,6 +87,18 @@
       "najm-whatsapp/sqlite": [
         "../../packages/najm-whatsapp/src/schema/sqlite.ts"
       ],
+      "najm-kit": [
+        "../../packages/najm-kit/src/index.ts"
+      ],
+      "najm-kit/location": [
+        "../../packages/najm-kit/src/location/index.ts"
+      ],
+      "najm-kit/location/leaflet": [
+        "../../packages/najm-kit/src/location/leaflet.tsx"
+      ],
+      "najm-kit/location/google": [
+        "../../packages/najm-kit/src/location/google.tsx"
+      ],
       "najm-chatbot/*": [
         "../../packages/najm-chatbot/src/*"
       ],

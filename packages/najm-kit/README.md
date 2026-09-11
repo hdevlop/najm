@@ -10,7 +10,10 @@ bun add najm-kit tailwindcss @tailwindcss/postcss
 
 Peer dependencies: `react >=18`, `react-dom >=18`. Requires **Tailwind CSS v4** in the host app.
 
-Optional peer dependencies: `recharts`, `@tanstack/react-table`, `react-hook-form`, `@tanstack/react-query`.
+Optional peer dependencies include `recharts`, `@tanstack/react-table`,
+`react-hook-form`, `@tanstack/react-query`, `leaflet`, and
+`@googlemaps/js-api-loader`. Map dependencies are reached only through their
+dedicated location adapter subpaths.
 
 ## Styling â€” the entire setup
 
@@ -1199,3 +1202,27 @@ defineNajmPreferences({ i18n: appI18n, cookieOptions: { secure: true } });
 
 The returned definition, its `cookieNames`, `cookieOptions`, `timeZones`, and
 `handlers` are all frozen.
+# Location picker
+
+`najm-kit/location` provides a provider-neutral composite form field. Import a
+map adapter only in a client boundary so a closed field does not load a map SDK:
+
+```tsx
+import { FormLocationInput, NLocationProvider } from "najm-kit/location";
+import { createLeafletLocationAdapter } from "najm-kit/location/leaflet";
+
+const adapter = createLeafletLocationAdapter({
+  tileUrl: "https://tiles.example.test/{z}/{x}/{y}.png",
+  attribution: "Required provider attribution",
+});
+
+<NLocationProvider adapter={adapter} defaultCenter={{ latitude: 33.5731, longitude: -7.5898 }}>
+  <FormLocationInput name="deliveryLocation" formLabel="Address" />
+</NLocationProvider>
+```
+
+The field value is `{ address, latitude, longitude }`; coordinates are either
+a complete finite pair in range or both `null`. Search is absent unless an
+explicit `NLocationGeocoderAdapter` is supplied. The Google subpath exports
+`createGoogleLocationAdapter` and `createGooglePlacesGeocoder`; its browser key
+must be restricted by exact origins and enabled APIs.

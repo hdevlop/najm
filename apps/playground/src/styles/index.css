@@ -2,6 +2,9 @@
 @import 'tailwindcss';
 @import 'najm-kit/theme.css';
 @import 'najm-theme/styles.css';
+/* Source-aliased provider chunks can mount after the dialog opens. Keep the
+ * Playground's manual Leaflet harness structural CSS available up front. */
+@import 'leaflet/dist/leaflet.css';
 
 /*
  * The palette comes from najm-kit. This file used to define its own tokens as

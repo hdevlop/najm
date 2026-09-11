@@ -45,7 +45,15 @@ function FormDescription({ className, ...props }: React.ComponentProps<"p">) {
 
 function FormMessage({ className, children, ...props }: React.ComponentProps<"p">) {
   const { error, formMessageId } = useFormField()
-  const body = error ? String(error?.message ?? "") : children
+  const findMessage = (value: unknown): string | undefined => {
+    if (!value || typeof value !== "object") return undefined
+    if ("message" in value && typeof (value as { message?: unknown }).message === "string") return (value as { message: string }).message
+    for (const child of Object.values(value as Record<string, unknown>)) {
+      const nested = findMessage(child)
+      if (nested) return nested
+    }
+  }
+  const body = error ? findMessage(error) : children
   if (!body) return null
   return <p data-slot="form-message" id={formMessageId} className={cn("text-destructive text-[0.8rem] font-medium", className)} {...props}>{body}</p>
 }

@@ -204,7 +204,7 @@
     },
     "packages/najm-auth": {
       "name": "najm-auth",
-      "version": "3.4.0",
+      "version": "4.0.1",
       "dependencies": {
         "bcryptjs": "^3.0.2",
         "jose": "^6.1.3",
@@ -248,7 +248,7 @@
     },
     "packages/najm-cache": {
       "name": "najm-cache",
-      "version": "2.1.2",
+      "version": "2.2.0",
       "dependencies": {
         "najm-core": "workspace:*",
       },
@@ -404,7 +404,7 @@
     },
     "packages/najm-email": {
       "name": "najm-email",
-      "version": "2.0.2",
+      "version": "2.0.3",
       "devDependencies": {
         "@types/nodemailer": "^8.0.1",
         "najm-core": "workspace:*",
@@ -474,7 +474,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.11.18",
+      "version": "2.11.23",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",
@@ -519,6 +519,7 @@
         "@codemirror/state": "^6.6.0",
         "@codemirror/theme-one-dark": "^6.1.0",
         "@codemirror/view": "^6.42.0",
+        "@googlemaps/js-api-loader": "^2.1.1",
         "@hookform/resolvers": "^5",
         "@lezer/highlight": "^1.2.0",
         "@tailwindcss/postcss": "^4",
@@ -526,12 +527,15 @@
         "@testing-library/react": "^16",
         "@testing-library/user-event": "^14.6.1",
         "@types/culori": "^4.0.1",
+        "@types/google.maps": "^3.66.2",
+        "@types/leaflet": "^1.9.22",
         "@types/react": "^19",
         "@types/react-dom": "^19",
         "@types/react-file-icon": "^1.0.5",
         "@uiw/react-codemirror": "^4.25.0",
         "@vitejs/plugin-react": "^5.2.0",
         "happy-dom": "^20.11.1",
+        "leaflet": "^1.9.4",
         "najm-i18n": "workspace:*",
         "postcss": "^8.5.22",
         "react-hook-form": "^7",
@@ -575,7 +579,7 @@
     },
     "packages/najm-mcp": {
       "name": "najm-mcp",
-      "version": "2.1.1",
+      "version": "2.1.2",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.29.0",
       },
@@ -589,7 +593,7 @@
       },
       "peerDependencies": {
         "hono": "^4.12.18",
-        "najm-auth": "workspace:*",
+        "najm-auth": "^3.2.1 || ^4.0.0",
         "najm-core": "workspace:*",
         "najm-guard": "workspace:*",
         "najm-validation": "workspace:*",
@@ -603,7 +607,7 @@
     },
     "packages/najm-next": {
       "name": "najm-next",
-      "version": "0.2.0",
+      "version": "0.3.0",
       "devDependencies": {
         "@types/node": "^25.0.2",
         "@types/react": "^19.2.14",
@@ -1112,6 +1116,8 @@
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.10", "", {}, "sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ=="],
 
+    "@googlemaps/js-api-loader": ["@googlemaps/js-api-loader@2.1.1", "", { "dependencies": { "@types/google.maps": "^3.53.1" } }, "sha512-yUpAwksbHrlZIWD49JmveNSfBG4oAK0AwMknfSaPMnP5N7UT8oFRVCqwjGb1XQovi//7KLbPQKZpbofiLGzpDw=="],
+
     "@hapi/boom": ["@hapi/boom@10.0.1", "", { "dependencies": { "@hapi/hoek": "^11.0.2" } }, "sha512-ERcCZaEjdH3OgSJlyjVk8pHIFeus91CjKP3v+MpgBNp5IvGzP2l/bRiD78nqYcKPaZdbKkK5vDBVPd2ohHBlsA=="],
 
     "@hapi/hoek": ["@hapi/hoek@11.0.7", "", {}, "sha512-HV5undWkKzcB4RZUusqOpcgxOaq6VOAH7zhhIr2g3G8NF/MlFO75SjOr2NfuSx0Mh40+1FqCkagKLJRykUWoFQ=="],
@@ -1578,11 +1584,17 @@
 
     "@types/estree-jsx": ["@types/estree-jsx@1.0.5", "", { "dependencies": { "@types/estree": "*" } }, "sha512-52CcUVNFyfb1A2ALocQw/Dd1BQFNmSdkuC3BkZ6iqhdMfQz7JWOFRuJFloOzjk+6WijU56m9oKXFAXc7o3Towg=="],
 
+    "@types/geojson": ["@types/geojson@7946.0.16", "", {}, "sha512-6C8nqWur3j98U6+lXDfTUWIfgvZU+EumvpHKcYjujKH7woYyLj2sUmff0tRhrqM7BohUw7Pz3ZB1jj2gW9Fvmg=="],
+
+    "@types/google.maps": ["@types/google.maps@3.66.2", "", {}, "sha512-Lg/U5iLj90fQV3jQJo6hmGYsNAecXH3J+3LkKb4AupYyyI3UFx7y4hINz1pYILX0DEWNN1FeCAXLUEjBBeV9XA=="],
+
     "@types/hast": ["@types/hast@3.0.4", "", { "dependencies": { "@types/unist": "*" } }, "sha512-WPs+bbQw5aCj+x6laNGWLH3wviHtoCv/P3+otBhbOhJgG8qtpdAMlTCxLtsTWA7LH1Oh/bFCHsBn0TPS5m30EQ=="],
 
     "@types/json-schema": ["@types/json-schema@7.0.15", "", {}, "sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA=="],
 
     "@types/jsonwebtoken": ["@types/jsonwebtoken@9.0.10", "", { "dependencies": { "@types/ms": "*", "@types/node": "*" } }, "sha512-asx5hIG9Qmf/1oStypjanR7iKTv0gXQ1Ov/jfrX6kS/EO0OFni8orbmGCn0672NHR3kXHwpAwR+B368ZGN/2rA=="],
+
+    "@types/leaflet": ["@types/leaflet@1.9.22", "", { "dependencies": { "@types/geojson": "*" } }, "sha512-h3lhECYEKDasG7LFHu+GiHqAvsgLuQvlJvVZzJDGONo3sEL+wUOqSFLnwkZlK0qVxnxbuGFW8iBlJNYs5wgndA=="],
 
     "@types/mdast": ["@types/mdast@4.0.4", "", { "dependencies": { "@types/unist": "*" } }, "sha512-kGaNbPh1k7AFzgpud/gMdvIm5xuECykRR+JnWKQno9TAXVa6WIVCGTPvYGekIDL4uwCZQSYbUxNBSb1aUo79oA=="],
 
@@ -2307,6 +2319,8 @@
     "keyv": ["keyv@5.6.0", "", { "dependencies": { "@keyv/serialize": "^1.1.1" } }, "sha512-CYDD3SOtsHtyXeEORYRx2qBtpDJFjRTGXUtmNEMGyzYOKj1TE3tycdlho7kA1Ufx9OYWZzg52QFBGALTirzDSw=="],
 
     "kind-of": ["kind-of@6.0.3", "", {}, "sha512-dcS1ul+9tmeD95T+x28/ehLgd9mENa3LsvDTtzm3vyBEO7RPptvAD+t44WVXaUjTBRcrpFeFlC8WCruUR456hw=="],
+
+    "leaflet": ["leaflet@1.9.4", "", {}, "sha512-nxS1ynzJOmOlHp+iL3FyWqK89GtNL8U8rvlMOsQdTTssxZwCXh8N2NB3GDQOL+YR3XnWyZAxwQixURb+FA74PA=="],
 
     "levn": ["levn@0.4.1", "", { "dependencies": { "prelude-ls": "^1.2.1", "type-check": "~0.4.0" } }, "sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ=="],
 

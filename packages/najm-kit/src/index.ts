@@ -27,6 +27,32 @@ export { composePreset, resolvePreset } from "./theme/presets/compose";
 export { NajmDesignProvider, useNajmDesign, useNajmComponentStyle } from "./theme/design-provider";
 export type { NajmDesignProviderProps } from "./theme/design-provider";
 
+// Provider-neutral location field. Map SDK implementations stay isolated in
+// `najm-kit/location/leaflet` and `najm-kit/location/google`.
+export {
+  NLocationInput,
+  NLocationDialog,
+  NLocationProvider,
+  useNLocationProvider,
+  FormLocationInput,
+  normalizeLocationValue,
+  isCompleteCoordinatePair,
+} from "./location";
+export type {
+  FormLocationInputProps,
+  NCoordinates,
+  NLocationCandidate,
+  NLocationClassNames,
+  NLocationDialogProps,
+  NLocationGeocoderAdapter,
+  NLocationInputProps,
+  NLocationLabels,
+  NLocationMapAdapter,
+  NLocationMapProps,
+  NLocationProviderProps,
+  NLocationValue,
+} from "./location";
+
 // Providers — see src/providers. Framework-agnostic on purpose; the Next
 // wiring lives in najm-kit/next.
 export {

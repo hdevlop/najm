@@ -410,3 +410,24 @@ input:autofill {
   --os-handle-bg-hover: rgba(161, 161, 170, 0.62);
   --os-handle-bg-active: rgba(212, 212, 216, 0.72);
 }
+
+/* Leaflet's structural CSS is imported by the optional adapter entrypoint.
+   These rules only connect its visual treatment to Najm theme tokens. */
+.nlocation-leaflet.leaflet-container {
+  background: var(--muted);
+  font: inherit;
+}
+.nlocation-leaflet .leaflet-control-attribution {
+  margin: 0;
+  padding: 2px 5px;
+  background: color-mix(in oklab, var(--card) 88%, transparent);
+  color: var(--muted-foreground);
+  font-size: 10px;
+  line-height: 1.3;
+}
+.nlocation-leaflet .leaflet-control-attribution a { color: var(--foreground); text-decoration: underline; }
+
+@media (prefers-reduced-motion: reduce) {
+  .nlocation-dialog *,
+  .nlocation-leaflet * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
