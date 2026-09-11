@@ -7,7 +7,7 @@ import { loadServerTheme } from '@/lib/serverTheme';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/index.css';
 import { auth } from '@/lib/auth';
-import { playgroundI18n, playgroundLocales, type Locale } from '@/locales';
+import { playgroundI18n, type Locale } from '@/locales';
 import { AuthProviderWrapper } from '@/providers/AuthProvider';
 import { QueryProvider } from '@/providers/QueryProvider';
 import { UI_THEME_COOKIE } from '@/app/api/ui-theme/route';
@@ -59,11 +59,8 @@ export default async function RootLayout({
         <QueryProvider>
           <AuthProviderWrapper initialSession={session}>
             <NajmAppProvider
-              translations={playgroundI18n.translations}
+              i18n={playgroundI18n.snapshot}
               initialLanguage={language}
-              defaultLanguage={playgroundI18n.defaultLanguage}
-              fallbackToDefaultLanguage={playgroundI18n.fallbackToDefaultLanguage}
-              getLanguageDirection={playgroundI18n.direction}
               initialTheme={theme}
               initialTimeZone={timeZone}
               initialDesign={appearance.designConfig}
@@ -71,7 +68,6 @@ export default async function RootLayout({
               appName="Najm Playground"
               formDevTools
               currency="MAD"
-              locales={playgroundLocales}
             >
               <NThemeBrandingProvider branding={branding}>
                 {children}

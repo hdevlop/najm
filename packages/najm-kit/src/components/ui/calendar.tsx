@@ -2,10 +2,12 @@ import * as React from "react"
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon } from "lucide-react"
 import { DayPicker } from "react-day-picker"
 import { cn } from "../../lib/cn"
+import { useNajmThemeMode } from "../../theme/provider"
 import { buttonVariants } from "../Button"
 
 function Calendar(props: Record<string, any>) {
   const { className, classNames, mode = "single", ...rest } = props
+  const themeMode = useNajmThemeMode()
   return (
     <DayPicker
       mode={mode}
@@ -16,7 +18,10 @@ function Calendar(props: Record<string, any>) {
         caption_label: "text-sm font-medium",
         dropdowns: "relative inline-flex items-center gap-2",
         dropdown_root: "relative inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm font-medium text-foreground hover:bg-accent",
-        dropdown: "absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0",
+        dropdown: cn(
+          "absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0",
+          themeMode === "dark" ? "scheme-dark" : "scheme-light",
+        ),
         nav: "flex items-center gap-1",
         button_previous: cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1"),
         button_next: cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1"),
@@ -25,7 +30,7 @@ function Calendar(props: Record<string, any>) {
         weekday: "text-muted-foreground rounded-md w-8 font-normal text-[0.8rem]",
         week: "flex w-full mt-2",
         day: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20 [&:has([aria-selected])]:bg-accent",
-        day_button: "size-8 p-0 font-normal aria-selected:bg-primary aria-selected:text-primary-foreground",
+        day_button: "size-8 cursor-pointer p-0 font-normal aria-selected:bg-primary aria-selected:text-primary-foreground disabled:cursor-not-allowed",
         selected: "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground focus:bg-primary focus:text-primary-foreground rounded-md",
         today: "bg-accent text-accent-foreground rounded-md",
         outside: "text-muted-foreground opacity-50",

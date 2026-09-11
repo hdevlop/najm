@@ -7,6 +7,7 @@ import {
   DialogContent,
   DialogTitle,
   NConfirmDialog,
+  NDeleteDialog,
   NDialog,
   NDialogDescription,
   NDialogHeader,
@@ -167,6 +168,32 @@ describe("NDialog", () => {
       expect(submitted).toBe(true);
     });
     expect(clicked).toBe(false);
+  });
+});
+
+describe("NDeleteDialog", () => {
+  test("renders its supplied title, centers wrapping item names, and keeps cancel neutral", () => {
+    const { baseElement, getByText } = render(
+      <NDeleteDialog
+        title="Delete sponsor"
+        itemName="Connected Sponsor A c4a-20260812-0303-7lreox"
+        warningText="Only administrators can permanently delete sponsor accounts."
+        confirmText="Delete"
+        cancelText="Cancel"
+      />
+    );
+
+    expect(baseElement.querySelector("#najm-delete-form h2")?.textContent).toBe("Delete sponsor");
+
+    const itemName = getByText('"Connected Sponsor A c4a-20260812-0303-7lreox"');
+    expect(itemName.className).toContain("text-center");
+    expect(itemName.className).toContain("break-words");
+    expect(itemName.className).not.toContain("truncate");
+
+    const cancel = getByText("Cancel");
+    expect(cancel.className).toContain("border-destructive");
+    expect(cancel.className).toContain("bg-transparent");
+    expect(cancel.className).not.toContain("bg-secondary");
   });
 });
 

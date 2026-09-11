@@ -43,8 +43,13 @@ export default function DialogPreview() {
           variant="destructive"
           onClick={() =>
             dialog.confirmDelete({
-              itemName: "Project Alpha",
-              itemType: "project",
+              title: "Delete sponsor",
+              description: "Permanently delete this sponsor account.",
+              itemName: "Connected Sponsor A c4a-20260812-0303-7lreox",
+              itemType: "sponsor",
+              warningText: "Only administrators can permanently delete sponsor accounts.",
+              confirmText: "Delete",
+              cancelText: "Cancel",
               onConfirm: async () => {
                 await new Promise((r) => setTimeout(r, 1500));
               },

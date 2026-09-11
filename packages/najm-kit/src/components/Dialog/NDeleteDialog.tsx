@@ -1,9 +1,11 @@
 import { cn } from "../../lib/cn";
+import type { ReactNode } from "react";
 import { Button } from "../Button";
 import { NIcon, type NIconSource } from "../Icon";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "./Dialog";
 
 export interface NDeleteDialogContentProps {
+  title?: ReactNode;
   itemName: string;
   itemType?: string;
   icon?: NIconSource;
@@ -27,6 +29,7 @@ export interface NDeleteDialogProps extends Omit<NDeleteDialogContentProps, "cla
 }
 
 export function NDeleteDialogContent({
+  title = "Delete",
   itemName,
   itemType,
   icon: Icon = "trash-2",
@@ -40,10 +43,10 @@ export function NDeleteDialogContent({
           <NIcon icon={Icon} className="size-7" />
         </div>
         <div className="space-y-3">
-          <h2 className="text-xl font-semibold leading-none text-card-foreground dark:text-white">Delete</h2>
+          <h2 className="text-xl font-semibold leading-none text-card-foreground dark:text-white">{title}</h2>
           <div className="space-y-1.5">
             <p className="text-sm font-medium leading-5 text-muted-foreground dark:text-[#aab4c2]">{warningText}</p>
-            <p className="max-w-[280px] truncate text-sm font-bold leading-5 text-card-foreground dark:text-white">
+            <p className="mx-auto max-w-[280px] break-words text-center text-sm font-bold leading-5 text-card-foreground dark:text-white">
               "{itemName}"
               {itemType ? <> ({itemType})</> : null}
             </p>
@@ -90,6 +93,7 @@ export function NDeleteDialog({
         </DialogHeader>
 
         <NDeleteDialogContent
+          title={title}
           itemName={itemName}
           itemType={itemType}
           icon={icon}
@@ -104,7 +108,7 @@ export function NDeleteDialog({
             variant="outline"
             onClick={onCancel}
             disabled={loading}
-            className="h-10 w-full rounded-[10px] border border-border bg-secondary text-sm font-bold text-secondary-foreground shadow-none hover:bg-secondary/80 hover:text-secondary-foreground dark:border-0 dark:bg-[#3e4a5d] dark:text-white dark:hover:bg-[#4b586c] dark:hover:text-white"
+            className="h-10 w-full rounded-[10px] border border-destructive bg-transparent text-sm font-bold text-card-foreground shadow-none hover:bg-transparent hover:text-card-foreground dark:border-destructive dark:bg-transparent dark:text-white dark:hover:bg-transparent dark:hover:text-white"
           >
             {cancelText}
           </Button>
