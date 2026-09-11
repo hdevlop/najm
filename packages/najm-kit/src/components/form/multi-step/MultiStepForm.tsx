@@ -228,7 +228,7 @@ export function WizardForm({
         <div
           data-najm-wizard-footer="true"
           className={cn(
-            "sticky bottom-0 z-10 mt-auto flex shrink-0 items-center justify-between bg-background/95 pt-3 backdrop-blur",
+            "sticky bottom-0 z-10 mt-auto flex shrink-0 items-center justify-between bg-transparent pt-3",
             footerDividerClass(footerDivider),
             footerDividerClassName,
             classNames?.footer

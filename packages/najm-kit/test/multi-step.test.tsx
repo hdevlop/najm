@@ -36,6 +36,38 @@ function errorText(form: any, name: string) {
 }
 
 describe("WizardForm", () => {
+  test("uses a transparent footer surface by default", () => {
+    const steps: StepConfig[] = [
+      {
+        id: "mode",
+        title: "Mode",
+        schema: firstStepSchema,
+        fields: ["mode"],
+        render: ({ form }) => (
+          <select aria-label="mode" {...form.register("mode")}>
+            <option value="monthly">Monthly</option>
+            <option value="hourly">Hourly</option>
+          </select>
+        ),
+      },
+    ];
+
+    const rendered = render(
+      <WizardForm
+        steps={steps}
+        schema={firstStepSchema}
+        defaultValues={{ mode: "monthly" }}
+        onSubmit={mock()}
+      />
+    );
+
+    const footer = rendered.container.querySelector("[data-najm-wizard-footer='true']")!;
+    expect(footer.className).toContain("bg-transparent");
+    expect(footer.className).not.toContain("bg-background/95");
+    expect(footer.className).not.toContain("backdrop-blur");
+    rendered.unmount();
+  });
+
   test("supports configurable footer divider styles", () => {
     const steps: StepConfig[] = [
       {
