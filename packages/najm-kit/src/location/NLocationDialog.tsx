@@ -232,6 +232,8 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
       <DialogContent
         padding="none"
         hideClose
+        overlayClassName="!z-[10010]"
+        style={{ zIndex: 10020 }}
         className={cn(
           "nlocation-dialog !flex flex-col gap-0 inset-0 top-0 left-0 h-dvh max-h-dvh max-w-none translate-x-0 translate-y-0 rounded-none sm:inset-auto sm:top-1/2 sm:left-1/2 sm:h-[min(46rem,calc(100dvh-2rem))] sm:max-h-[calc(100dvh-2rem)] sm:max-w-4xl sm:-translate-x-1/2 sm:-translate-y-1/2 sm:rounded-lg",
           classNames?.dialog,

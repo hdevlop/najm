@@ -73,6 +73,8 @@ export interface DialogContentProps extends React.ComponentProps<typeof DialogPr
   padding?: DialogPadding;
   /** Hides the built-in close (X) in the top inline-end corner. Use when the content provides its own close control (e.g. inside a page header). */
   hideClose?: boolean;
+  /** Optional layer classes for the portal overlay. Useful for dialogs opened from another modal surface. */
+  overlayClassName?: string;
 }
 
 function DialogContent({
@@ -80,6 +82,7 @@ function DialogContent({
   children,
   padding,
   hideClose = false,
+  overlayClassName,
   onOpenAutoFocus,
   onCloseAutoFocus,
   ...props
@@ -99,7 +102,7 @@ function DialogContent({
   return (
     <DialogPortal data-slot="dialog-portal">
       <div className={portalClassName}>
-        <DialogOverlay />
+        <DialogOverlay className={overlayClassName} />
         <DialogPrimitive.Content
           data-slot="dialog-content"
           data-padding={resolvedPadding}

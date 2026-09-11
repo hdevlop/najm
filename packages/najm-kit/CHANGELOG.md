@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.12.1 - 2026-09-11
+
+- Raised the location picker dialog and its overlay above parent Najm dialogs,
+  so it remains interactive when opened from a wizard or other modal form.
+
 ## 2.12.0 - 2026-09-11
 
 - Added a provider-neutral composite location field with transactional

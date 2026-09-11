@@ -21,6 +21,19 @@ function Harness({ initial, onConfirm }: { initial: NLocationValue; onConfirm: (
 }
 
 describe("NLocationDialog", () => {
+  test("renders above a parent NMultiDialog layer", () => {
+    const { baseElement } = render(
+      <NLocationProvider adapter={{ id: "test", Map: TestMap }}>
+        <NLocationDialog open value={{ address: "", latitude: null, longitude: null }} onOpenChange={() => {}} onConfirm={() => {}} />
+      </NLocationProvider>,
+    );
+
+    const content = baseElement.querySelector<HTMLElement>(".nlocation-dialog");
+    const overlay = baseElement.querySelector<HTMLElement>('[data-slot="dialog-overlay"]');
+    expect(content?.style.zIndex).toBe("10020");
+    expect(overlay?.className).toContain("!z-[10010]");
+  });
+
   test("hides search when no geocoder is configured", () => {
     const view = render(<Harness initial={{ address: "Address", latitude: null, longitude: null }} onConfirm={() => {}} />);
     expect(view.queryByPlaceholderText("Search by street, city, or postal code")).toBeNull();
