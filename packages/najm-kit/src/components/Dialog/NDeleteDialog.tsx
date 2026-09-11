@@ -39,14 +39,14 @@ export function NDeleteDialogContent({
   return (
     <form id="najm-delete-form" onSubmit={(e) => e.preventDefault()}>
       <div className={cn("flex flex-col items-center text-center", className)}>
-        <div className="mb-6 flex size-16 items-center justify-center rounded-[20px] bg-destructive/10 text-destructive dark:bg-[#5a1822] dark:text-white">
+        <div className="mb-6 flex size-16 items-center justify-center rounded-[20px] bg-destructive/10 text-destructive">
           <NIcon icon={Icon} className="size-7" />
         </div>
         <div className="space-y-3">
-          <h2 className="text-xl font-semibold leading-none text-card-foreground dark:text-white">{title}</h2>
+          <h2 className="text-xl font-semibold leading-none text-card-foreground">{title}</h2>
           <div className="space-y-1.5">
-            <p className="text-sm font-medium leading-5 text-muted-foreground dark:text-[#aab4c2]">{warningText}</p>
-            <p className="mx-auto max-w-[280px] break-words text-center text-sm font-bold leading-5 text-card-foreground dark:text-white">
+            <p className="text-sm font-medium leading-5 text-muted-foreground">{warningText}</p>
+            <p className="mx-auto max-w-[280px] break-words text-center text-sm font-bold leading-5 text-card-foreground">
               "{itemName}"
               {itemType ? <> ({itemType})</> : null}
             </p>
@@ -79,10 +79,10 @@ export function NDeleteDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={cn(
-          "h-auto max-w-[380px] gap-0 rounded-[18px] border border-border bg-card p-6 pt-8 shadow-2xl dark:border-0 dark:bg-[#222b38]",
+          "h-auto max-w-[380px] gap-0 rounded-[18px] border border-border bg-card p-6 pt-8 shadow-2xl",
           "[&>button]:end-4 [&>button]:top-4 [&>button]:flex [&>button]:size-6 [&>button]:items-center [&>button]:justify-center",
           "[&>button]:rounded-full [&>button]:bg-muted [&>button]:text-muted-foreground [&>button]:opacity-100 [&>button]:ring-offset-0",
-          "[&>button]:hover:bg-secondary [&>button]:hover:text-foreground dark:[&>button]:bg-[#4d5a6d] dark:[&>button]:text-white dark:[&>button]:hover:bg-[#647186] dark:[&>button]:hover:text-white",
+          "[&>button]:hover:bg-secondary [&>button]:hover:text-foreground",
           className
         )}
         style={{ zIndex }}
@@ -108,7 +108,7 @@ export function NDeleteDialog({
             variant="outline"
             onClick={onCancel}
             disabled={loading}
-            className="h-10 w-full rounded-[10px] border border-destructive bg-transparent text-sm font-bold text-card-foreground shadow-none hover:bg-transparent hover:text-card-foreground dark:border-destructive dark:bg-transparent dark:text-white dark:hover:bg-transparent dark:hover:text-white"
+            className="h-10 w-full rounded-[10px] border border-destructive bg-transparent text-sm font-bold text-card-foreground shadow-none hover:bg-transparent hover:text-card-foreground"
           >
             {cancelText}
           </Button>
@@ -118,7 +118,7 @@ export function NDeleteDialog({
             variant="destructive"
             onClick={onConfirm}
             loading={loading}
-            className="h-10 w-full rounded-[10px] bg-destructive text-sm font-bold text-destructive-foreground shadow-none hover:bg-destructive/90 focus-visible:ring-destructive/40 dark:bg-[#dc4d61] dark:text-white dark:hover:bg-[#e15f70] dark:focus-visible:ring-[#dc4d61]/40"
+            className="h-10 w-full rounded-[10px] bg-destructive text-sm font-bold text-destructive-foreground shadow-none hover:bg-destructive/90 focus-visible:ring-destructive/40"
           >
             {confirmText}
           </Button>

@@ -194,6 +194,10 @@ describe("NDeleteDialog", () => {
     expect(cancel.className).toContain("border-destructive");
     expect(cancel.className).toContain("bg-transparent");
     expect(cancel.className).not.toContain("bg-secondary");
+
+    const content = baseElement.querySelector('[data-slot="dialog-content"]');
+    expect(content?.className).toContain("bg-card");
+    expect(content?.className).not.toContain("dark:bg-[");
   });
 });
 

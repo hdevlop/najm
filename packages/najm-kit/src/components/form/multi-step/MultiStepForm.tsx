@@ -10,6 +10,7 @@ import { useFormSubmission } from "./hooks/useFormSubmission";
 import { VariantProvider } from "../VariantContext";
 import type { WizardFooterDivider, WizardFormProps } from "./types";
 import { useResolvedFormDevTools } from "../FormDevToolsContext";
+import { NajmScroll } from "../../ui/scroll";
 
 type ValidationIssue = {
   path?: Array<string | number>;
@@ -210,17 +211,19 @@ export function WizardForm({
 
       <Form {...form}>
         <VariantProvider variant={variant} bordered={bordered}>
-          <form
-            id={`step-${currentStepConfig.id}`}
-            onSubmit={form.handleSubmit(handleSubmit)}
-            className={cn("min-h-0 flex-1 overflow-y-auto pb-4 flex flex-col gap-4", classNames?.step)}
-            autoComplete="off"
-          >
-            {currentStepConfig.description && (
-              <p className="text-sm text-muted-foreground">{currentStepConfig.description}</p>
-            )}
-            {currentStepConfig.render({ form, stepIndex: nav.currentStep - 1 })}
-          </form>
+          <NajmScroll axis="y" className="min-h-0 flex-1" data-najm-wizard-step-scroll="true">
+            <form
+              id={`step-${currentStepConfig.id}`}
+              onSubmit={form.handleSubmit(handleSubmit)}
+              className={cn("flex flex-col gap-4", classNames?.step)}
+              autoComplete="off"
+            >
+              {currentStepConfig.description && (
+                <p className="text-sm text-muted-foreground">{currentStepConfig.description}</p>
+              )}
+              {currentStepConfig.render({ form, stepIndex: nav.currentStep - 1 })}
+            </form>
+          </NajmScroll>
         </VariantProvider>
       </Form>
 
@@ -228,7 +231,7 @@ export function WizardForm({
         <div
           data-najm-wizard-footer="true"
           className={cn(
-            "sticky bottom-0 z-10 mt-auto flex shrink-0 items-center justify-between bg-transparent pt-3",
+            "sticky bottom-0 z-10 mt-auto flex shrink-0 items-center justify-between bg-transparent",
             footerDividerClass(footerDivider),
             footerDividerClassName,
             classNames?.footer

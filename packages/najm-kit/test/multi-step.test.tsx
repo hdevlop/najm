@@ -36,6 +36,32 @@ function errorText(form: any, name: string) {
 }
 
 describe("WizardForm", () => {
+  test("owns a Najm scroll viewport for every step", () => {
+    const steps: StepConfig[] = [
+      {
+        id: "mode",
+        title: "Mode",
+        schema: firstStepSchema,
+        fields: ["mode"],
+        render: ({ form }) => <input aria-label="mode" {...form.register("mode")} />,
+      },
+    ];
+
+    const rendered = render(
+      <WizardForm
+        steps={steps}
+        schema={firstStepSchema}
+        defaultValues={{ mode: "monthly" }}
+        onSubmit={mock()}
+      />
+    );
+
+    const scroll = rendered.container.querySelector('[data-najm-wizard-step-scroll="true"]');
+    expect(scroll).not.toBeNull();
+    expect(scroll?.className).toContain("flex-1");
+    expect(scroll?.querySelector("form")?.className).not.toContain("overflow-y-auto");
+  });
+
   test("uses a transparent footer surface by default", () => {
     const steps: StepConfig[] = [
       {
