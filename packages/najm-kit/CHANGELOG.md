@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.12.0 - 2026-09-11
+
+- Added a provider-neutral composite location field with transactional
+  address/pin editing, accessible responsive dialog behavior, and React Hook
+  Form integration.
+- Added isolated optional Leaflet and Google Maps adapter subpaths, including
+  package-owned marker rendering and optional provider-supplied geocoding.
+- Added the location-picker manual acceptance page to the Najm playground.
+
 ## 2.11.23 - 2026-09-11
 
 - Made the `WizardForm` footer surface transparent by default instead of
