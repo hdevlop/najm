@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.11.23 - 2026-09-11
+
+- Made the `WizardForm` footer surface transparent by default instead of
+  `bg-background/95` with `backdrop-blur`. Consumers can still override it
+  through `classNames.footer`.
+
 ## 2.11.22 - 2026-09-11
 
 - Allowed destructive dialogs to render a caller-supplied title, wrap and
