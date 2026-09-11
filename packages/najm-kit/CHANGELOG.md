@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.11.21 - 2026-09-09
+
+- Added first-visit browser-language negotiation to `defineNajmPreferences`.
+  Applications can pass the raw `Accept-Language` header to `resolve`; explicit
+  cookies and account fallbacks retain priority, while quality weights and
+  regional language tags are matched against the configured catalog.
+
+## 2.11.19 - 2026-09-06
+
+- Made native calendar month and year dropdowns follow the resolved Najm light
+  or dark theme instead of opening with the browser's light color scheme.
+- Added pointer cursors to interactive calendar days while retaining the
+  not-allowed cursor for disabled dates.
+
 ## 2.11.18 - 2026-09-06
 
 - Added a resolved-state render-prop form of `NSidebar.footer`, matching the
