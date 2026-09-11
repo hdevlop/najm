@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.11.22 - 2026-09-11
+
+- Allowed destructive dialogs to render a caller-supplied title, wrap and
+  center long item names, and use a transparent destructive-outline cancel
+  action.
+- Made native calendar caption dropdowns follow the resolved light or dark
+  theme and clarified pointer feedback for enabled and disabled dates.
+
 ## 2.11.21 - 2026-09-09
 
 - Added first-visit browser-language negotiation to `defineNajmPreferences`.
