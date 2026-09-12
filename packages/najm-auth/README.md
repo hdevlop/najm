@@ -874,6 +874,13 @@ the successful Next.js render receives. Attempts to override `cookie` or
 `authorization` fail closed; only Najm's validated recovery path may replace
 the cookie after it authorizes the recovered session.
 
+Speculative/prefetch requests (`next-router-prefetch`, `purpose: prefetch`,
+`sec-purpose` containing `prefetch`, `next-router-state-tree` metadata-only)
+receive the same treatment as direct navigation: a valid signed snapshot or
+non-rotating `/session/recover` validation is still required. Refresh-cookie
+presence is never authorization, so do not bypass `auth.proxy` when a refresh
+cookie is present on a prefetch. Recovery never rotates refresh tokens.
+
 ```typescript
 // src/app/api/[...route]/route.ts
 import { handle } from 'najm-core';

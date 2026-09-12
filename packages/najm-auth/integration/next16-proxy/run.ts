@@ -23,25 +23,82 @@ const buildEnv = cleanFixtureEnv({
 
 rmSync(join(fixture, distDir), { recursive: true, force: true });
 
-const build = Bun.spawn({
-  cmd: [process.execPath, nextBin, 'build'],
-  cwd: fixture,
-  env: buildEnv,
-  stdout: 'inherit',
-  stderr: 'inherit',
-});
-if (await build.exited !== 0) {
-  throw new Error('Next.js 16 production fixture build failed');
+/**
+ * Markers for Next's root-inference warnings. The fixture config pins
+ * `turbopack.root` and `outputFileTracingRoot` to the discovered workspace
+ * root, so neither warning may appear; a recurrence fails the fixture instead
+ * of scrolling by in teed output. Only these markers are asserted — no other
+ * Next output is filtered or suppressed.
+ */
+const WORKSPACE_ROOT_WARNING_MARKERS = [
+  'inferred your workspace root',
+  'We detected multiple lockfiles',
+];
+
+function assertNoWorkspaceRootWarning(output: string, phase: string) {
+  for (const marker of WORKSPACE_ROOT_WARNING_MARKERS) {
+    assert(
+      !output.includes(marker),
+      `fixture ${phase} emitted a workspace-root warning (${marker}); the fixture config should pin the root`,
+    );
+  }
 }
+
+const buildOutput = await runBuild();
+assertNoWorkspaceRootWarning(buildOutput, 'build');
 
 try {
   await runMainRecoverySuite();
   await runNonLoopbackRejection();
   await runExplicitPrecedence();
   await runSharedSessionSuite();
+  await runSpeculativePrefetchSuite();
   console.log('Next.js 16 + Bun production proxy recovery suite: PASS');
 } finally {
   rmSync(join(fixture, distDir), { recursive: true, force: true });
+}
+
+/**
+ * Run the production build with output teed live to this process (so useful
+ * build output is preserved on failure) while also capturing it for the
+ * workspace-root warning assertion above.
+ */
+async function runBuild(): Promise<string> {
+  const child = Bun.spawn({
+    cmd: [process.execPath, nextBin, 'build'],
+    cwd: fixture,
+    env: buildEnv,
+    stdout: 'pipe',
+    stderr: 'pipe',
+  });
+  const output: string[] = [];
+  await Promise.all([
+    tee(child.stdout, process.stdout, output),
+    tee(child.stderr, process.stderr, output),
+  ]);
+  if ((await child.exited) !== 0) {
+    throw new Error('Next.js 16 production fixture build failed');
+  }
+  return output.join('');
+}
+
+async function tee(
+  stream: ReadableStream<Uint8Array> | null,
+  sink: { write: (chunk: Uint8Array) => unknown },
+  output: string[],
+): Promise<void> {
+  if (!stream) return;
+  const reader = stream.getReader();
+  const decoder = new TextDecoder();
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      output.push(decoder.decode(value, { stream: true }));
+      sink.write(value);
+    }
+  }
+  output.push(decoder.decode());
 }
 
 async function runMainRecoverySuite() {
@@ -247,6 +304,151 @@ async function runSharedSessionSuite() {
   });
 }
 
+/**
+ * FIX-04 — School speculative-prefetch safety at the real Next 16 production
+ * boundary.
+ *
+ * School `apps/dashboard/src/proxy.ts:12-27` bypasses `auth.proxy` when a
+ * `refreshToken` cookie is present on a speculative prefetch. The package
+ * contract must prove that bypass unnecessary: every School speculative
+ * signal still goes through authoritative non-rotating `/session/recover`,
+ * forged/invalid refresh presence still fails closed, and recovery never
+ * rotates refresh tokens. Each valid speculative navigation must spend exactly
+ * one recovery round trip (a cookie-presence bypass would spend zero and would
+ * still return 200 for forged cookies, failing the assertions below). Header
+ * shapes replicate the School source; they are sent via plain fetch rather
+ * than a browser router prefetch (see limitations).
+ *
+ * Production note: `next-router-prefetch: 1` alone (without `RSC: 1`) hangs
+ * the Next 16 production server upstream (no response within the proxy
+ * timeout), while the same header through `withAuthMiddleware` alone recovers
+ * normally. Real browser prefetches always pair it with `RSC: 1` and return
+ * flight data instead of a document. The production variant therefore pairs
+ * the prefetch marker with `RSC: 1` and asserts flight-aware success (status,
+ * CSP, session-only recovery) rather than a full document render. Unit tests
+ * cover the isolated header shape against the middleware directly.
+ */
+async function runSpeculativePrefetchSuite() {
+  const documentVariants: Array<{ name: string; headers: Record<string, string> }> = [
+    { name: 'purpose:prefetch', headers: { purpose: 'prefetch' } },
+    { name: 'sec-purpose contains prefetch', headers: { 'sec-purpose': 'prefetch; prerender' } },
+    {
+      name: 'next-router-state-tree metadata-only',
+      headers: { 'next-router-state-tree': '["", {"children": ["__PAGE__", {}]}, null, "metadata-only"]' },
+    },
+  ];
+  const flightPrefetch = {
+    name: 'next-router-prefetch',
+    headers: { 'next-router-prefetch': '1', RSC: '1' },
+  };
+
+  await withProductionServer(4, ({ internalOrigin }) => ({
+    NAJM_AUTH_INTERNAL_URL: `${internalOrigin}/api/auth/session/recover`,
+  }), async ({ origin }) => {
+    const admin = await login(origin, { role: 'admin' });
+    assert(admin.response.status === 200, `login failed with ${admin.response.status}`);
+    const originalRefresh = admin.cookies.get('refreshToken');
+    assert(Boolean(originalRefresh), 'login did not issue refreshToken');
+
+    // Direct baseline: missing session recovers without rotating refresh.
+    const recoverable = new Map(admin.cookies);
+    recoverable.delete('najm.session');
+    const direct = await navigate(origin, '/protected', recoverable);
+    await expectProtected(direct, 'direct recoverable navigation');
+    assertSessionOnlyRecovery(direct, originalRefresh!);
+
+    // Every School speculative document signal with the same recoverable
+    // session must make the identical safe decision through exactly one
+    // recovery trip.
+    for (const variant of documentVariants) {
+      const cookies = new Map(admin.cookies);
+      cookies.delete('najm.session');
+      const before = await recoveryCount(origin);
+      const response = await navigate(origin, '/protected', cookies, variant.headers);
+      await expectProtected(response, `speculative recoverable navigation (${variant.name})`);
+      assertSessionOnlyRecovery(response, originalRefresh!);
+      const spent = await recoveryCount(origin) - before;
+      assert(
+        spent === 1,
+        `speculative navigation (${variant.name}) spent ${spent} recoveries, expected one authoritative round trip`,
+      );
+      const policy = response.headers.get('content-security-policy') ?? '';
+      assert(policy.includes('script-src'), `speculative navigation (${variant.name}) lost CSP composition`);
+    }
+
+    // The router prefetch marker travels as flight data in production. It must
+    // still recover exactly once without rotating refresh tokens.
+    {
+      const cookies = new Map(admin.cookies);
+      cookies.delete('najm.session');
+      const before = await recoveryCount(origin);
+      const response = await navigate(origin, '/protected', cookies, flightPrefetch.headers);
+      assert(
+        response.status === 200,
+        `speculative recoverable navigation (${flightPrefetch.name}) returned ${response.status}, expected 200 flight response`,
+      );
+      assertSessionOnlyRecovery(response, originalRefresh!);
+      const spent = await recoveryCount(origin) - before;
+      assert(
+        spent === 1,
+        `speculative navigation (${flightPrefetch.name}) spent ${spent} recoveries, expected one authoritative round trip`,
+      );
+      const policy = response.headers.get('content-security-policy') ?? '';
+      assert(policy.includes('script-src'), `speculative navigation (${flightPrefetch.name}) lost CSP composition`);
+    }
+
+    // Forged refresh presence on speculative requests must fail closed. A
+    // cookie-presence bypass would return 200 here with zero recoveries.
+    for (const variant of [...documentVariants, flightPrefetch]) {
+      const forged = new Map<string, string>([['refreshToken', 'forged-refresh-token']]);
+      const before = await recoveryCount(origin);
+      const response = await navigate(origin, '/protected', forged, variant.headers);
+      expectLoginRedirect(response, `forged speculative navigation (${variant.name})`);
+      assertClearsCookie(response, 'refreshToken');
+      assertClearsCookie(response, 'najm.session');
+      const spent = await recoveryCount(origin) - before;
+      assert(
+        spent === 1,
+        `forged speculative navigation (${variant.name}) spent ${spent} recoveries, expected one rejected validation`,
+      );
+    }
+
+    // Invalid and expired refresh states fail closed on speculative requests
+    // with the same redirect and cookie-clearing contract as direct navigation.
+    for (const refreshState of ['invalid', 'expired'] as const) {
+      const loginAttempt = await login(origin, { role: 'admin', refreshState });
+      const response = await navigate(
+        origin,
+        '/protected',
+        loginAttempt.cookies,
+        documentVariants[0]!.headers,
+      );
+      expectLoginRedirect(response, `${refreshState} speculative navigation`);
+      assertClearsCookie(response, 'refreshToken');
+      assertClearsCookie(response, 'najm.session');
+    }
+
+    // Tampered session with a valid refresh session still recovers on a
+    // speculative request and replaces the untrusted value.
+    const tampered = new Map(admin.cookies);
+    tampered.set('najm.session', `${tampered.get('najm.session')}tampered`);
+    const recoveredTampered = await navigate(
+      origin,
+      '/protected',
+      tampered,
+      documentVariants[0]!.headers,
+    );
+    await expectProtected(recoveredTampered, 'tampered speculative recovery');
+    assertSessionOnlyRecovery(recoveredTampered, originalRefresh!);
+    const replacement = responseCookies(recoveredTampered).get('najm.session');
+    assert(Boolean(replacement), 'tampered speculative session was not replaced');
+    assert(
+      replacement !== tampered.get('najm.session'),
+      'tampered speculative session value survived authoritative recovery',
+    );
+  });
+}
+
 async function recoveryCount(origin: string): Promise<number> {
   const response = await fetch(`${origin}/api/fixture/recoveries`, { redirect: 'manual' });
   const body = await response.json() as { count: number };
@@ -336,6 +538,7 @@ async function withProductionServer(
   try {
     await waitForServer(`${origin}/login`, server);
     await run({ origin, internalOrigin, output });
+    assertNoWorkspaceRootWarning(output.join(''), 'production server');
   } catch (error) {
     console.error(output.join(''));
     throw error;
@@ -363,10 +566,16 @@ async function login(
   return { response, cookies: responseCookies(response) };
 }
 
-function navigate(origin: string, pathname: string, cookies: Map<string, string>) {
+function navigate(
+  origin: string,
+  pathname: string,
+  cookies: Map<string, string>,
+  extraHeaders: Record<string, string> = {},
+) {
   return fetch(`${origin}${pathname}`, {
     headers: {
       Cookie: [...cookies].map(([name, value]) => `${name}=${value}`).join('; '),
+      ...extraHeaders,
     },
     redirect: 'manual',
   });
