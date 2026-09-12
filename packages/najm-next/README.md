@@ -25,9 +25,20 @@ every app forward at once.
 | Workspace imports | `experimental.externalDir`. |
 | Version | Throws below the supported Next floor, warns past the tested major. |
 
-Deployment-specific headers — CSP, HSTS, the rest of the edge policy — are not
-here. They belong to the reverse proxy, which is the only layer that knows the
-deployment.
+Deployment transport headers — HSTS, TLS policy, the rest of the edge posture —
+are not here. They belong to the reverse proxy / edge, which is the only
+layer that knows the deployment.
+
+The request `Content-Security-Policy`, however, is app-owned: `najm-next`
+composes one nonce policy per document request in `proxy.ts` (see
+[Request CSP and proxy composition](#request-csp-and-proxy-composition)
+below) and forwards the nonce into rendering. The edge must not emit a second
+enforcing `Content-Security-Policy` — two enforcing policies intersect (a
+resource must satisfy both), so an edge policy would silently block
+app/provider resources the request policy allows (validation ID CSP-04). If
+the edge needs visibility into violations, it may emit
+`Content-Security-Policy-Report-Only`, and only in coordination with the app
+policy.
 
 ### Root discovery
 
@@ -178,6 +189,136 @@ The prefix creates `<PREFIX>_MAP_PROVIDER`, `_DEFAULT_LATITUDE`,
 `_DEFAULT_LONGITUDE`, `_DEFAULT_ZOOM`, `_TILE_URL`, and `_TILE_ATTRIBUTION`.
 Unknown providers and invalid production URLs resolve to `disabled`. Loopback
 HTTP tile URLs are accepted only when `isDevelopment` is explicitly true.
+
+## Shared-safe app definition
+
+`najm-next/app` holds one application's policy as pure, serializable data —
+routes, session mode, preference cookies, CSP extras, and the location
+environment prefix. It imports nothing (no React, Next, environment, auth, or
+theme), so config-only consumers load it without any optional dependency:
+
+```ts
+// src/najm.config.ts
+import { defineNajmApp } from 'najm-next/app';
+
+export const app = defineNajmApp({
+  id: 'my-app',
+  auth: {
+    apiBaseURL: '/api',
+    authPrefix: '/auth',
+    publicRoutes: ['/', '/login'],
+    protectedRoutes: ['/dashboard'],
+    loginRoute: '/login',
+    forbiddenRoute: '/forbidden',
+    proxySessionMode: 'optimistic',
+    rememberCookieName: 'my-app.remember',
+  },
+  preferences: {
+    cookieNames: {
+      language: 'my-app-ui-language',
+      theme: 'my-app-ui-theme',
+      timeZone: 'my-app-ui-timezone',
+    },
+    defaultTimeZone: 'Africa/Casablanca',
+  },
+  csp: {
+    reportPath: '/api/csp-report',
+    extraImgSrc: ['https://tile.openstreetmap.org'],
+    frameSrc: ["'none'"],
+  },
+  location: { environmentPrefix: 'MY_APP_LOCATION' },
+});
+```
+
+The definition is validated eagerly and frozen. `proxySessionMode` is
+structurally compatible with `najm-auth`'s `ProxySessionMode` without
+importing it, so this entrypoint never pulls Auth into the proxy graph.
+
+## Request CSP and proxy composition
+
+`najm-next/security` generates a fresh nonce per request, composes the single
+enforcing policy, and wraps the existing Najm Auth proxy without
+reconstructing its response — status, redirects, body, response headers, and
+every `Set-Cookie` value survive, because the composition mutates the returned
+response in place and only overwrites the CSP header (which also guarantees
+no accidental second enforcing policy):
+
+```ts
+// src/proxy.ts
+import { composeNajmProxy } from 'najm-next/security';
+import { app, appLocation } from './najm.config';
+import { auth } from './auth';
+
+export default composeNajmProxy({
+  auth,
+  app,
+  resolveLocationCsp: (env) => appLocation.resolve(env).csp,
+});
+
+// The matcher stays a static literal in the app: Next analyzes it at build
+// time and dynamic values are ignored.
+export const config = {
+  matcher: [
+    '/((?!api|_next/static|_next/image|favicon.ico|.*\\.(?:css|js|map|json|txt|xml|ico|png|jpg|jpeg|gif|webp|svg|woff|woff2|ttf|webmanifest)$).*)',
+  ],
+};
+```
+
+Nonce mode is explicit (`mode: "nonce"`): nonce rendering is dynamic per
+request, so pages behind the proxy must render dynamically (`await
+connection()` / `force-dynamic`). Never apply this preset to a static export.
+Production policies never contain `'unsafe-eval'` or wildcards; development
+adds `'unsafe-eval'` to `script-src` only, where React needs it (matching the
+installed Next 16 CSP guidance, whose development example likewise retains
+`upgrade-insecure-requests`). No `ws:`/`wss:` scheme is composed without
+runtime evidence; real HMR WebSocket/browser behavior in development remains
+a consumer acceptance item, not something this unit-checked policy proves.
+`style-src 'self' 'unsafe-inline'` is retained deliberately until a compatible
+tightening is separately proven. Provider origins (Leaflet tiles, Google
+hosts, fonts, frames) are app policy plus location contributions — see the
+Kafil-style and School-style coverage in `test/cspPolicies.test.ts` and the
+production fixture in `integration/csp-proxy`.
+
+## CSP violation reports
+
+`najm-next/security/reports` is the bounded `/api/csp-report` handler. It
+preserves the legacy and Reporting API batch envelopes, reads at most 8 KiB
+with early stream cancellation, and always answers 204 with an empty body —
+for valid, malformed, and oversized input alike. URLs are redacted to
+origins/keywords only (no path retention): absolute URLs reduce to their
+origin, `data:`/`blob:` payloads collapse to keywords, and relative or
+malformed values become `redacted`. A throwing sink is isolated per report and
+never fails the response:
+
+```ts
+// src/app/api/csp-report/route.ts
+import { createCspReportHandler } from 'najm-next/security/reports';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+export const POST = createCspReportHandler();
+```
+
+The route sits beside the API catch-all deliberately and boots no backend.
+
+## Strict-CSP client initialization
+
+`najm-next/instrumentation/client` opts Zod 4.4.x into JIT-less evaluation
+before it loads, so the `new Function` capability probe never fires under a
+strict CSP. It runs from the framework's pre-hydration hook — after the HTML
+document loads, before hydration and therefore before any form schema
+evaluates — so no inline `<Script>` is needed:
+
+```ts
+// src/instrumentation-client.ts
+import { initNajmZodStrictCsp } from 'najm-next/instrumentation/client';
+
+initNajmZodStrictCsp();
+```
+
+The module has no imports, touches no DOM, and stays inert when imported
+server-side.
 
 ## Environment
 

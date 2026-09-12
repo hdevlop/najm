@@ -26,6 +26,26 @@
       "import": "./dist/configurable.js",
       "default": "./dist/configurable.js"
     },
+    "./app": {
+      "types": "./dist/app.d.ts",
+      "import": "./dist/app.js",
+      "default": "./dist/app.js"
+    },
+    "./security": {
+      "types": "./dist/security.d.ts",
+      "import": "./dist/security.js",
+      "default": "./dist/security.js"
+    },
+    "./security/reports": {
+      "types": "./dist/security/reports.d.ts",
+      "import": "./dist/security/reports.js",
+      "default": "./dist/security/reports.js"
+    },
+    "./instrumentation/client": {
+      "types": "./dist/instrumentation/client.d.ts",
+      "import": "./dist/instrumentation/client.js",
+      "default": "./dist/instrumentation/client.js"
+    },
     "./location/server": {
       "types": "./dist/location/server.d.ts",
       "import": "./dist/location/server.js",
@@ -50,6 +70,7 @@
     "lint": "bun run typecheck",
     "test": "bun test ./test",
     "test:watch": "bun test --watch",
+    "test:next16": "bun run build && bun integration/csp-proxy/run.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "keywords": [
