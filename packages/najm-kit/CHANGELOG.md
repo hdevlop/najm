@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.13.1 - 2026-09-12
+
+- Added a Leaflet-only runtime provider subpath so Leaflet consumers do not
+  need to install or resolve the optional Google Maps loader.
+
 ## 2.13.0 - 2026-09-12
 
 - Added `najm-kit/location/runtime`, a client-only provider that turns a
