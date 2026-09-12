@@ -1218,6 +1218,10 @@ import { NLocationRuntimeProvider } from "najm-kit/location/runtime";
 </NLocationRuntimeProvider>
 ```
 
+Leaflet-only applications can import
+`NLeafletLocationRuntimeProvider` from `najm-kit/location/runtime/leaflet` so
+their build graph never needs the optional Google Maps loader.
+
 `locationConfig` may select `disabled`, `leaflet`, or `google`. It is safe to
 serialize only when browser-visible provider values are used; never put a
 server geocoding secret in it. The optional `geocoder` remains an explicit

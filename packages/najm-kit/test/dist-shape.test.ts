@@ -197,6 +197,12 @@ describeLocationRuntimeBuilt("location runtime distribution", () => {
   test("is not reachable from the provider-neutral location entry", () => {
     expect(collectGraph("location/index.mjs")).not.toContain("NLocationRuntimeProvider");
   });
+
+  test("keeps Google out of the Leaflet-only runtime graph", () => {
+    const graph = collectGraph("location/runtimeLeaflet.mjs");
+    expect(graph).toContain("NLeafletLocationRuntimeProvider");
+    expect(graph).not.toContain("@googlemaps/js-api-loader");
+  });
 });
 
 describeBuilt("person-images distribution", () => {

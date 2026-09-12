@@ -24,6 +24,7 @@ describe("location entrypoint isolation", () => {
     const manifest = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
     expect(manifest.exports["./location"].import).toBe("./dist/location/index.mjs");
     expect(manifest.exports["./location/runtime"].import).toBe("./dist/location/runtime.mjs");
+    expect(manifest.exports["./location/runtime/leaflet"].import).toBe("./dist/location/runtimeLeaflet.mjs");
     expect(manifest.exports["./location/leaflet"].import).toBe("./dist/location/leaflet.mjs");
     expect(manifest.exports["./location/google"].import).toBe("./dist/location/google.mjs");
     expect(manifest.peerDependenciesMeta.leaflet.optional).toBe(true);
@@ -36,5 +37,12 @@ describe("location entrypoint isolation", () => {
     expect(source).toContain('import("./google")');
     expect(source).not.toContain("process.env");
     expect(source).not.toContain("nominatim");
+  });
+
+  test("offers a Leaflet-only runtime with no Google dependency edge", () => {
+    const source = readFileSync(resolve(packageRoot, "src/location/runtimeLeaflet.tsx"), "utf8");
+    expect(source).toContain('import("./leaflet")');
+    expect(source).not.toContain('import("./google")');
+    expect(source).not.toContain("@googlemaps/js-api-loader");
   });
 });

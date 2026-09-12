@@ -32,6 +32,7 @@ export default defineConfig({
     'person-images': 'src/person-images/index.ts',
     'location/index': 'src/location/index.ts',
     'location/runtime': 'src/location/runtime.tsx',
+    'location/runtimeLeaflet': 'src/location/runtimeLeaflet.tsx',
     'location/leaflet': 'src/location/leaflet.tsx',
     'location/google': 'src/location/google.tsx',
   },
@@ -96,7 +97,7 @@ export default defineConfig({
   // -context bug that `splitting: true` above exists to prevent.
   async onSuccess() {
     const { readFile, writeFile } = await import('node:fs/promises');
-    for (const relativeTarget of ['adapters/app.mjs', 'location/index.mjs', 'location/runtime.mjs', 'location/leaflet.mjs', 'location/google.mjs']) {
+    for (const relativeTarget of ['adapters/app.mjs', 'location/index.mjs', 'location/runtime.mjs', 'location/runtimeLeaflet.mjs', 'location/leaflet.mjs', 'location/google.mjs']) {
       const target = resolve(__dirname, 'dist', relativeTarget);
       const source = await readFile(target, 'utf8');
       if (!source.startsWith(`'use client'`)) {
