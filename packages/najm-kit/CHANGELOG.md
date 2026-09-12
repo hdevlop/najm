@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.13.0 - 2026-09-12
+
+- Added `najm-kit/location/runtime`, a client-only provider that turns a
+  serializable runtime configuration into a lazily loaded Leaflet or Google
+  map adapter while keeping geocoder and privacy policy application-owned.
+
 ## 2.12.1 - 2026-09-11
 
 - Raised the location picker dialog and its overlay above parent Najm dialogs,
