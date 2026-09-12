@@ -32,6 +32,7 @@ export default defineConfig([
       index: 'src/index.ts',
       config: 'src/config.ts',
       configurable: 'src/configurable.ts',
+      'location/server': 'src/location/server.ts',
       pwa: 'src/pwa.ts',
     },
   },

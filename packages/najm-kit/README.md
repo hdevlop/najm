@@ -1204,8 +1204,26 @@ The returned definition, its `cookieNames`, `cookieOptions`, `timeZones`, and
 `handlers` are all frozen.
 # Location picker
 
-`najm-kit/location` provides a provider-neutral composite form field. Import a
-map adapter only in a client boundary so a closed field does not load a map SDK:
+`najm-kit/location` provides a provider-neutral composite form field. For a
+runtime-selected provider, pass a serializable configuration to the client-only
+runtime entry; it defers the selected adapter import until the dialog renders
+its map:
+
+```tsx
+import { FormLocationInput } from "najm-kit/location";
+import { NLocationRuntimeProvider } from "najm-kit/location/runtime";
+
+<NLocationRuntimeProvider config={locationConfig} geocoder={approvedGeocoder}>
+  <FormLocationInput name="deliveryLocation" formLabel="Address" />
+</NLocationRuntimeProvider>
+```
+
+`locationConfig` may select `disabled`, `leaflet`, or `google`. It is safe to
+serialize only when browser-visible provider values are used; never put a
+server geocoding secret in it. The optional `geocoder` remains an explicit
+application policy and never defaults to a public service.
+
+For a fixed adapter, use the lower-level provider directly:
 
 ```tsx
 import { FormLocationInput, NLocationProvider } from "najm-kit/location";

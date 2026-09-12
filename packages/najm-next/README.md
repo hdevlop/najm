@@ -135,6 +135,50 @@ The package supplies no product copy or destination. Invalid payloads and
 cross-origin configuration are ignored or rejected before notification UI is
 shown.
 
+## Runtime location configuration
+
+`najm-next/location/server` removes repeated environment parsing and CSP-source
+calculation while leaving provider policy with the application. It never reads
+`process.env`; the app passes its server environment explicitly.
+
+```ts
+// src/config/location.ts
+import { defineNajmLocationRuntime } from 'najm-next/location/server';
+
+export const appLocation = defineNajmLocationRuntime({
+  environmentPrefix: 'MY_APP_LOCATION',
+  allowedProviders: ['leaflet'],
+  defaults: {
+    provider: 'leaflet',
+    center: { latitude: 33.5731, longitude: -7.5898 },
+    zoom: 12,
+    leaflet: {
+      tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+      attribution: 'OpenStreetMap contributors',
+    },
+  },
+});
+```
+
+Resolve the same definition from the dynamic server layout and the CSP/proxy
+path:
+
+```ts
+const location = appLocation.resolve(process.env, {
+  isDevelopment: process.env.NODE_ENV === 'development',
+});
+
+location.config;        // serializable input for najm-kit/location/runtime
+location.csp.imgSrc;    // exact validated tile origins
+location.csp.connectSrc;
+location.issues;        // sanitized issue codes only
+```
+
+The prefix creates `<PREFIX>_MAP_PROVIDER`, `_DEFAULT_LATITUDE`,
+`_DEFAULT_LONGITUDE`, `_DEFAULT_ZOOM`, `_TILE_URL`, and `_TILE_ATTRIBUTION`.
+Unknown providers and invalid production URLs resolve to `disabled`. Loopback
+HTTP tile URLs are accepted only when `isDevelopment` is explicitly true.
+
 ## Environment
 
 | Variable | Default | Purpose |

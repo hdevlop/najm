@@ -93,6 +93,9 @@
       "najm-kit/location": [
         "../../packages/najm-kit/src/location/index.ts"
       ],
+      "najm-kit/location/runtime": [
+        "../../packages/najm-kit/src/location/runtime.tsx"
+      ],
       "najm-kit/location/leaflet": [
         "../../packages/najm-kit/src/location/leaflet.tsx"
       ],

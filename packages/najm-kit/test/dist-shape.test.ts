@@ -181,6 +181,24 @@ describeBuilt("dist shape", () => {
   });
 });
 
+const LOCATION_RUNTIME_ENTRY = "location/runtime.mjs";
+const describeLocationRuntimeBuilt = existsSync(join(DIST, LOCATION_RUNTIME_ENTRY))
+  ? describe
+  : describe.skip;
+
+describeLocationRuntimeBuilt("location runtime distribution", () => {
+  test("retains the client boundary and exports the runtime provider", () => {
+    const source = readFileSync(join(DIST, LOCATION_RUNTIME_ENTRY), "utf8");
+
+    expect(source.startsWith("'use client'")).toBe(true);
+    expect(collectGraph(LOCATION_RUNTIME_ENTRY)).toContain("NLocationRuntimeProvider");
+  });
+
+  test("is not reachable from the provider-neutral location entry", () => {
+    expect(collectGraph("location/index.mjs")).not.toContain("NLocationRuntimeProvider");
+  });
+});
+
 describeBuilt("person-images distribution", () => {
   const PERSON_ENTRY = "person-images.mjs";
   const PERSON_DTS = "person-images.d.ts";

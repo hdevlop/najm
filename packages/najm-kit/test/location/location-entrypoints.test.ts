@@ -11,6 +11,7 @@ describe("location entrypoint isolation", () => {
     expect(source).not.toContain("@googlemaps/js-api-loader");
     expect(source).not.toContain('./leaflet');
     expect(source).not.toContain('./google');
+    expect(source).not.toContain('./runtime');
   });
 
   test("defers the Leaflet runtime until the browser map mounts", () => {
@@ -19,12 +20,21 @@ describe("location entrypoint isolation", () => {
     expect(source).toContain('import("leaflet")');
   });
 
-  test("publishes explicit core, Leaflet, and Google subpaths", () => {
+  test("publishes explicit core, runtime, Leaflet, and Google subpaths", () => {
     const manifest = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));
     expect(manifest.exports["./location"].import).toBe("./dist/location/index.mjs");
+    expect(manifest.exports["./location/runtime"].import).toBe("./dist/location/runtime.mjs");
     expect(manifest.exports["./location/leaflet"].import).toBe("./dist/location/leaflet.mjs");
     expect(manifest.exports["./location/google"].import).toBe("./dist/location/google.mjs");
     expect(manifest.peerDependenciesMeta.leaflet.optional).toBe(true);
     expect(manifest.peerDependenciesMeta["@googlemaps/js-api-loader"].optional).toBe(true);
+  });
+
+  test("keeps runtime provider selection lazy and free of application policy", () => {
+    const source = readFileSync(resolve(packageRoot, "src/location/runtime.tsx"), "utf8");
+    expect(source).toContain('import("./leaflet")');
+    expect(source).toContain('import("./google")');
+    expect(source).not.toContain("process.env");
+    expect(source).not.toContain("nominatim");
   });
 });

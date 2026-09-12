@@ -26,6 +26,11 @@
       "import": "./dist/configurable.js",
       "default": "./dist/configurable.js"
     },
+    "./location/server": {
+      "types": "./dist/location/server.d.ts",
+      "import": "./dist/location/server.js",
+      "default": "./dist/location/server.js"
+    },
     "./pwa": {
       "types": "./dist/pwa.d.ts",
       "import": "./dist/pwa.js",

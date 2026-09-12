@@ -75,6 +75,11 @@
       "import": "./dist/location/index.mjs",
       "default": "./dist/location/index.mjs"
     },
+    "./location/runtime": {
+      "types": "./dist/location/runtime.d.ts",
+      "import": "./dist/location/runtime.mjs",
+      "default": "./dist/location/runtime.mjs"
+    },
     "./location/leaflet": {
       "types": "./dist/location/leaflet.d.ts",
       "import": "./dist/location/leaflet.mjs",

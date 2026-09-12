@@ -1,16 +1,19 @@
 'use client';
 
-import { lazy, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { z } from 'zod';
 import { NButton, NForm } from 'najm-kit';
 import {
   FormLocationInput,
-  NLocationProvider,
   type NCoordinates,
   type NLocationCandidate,
   type NLocationGeocoderAdapter,
   type NLocationValue,
 } from 'najm-kit/location';
+import {
+  NLocationRuntimeProvider,
+  type NLocationRuntimeConfig,
+} from 'najm-kit/location/runtime';
 
 type GeocoderCandidate = { id: string; label: string; coordinates: { latitude: number; longitude: number }; description?: string };
 
@@ -147,24 +150,6 @@ const demoGeocoder: NLocationGeocoderAdapter = {
   },
 };
 
-const LazyLeafletMap = lazy(async () => {
-  const { createLeafletLocationAdapter } = await import('najm-kit/location/leaflet');
-  return {
-    default: createLeafletLocationAdapter({
-      tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-    }).Map,
-  };
-});
-
-const LazyGoogleMap = lazy(async () => {
-  if (!googleMapsBrowserKey) throw new Error('Google Maps is not configured');
-  const { createGoogleLocationAdapter } = await import('najm-kit/location/google');
-  return {
-    default: createGoogleLocationAdapter({ apiKey: googleMapsBrowserKey }).Map,
-  };
-});
-
 function loadGoogleGeocoder() {
   if (!googleMapsBrowserKey) return Promise.reject(new Error('Google Maps is not configured'));
   googleGeocoderPromise ??= import('najm-kit/location/google').then(({ createGooglePlacesGeocoder }) => {
@@ -192,8 +177,6 @@ const googleGeocoder: NLocationGeocoderAdapter = {
   },
 };
 
-const leafletAdapter = { id: 'leaflet', Map: LazyLeafletMap };
-const googleAdapter = { id: 'google', Map: LazyGoogleMap };
 type MapProvider = 'leaflet' | 'google' | 'disabled';
 
 const locationSchema = z.object({
@@ -216,9 +199,26 @@ export default function LocationPickerPage() {
   const [mapProvider, setMapProvider] = useState<MapProvider>('leaflet');
   const [rtl, setRtl] = useState(false);
   const [result, setResult] = useState<'idle' | 'address' | 'pinned'>('idle');
-  const adapter = useMemo(() => (
-    mapProvider === 'leaflet' ? leafletAdapter : mapProvider === 'google' ? googleAdapter : null
-  ), [mapProvider]);
+  const locationConfig = useMemo<NLocationRuntimeConfig>(() => {
+    const shared = {
+      defaultCenter: { latitude: 35.7595, longitude: -5.8340 },
+      defaultZoom: 13,
+    };
+    if (mapProvider === 'leaflet') {
+      return {
+        ...shared,
+        provider: 'leaflet',
+        leaflet: {
+          tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        },
+      };
+    }
+    if (mapProvider === 'google') {
+      return { ...shared, provider: 'google', google: { apiKey: googleMapsBrowserKey } };
+    }
+    return { ...shared, provider: 'disabled' };
+  }, [mapProvider]);
   const geocoder = mapProvider === 'leaflet' ? demoGeocoder : mapProvider === 'google' ? googleGeocoder : null;
 
   useEffect(() => {
@@ -228,11 +228,9 @@ export default function LocationPickerPage() {
   }, [rtl]);
 
   return (
-    <NLocationProvider
-      adapter={adapter}
+    <NLocationRuntimeProvider
+      config={locationConfig}
       geocoder={geocoder}
-      defaultCenter={{ latitude: 35.7595, longitude: -5.8340 }}
-      defaultZoom={13}
       unavailableReason={mapProvider === 'disabled' ? 'Map disabled for fallback testing' : undefined}
     >
       <main className="min-h-screen bg-background px-4 py-8 text-foreground">
@@ -275,6 +273,6 @@ export default function LocationPickerPage() {
           </aside>
         </div>
       </main>
-    </NLocationProvider>
+    </NLocationRuntimeProvider>
   );
 }
