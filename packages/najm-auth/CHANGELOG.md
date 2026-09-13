@@ -1,5 +1,11 @@
 # Changelog
 
+## 4.0.3 - 2026-09-13
+
+- Return the existing throwing auth error helper explicitly from refresh
+  rejection paths so strict Next.js TypeScript builds preserve the declared
+  `never` contract without changing runtime behavior.
+
 ## 4.0.1 - 2026-09-06
 
 - fix(auth): treat successful one-time account-invite acceptance as proof of
