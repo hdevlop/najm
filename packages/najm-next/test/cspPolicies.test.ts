@@ -93,6 +93,35 @@ describe("School-style production policy", () => {
     expect(policy).not.toContain("unsafe-eval");
     expect(policy).not.toContain(" *;");
   });
+
+  test("accepts validated provider contributions without weakening script policy", () => {
+    const googlePolicy = createNajmCsp("school-nonce-12345678", {
+      mode: NAJM_CSP_POLICY_MODE,
+      isDevelopment: false,
+      app: buildSchoolStyleApp(),
+      locationCsp: {
+        imgSrc: ["https://maps.gstatic.com"],
+        connectSrc: ["https://maps.googleapis.com"],
+        scriptSrc: ["https://maps.googleapis.com"],
+        fontSrc: ["https://fonts.gstatic.com"],
+        frameSrc: [],
+      },
+    });
+
+    expect(directive(googlePolicy, "script-src")).toContain("https://maps.googleapis.com");
+    expect(directive(googlePolicy, "font-src")).toContain("https://fonts.gstatic.com");
+    expect(googlePolicy).not.toContain("unsafe-eval");
+    expect(() => createNajmCsp("school-nonce-12345678", {
+      mode: NAJM_CSP_POLICY_MODE,
+      isDevelopment: false,
+      app: buildSchoolStyleApp(),
+      locationCsp: {
+        imgSrc: [],
+        connectSrc: [],
+        scriptSrc: ["'unsafe-eval'"],
+      },
+    })).toThrow();
+  });
 });
 
 describe("policy composition rules", () => {

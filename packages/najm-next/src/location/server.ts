@@ -1,6 +1,6 @@
 import type { EnvRecord } from "../internal/types";
 
-export type NajmLocationMapProvider = "disabled" | "leaflet";
+export type NajmLocationMapProvider = "disabled" | "leaflet" | "google";
 
 export interface NajmResolvedLocationBaseConfig {
   defaultCenter: { latitude: number; longitude: number };
@@ -19,14 +19,30 @@ export interface NajmResolvedLeafletLocationConfig extends NajmResolvedLocationB
   };
 }
 
+export interface NajmResolvedGoogleLocationConfig extends NajmResolvedLocationBaseConfig {
+  provider: "google";
+  google: {
+    /** Public browser key. Restrict it by referrer and API in Google Cloud. */
+    apiKey: string;
+    mapId?: string;
+    language?: string;
+    region?: string;
+  };
+}
+
 /** Structurally compatible with `NLocationRuntimeConfig` from Najm Kit. */
 export type NajmResolvedLocationConfig =
   | NajmResolvedDisabledLocationConfig
-  | NajmResolvedLeafletLocationConfig;
+  | NajmResolvedLeafletLocationConfig
+  | NajmResolvedGoogleLocationConfig;
 
 export type NajmLocationRuntimeIssue =
   | "invalid-center"
   | "invalid-provider"
+  | "invalid-google-api-key"
+  | "invalid-google-language"
+  | "invalid-google-map-id"
+  | "invalid-google-region"
   | "invalid-tile-url"
   | "invalid-zoom";
 
@@ -35,6 +51,9 @@ export interface NajmLocationRuntimeResolution {
   csp: {
     imgSrc: readonly string[];
     connectSrc: readonly string[];
+    scriptSrc?: readonly string[];
+    fontSrc?: readonly string[];
+    frameSrc?: readonly string[];
   };
   issues: readonly NajmLocationRuntimeIssue[];
 }
@@ -51,6 +70,16 @@ export interface NajmLocationRuntimeDefinitionOptions {
       tileUrl: string;
       attribution: string;
     };
+    google?: {
+      mapId?: string;
+      language?: string;
+      region?: string;
+      /**
+       * Temporary compatibility reads for an existing public browser-key
+       * variable, for example `NEXT_PUBLIC_GOOGLE_MAPS_API_KEY`.
+       */
+      apiKeyEnvironmentFallbacks?: readonly string[];
+    };
   };
 }
 
@@ -62,6 +91,29 @@ export interface NajmLocationRuntimeDefinition {
 }
 
 const PREFIX_PATTERN = /^[A-Z][A-Z0-9_]*$/;
+const GOOGLE_OPTION_PATTERN = /^[A-Za-z0-9._-]+$/;
+const LANGUAGE_PATTERN = /^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/;
+const REGION_PATTERN = /^[A-Za-z]{2}$/;
+const CONTROL_PATTERN = /[\u0000-\u001f\u007f]/;
+
+const GOOGLE_CSP = Object.freeze({
+  imgSrc: Object.freeze([
+    "https://maps.googleapis.com",
+    "https://maps.gstatic.com",
+    "https://*.googleapis.com",
+    "https://*.gstatic.com",
+    "data:",
+    "blob:",
+  ]),
+  connectSrc: Object.freeze([
+    "https://maps.googleapis.com",
+    "https://*.googleapis.com",
+    "https://*.gstatic.com",
+  ]),
+  scriptSrc: Object.freeze(["https://maps.googleapis.com", "https://maps.gstatic.com"]),
+  fontSrc: Object.freeze(["https://fonts.gstatic.com"]),
+  frameSrc: Object.freeze([] as string[]),
+});
 
 function finiteInRange(
   value: string | undefined,
@@ -126,6 +178,13 @@ export function defineNajmLocationRuntime(
   if (allowedProviders.has("leaflet") && !options.defaults.leaflet) {
     throw new TypeError("defaults.leaflet is required when Leaflet is allowed");
   }
+  if (allowedProviders.has("google")) {
+    for (const variable of options.defaults.google?.apiKeyEnvironmentFallbacks ?? []) {
+      if (!PREFIX_PATTERN.test(variable)) {
+        throw new TypeError("defaults.google.apiKeyEnvironmentFallbacks must contain environment variable names");
+      }
+    }
+  }
   if (options.defaults.leaflet && !options.defaults.leaflet.attribution.trim()) {
     throw new TypeError("defaults.leaflet.attribution must not be empty");
   }
@@ -137,6 +196,10 @@ export function defineNajmLocationRuntime(
     zoom: `${prefix}_DEFAULT_ZOOM`,
     tileUrl: `${prefix}_TILE_URL`,
     attribution: `${prefix}_TILE_ATTRIBUTION`,
+    googleApiKey: `${prefix}_GOOGLE_API_KEY`,
+    googleMapId: `${prefix}_GOOGLE_MAP_ID`,
+    googleLanguage: `${prefix}_GOOGLE_LANGUAGE`,
+    googleRegion: `${prefix}_GOOGLE_REGION`,
   } as const;
 
   return {
@@ -163,7 +226,8 @@ export function defineNajmLocationRuntime(
       const requestedProvider = (environment[names.provider] ?? defaultProvider).trim().toLowerCase();
       if (
         requestedProvider !== "disabled" &&
-        requestedProvider !== "leaflet"
+        requestedProvider !== "leaflet" &&
+        requestedProvider !== "google"
       ) {
         issues.add("invalid-provider");
         return {
@@ -186,6 +250,56 @@ export function defineNajmLocationRuntime(
         return {
           config: { provider: "disabled", defaultCenter, defaultZoom: zoom.value },
           csp: { imgSrc: [], connectSrc: [] },
+          issues: [...issues],
+        };
+      }
+
+      if (requestedProvider === "google") {
+        const googleDefaults = options.defaults.google;
+        const fallbackKey = googleDefaults?.apiKeyEnvironmentFallbacks
+          ?.map((name) => environment[name]?.trim())
+          .find(Boolean);
+        const apiKey = environment[names.googleApiKey]?.trim() || fallbackKey;
+        if (!apiKey || CONTROL_PATTERN.test(apiKey)) {
+          issues.add("invalid-google-api-key");
+          return {
+            config: { provider: "disabled", defaultCenter, defaultZoom: zoom.value },
+            csp: { imgSrc: [], connectSrc: [] },
+            issues: [...issues],
+          };
+        }
+
+        const mapId = environment[names.googleMapId]?.trim() || googleDefaults?.mapId?.trim();
+        if (mapId && !GOOGLE_OPTION_PATTERN.test(mapId)) issues.add("invalid-google-map-id");
+        const language = environment[names.googleLanguage]?.trim() || googleDefaults?.language?.trim();
+        if (language && !LANGUAGE_PATTERN.test(language)) issues.add("invalid-google-language");
+        const region = environment[names.googleRegion]?.trim() || googleDefaults?.region?.trim();
+        if (region && !REGION_PATTERN.test(region)) issues.add("invalid-google-region");
+        if (
+          issues.has("invalid-google-map-id") ||
+          issues.has("invalid-google-language") ||
+          issues.has("invalid-google-region")
+        ) {
+          return {
+            config: { provider: "disabled", defaultCenter, defaultZoom: zoom.value },
+            csp: { imgSrc: [], connectSrc: [] },
+            issues: [...issues],
+          };
+        }
+
+        return {
+          config: {
+            provider: "google",
+            defaultCenter,
+            defaultZoom: zoom.value,
+            google: {
+              apiKey,
+              ...(mapId ? { mapId } : {}),
+              ...(language ? { language } : {}),
+              ...(region ? { region: region.toUpperCase() } : {}),
+            },
+          },
+          csp: GOOGLE_CSP,
           issues: [...issues],
         };
       }

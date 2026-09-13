@@ -190,6 +190,34 @@ The prefix creates `<PREFIX>_MAP_PROVIDER`, `_DEFAULT_LATITUDE`,
 Unknown providers and invalid production URLs resolve to `disabled`. Loopback
 HTTP tile URLs are accepted only when `isDevelopment` is explicitly true.
 
+Google is an additive runtime option. The browser key is intentionally public
+and must be restricted by referrer and API in Google Cloud; no environment
+object is serialized:
+
+```ts
+export const schoolLocation = defineNajmLocationRuntime({
+  environmentPrefix: 'SCHOOL_LOCATION',
+  allowedProviders: ['google'],
+  defaults: {
+    provider: 'google',
+    center: { latitude: 33.5731, longitude: -7.5898 },
+    google: {
+      language: 'fr',
+      region: 'MA',
+      apiKeyEnvironmentFallbacks: ['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'],
+    },
+  },
+});
+```
+
+The primary variable is `SCHOOL_LOCATION_GOOGLE_API_KEY`; the explicit
+fallback above supports a documented transition from an existing public key
+name. Optional `_GOOGLE_MAP_ID`, `_GOOGLE_LANGUAGE`, and `_GOOGLE_REGION`
+variables are validated before entering the public runtime snapshot. Missing
+or malformed values disable the map with sanitized issue codes. The resolution
+also contributes the exact Google image, connection, script, and font sources
+to the request CSP.
+
 ## Shared-safe app definition
 
 `najm-next/app` holds one application's policy as pure, serializable data —
@@ -233,6 +261,78 @@ export const app = defineNajmApp({
 The definition is validated eagerly and frozen. `proxySessionMode` is
 structurally compatible with `najm-auth`'s `ProxySessionMode` without
 importing it, so this entrypoint never pulls Auth into the proxy graph.
+
+## Server bootstrap
+
+`najm-next/app/server` composes the existing request-scoped Auth, Theme, and UI
+owners through structural callbacks. Create it once at module scope. It starts
+independent session, cookie/header, appearance, branding, and public-setting
+reads concurrently; preference resolution waits only for its inputs. The
+returned session accessors remain lightweight and do not trigger UI/settings
+loading:
+
+```ts
+// src/najm.server.ts
+import 'server-only';
+import { cookies, headers } from 'next/headers';
+import { createNajmServerApp } from 'najm-next/app/server';
+
+export const najmServer = createNajmServerApp({
+  app,
+  auth: serverAuth,
+  theme: serverTheme,
+  readSettings: readPublicUiSettings,
+  fallbackSettings: { enabled: false },
+  readCookies: cookies,
+  readHeaders: headers,
+  resolvePreferences: ({ cookies, headers, session }) =>
+    preferences.resolveOrdered(cookies, {
+      user: session?.user as { language?: unknown },
+      acceptLanguage: headers.get('accept-language'),
+    }),
+});
+```
+
+Settings fallback is for typed public display projections only. Operational
+session failures still propagate according to the Auth owner, and diagnostics
+are bounded summaries rather than raw thrown values. React `cache()` scopes
+settings and the full snapshot to one server render; the next request retries.
+
+## Client provider composition
+
+`najm-next/app/react` keeps the provider order in one place without importing
+optional owners. Bind the concrete provider instances already installed by the
+application at module scope. That preserves one physical Auth, Query, UI,
+Branding, and Location context and lets minimal apps omit all of them:
+
+```tsx
+'use client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { bindNajmNextProvider, NajmNextAppProvider } from 'najm-next/app/react';
+
+const query = bindNajmNextProvider(QueryClientProvider, ({ queryClient }) => ({
+  client: queryClient!,
+}));
+
+export function Providers({ snapshot, children }) {
+  return (
+    <NajmNextAppProvider
+      snapshot={snapshot}
+      createQueryClient={() => new QueryClient(appQueryOptions)}
+      providers={{ auth, query, ui, branding, location }}
+      extensions={{ beforeUi: keyboard }}
+    >
+      {children}
+    </NajmNextAppProvider>
+  );
+}
+```
+
+Composition is `Auth -> Query -> beforeUi -> UI -> Branding -> insideUi ->
+Location -> children`. School places its keyboard provider at `beforeUi`;
+Kafil keeps its live settings subscription in its bound UI component, already
+inside Query. Query retry functions and QueryClient construction stay in client
+code and are never serialized.
 
 ## Request CSP and proxy composition
 

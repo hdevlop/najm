@@ -19,6 +19,8 @@ function importTargets(source: string): string[] {
 
 const NEW_ENTRIES = {
   "./app": "dist/app.js",
+  "./app/server": "dist/app/server.js",
+  "./app/react": "dist/app/react.js",
   "./security": "dist/security.js",
   "./security/reports": "dist/security/reports.js",
   "./instrumentation/client": "dist/instrumentation/client.js",
@@ -37,9 +39,11 @@ describe("public entrypoints", () => {
   test("tsup builds every new subpath from its own source file", () => {
     const config = read("tsup.config.ts");
 
-    for (const entry of ["src/app.ts", "src/security.ts", "src/security/reports.ts", "src/instrumentation/client.ts"]) {
+    for (const entry of ["src/app.ts", "src/app/server.ts", "src/app/react.tsx", "src/security.ts", "src/security/reports.ts", "src/instrumentation/client.ts"]) {
       expect(config).toContain(entry);
     }
+    expect(config).toContain("'dist', 'app', 'react.js'");
+    expect(config).toContain("`'use client';\\n${source}`");
   });
 });
 
@@ -87,8 +91,58 @@ describe("import isolation (DX-01/DX-02)", () => {
   test("root tsconfig maps every new subpath", () => {
     const tsconfig = readFileSync(resolve(packageRoot, "..", "..", "tsconfig.json"), "utf8");
 
-    for (const subpath of ["najm-next/app", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
+    for (const subpath of ["najm-next/app", "najm-next/app/server", "najm-next/app/react", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
       expect(tsconfig).toContain(`"${subpath}"`);
     }
+  });
+
+  test("app/server is a leaf: react peer + pure app definition only, no Najm runtime deps or cycles", () => {
+    const source = read("src/app/server.ts");
+    const targets = importTargets(source);
+
+    for (const target of targets) {
+      expect(target.startsWith("najm-"), `app/server must not import ${target}`).toBe(false);
+      expect(target.includes("@kafil") || target.includes("@sms")).toBe(false);
+      expect(target === "next" || target.startsWith("next/")).toBe(false);
+      expect(target.startsWith("node:")).toBe(false);
+    }
+    // Allowed: "react" (declared peer) and "../app" (pure definition).
+    for (const target of targets) {
+      const allowed = target === "react" || target === "../app" || target.startsWith("../app");
+      expect(allowed, `unexpected app/server import ${target}`).toBe(true);
+    }
+    expect(source).not.toContain("process.cwd");
+    expect(source).not.toContain("findWorkspaceRoot");
+  });
+
+  test("app/react composes structural providers without importing optional owners", () => {
+    const source = read("src/app/react.tsx");
+    expect(source.startsWith('\"use client\"')).toBe(true);
+    expect(importTargets(source)).toEqual(["react"]);
+    for (const optional of ["najm-auth", "najm-kit", "najm-theme", "@tanstack/react-query", "leaflet", "@googlemaps"]) {
+      expect(source).not.toContain(`from \"${optional}`);
+    }
+  });
+
+  test("security, config, and app remain isolated from server bootstrap, backends, and UI init", () => {
+    for (const file of ["src/app.ts", "src/security.ts", "src/security/reports.ts", "src/config.ts", "src/configurable.ts"]) {
+      let source: string;
+      try {
+        source = read(file);
+      } catch {
+        continue;
+      }
+      const targets = importTargets(source);
+      for (const target of targets) {
+        expect(target.includes("app/server"), `${file} must not reach the server bootstrap`).toBe(false);
+        expect(target.startsWith("najm-"), `${file} must not import ${target}`).toBe(false);
+        expect(target.includes("@kafil") || target.includes("@sms")).toBe(false);
+      }
+      expect(source, `${file} must not initialize theme`).not.toContain("loadAppearance");
+      expect(source, `${file} must not initialize theme`).not.toContain("loadBranding");
+      expect(source, `${file} must not read the backend`).not.toContain("getServer");
+    }
+    // The pure definition stays import-free even after the server leaf exists.
+    expect(importTargets(read("src/app.ts"))).toEqual([]);
   });
 });

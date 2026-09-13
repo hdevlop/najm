@@ -43,6 +43,9 @@ export const NAJM_NONCE_HEADER = "x-nonce";
 export interface NajmLocationCspContribution {
   readonly imgSrc: readonly string[];
   readonly connectSrc: readonly string[];
+  readonly scriptSrc?: readonly string[];
+  readonly fontSrc?: readonly string[];
+  readonly frameSrc?: readonly string[];
 }
 
 export interface NajmCspOverrides {
@@ -185,6 +188,12 @@ export function createNajmCsp(nonce: string, options: NajmCspOptions): string {
   }
   const locationImgSrc = assertContributionSources(options.locationCsp.imgSrc, "imgSrc");
   const locationConnectSrc = assertContributionSources(options.locationCsp.connectSrc, "connectSrc");
+  const locationScriptSrc = assertContributionSources(options.locationCsp.scriptSrc ?? [], "scriptSrc");
+  const locationFontSrc = assertContributionSources(options.locationCsp.fontSrc ?? [], "fontSrc");
+  const locationFrameSrc = assertContributionSources(options.locationCsp.frameSrc ?? [], "frameSrc");
+  if (locationScriptSrc.includes("'unsafe-eval'") || locationScriptSrc.includes("'unsafe-inline'")) {
+    throw new TypeError("najm-next/security: location script-src must not contain eval/inline tokens");
+  }
 
   const overrides = options.overrides ?? {};
   if (typeof overrides !== "object" || overrides === null || Array.isArray(overrides)) {
@@ -204,6 +213,7 @@ export function createNajmCsp(nonce: string, options: NajmCspOptions): string {
     // installed Next CSP guide). Neither React nor Next.js uses eval in
     // production, so this token must never appear in a production policy.
     ...(options.isDevelopment ? ["'unsafe-eval'"] : []),
+    ...locationScriptSrc,
     ...overrideScript,
   ]);
   if (!options.isDevelopment && scriptSrc.some((source) => source === "'unsafe-eval'" || source === "'unsafe-inline'")) {
@@ -222,8 +232,8 @@ export function createNajmCsp(nonce: string, options: NajmCspOptions): string {
     ...overrideImg,
   ]);
   const connectSrc = dedupe(["'self'", ...(options.app.csp.extraConnectSrc ?? []), ...locationConnectSrc, ...overrideConnect]);
-  const fontSrc = dedupe(["'self'", "data:", ...(options.app.csp.extraFontSrc ?? []), ...overrideFont]);
-  const frameSrc = dedupe([...options.app.csp.frameSrc, ...overrideFrame]);
+  const fontSrc = dedupe(["'self'", "data:", ...(options.app.csp.extraFontSrc ?? []), ...locationFontSrc, ...overrideFont]);
+  const frameSrc = dedupe([...options.app.csp.frameSrc, ...locationFrameSrc, ...overrideFrame]);
   if (frameSrc.includes("'none'") && frameSrc.length > 1) {
     throw new TypeError("najm-next/security: frame-src 'none' must stand alone");
   }

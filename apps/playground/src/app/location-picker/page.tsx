@@ -5,9 +5,11 @@ import { z } from 'zod';
 import { NButton, NForm } from 'najm-kit';
 import {
   FormLocationInput,
+  getNajmLocationLabels,
   type NCoordinates,
   type NLocationCandidate,
   type NLocationGeocoderAdapter,
+  type NLocationProviderSelectionMeta,
   type NLocationValue,
 } from 'najm-kit/location';
 import {
@@ -199,6 +201,7 @@ export default function LocationPickerPage() {
   const [mapProvider, setMapProvider] = useState<MapProvider>('leaflet');
   const [rtl, setRtl] = useState(false);
   const [result, setResult] = useState<'idle' | 'address' | 'pinned'>('idle');
+  const [providerMeta, setProviderMeta] = useState<NLocationProviderSelectionMeta | null>(null);
   const locationConfig = useMemo<NLocationRuntimeConfig>(() => {
     const shared = {
       defaultCenter: { latitude: 35.7595, longitude: -5.8340 },
@@ -231,6 +234,7 @@ export default function LocationPickerPage() {
     <NLocationRuntimeProvider
       config={locationConfig}
       geocoder={geocoder}
+      labels={getNajmLocationLabels(rtl ? 'ar' : 'en')}
       unavailableReason={mapProvider === 'disabled' ? 'Map disabled for fallback testing' : undefined}
     >
       <main className="min-h-screen bg-background px-4 py-8 text-foreground">
@@ -242,9 +246,9 @@ export default function LocationPickerPage() {
           </header>
 
           <div className="flex flex-wrap gap-2">
-            <NButton type="button" variant={mapProvider === 'leaflet' ? 'default' : 'outline'} onClick={() => setMapProvider('leaflet')}>Leaflet</NButton>
-            <NButton type="button" variant={mapProvider === 'google' ? 'default' : 'outline'} onClick={() => setMapProvider('google')} disabled={!googleMapsBrowserKey}>Google</NButton>
-            <NButton type="button" variant={mapProvider === 'disabled' ? 'default' : 'outline'} onClick={() => setMapProvider('disabled')}>Map disabled</NButton>
+            <NButton type="button" variant={mapProvider === 'disabled' ? 'default' : 'outline'} onClick={() => setMapProvider('disabled')}>Minimal (no map)</NButton>
+            <NButton type="button" variant={mapProvider === 'leaflet' ? 'default' : 'outline'} onClick={() => setMapProvider('leaflet')}>Kafil style (Leaflet)</NButton>
+            <NButton type="button" variant={mapProvider === 'google' ? 'default' : 'outline'} onClick={() => setMapProvider('google')} disabled={!googleMapsBrowserKey}>School style (Google)</NButton>
             <NButton type="button" variant={rtl ? 'default' : 'outline'} onClick={() => setRtl((value) => !value)}>{rtl ? 'RTL' : 'LTR'}</NButton>
           </div>
 
@@ -259,12 +263,19 @@ export default function LocationPickerPage() {
                 formLabel="Household exact address"
                 formDescription="The written address is required. Selecting a map pin is optional."
                 placeholder="Street, city, or delivery directions"
+                providerMeta={providerMeta}
+                onProviderMetaChange={setProviderMeta}
                 required
               />
               <div className="flex justify-end">
                 <NButton type="submit">Validate form value</NButton>
               </div>
               {result !== 'idle' && <p role="status" className="text-sm text-success">Valid {result === 'pinned' ? 'address and pin' : 'address-only'} value.</p>}
+              <p className="text-xs text-muted-foreground">
+                Provider metadata: {providerMeta?.placeId
+                  ? <code className="rounded bg-muted px-1 py-0.5">google:{providerMeta.placeId}</code>
+                  : 'none'}
+              </p>
             </NForm>
           </section>
 

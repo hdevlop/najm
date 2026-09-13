@@ -123,4 +123,89 @@ describe("defineNajmLocationRuntime", () => {
 
     expect(disabled.resolve({}).config.provider).toBe("disabled");
   });
+
+  test("resolves a browser-safe Google config and matching CSP contributions", () => {
+    const google = defineNajmLocationRuntime({
+      environmentPrefix: "SCHOOL_LOCATION",
+      allowedProviders: ["google"],
+      defaults: {
+        provider: "google",
+        center: { latitude: 33.5731, longitude: -7.5898 },
+        zoom: 13,
+        google: {
+          language: "fr",
+          region: "MA",
+          apiKeyEnvironmentFallbacks: ["NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"],
+        },
+      },
+    });
+
+    const runtime = google.resolve({
+      NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: "public-browser-key",
+      SCHOOL_LOCATION_GOOGLE_MAP_ID: "school-map-id",
+      SCHOOL_LOCATION_GOOGLE_LANGUAGE: "ar-MA",
+      SCHOOL_LOCATION_GOOGLE_REGION: "ma",
+    });
+
+    expect(runtime.config).toEqual({
+      provider: "google",
+      defaultCenter: { latitude: 33.5731, longitude: -7.5898 },
+      defaultZoom: 13,
+      google: {
+        apiKey: "public-browser-key",
+        mapId: "school-map-id",
+        language: "ar-MA",
+        region: "MA",
+      },
+    });
+    expect(runtime.csp.scriptSrc).toContain("https://maps.googleapis.com");
+    expect(runtime.csp.connectSrc).toContain("https://*.googleapis.com");
+    expect(runtime.csp.imgSrc).toContain("https://*.gstatic.com");
+    expect(runtime.csp.fontSrc).toEqual(["https://fonts.gstatic.com"]);
+    expect(runtime.issues).toEqual([]);
+    expect(() => structuredClone(runtime.config)).not.toThrow();
+    expect(JSON.stringify(runtime.config)).not.toContain("NEXT_PUBLIC");
+  });
+
+  test("disables Google safely when the public key or projected options are invalid", () => {
+    const google = defineNajmLocationRuntime({
+      environmentPrefix: "SCHOOL_LOCATION",
+      allowedProviders: ["google"],
+      defaults: {
+        provider: "google",
+        center: { latitude: 0, longitude: 0 },
+        google: { apiKeyEnvironmentFallbacks: ["NEXT_PUBLIC_GOOGLE_MAPS_API_KEY"] },
+      },
+    });
+
+    expect(google.resolve({})).toMatchObject({
+      config: { provider: "disabled" },
+      issues: ["invalid-google-api-key"],
+    });
+    const malformed = google.resolve({
+      SCHOOL_LOCATION_GOOGLE_API_KEY: "public-key",
+      SCHOOL_LOCATION_GOOGLE_LANGUAGE: "fr;script-src *",
+      SCHOOL_LOCATION_GOOGLE_MAP_ID: "bad map id",
+      SCHOOL_LOCATION_GOOGLE_REGION: "MOR",
+    });
+    expect(malformed.config.provider).toBe("disabled");
+    expect(malformed.issues).toEqual([
+      "invalid-google-map-id",
+      "invalid-google-language",
+      "invalid-google-region",
+    ]);
+    expect(JSON.stringify(malformed)).not.toContain("script-src");
+  });
+
+  test("validates Google compatibility environment names at definition time", () => {
+    expect(() => defineNajmLocationRuntime({
+      environmentPrefix: "SCHOOL_LOCATION",
+      allowedProviders: ["google"],
+      defaults: {
+        provider: "google",
+        center: { latitude: 0, longitude: 0 },
+        google: { apiKeyEnvironmentFallbacks: ["bad-variable"] },
+      },
+    })).toThrow("apiKeyEnvironmentFallbacks");
+  });
 });

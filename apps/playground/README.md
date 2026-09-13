@@ -45,6 +45,10 @@ Then open:
 
 - App UI: `http://localhost:3000`
 - API base: `http://localhost:3000/api`
+- App-integration location profiles: `http://localhost:3000/location-picker`
+  (minimal/no-map, Kafil/Leaflet, and School/Google). Google is enabled only
+  when `NEXT_PUBLIC_GOOGLE_MAPS_BROWSER_KEY` is configured; the page shows the
+  separate Place ID metadata so manual-edit clearing can be checked directly.
 
 ## Environment setup
 

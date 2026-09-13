@@ -31,6 +31,16 @@
       "import": "./dist/app.js",
       "default": "./dist/app.js"
     },
+    "./app/server": {
+      "types": "./dist/app/server.d.ts",
+      "import": "./dist/app/server.js",
+      "default": "./dist/app/server.js"
+    },
+    "./app/react": {
+      "types": "./dist/app/react.d.ts",
+      "import": "./dist/app/react.js",
+      "default": "./dist/app/react.js"
+    },
     "./security": {
       "types": "./dist/security.d.ts",
       "import": "./dist/security.js",
@@ -68,9 +78,10 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "bun run typecheck",
-    "test": "bun test ./test",
+    "test": "bun test ./test && bun run test:rsc",
+    "test:rsc": "cd test/rsc && bun test --conditions react-server",
     "test:watch": "bun test --watch",
-    "test:next16": "bun run build && bun integration/csp-proxy/run.ts",
+    "test:next16": "bun run build && bun integration/csp-proxy/run.ts && bun integration/app-server/run.ts",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "keywords": [
