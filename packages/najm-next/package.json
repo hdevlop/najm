@@ -1,12 +1,13 @@
 {
   "name": "najm-next",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "license": "MIT",
   "type": "module",
   "description": "Strict, versioned Next.js configuration for Najm applications — monorepo root discovery, build isolation, service-worker headers, and dev-origin policy with no per-app options",
   "files": [
     "dist",
-    "README.md"
+    "README.md",
+    "CHANGELOG.md"
   ],
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
