@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Added valid-first ordered preference resolution, institution-owned currency,
+  paired POST/DELETE preference routes, and best-effort logout cleanup to the
+  pure `najm-kit/server` entry.
+- Added separate Google provider-selection metadata for location values. Manual
+  address edits clear stale Place IDs while preserving the last complete
+  coordinate pair; provider-neutral consumers keep the original value shape.
+- Added complete shared location-label catalogs for English, French, Arabic,
+  and Spanish, with regional-language resolution and app overrides.
+
 ## 2.13.1 - 2026-09-12
 
 - Added a Leaflet-only runtime provider subpath so Leaflet consumers do not

@@ -13,6 +13,22 @@ export interface NLocationValue {
   longitude: number | null;
 }
 
+/**
+ * Optional provider-owned identity for a committed location selection.
+ *
+ * Kept separate from `NLocationValue` so provider-neutral applications never
+ * persist Google-specific state. Applications that already store a Place ID
+ * can bind it through `providerMeta`/`onProviderMetaChange` without copying the
+ * map or search dialog.
+ */
+export interface NLocationProviderSelectionMeta {
+  provider: "google";
+  placeId: string | null;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
+}
+
 export interface NLocationCandidate {
   id: string;
   label: string;
@@ -119,8 +135,12 @@ export interface NLocationProviderProps {
 export interface NLocationDialogProps {
   open: boolean;
   value: NLocationValue;
+  providerMeta?: NLocationProviderSelectionMeta | null;
   onOpenChange: (open: boolean) => void;
-  onConfirm: (value: NLocationValue) => void;
+  onConfirm: (
+    value: NLocationValue,
+    providerMeta?: NLocationProviderSelectionMeta | null,
+  ) => void;
   labels?: Partial<NLocationLabels>;
   classNames?: NLocationClassNames;
 }
@@ -129,6 +149,13 @@ export interface NLocationInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "value" | "onChange" | "className"> {
   value: NLocationValue;
   onChange: (value: NLocationValue) => void;
+  /** Provider identity stored separately from the common location value. */
+  providerMeta?: NLocationProviderSelectionMeta | null;
+  /**
+   * Called atomically with a location update. Manual address edits and pin
+   * clears pass `null`, preventing a stale Place ID from surviving a change.
+   */
+  onProviderMetaChange?: (providerMeta: NLocationProviderSelectionMeta | null) => void;
   labels?: Partial<NLocationLabels>;
   classNames?: NLocationClassNames;
   status?: "default" | "error";

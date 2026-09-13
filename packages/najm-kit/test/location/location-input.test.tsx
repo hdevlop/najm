@@ -71,6 +71,51 @@ describe("NLocationInput", () => {
     expect(view.getByText("Address changed after the pin was selected")).toBeDefined();
   });
 
+  test("manual address edits preserve coordinates and clear stale provider metadata", async () => {
+    const metadata: unknown[] = [];
+    const values: NLocationValue[] = [];
+    const user = userEvent.setup();
+    function MetadataHarness() {
+      const [value, setValue] = React.useState<NLocationValue>({
+        address: "Provider address",
+        latitude: 33.58,
+        longitude: -7.62,
+      });
+      return (
+        <NLocationProvider adapter={{ id: "google", Map: TestMap }}>
+          <NLocationInput
+            value={value}
+            providerMeta={{
+              provider: "google",
+              placeId: "ChIJ-stale",
+              address: "Provider address",
+              latitude: 33.58,
+              longitude: -7.62,
+            }}
+            onChange={(next) => {
+              values.push(next);
+              setValue(next);
+            }}
+            onProviderMetaChange={(next) => metadata.push(next)}
+          />
+        </NLocationProvider>
+      );
+    }
+
+    const view = render(<MetadataHarness />);
+    await user.clear(view.getByRole("textbox"));
+    await user.type(view.getByRole("textbox"), "Manually corrected address");
+
+    expect(metadata.length).toBeGreaterThan(0);
+    expect(metadata.every((entry) => entry === null)).toBe(true);
+    expect(values.at(-1)).toEqual({
+      address: "Manually corrected address",
+      latitude: 33.58,
+      longitude: -7.62,
+    });
+    expect(view.getByText("Address changed after the pin was selected")).toBeDefined();
+  });
+
   test("tracks a controlled pin supplied after the field mounts", async () => {
     const user = userEvent.setup();
     function ControlledHarness() {

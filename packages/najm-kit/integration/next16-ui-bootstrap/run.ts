@@ -223,6 +223,35 @@ async function preferencesRoundTripThroughRealCookies() {
   );
   assert(html.includes('data-time-zone="Asia/Riyadh"'), 'the document lost its time zone');
   assert(html.includes('lang="en"'), 'the cookie language did not beat the fallback');
+
+  // DELETE clears the matching cookie with compatible attributes and a stable
+  // response; the next render falls back to the configured default.
+  const cleared = await fetch(`${origin}/api/ui-theme`, { method: 'DELETE' });
+  assert(cleared.status === 200, `the theme DELETE responded ${cleared.status}`);
+  assert(
+    JSON.stringify(await cleared.clone().json()) === JSON.stringify({ cleared: true }),
+    'the theme DELETE did not answer { cleared: true }',
+  );
+  const clearing = cleared.headers.get('set-cookie');
+  assert(
+    clearing?.startsWith('fixture-ui-theme=;') === true,
+    `the theme DELETE did not expire its configured cookie: ${clearing}`,
+  );
+  assert(clearing.includes('Path=/'), `the theme DELETE lost its path: ${clearing}`);
+  assert(
+    clearing.includes('Max-Age=0') && clearing.includes('Expires=Thu, 01 Jan 1970'),
+    `the theme DELETE did not expire on both mechanisms: ${clearing}`,
+  );
+  assert(clearing.includes('HttpOnly'), `the theme DELETE lost HttpOnly: ${clearing}`);
+
+  const afterDelete = await fetch(`${origin}/shared`, {
+    headers: { accept: 'text/html', cookie: 'fixture-ui-timezone=Asia/Riyadh; fixture-ui-language=en' },
+  });
+  const afterHtml = await afterDelete.text();
+  assert(
+    afterHtml.includes('prefs:en:light:Asia/Riyadh'),
+    'the layout did not fall back after the theme cookie was cleared',
+  );
 }
 
 async function navigate(path: string): Promise<string> {

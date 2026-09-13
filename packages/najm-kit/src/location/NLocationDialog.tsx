@@ -18,7 +18,13 @@ import { Input } from "../components/ui/input";
 import { cn } from "../lib/cn";
 import { isCompleteCoordinatePair, locationCoordinates, moveCoordinates, normalizeLocationValue } from "./contracts";
 import { useNLocationProvider } from "./provider";
-import type { NLocationCandidate, NLocationDialogProps, NLocationLabels, NLocationMapControls } from "./types";
+import type {
+  NLocationCandidate,
+  NLocationDialogProps,
+  NLocationLabels,
+  NLocationMapControls,
+  NLocationProviderSelectionMeta,
+} from "./types";
 import { useLocationDraft } from "./useLocationDraft";
 
 const SEARCH_DELAY_MS = 350;
@@ -29,7 +35,7 @@ function geolocationMessage(error: GeolocationPositionError, labels: NLocationLa
   return labels.geolocationUnavailable;
 }
 
-export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: labelOverrides, classNames }: NLocationDialogProps) {
+export function NLocationDialog({ open, value, providerMeta, onOpenChange, onConfirm, labels: labelOverrides, classNames }: NLocationDialogProps) {
   const provider = useNLocationProvider();
   const labels = React.useMemo(() => ({ ...provider.labels, ...labelOverrides }), [labelOverrides, provider.labels]);
   const { draft, setDraft, discard } = useLocationDraft(value, open);
@@ -44,6 +50,7 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
   const [searchLoading, setSearchLoading] = React.useState(false);
   const [searchError, setSearchError] = React.useState(false);
   const [reverseLoading, setReverseLoading] = React.useState(false);
+  const [draftProviderMeta, setDraftProviderMeta] = React.useState<NLocationProviderSelectionMeta | null>(providerMeta ?? null);
   const searchAbort = React.useRef<AbortController | null>(null);
   const reverseAbort = React.useRef<AbortController | null>(null);
   const reverseRequest = React.useRef(0);
@@ -75,7 +82,8 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
     setSearchPerformed(false);
     setSearchLoading(false);
     setReverseLoading(false);
-  }, [open, provider.geocoder]);
+    setDraftProviderMeta(providerMeta ?? null);
+  }, [open, provider.geocoder, providerMeta]);
 
   const close = React.useCallback(() => {
     discard();
@@ -84,6 +92,7 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
 
   const updateCoordinates = React.useCallback((next: { latitude: number; longitude: number }) => {
     setDraft((current) => ({ ...current, ...next }));
+    setDraftProviderMeta(null);
     setAnnouncement(labels.selectedAnnouncement);
 
     if (!provider.geocoder?.reverse) return;
@@ -95,13 +104,24 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
     void provider.geocoder.reverse(next, controller.signal).then((candidate) => {
       if (controller.signal.aborted || request !== reverseRequest.current || !candidate?.label) return;
       setDraft((current) => ({ ...current, address: candidate.label }));
+      setDraftProviderMeta(
+        provider.adapter?.id === "google"
+          ? {
+              provider: "google",
+              placeId: candidate.providerId ?? candidate.id ?? null,
+              address: candidate.label,
+              latitude: next.latitude,
+              longitude: next.longitude,
+            }
+          : null,
+      );
       setAnnouncement(labels.addressUpdatedAnnouncement);
     }).catch(() => {
       // Coordinates remain usable when optional reverse geocoding is unavailable.
     }).finally(() => {
       if (request === reverseRequest.current) setReverseLoading(false);
     });
-  }, [labels.addressUpdatedAnnouncement, labels.selectedAnnouncement, provider.geocoder, setDraft]);
+  }, [labels.addressUpdatedAnnouncement, labels.selectedAnnouncement, provider.adapter?.id, provider.geocoder, setDraft]);
 
   const performSearch = React.useCallback(async (rawQuery: string) => {
     const nextQuery = rawQuery.trim();
@@ -164,6 +184,17 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
         latitude: resolved.coordinates!.latitude,
         longitude: resolved.coordinates!.longitude,
       }));
+      setDraftProviderMeta(
+        provider.adapter?.id === "google"
+          ? {
+              provider: "google",
+              placeId: resolved.providerId ?? resolved.id ?? null,
+              address: resolved.label,
+              latitude: resolved.coordinates.latitude,
+              longitude: resolved.coordinates.longitude,
+            }
+          : null,
+      );
       mapControls?.recenter(resolved.coordinates);
       setQuery("");
       setResults([]);
@@ -214,13 +245,14 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
     reverseRequest.current += 1;
     setReverseLoading(false);
     setDraft((current) => ({ ...current, latitude: null, longitude: null }));
+    setDraftProviderMeta(null);
     setAnnouncement(labels.clearedAnnouncement);
   };
 
   const confirm = () => {
     const normalized = normalizeLocationValue(draft);
     if ((draft.latitude !== null || draft.longitude !== null) && !isCompleteCoordinatePair(draft)) return;
-    onConfirm(normalized);
+    onConfirm(normalized, draftProviderMeta);
     onOpenChange(false);
   };
 
@@ -351,6 +383,7 @@ export function NLocationDialog({ open, value, onOpenChange, onConfirm, labels: 
                   reverseRequest.current += 1;
                   setReverseLoading(false);
                   setDraft((current) => ({ ...current, address: event.target.value }));
+                  setDraftProviderMeta(null);
                 }}
               />
               {reverseLoading && (

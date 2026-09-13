@@ -146,6 +146,7 @@ export interface NajmPreferenceHandlers {
 export interface NajmPreferencesConfig<
   Language extends string = string,
   TimeZone extends string = NajmTimeZone,
+  Currency extends string = never,
 > {
   /** The application's catalog definition. The one required field. */
   i18n: NajmPreferenceI18n<Language>;
@@ -168,6 +169,27 @@ export interface NajmPreferencesConfig<
   defaultTimeZone?: NoInfer<TimeZone>;
   /** Defaults to `light`. */
   defaultTheme?: NajmMode;
+  /**
+   * Currency codes this application accepts. Omit it entirely unless the
+   * application resolves an institution-owned currency: legacy consumers
+   * without a currency keep no currency state at all, and no package default
+   * (no `MAD`, no locale-derived code) is invented for them. Currency stays
+   * app-owned policy — this list only guards the institution values the
+   * application explicitly passes to `resolveOrdered()`.
+   *
+   * Currency is institution-owned: it is never read from a cookie, a user
+   * record, a locale, or an `Accept-Language` header. This list exists so a
+   * corrupt or hand-edited institution row cannot reach money formatting,
+   * where the failure mode is an amount rendered in the wrong currency.
+   */
+  currencies?: readonly Currency[];
+  /**
+   * Defaults to the first configured currency. Requires `currencies`.
+   *
+   * `NoInfer` for the same reason as `defaultTimeZone`: naming the default
+   * must not narrow the accepted list.
+   */
+  defaultCurrency?: NoInfer<Currency>;
   /** Merged over the `najm-ui-*` defaults, per key. */
   cookieNames?: Partial<NajmPreferenceCookieNames>;
   /** Merged over the secure defaults, per key. */
@@ -178,9 +200,174 @@ export interface NajmPreferencesConfig<
   messages?: Partial<Record<"language" | "theme" | "timeZone", string>>;
 }
 
+/**
+ * One ordered preference source.
+ *
+ * `cookie` is the browser's most recent explicit choice, `user` the
+ * authenticated user's stored value, `institution` the institution's default
+ * (for example a school settings row), and `fallback` the typed application
+ * default. Resolution tries each source in order and skips invalid
+ * candidates — an unsupported value never wins the round.
+ */
+export type NajmPreferenceSource = "cookie" | "user" | "institution" | "fallback";
+
+/**
+ * A preference value together with the order its sources are tried in.
+ *
+ * Additive extension of the existing preference contract: the original
+ * `resolve()` semantics are preserved unchanged, and this descriptor only
+ * describes how `resolveOrdered()` walks the same guards.
+ */
+export interface NajmOrderedPreference<T> {
+  readonly sources: readonly NajmPreferenceSource[];
+  readonly guard: (value: unknown) => value is T;
+  readonly fallback: T;
+}
+
+/**
+ * Currency stays institution-owned.
+ *
+ * Refinement note on the frozen ledger sketch (§4.5): the ledger lists only
+ * `sources: ["institution", "fallback"]` for currency, which alone cannot
+ * resolve a value. This keeps that exact `sources` restriction and adds the
+ * `guard` + `fallback` the resolver needs, so currency is expressible as
+ * institution → fallback only and never derives from locale, cookie, or user.
+ */
+export interface NajmCurrencyPreference<T> {
+  readonly sources: readonly ["institution", "fallback"];
+  readonly guard: (value: unknown) => value is T;
+  readonly fallback: T;
+}
+
+/**
+ * The ordered descriptors for every preference.
+ *
+ * `currency` exists only when the application explicitly configured a
+ * currency allowlist: legacy definitions carry no currency state, and
+ * `resolveOrdered()` on such a definition returns no `currency` field.
+ */
+export type NajmInstitutionalPreferences<
+  Language extends string = string,
+  TimeZone extends string = NajmTimeZone,
+  Currency extends string = never,
+> = {
+  readonly language: NajmOrderedPreference<Language>;
+  readonly theme: NajmOrderedPreference<NajmMode>;
+  readonly timeZone: NajmOrderedPreference<TimeZone>;
+} & ([Currency] extends [never]
+  ? { readonly currency?: undefined }
+  : { readonly currency: NajmCurrencyPreference<Currency> });
+
+/** Per-request user values for ordered resolution. No currency: never user-owned. */
+export interface NajmOrderedUserValues {
+  readonly language?: unknown;
+  readonly theme?: unknown;
+  readonly timeZone?: unknown;
+}
+
+/** Per-request institution values for ordered resolution. */
+export interface NajmOrderedInstitutionValues {
+  readonly language?: unknown;
+  readonly theme?: unknown;
+  readonly timeZone?: unknown;
+  readonly currency?: unknown;
+}
+
+/**
+ * Independent per-field source orders.
+ *
+ * Each field walks its own list, so language can be
+ * cookie → user → institution → fallback while currency stays fixed at
+ * institution → fallback. Currency accepts no order override by type.
+ */
+export interface NajmOrderedPreferenceOrders {
+  readonly language?: readonly NajmPreferenceSource[];
+  readonly theme?: readonly NajmPreferenceSource[];
+  readonly timeZone?: readonly NajmPreferenceSource[];
+}
+
+export interface NajmOrderedResolveInput {
+  readonly user?: NajmOrderedUserValues;
+  readonly institution?: NajmOrderedInstitutionValues;
+  /**
+   * The raw `Accept-Language` request header. Tried only at the language
+   * `fallback` step, before the configured default — so Kafil keeps
+   * cookie → user → Accept-Language → default while an institution caller
+   * that passes no header keeps cookie → user → institution → default.
+   */
+  readonly acceptLanguage?: string | null;
+  readonly orders?: NajmOrderedPreferenceOrders;
+}
+
+/**
+ * Valid-first ordered resolution result.
+ *
+ * Without an explicitly configured currency the snapshot carries exactly the
+ * three display fields; with one it additionally carries the
+ * institution-only `currency`. Either way currency never derives from a
+ * cookie, user value, locale, or `Accept-Language`.
+ */
+export type NajmOrderedPreferenceSnapshot<
+  Language extends string = string,
+  TimeZone extends string = NajmTimeZone,
+  Currency extends string = never,
+> = [Currency] extends [never]
+  ? {
+      language: Language;
+      theme: NajmMode;
+      timeZone: TimeZone;
+    }
+  : {
+      language: Language;
+      theme: NajmMode;
+      timeZone: TimeZone;
+      currency: Currency;
+    };
+
+/** One preference's POST (write) and DELETE (clear) handlers. */
+export interface NajmPreferenceRoute {
+  readonly POST: NajmPreferenceHandler;
+  readonly DELETE: NajmPreferenceHandler;
+}
+
+/**
+ * POST and DELETE belong together in `najm-kit/server`.
+ *
+ * `handlers` (POST-only functions) are preserved for backward compatibility:
+ * `routes.language.POST` is the same function as `handlers.language`.
+ */
+export interface NajmPreferenceRoutes {
+  readonly language: NajmPreferenceRoute;
+  readonly theme: NajmPreferenceRoute;
+  readonly timeZone: NajmPreferenceRoute;
+}
+
+/** Where display-preference DELETEs are sent. Defaults to `/api/ui-*`. */
+export interface NajmUiPreferenceEndpoints {
+  readonly language: string;
+  readonly theme: string;
+  readonly timeZone: string;
+}
+
+export const NAJM_UI_PREFERENCE_ENDPOINTS: NajmUiPreferenceEndpoints = Object.freeze({
+  language: "/api/ui-language",
+  theme: "/api/ui-theme",
+  timeZone: "/api/ui-timezone",
+});
+
+export interface NajmClearPreferencesOptions {
+  readonly endpoints?: Partial<NajmUiPreferenceEndpoints>;
+  /**
+   * Injectable for tests. Defaults to the global `fetch`. Called once per
+   * preference with `{ method: "DELETE", credentials: "same-origin" }`.
+   */
+  readonly fetchFn?: (input: string, init?: RequestInit) => Promise<Response>;
+}
+
 export interface NajmPreferences<
   Language extends string = string,
   TimeZone extends string = NajmTimeZone,
+  Currency extends string = never,
 > {
   readonly cookieNames: Readonly<NajmPreferenceCookieNames>;
   readonly cookieOptions: Readonly<NajmPreferenceCookieOptions>;
@@ -188,21 +375,48 @@ export interface NajmPreferences<
   readonly defaultTimeZone: TimeZone;
   readonly defaultTheme: NajmMode;
   readonly defaultLanguage: Language;
+  /**
+   * Empty unless the application explicitly configured `currencies`.
+   * Legacy definitions carry no currency state.
+   */
+  readonly currencies: readonly Currency[];
+  /** `undefined` unless the application explicitly configured a currency. */
+  readonly defaultCurrency: [Currency] extends [never] ? undefined : Currency;
   /** Every preference for this request, resolved from cookies. */
   resolve(
     cookies: NajmCookieReader,
     options?: NajmPreferenceResolveOptions,
   ): NajmPreferenceSnapshot<Language, TimeZone>;
+  /**
+   * Valid-first ordered resolution, independently per field.
+   *
+   * Skips invalid candidates; currency reads only the institution value and
+   * never a cookie, user value, locale, or `Accept-Language`.
+   */
+  resolveOrdered(
+    cookies: NajmCookieReader,
+    input?: NajmOrderedResolveInput,
+  ): NajmOrderedPreferenceSnapshot<Language, TimeZone, Currency>;
+  /** Ordered descriptors (guards, fallbacks, default source orders). */
+  readonly ordered: NajmInstitutionalPreferences<Language, TimeZone, Currency>;
   handlers: NajmPreferenceHandlers;
+  routes: NajmPreferenceRoutes;
 }
 
 /** The language of a configured definition, so applications alias nothing. */
 export type NajmPreferenceLanguage<P> =
-  P extends NajmPreferences<infer Language, string> ? Language : never;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  P extends NajmPreferences<infer Language, any, any> ? Language : never;
 
 /** The time zone of a configured definition. */
 export type NajmPreferenceTimeZone<P> =
-  P extends NajmPreferences<string, infer TimeZone> ? TimeZone : never;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  P extends NajmPreferences<string, infer TimeZone, any> ? TimeZone : never;
+
+/** The currency of a configured definition, or `never` when none was configured. */
+export type NajmPreferenceCurrency<P> =
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  P extends NajmPreferences<string, any, infer Currency> ? Currency : never;
 
 const COOKIE_NAME_PATTERN = /^[A-Za-z0-9!#$%&'*+\-.^_`|~]+$/;
 const COOKIE_VALUE_PATTERN = /^[A-Za-z0-9!#$%&'()*+\-./:<=>?@[\]^_`|~]*$/;
@@ -345,7 +559,10 @@ function lookupAcceptedLanguage<Language extends string>(
 export function defineNajmPreferences<
   Language extends string,
   const TimeZone extends string = NajmTimeZone,
->(config: NajmPreferencesConfig<Language, TimeZone>): NajmPreferences<Language, TimeZone> {
+  const Currency extends string = never,
+>(
+  config: NajmPreferencesConfig<Language, TimeZone, Currency>,
+): NajmPreferences<Language, TimeZone, Currency> {
   const { i18n } = config;
 
   const timeZones = Object.freeze([
@@ -389,6 +606,29 @@ export function defineNajmPreferences<
     timeZone: config.messages?.timeZone ?? "Unsupported time zone.",
   };
 
+  // Currency is strictly opt-in: without an explicit `currencies` allowlist
+  // the definition carries no currency state at all — no package default, no
+  // locale-derived code. Only an application that configures both the
+  // allowlist and (optionally, defaulting to the first entry) the fallback
+  // gets `ordered.currency` and a `currency` field from `resolveOrdered()`.
+  const hasCurrency = config.currencies !== undefined;
+  if (config.defaultCurrency !== undefined && !hasCurrency) {
+    throw new Error("najm-kit/server: `defaultCurrency` requires `currencies`");
+  }
+  const currencies = Object.freeze([...((config.currencies ?? []) as readonly Currency[])]);
+  if (hasCurrency && currencies.length === 0) {
+    throw new Error("najm-kit/server: `currencies` must list at least one code");
+  }
+  const currencySet: ReadonlySet<string> = new Set(currencies);
+  const defaultCurrency = (
+    hasCurrency ? (config.defaultCurrency ?? currencies[0]) : undefined
+  ) as [Currency] extends [never] ? undefined : Currency;
+  if (hasCurrency && !currencySet.has(defaultCurrency as string)) {
+    throw new Error(
+      `najm-kit/server: default currency "${config.defaultCurrency}" is not one of the configured codes`,
+    );
+  }
+
   const isTheme = (value: unknown): value is NajmMode =>
     typeof value === "string" && (THEME_MODES as readonly string[]).includes(value);
 
@@ -397,6 +637,45 @@ export function defineNajmPreferences<
 
   const isLanguage = (value: unknown): value is Language =>
     typeof value === "string" && (i18n.supportedLanguages as readonly string[]).includes(value);
+
+  const isCurrency = (value: unknown): value is Currency =>
+    typeof value === "string" && currencySet.has(value);
+
+  const DEFAULT_ORDER: readonly NajmPreferenceSource[] = Object.freeze([
+    "cookie",
+    "user",
+    "institution",
+    "fallback",
+  ]);
+
+  const orderedBase = Object.freeze({
+    language: Object.freeze({
+      sources: DEFAULT_ORDER,
+      guard: isLanguage,
+      fallback: i18n.defaultLanguage,
+    }),
+    theme: Object.freeze({ sources: DEFAULT_ORDER, guard: isTheme, fallback: defaultTheme }),
+    timeZone: Object.freeze({
+      sources: DEFAULT_ORDER,
+      guard: isTimeZone,
+      fallback: defaultTimeZone,
+    }),
+  });
+  const ordered = (
+    hasCurrency
+      ? Object.freeze({
+          ...orderedBase,
+          currency: Object.freeze({
+            sources: Object.freeze(["institution", "fallback"]) as readonly [
+              "institution",
+              "fallback",
+            ],
+            guard: isCurrency,
+            fallback: defaultCurrency as Currency,
+          }),
+        })
+      : orderedBase
+  ) as NajmInstitutionalPreferences<Language, TimeZone, Currency>;
 
   function resolve(
     cookies: NajmCookieReader,
@@ -425,6 +704,130 @@ export function defineNajmPreferences<
       theme: isTheme(themeCookie) ? themeCookie : defaultTheme,
       timeZone: isTimeZone(timeZoneCookie) ? timeZoneCookie : defaultTimeZone,
     };
+  }
+
+  function candidateFor(
+    source: NajmPreferenceSource,
+    field: "language" | "theme" | "timeZone",
+    cookies: NajmCookieReader,
+    input: NajmOrderedResolveInput,
+  ): unknown {
+    switch (source) {
+      case "cookie":
+        return cookies.get(
+          field === "language"
+            ? cookieNames.language
+            : field === "theme"
+              ? cookieNames.theme
+              : cookieNames.timeZone,
+        )?.value;
+      case "user":
+        return input.user?.[field];
+      case "institution":
+        return input.institution?.[field];
+      case "fallback":
+        return undefined;
+    }
+  }
+
+  function resolveOrdered(
+    cookies: NajmCookieReader,
+    input: NajmOrderedResolveInput = {},
+  ): NajmOrderedPreferenceSnapshot<Language, TimeZone, Currency> {
+    const languageOrder = input.orders?.language ?? ordered.language.sources;
+    const themeOrder = input.orders?.theme ?? ordered.theme.sources;
+    const timeZoneOrder = input.orders?.timeZone ?? ordered.timeZone.sources;
+
+    const languageFallback =
+      lookupAcceptedLanguage(input.acceptLanguage, i18n.supportedLanguages, i18n.defaultLanguage) ??
+      ordered.language.fallback;
+
+    let language: Language = ordered.language.fallback;
+    let languageFound = false;
+    for (const source of languageOrder) {
+      if (source === "fallback") {
+        language = languageFallback;
+        languageFound = true;
+        break;
+      }
+      const candidate = candidateFor(source, "language", cookies, input);
+      if (isLanguage(candidate)) {
+        language = candidate;
+        languageFound = true;
+        break;
+      }
+    }
+    if (!languageFound) language = languageFallback;
+
+    let theme: NajmMode = ordered.theme.fallback;
+    let themeFound = false;
+    for (const source of themeOrder) {
+      if (source === "fallback") {
+        theme = ordered.theme.fallback;
+        themeFound = true;
+        break;
+      }
+      const candidate = candidateFor(source, "theme", cookies, input);
+      if (isTheme(candidate)) {
+        theme = candidate;
+        themeFound = true;
+        break;
+      }
+    }
+    if (!themeFound) theme = ordered.theme.fallback;
+
+    let timeZone: TimeZone = ordered.timeZone.fallback;
+    let timeZoneFound = false;
+    for (const source of timeZoneOrder) {
+      if (source === "fallback") {
+        timeZone = ordered.timeZone.fallback;
+        timeZoneFound = true;
+        break;
+      }
+      const candidate = candidateFor(source, "timeZone", cookies, input);
+      if (isTimeZone(candidate)) {
+        timeZone = candidate;
+        timeZoneFound = true;
+        break;
+      }
+    }
+    if (!timeZoneFound) timeZone = ordered.timeZone.fallback;
+
+    if (!hasCurrency) {
+      return { language, theme, timeZone } as NajmOrderedPreferenceSnapshot<
+        Language,
+        TimeZone,
+        Currency
+      >;
+    }
+
+    // Institution-only by construction: cookies, user values, locales, and
+    // Accept-Language are never consulted here, even if a caller passes them.
+    const { currency: currencyDescriptor } = ordered as {
+      currency: NajmCurrencyPreference<Currency>;
+    };
+    const currency = isCurrency(input.institution?.currency)
+      ? input.institution.currency
+      : currencyDescriptor.fallback;
+
+    return { language, theme, timeZone, currency } as NajmOrderedPreferenceSnapshot<
+      Language,
+      TimeZone,
+      Currency
+    >;
+  }
+
+  function cleared(field: "language" | "theme" | "timeZone"): Response {
+    const name =
+      field === "language"
+        ? cookieNames.language
+        : field === "theme"
+          ? cookieNames.theme
+          : cookieNames.timeZone;
+    return Response.json(
+      { cleared: true },
+      { headers: { "Set-Cookie": serializeClearCookie(name, cookieOptions) } },
+    );
   }
 
   const handlers: NajmPreferenceHandlers = {
@@ -459,6 +862,12 @@ export function defineNajmPreferences<
     },
   };
 
+  const routes: NajmPreferenceRoutes = Object.freeze({
+    language: Object.freeze({ POST: handlers.language, DELETE: () => Promise.resolve(cleared("language")) }),
+    theme: Object.freeze({ POST: handlers.theme, DELETE: () => Promise.resolve(cleared("theme")) }),
+    timeZone: Object.freeze({ POST: handlers.timeZone, DELETE: () => Promise.resolve(cleared("timeZone")) }),
+  });
+
   return Object.freeze({
     cookieNames,
     cookieOptions,
@@ -466,7 +875,103 @@ export function defineNajmPreferences<
     defaultTimeZone,
     defaultTheme,
     defaultLanguage: i18n.defaultLanguage,
+    currencies,
+    defaultCurrency,
+    ordered,
     resolve,
+    resolveOrdered,
     handlers: Object.freeze(handlers),
+    routes,
   });
+}
+
+/**
+ * Serialize a clearing `Set-Cookie` for a preference cookie.
+ *
+ * Observable contract (matching School's `ui-*` DELETE routes): HTTP 200
+ * `{ cleared: true }`, the same cookie name and `Path` the POST handler
+ * wrote, and an expired cookie value. This serialization additionally
+ * carries the configured `Domain`, `Secure`, `HttpOnly`, and `SameSite` so
+ * the clearing cookie matches a scoped cookie the POST handler wrote — a
+ * bare `Path=/` clear would leave a `Domain`- or `Secure`-scoped choice
+ * behind. `Max-Age=0` plus a past `Expires` covers both expiry mechanisms
+ * browsers honor. It is browser-compatible with Next's `cookies.delete()`
+ * output without claiming byte-identical serialization.
+ */
+function serializeClearCookie(name: string, options: NajmPreferenceCookieOptions): string {
+  if (!COOKIE_NAME_PATTERN.test(name)) {
+    throw new Error("najm-kit/server: refusing to serialize an unsafe preference cookie");
+  }
+  const parts = [
+    `${name}=`,
+    `Path=${options.path}`,
+    "Max-Age=0",
+    "Expires=Thu, 01 Jan 1970 00:00:00 GMT",
+  ];
+  if (options.domain) parts.push(`Domain=${options.domain}`);
+  if (options.httpOnly) parts.push("HttpOnly");
+  if (options.secure) parts.push("Secure");
+  parts.push(`SameSite=${options.sameSite[0]!.toUpperCase()}${options.sameSite.slice(1)}`);
+  return parts.join("; ");
+}
+
+/**
+ * Clear the three display-preference cookies with best-effort semantics.
+ *
+ * Never throws and never short-circuits: each endpoint is attempted inside
+ * its own async boundary, so a synchronously throwing `fetchFn` for one
+ * endpoint cannot prevent attempts to the other two. Every outcome is
+ * settled independently, so a display-cookie failure can never prevent an
+ * auth logout. Callers compose it with their auth logout (see
+ * `logoutWithNajmPreferenceCleanup`) rather than awaiting it as a gate.
+ */
+export async function clearNajmUiPreferences(
+  options: NajmClearPreferencesOptions = {},
+): Promise<void> {
+  const endpoints: NajmUiPreferenceEndpoints = {
+    ...NAJM_UI_PREFERENCE_ENDPOINTS,
+    ...options.endpoints,
+  };
+  let fetchFn = options.fetchFn;
+  if (!fetchFn) {
+    const host = globalThis as { fetch?: typeof fetch };
+    if (typeof host.fetch !== "function") return;
+    fetchFn = host.fetch.bind(host);
+  }
+  const attempt = async (endpoint: string): Promise<void> => {
+    try {
+      await fetchFn(endpoint, { method: "DELETE", credentials: "same-origin" });
+    } catch {
+      // Best-effort per endpoint: one display cookie never blocks the others.
+    }
+  };
+  await Promise.allSettled(
+    [endpoints.language, endpoints.theme, endpoints.timeZone].map((endpoint) => attempt(endpoint)),
+  );
+}
+
+/**
+ * Run an auth logout with best-effort display-preference cleanup.
+ *
+ * Mirrors School's `SignOutButton` + `onSuccess(clearSchoolUiPreferences)`
+ * ordering: the auth logout runs first and its outcome is authoritative. If
+ * it rejects, the identical error propagates and cleanup never runs (there
+ * is no `onSuccess` without a success). If it resolves, cleanup runs
+ * best-effort and its rejection can never replace the successful auth
+ * result — the exact logout value is returned either way.
+ *
+ * Structural on purpose: the logout callback is the app's `najm-auth` call,
+ * so `najm-kit/server` never imports `najm-auth`.
+ */
+export async function logoutWithNajmPreferenceCleanup<T>(options: {
+  readonly logout: () => Promise<T>;
+  readonly clearPreferences: () => Promise<unknown>;
+}): Promise<T> {
+  const result = await options.logout();
+  try {
+    await options.clearPreferences();
+  } catch {
+    // Best-effort: a display-cookie failure never replaces a logout result.
+  }
+  return result;
 }

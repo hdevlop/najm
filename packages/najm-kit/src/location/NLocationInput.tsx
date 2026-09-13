@@ -14,6 +14,8 @@ import type { NLocationInputProps } from "./types";
 export const NLocationInput = React.forwardRef<HTMLInputElement, NLocationInputProps>(function NLocationInput({
   value,
   onChange,
+  providerMeta,
+  onProviderMetaChange,
   labels: labelOverrides,
   classNames,
   status = "default",
@@ -56,7 +58,10 @@ export const NLocationInput = React.forwardRef<HTMLInputElement, NLocationInputP
           {...inputProps}
           ref={ref}
           value={normalized.address}
-          onChange={(event) => onChange({ ...normalized, address: event.target.value })}
+          onChange={(event) => {
+            onChange({ ...normalized, address: event.target.value });
+            onProviderMetaChange?.(null);
+          }}
           disabled={disabled}
           readOnly={readOnly}
           className="h-auto flex-1 border-0 bg-transparent p-0 shadow-none focus-visible:ring-0"
@@ -78,8 +83,13 @@ export const NLocationInput = React.forwardRef<HTMLInputElement, NLocationInputP
       <NLocationDialog
         open={open}
         value={normalized}
+        providerMeta={providerMeta}
         onOpenChange={setOpen}
-        onConfirm={(next) => { setPinnedAddress(next.latitude === null ? "" : next.address); onChange(next); }}
+        onConfirm={(next, nextProviderMeta) => {
+          setPinnedAddress(next.latitude === null ? "" : next.address);
+          onChange(next);
+          onProviderMetaChange?.(nextProviderMeta ?? null);
+        }}
         labels={labelOverrides}
         classNames={classNames}
       />

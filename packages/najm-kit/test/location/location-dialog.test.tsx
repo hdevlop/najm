@@ -2,7 +2,14 @@ import React from "react";
 import { describe, expect, test } from "bun:test";
 import { fireEvent, render, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { NLocationDialog, NLocationProvider, type NLocationCandidate, type NLocationMapProps, type NLocationValue } from "../../src/location";
+import {
+  NLocationDialog,
+  NLocationProvider,
+  type NLocationCandidate,
+  type NLocationMapProps,
+  type NLocationProviderSelectionMeta,
+  type NLocationValue,
+} from "../../src/location";
 
 function TestMap({ value, onChange, onReady, onControlsReady }: NLocationMapProps) {
   React.useEffect(() => {
@@ -109,6 +116,51 @@ describe("NLocationDialog", () => {
     fireEvent.click(view.getByRole("option", { name: "Resolved address" }));
     fireEvent.click(view.getByRole("button", { name: "Confirm address" }));
     expect(committed).toEqual({ address: "Resolved address", latitude: 3, longitude: 4 });
+  });
+
+  test("commits Google provider metadata separately from the common value", async () => {
+    let committed: NLocationValue | undefined;
+    let meta: NLocationProviderSelectionMeta | null | undefined;
+    const user = userEvent.setup();
+    const geocoder = {
+      id: "google-places",
+      async search() {
+        return [{
+          id: "ChIJ-place-id",
+          providerId: "ChIJ-place-id",
+          label: "Google resolved address",
+          coordinates: { latitude: 33.58, longitude: -7.62 },
+        }];
+      },
+    };
+    const view = render(
+      <NLocationProvider adapter={{ id: "google", Map: TestMap }} geocoder={geocoder}>
+        <NLocationDialog
+          open
+          value={{ address: "Old address", latitude: null, longitude: null }}
+          onOpenChange={() => {}}
+          onConfirm={(value, providerMeta) => {
+            committed = value;
+            meta = providerMeta;
+          }}
+        />
+      </NLocationProvider>,
+    );
+
+    await user.type(view.getByPlaceholderText("Search by street, city, or postal code"), "Google");
+    fireEvent.click(view.getByRole("button", { name: "Search" }));
+    await waitFor(() => expect(view.getByRole("option", { name: "Google resolved address" })).toBeDefined());
+    fireEvent.click(view.getByRole("option", { name: "Google resolved address" }));
+    fireEvent.click(view.getByRole("button", { name: "Confirm address" }));
+
+    expect(committed).toEqual({ address: "Google resolved address", latitude: 33.58, longitude: -7.62 });
+    expect(meta).toEqual({
+      provider: "google",
+      placeId: "ChIJ-place-id",
+      address: "Google resolved address",
+      latitude: 33.58,
+      longitude: -7.62,
+    });
   });
 
   test("ignores a stale search response after a newer query", async () => {
