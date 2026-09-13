@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 2.14.0 - 2026-09-13
+
 - Added valid-first ordered preference resolution, institution-owned currency,
   paired POST/DELETE preference routes, and best-effort logout cleanup to the
   pure `najm-kit/server` entry.
