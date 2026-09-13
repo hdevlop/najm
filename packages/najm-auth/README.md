@@ -141,6 +141,12 @@ auth({
   // Frontend
   frontendUrl?: string                     // Password reset link base URL
   appName?: string                         // Security email brand (default: 'Your app')
+  accountInviteLogo?: {                    // Optional CID-backed inline mark
+    alt?: string
+    contentBase64: string
+    contentType: string
+    filename: string
+  }
 
   // Login identifier normalization (see "Identity presets")
   identity?: {
@@ -1148,6 +1154,11 @@ provisioned role is presented as the account type, so a sponsor invitation can
 say “Activate your sponsor account” without application-owned HTML. The shared
 template uses inline critical styles for Gmail and keeps the raw token URL out
 of visible fallback copy.
+
+For a branded mark that works in email clients without a public asset URL, set
+`accountInviteLogo` to base64 content plus its MIME type and filename. Najm
+attaches it inline and points the shared template at a stable CID; when omitted,
+the template renders `appName` as text.
 
 The built-in memory and Redis drivers implement the required atomic primitive.
 A custom cache driver may omit `compareAndDelete()` for compatibility with

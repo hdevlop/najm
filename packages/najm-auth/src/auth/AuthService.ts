@@ -167,20 +167,32 @@ export class AuthService {
     // can resend or fall back to sharing the link out-of-band.
     let emailSent = false;
     try {
-      await this.emailService.sendHtml(
-        body.email,
-        this.t('emails.accountInvite.subject', {
+      const logo = this.config.accountInviteLogo;
+      const logoCid = logo ? 'najm-account-invite-logo' : undefined;
+      const result = await this.emailService.send({
+        to: body.email,
+        subject: this.t('emails.accountInvite.subject', {
           accountLabel,
           appName: this.config.appName,
         }),
-        accountInviteTemplate({
+        html: accountInviteTemplate({
           accountType,
           appName: this.config.appName,
           inviteLink,
+          logoAlt: logo?.alt,
+          logoSrc: logoCid ? `cid:${logoCid}` : undefined,
           userName: (user as any).name || body.email,
-        })
-      );
-      emailSent = true;
+        }),
+        attachments: logo ? [{
+          filename: logo.filename,
+          content: logo.contentBase64,
+          contentType: logo.contentType,
+          cid: logoCid,
+          disposition: 'inline',
+          encoding: 'base64',
+        }] : undefined,
+      });
+      emailSent = result.success;
     } catch (error) {
       this.logger.warn('Account invite email failed', { email: body.email, error });
     }

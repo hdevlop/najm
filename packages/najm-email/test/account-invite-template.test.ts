@@ -22,6 +22,21 @@ describe('accountInviteTemplate', () => {
     expect(html).not.toContain(`>${inviteLink}<`);
     expect(html).not.toContain('word-break: break-all');
     expect(html).not.toContain('Our App');
+    expect(html).toContain('>Kafil</p>');
+  });
+
+  test('renders an escaped inline logo reference when one is supplied', () => {
+    const html = accountInviteTemplate({
+      appName: 'Kafil',
+      inviteLink: 'https://kafala360.ma/reset-password?token=secret-token',
+      logoAlt: 'Kafil <mark>',
+      logoSrc: 'cid:najm-account-invite-logo&variant=mail',
+      userName: 'Fatima Zahra',
+    });
+
+    expect(html).toContain('src="cid:najm-account-invite-logo&amp;variant=mail"');
+    expect(html).toContain('alt="Kafil &lt;mark&gt;"');
+    expect(html).not.toContain('>Kafil</p>');
   });
 
   test('escapes every caller-provided value used in HTML', () => {

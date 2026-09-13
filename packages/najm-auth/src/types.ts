@@ -145,6 +145,13 @@ export interface AuthConfig {
   frontendUrl: string;
   /** Product name used in security email subjects and templates. */
   appName: string;
+  /** Optional inline logo embedded in account invitation emails. */
+  accountInviteLogo?: {
+    alt?: string;
+    contentBase64: string;
+    contentType: string;
+    filename: string;
+  };
   /** Registration mode: 'active' auto-activates, 'pending' requires admin approval (default: 'active') */
   registrationMode: 'active' | 'pending';
   /** Whether the unauthenticated POST /auth/register route is mounted. */
@@ -216,6 +223,13 @@ export type AuthPluginConfig = {
   frontendUrl?: string;
   /** Product name used in account invitation emails (default: 'Your app'). */
   appName?: string;
+  /** Optional inline logo embedded in account invitation emails. */
+  accountInviteLogo?: {
+    alt?: string;
+    contentBase64: string;
+    contentType: string;
+    filename: string;
+  };
   /** Registration mode: 'active' auto-activates new users, 'pending' requires admin approval (default: 'active') */
   registrationMode?: 'active' | 'pending';
   /**

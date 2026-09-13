@@ -311,7 +311,7 @@ describe('provisioning with a required password setup', () => {
       {} as never,
       {} as never,
       {} as never,
-      { sendHtml: async () => undefined } as never,
+      { send: async () => ({ success: true }) } as never,
     );
     (service as any).config = { frontendUrl: 'https://app.example.test' };
     (service as any).t = (key: string) => key;
@@ -326,7 +326,7 @@ describe('provisioning with a required password setup', () => {
   });
 
   test('brands an invitation for the provisioned account role', async () => {
-    const sent: Array<{ html: string; subject: string; to: string }> = [];
+    const sent: any[] = [];
     const service = new AuthService(
       { generateInviteToken: async () => ({ token: 'invite-token' }) } as never,
       {
@@ -337,13 +337,20 @@ describe('provisioning with a required password setup', () => {
       {} as never,
       {} as never,
       {
-        sendHtml: async (to: string, subject: string, html: string) => {
-          sent.push({ html, subject, to });
+        send: async (message: any) => {
+          sent.push(message);
+          return { success: true };
         },
       } as never,
     );
     (service as any).config = {
       appName: 'Kafil',
+      accountInviteLogo: {
+        alt: 'Kafil mark',
+        contentBase64: 'a2FmaWw=',
+        contentType: 'image/webp',
+        filename: 'kafil.webp',
+      },
       frontendUrl: 'https://kafala360.ma',
     };
     (service as any).t = (
@@ -363,6 +370,16 @@ describe('provisioning with a required password setup', () => {
     expect(sent[0]?.subject).toBe('Kafil: activate your sponsor account');
     expect(sent[0]?.html).toContain('Activate your sponsor account');
     expect(sent[0]?.html).toContain('Kafil');
+    expect(sent[0]?.html).toContain('src="cid:najm-account-invite-logo"');
+    expect(sent[0]?.html).toContain('alt="Kafil mark"');
+    expect(sent[0]?.attachments).toEqual([{
+      filename: 'kafil.webp',
+      content: 'a2FmaWw=',
+      contentType: 'image/webp',
+      cid: 'najm-account-invite-logo',
+      disposition: 'inline',
+      encoding: 'base64',
+    }]);
     expect(sent[0]?.html).not.toContain('Our App');
   });
 

@@ -199,6 +199,19 @@ describe('public registration policy', () => {
       .toThrow('auth.appName');
   });
 
+  test('passes an optional inline invitation logo to the resolved config', () => {
+    const accountInviteLogo = {
+      alt: 'Kafil',
+      contentBase64: 'a2FmaWw=',
+      contentType: 'image/webp',
+      filename: 'kafil.webp',
+    };
+
+    expect(resolveAuthConfig({ jwt }).accountInviteLogo).toBeUndefined();
+    expect(resolveAuthConfig({ jwt, accountInviteLogo }).accountInviteLogo)
+      .toBe(accountInviteLogo);
+  });
+
   test('registration remains mounted by default for backwards compatibility', () => {
     const plugin = auth({ jwt, email: { provider: 'console' } });
 

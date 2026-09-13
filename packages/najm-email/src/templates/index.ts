@@ -144,6 +144,8 @@ export function accountInviteTemplate(params: {
   userName: string;
   appName?: string;
   accountType?: string;
+  logoSrc?: string;
+  logoAlt?: string;
   expiryTime?: string;
 }): string {
   const {
@@ -151,11 +153,15 @@ export function accountInviteTemplate(params: {
     userName,
     appName = 'Your app',
     accountType,
+    logoSrc,
+    logoAlt,
     expiryTime = '3 days',
   } = params;
   const safeName = escapeHtml(userName);
   const safeLink = escapeHtml(inviteLink);
   const safeAppName = escapeHtml(appName);
+  const safeLogoSrc = logoSrc ? escapeHtml(logoSrc) : '';
+  const safeLogoAlt = escapeHtml(logoAlt?.trim() || appName);
   const safeExpiryTime = escapeHtml(expiryTime);
   const normalizedAccountType = accountType?.trim();
   const safeAccountLabel = normalizedAccountType
@@ -195,7 +201,7 @@ export function accountInviteTemplate(params: {
           </tr>
           <tr>
             <td class="email-header" style="padding:32px 40px 30px; background-color:#173d2a; color:#ffffff;">
-              <p style="margin:0 0 24px; font-size:18px; line-height:24px; font-weight:800; letter-spacing:1.8px; color:#ffffff;">${safeAppName}</p>
+              ${safeLogoSrc ? `<img src="${safeLogoSrc}" alt="${safeLogoAlt}" width="132" style="display:block; width:auto; max-width:132px; height:auto; max-height:52px; margin:0 0 24px; border:0; outline:none; text-decoration:none; object-fit:contain;" />` : `<p style="margin:0 0 24px; font-size:18px; line-height:24px; font-weight:800; letter-spacing:1.8px; color:#ffffff;">${safeAppName}</p>`}
               <p style="margin:0 0 10px; font-size:12px; line-height:18px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#f3b184;">Secure account invitation</p>
               <h1 class="email-title" style="margin:0; font-size:34px; line-height:41px; font-weight:700; letter-spacing:-0.4px; color:#ffffff;">Activate your ${safeAccountLabel}</h1>
             </td>
