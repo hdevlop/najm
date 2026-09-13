@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 4.0.4 - 2026-09-13
 
 - Support an optional CID-backed inline logo for account invitation emails and
   report the provider's actual send result without changing best-effort
