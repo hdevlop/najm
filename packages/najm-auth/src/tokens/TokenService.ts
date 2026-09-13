@@ -174,7 +174,7 @@ export class TokenService {
 
   private rejectRefreshSession(messageKey = 'errors.refreshTokenInvalid'): never {
     this.clearRefreshSessionCookies();
-    Err(this.t(messageKey), 401);
+    return Err(this.t(messageKey), 401);
   }
 
   private async assertRefreshFamilyAllowed(tokenFamily: string, userId: string): Promise<void> {
