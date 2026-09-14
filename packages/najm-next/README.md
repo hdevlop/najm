@@ -291,7 +291,9 @@ export const { getSession, requireSession, requireRole, loadUiSnapshot } = najmS
 It uses cookie, user, `Accept-Language`, and configured fallback preference
 sources by default. `preferenceSources` adds institution values or custom source
 orders without replacing Kit validation. Set `acceptLanguage: false` when an
-application's policy excludes that source. The app definition and lower-level
+application's policy excludes that source. `mapPreferences` adds typed,
+render-only values such as text direction or a regional formatting locale after
+the stored values are normalized. The app definition and lower-level
 `najm-next/app/server` entry remain free of optional Auth, Kit, and Theme
 dependencies.
 

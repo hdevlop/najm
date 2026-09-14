@@ -41,11 +41,18 @@ const institutionApp = createNajmNextServerApp({
   acceptLanguage: false,
   preferenceSources: ({ settings }) => ({ institution: settings }),
 });
+const mappedApp = createNajmNextServerApp({
+  ...options,
+  mapPreferences: (resolved) => ({
+    ...resolved,
+    direction: 'ltr' as const,
+  }),
+});
 
 export default async function Page() {
-  const [first, second, institution] = await Promise.all([
-    app.loadUiSnapshot(), app.loadUiSnapshot(), institutionApp.loadUiSnapshot(),
+  const [first, second, institution, mapped] = await Promise.all([
+    app.loadUiSnapshot(), app.loadUiSnapshot(), institutionApp.loadUiSnapshot(), mappedApp.loadUiSnapshot(),
   ]);
   if (first !== second) throw new Error('Snapshot was not memoized');
-  return <main>{`adapter:${first.session === null}:${first.preferences.language}:${institution.preferences.language}:${first === second}`}</main>;
+  return <main>{`adapter:${first.session === null}:${first.preferences.language}:${institution.preferences.language}:${mapped.preferences.direction}:${first === second}`}</main>;
 }

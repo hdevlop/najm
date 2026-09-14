@@ -5,6 +5,8 @@
 - Added `najm-next/app/next`, which binds Next request readers, Najm Auth's
   request-scoped session adapter, Theme bootstrap, and Kit preference
   resolution in one module-scope factory.
+- Allow the Next adapter to add typed, derived preference fields through
+  `mapPreferences` after stored preference values are normalized.
 - Preserve concrete session types through `createNajmServerApp` and narrow
   location results from each application's allowed provider list.
 

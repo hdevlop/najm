@@ -24,8 +24,8 @@ function userPreferences(user: unknown): NajmOrderedResolveInput["user"] {
   };
 }
 
-export interface CreateNajmNextServerAppOptions<TSettings, TPreferences>
-  extends Omit<CreateNajmServerAppOptions<TSettings, TPreferences, Appearance, Branding, ServerSession>,
+export interface CreateNajmNextServerAppOptions<TSettings, TPreferences, TResolvedPreferences = TPreferences>
+  extends Omit<CreateNajmServerAppOptions<TSettings, TResolvedPreferences, Appearance, Branding, ServerSession>,
     "auth" | "theme" | "readCookies" | "readHeaders" | "resolvePreferences"> {
   readonly auth: AuthKit;
   readonly theme: Pick<NajmThemeDefinition, "react">;
@@ -39,6 +39,11 @@ export interface CreateNajmNextServerAppOptions<TSettings, TPreferences>
   readonly preferenceSources?: (
     input: NajmResolvePreferencesInput<TSettings, ServerSession>,
   ) => NajmOrderedResolveInput;
+  /** Add derived fields such as direction or locale after Najm validates the stored values. */
+  readonly mapPreferences?: (
+    preferences: TPreferences,
+    input: NajmResolvePreferencesInput<TSettings, ServerSession>,
+  ) => TResolvedPreferences;
 }
 
 /**
@@ -47,9 +52,9 @@ export interface CreateNajmNextServerAppOptions<TSettings, TPreferences>
  * or load the backend; preference route handlers can share that module safely.
  * The lower-level app/server entry remains independent of these optional peers.
  */
-export function createNajmNextServerApp<TSettings, TPreferences>(
-  options: CreateNajmNextServerAppOptions<TSettings, TPreferences>,
-): NajmServerApp<TSettings, TPreferences, Appearance, Branding, ServerSession> {
+export function createNajmNextServerApp<TSettings, TPreferences, TResolvedPreferences = TPreferences>(
+  options: CreateNajmNextServerAppOptions<TSettings, TPreferences, TResolvedPreferences>,
+): NajmServerApp<TSettings, TResolvedPreferences, Appearance, Branding, ServerSession> {
   return createNajmServerApp({
     app: options.app,
     auth: createReactServerAuth(options.auth),
@@ -59,10 +64,15 @@ export function createNajmNextServerApp<TSettings, TPreferences>(
     onDiagnostic: options.onDiagnostic,
     readCookies: cookies,
     readHeaders: headers,
-    resolvePreferences: (input) => options.preferences.resolveOrdered(input.cookies, {
-      user: userPreferences(input.session?.user),
-      acceptLanguage: options.acceptLanguage === false ? undefined : input.headers.get("accept-language"),
-      ...options.preferenceSources?.(input),
-    }),
+    resolvePreferences: (input) => {
+      const preferences = options.preferences.resolveOrdered(input.cookies, {
+        user: userPreferences(input.session?.user),
+        acceptLanguage: options.acceptLanguage === false ? undefined : input.headers.get("accept-language"),
+        ...options.preferenceSources?.(input),
+      });
+      return options.mapPreferences
+        ? options.mapPreferences(preferences, input)
+        : preferences as unknown as TResolvedPreferences;
+    },
   });
 }
