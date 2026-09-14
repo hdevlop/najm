@@ -36,6 +36,27 @@ const setCookiesOf = (response: Response) =>
   (response.headers as Headers & { getSetCookie(): string[] }).getSetCookie();
 
 describe('defineAuth route handlers', () => {
+  test('takes the Remember Me cookie from the shared policy and permits a handler override', async () => {
+    const policy = Object.freeze({
+      publicRoutes: Object.freeze(['/login']),
+      protectedRoutes: Object.freeze(['/dashboard']),
+      roleRoutes: Object.freeze({ '/dashboard': Object.freeze(['operator']) }),
+      rememberCookieName: 'policy.remember',
+    });
+    const auth = defineAuth(policy);
+    const handler = async () => respond(LOGIN_COOKIES);
+    const response = await auth.routeHandlers(handler).POST(loginRequest(false));
+    const cookies = setCookiesOf(response);
+    expect(cookies.some((cookie) => cookie.startsWith('policy.remember=0;'))).toBe(true);
+    expect(cookies.find((cookie) => cookie.startsWith('refreshToken='))).not.toContain('Max-Age');
+    const overridden = await auth.routeHandlers(handler, {
+      rememberCookieName: 'override.remember',
+    }).POST(loginRequest(true));
+    expect(setCookiesOf(overridden).some((cookie) => cookie.startsWith('override.remember=1;'))).toBe(true);
+    expect(setCookiesOf(overridden).some((cookie) => cookie.startsWith('policy.remember='))).toBe(false);
+    expect(policy.roleRoutes['/dashboard']).toEqual(['operator']);
+  });
+
   test('binds every Next.js verb to cookie persistence with configured cookie names', async () => {
     const auth = defineAuth({
       cookieName: 'custom.refresh',

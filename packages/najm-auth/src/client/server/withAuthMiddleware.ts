@@ -34,13 +34,13 @@ export interface AuthProxyOptions {
 
 export interface AuthMiddlewareConfig {
   /** Routes that require authentication (glob patterns) */
-  protectedRoutes?: string[];
+  protectedRoutes?: readonly string[];
   /** Always-public routes (glob patterns) */
-  publicRoutes?: string[];
+  publicRoutes?: readonly string[];
   /** Route to redirect unauthenticated users to */
   loginRoute?: string;
   /** Routes restricted to specific roles: { '/admin/*': ['admin'] } */
-  roleRoutes?: Record<string, string[]>;
+  roleRoutes?: Readonly<Record<string, readonly string[]>>;
   /** Refresh token cookie name (default: 'refreshToken') */
   cookieName?: string;
   /** API base URL used by session recovery (default: '/api'). */
@@ -257,7 +257,7 @@ export function withAuthMiddleware(config: AuthMiddlewareConfig) {
 // Path Matching Helpers
 // =========================================================================
 
-function matchesAny(pathname: string, patterns: string[]): boolean {
+function matchesAny(pathname: string, patterns: readonly string[]): boolean {
   return patterns.some((p) => matchPattern(pathname, p));
 }
 
@@ -274,7 +274,7 @@ function matchPattern(pathname: string, pattern: string): boolean {
   return new RegExp(`^${regex}$`).test(pathname);
 }
 
-function findMatchingRoles(pathname: string, roleRoutes: Record<string, string[]>): string[] | null {
+function findMatchingRoles(pathname: string, roleRoutes: Readonly<Record<string, readonly string[]>>): readonly string[] | null {
   for (const [pattern, roles] of Object.entries(roleRoutes)) {
     if (matchPattern(pathname, pattern)) return roles;
   }

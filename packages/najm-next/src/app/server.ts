@@ -61,10 +61,10 @@ export interface NajmServerSession {
  * via `getSession`, while configuration, transport, backend, and unexpected
  * failures propagate — no blanket catch, no universal anonymous fallback.
  */
-export interface NajmServerAuth {
-  getSession(): Promise<NajmServerSession | null>;
-  requireSession(): Promise<NajmServerSession>;
-  requireRole(roles: readonly string[]): Promise<NajmServerSession>;
+export interface NajmServerAuth<TSession extends NajmServerSession = NajmServerSession> {
+  getSession(): Promise<TSession | null>;
+  requireSession(): Promise<TSession>;
+  requireRole(roles: readonly string[]): Promise<TSession>;
 }
 
 /** Structural form of the theme bootstrap (`theme.react({...})`). */
@@ -95,10 +95,10 @@ export interface NajmPublicSettingsReader<TSettings> {
 }
 
 /** Input to the application's preference selection. */
-export interface NajmResolvePreferencesInput<TSettings> {
+export interface NajmResolvePreferencesInput<TSettings, TSession extends NajmServerSession = NajmServerSession> {
   readonly cookies: NajmServerCookieReader;
   readonly headers: NajmServerHeaderReader;
-  readonly session: NajmServerSession | null;
+  readonly session: TSession | null;
   readonly settings: TSettings;
 }
 
@@ -108,8 +108,8 @@ export interface NajmResolvePreferencesInput<TSettings> {
  * Implemented by the application on top of `najm-kit/server` ordered
  * resolution — never a duplicate resolver. May be sync or async.
  */
-export type NajmResolvePreferences<TSettings, TPreferences> = (
-  input: NajmResolvePreferencesInput<TSettings>,
+export type NajmResolvePreferences<TSettings, TPreferences, TSession extends NajmServerSession = NajmServerSession> = (
+  input: NajmResolvePreferencesInput<TSettings, TSession>,
 ) => TPreferences | Promise<TPreferences>;
 
 /**
@@ -128,32 +128,32 @@ export interface NajmServerDiagnostic {
  * Only these five fields. Never the app definition, callbacks, auth object,
  * raw env, server object, QueryClient, secrets, or unprojected settings.
  */
-export interface NajmServerUiSnapshot<TSettings, TPreferences, TAppearance, TBranding> {
-  readonly session: NajmServerSession | null;
+export interface NajmServerUiSnapshot<TSettings, TPreferences, TAppearance, TBranding, TSession extends NajmServerSession = NajmServerSession> {
+  readonly session: TSession | null;
   readonly preferences: TPreferences;
   readonly appearance: TAppearance;
   readonly branding: TBranding;
   readonly settings: TSettings;
 }
 
-export interface NajmServerApp<TSettings, TPreferences, TAppearance, TBranding> {
+export interface NajmServerApp<TSettings, TPreferences, TAppearance, TBranding, TSession extends NajmServerSession = NajmServerSession> {
   /** Lightweight: delegates to auth, triggers nothing else. */
-  readonly getSession: () => Promise<NajmServerSession | null>;
+  readonly getSession: () => Promise<TSession | null>;
   /** Lightweight: delegates to auth, triggers nothing else. */
-  readonly requireSession: () => Promise<NajmServerSession>;
+  readonly requireSession: () => Promise<TSession>;
   /** Lightweight: delegates to auth, triggers nothing else. */
-  readonly requireRole: (roles: readonly string[]) => Promise<NajmServerSession>;
+  readonly requireRole: (roles: readonly string[]) => Promise<TSession>;
   /** Public settings projection, memoized per React request. */
   readonly loadSettings: () => Promise<TSettings>;
   /** Full public snapshot, memoized per React request. */
   readonly loadUiSnapshot: () => Promise<
-    NajmServerUiSnapshot<TSettings, TPreferences, TAppearance, TBranding>
+    NajmServerUiSnapshot<TSettings, TPreferences, TAppearance, TBranding, TSession>
   >;
 }
 
-export interface CreateNajmServerAppOptions<TSettings, TPreferences, TAppearance, TBranding> {
+export interface CreateNajmServerAppOptions<TSettings, TPreferences, TAppearance, TBranding, TSession extends NajmServerSession = NajmServerSession> {
   readonly app: NajmAppDefinition;
-  readonly auth: NajmServerAuth;
+  readonly auth: NajmServerAuth<TSession>;
   readonly theme: NajmServerTheme<TAppearance, TBranding>;
   readonly readSettings: NajmPublicSettingsReader<TSettings>;
   /**
@@ -161,7 +161,7 @@ export interface CreateNajmServerAppOptions<TSettings, TPreferences, TAppearance
    * only — never for protected, financial, or account data.
    */
   readonly fallbackSettings: TSettings;
-  readonly resolvePreferences: NajmResolvePreferences<TSettings, TPreferences>;
+  readonly resolvePreferences: NajmResolvePreferences<TSettings, TPreferences, TSession>;
   /** Lazily reads the request cookies (for example `() => cookies()`). */
   readonly readCookies: () => Promise<NajmServerCookieReader>;
   /** Lazily reads the request headers (for example `() => headers()`). */
@@ -183,9 +183,9 @@ function toSafeDetail(value: unknown): string {
  * never per layout render — so every caller in a request shares the same
  * memoization entries.
  */
-export function createNajmServerApp<TSettings, TPreferences, TAppearance, TBranding>(
-  options: CreateNajmServerAppOptions<TSettings, TPreferences, TAppearance, TBranding>,
-): NajmServerApp<TSettings, TPreferences, TAppearance, TBranding> {
+export function createNajmServerApp<TSettings, TPreferences, TAppearance, TBranding, TSession extends NajmServerSession = NajmServerSession>(
+  options: CreateNajmServerAppOptions<TSettings, TPreferences, TAppearance, TBranding, TSession>,
+): NajmServerApp<TSettings, TPreferences, TAppearance, TBranding, TSession> {
   if (typeof options !== "object" || options === null) {
     throw new TypeError("najm-next/app/server: options must be an object");
   }
@@ -267,7 +267,7 @@ export function createNajmServerApp<TSettings, TPreferences, TAppearance, TBrand
   const loadSettings = cache(loadSettingsUncached);
 
   async function loadUiSnapshotUncached(): Promise<
-    NajmServerUiSnapshot<TSettings, TPreferences, TAppearance, TBranding>
+    NajmServerUiSnapshot<TSettings, TPreferences, TAppearance, TBranding, TSession>
   > {
     // Started before the first await so session, cookies/headers, theme, and
     // settings overlap. Preference selection waits only for its own inputs

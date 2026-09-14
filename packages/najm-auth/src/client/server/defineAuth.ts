@@ -72,6 +72,8 @@ export interface DefineAuthConfig {
   authPrefix?: string;
   /** Refresh token cookie name (default: 'refreshToken') */
   cookieName?: string;
+  /** Remember Me preference cookie used by routeHandlers; per-handler options override it. */
+  rememberCookieName?: string;
 
   // ---------- Browser client ----------
   /** Proactive refresh at this fraction of token lifetime (default: 0.8) */
@@ -101,11 +103,11 @@ export interface DefineAuthConfig {
    */
   forbiddenRoute?: string;
   /** Routes that are always public (glob patterns) */
-  publicRoutes?: string[];
+  publicRoutes?: readonly string[];
   /** Routes that require authentication (glob patterns) */
-  protectedRoutes?: string[];
+  protectedRoutes?: readonly string[];
   /** Routes restricted to specific roles: { '/admin/:path*': ['admin'] } */
-  roleRoutes?: Record<string, string[]>;
+  roleRoutes?: Readonly<Record<string, readonly string[]>>;
   /** Session cookie name (default: 'najm.session') */
   sessionCookieName?: string;
   /** Secret for verifying session cookie HMAC. Falls back to env vars. */
@@ -320,6 +322,7 @@ export function defineAuth(authConfig: DefineAuthConfig = {}): AuthKit {
   ): NextAuthRouteHandlers<Args> => {
     const persistentHandler = withAuthCookiePersistence(handler, {
       ...options,
+      rememberCookieName: options.rememberCookieName ?? authConfig.rememberCookieName,
       authCookieNames: options.authCookieNames ?? [cookieName, sessionCookieName],
     });
 

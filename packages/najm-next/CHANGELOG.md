@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Added `najm-next/app/next`, which binds Next request readers, Najm Auth's
+  request-scoped session adapter, Theme bootstrap, and Kit preference
+  resolution in one module-scope factory.
+- Preserve concrete session types through `createNajmServerApp` and narrow
+  location results from each application's allowed provider list.
+
 ## 0.5.0 - 2026-09-13
 
 - Added pure app configuration plus request-scoped server bootstrap and

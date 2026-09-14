@@ -72,7 +72,12 @@
       "import": "./dist/pwaReact.js",
       "default": "./dist/pwaReact.js"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./app/next": {
+      "types": "./dist/app/next.d.ts",
+      "import": "./dist/app/next.js",
+      "default": "./dist/app/next.js"
+    }
   },
   "scripts": {
     "build": "rimraf dist && tsup",
@@ -96,7 +101,10 @@
   "author": "Hicham Jebara",
   "peerDependencies": {
     "next": ">=15.3.0 <17",
-    "react": ">=18.2.0 <20"
+    "react": ">=18.2.0 <20",
+    "najm-auth": "^4.0.4",
+    "najm-kit": "^2.14.0",
+    "najm-theme": "^0.2.1"
   },
   "devDependencies": {
     "@types/react": "^19.2.14",
@@ -105,6 +113,20 @@
     "react": "19.2.4",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.1",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "najm-auth": "workspace:*",
+    "najm-kit": "workspace:*",
+    "najm-theme": "workspace:*"
+  },
+  "peerDependenciesMeta": {
+    "najm-auth": {
+      "optional": true
+    },
+    "najm-kit": {
+      "optional": true
+    },
+    "najm-theme": {
+      "optional": true
+    }
   }
 }

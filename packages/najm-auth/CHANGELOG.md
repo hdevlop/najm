@@ -1,5 +1,10 @@
 # Changelog
 
+## Unreleased
+
+- Accept frozen route policy arrays directly in `defineAuth`, and allow its
+  `rememberCookieName` to become the default for all generated route handlers.
+
 ## 4.0.4 - 2026-09-13
 
 - Support an optional CID-backed inline logo for account invitation emails and

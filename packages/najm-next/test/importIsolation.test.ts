@@ -20,6 +20,7 @@ function importTargets(source: string): string[] {
 const NEW_ENTRIES = {
   "./app": "dist/app.js",
   "./app/server": "dist/app/server.js",
+  "./app/next": "dist/app/next.js",
   "./app/react": "dist/app/react.js",
   "./security": "dist/security.js",
   "./security/reports": "dist/security/reports.js",
@@ -39,7 +40,7 @@ describe("public entrypoints", () => {
   test("tsup builds every new subpath from its own source file", () => {
     const config = read("tsup.config.ts");
 
-    for (const entry of ["src/app.ts", "src/app/server.ts", "src/app/react.tsx", "src/security.ts", "src/security/reports.ts", "src/instrumentation/client.ts"]) {
+    for (const entry of ["src/app.ts", "src/app/server.ts", "src/app/next.ts", "src/app/react.tsx", "src/security.ts", "src/security/reports.ts", "src/instrumentation/client.ts"]) {
       expect(config).toContain(entry);
     }
     expect(config).toContain("'dist', 'app', 'react.js'");
@@ -91,7 +92,7 @@ describe("import isolation (DX-01/DX-02)", () => {
   test("root tsconfig maps every new subpath", () => {
     const tsconfig = readFileSync(resolve(packageRoot, "..", "..", "tsconfig.json"), "utf8");
 
-    for (const subpath of ["najm-next/app", "najm-next/app/server", "najm-next/app/react", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
+    for (const subpath of ["najm-next/app", "najm-next/app/server", "najm-next/app/next", "najm-next/app/react", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
       expect(tsconfig).toContain(`"${subpath}"`);
     }
   });
@@ -113,6 +114,17 @@ describe("import isolation (DX-01/DX-02)", () => {
     }
     expect(source).not.toContain("process.cwd");
     expect(source).not.toContain("findWorkspaceRoot");
+  });
+
+  test("app/next is the explicit optional-owner integration leaf", () => {
+    const targets = importTargets(read("src/app/next.ts"));
+    expect(targets).toContain("next/headers");
+    expect(targets).toContain("najm-auth/client/server/react");
+    expect(targets).toContain("najm-auth/client/server");
+    expect(targets).toContain("najm-kit/server");
+    expect(targets).toContain("najm-theme/contracts");
+    expect(targets).toContain("./server");
+    expect(read("src/app.ts")).not.toContain("./app/next");
   });
 
   test("app/react composes structural providers without importing optional owners", () => {

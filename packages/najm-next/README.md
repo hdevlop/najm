@@ -264,6 +264,37 @@ importing it, so this entrypoint never pulls Auth into the proxy graph.
 
 ## Server bootstrap
 
+Applications using Najm Auth, Kit, and Theme can use the Next-specific adapter
+to avoid repeating request-reader, session, theme, and preference wiring:
+
+```ts
+// src/najm.server.ts
+import 'server-only';
+import { createNajmNextServerApp } from 'najm-next/app/next';
+
+export const najmServer = createNajmNextServerApp({
+  app,
+  auth,
+  theme: appTheme,
+  themeOptions: {
+    getServer: async () => (await import('@app/server')).server,
+    basePath: '/api',
+  },
+  preferences,
+  readSettings: readPublicUiSettings,
+  fallbackSettings: { enabled: false },
+});
+
+export const { getSession, requireSession, requireRole, loadUiSnapshot } = najmServer;
+```
+
+It uses cookie, user, `Accept-Language`, and configured fallback preference
+sources by default. `preferenceSources` adds institution values or custom source
+orders without replacing Kit validation. Set `acceptLanguage: false` when an
+application's policy excludes that source. The app definition and lower-level
+`najm-next/app/server` entry remain free of optional Auth, Kit, and Theme
+dependencies.
+
 `najm-next/app/server` composes the existing request-scoped Auth, Theme, and UI
 owners through structural callbacks. Create it once at module scope. It starts
 independent session, cookie/header, appearance, branding, and public-setting

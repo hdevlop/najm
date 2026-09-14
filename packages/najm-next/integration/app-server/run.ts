@@ -54,6 +54,13 @@ assertNoWorkspaceRootWarning(buildOutput, 'build');
 
 try {
   await withProductionServer(async ({ output }) => {
+    const adapter = await fetch(`${origin}/adapter`, { headers: { 'accept-language': 'fr-FR' } });
+    assert(adapter.status === 200, 'Next adapter failed to render');
+    assert((await adapter.text()).includes('adapter:true:fr:es:true'), 'Next adapter lost header/institution precedence or request memoization');
+    const cookieAdapter = await fetch(`${origin}/adapter`, {
+      headers: { 'accept-language': 'fr-FR', cookie: 'kafil-ui-language=en' },
+    });
+    assert((await cookieAdapter.text()).includes('adapter:true:en:en:true'), 'Next adapter did not prefer valid cookies');
     await oneResolutionPerNavigation();
     await failureIsIsolatedAndStable();
     await theNextRequestRetries();

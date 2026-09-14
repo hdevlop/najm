@@ -46,8 +46,8 @@ export type NajmLocationRuntimeIssue =
   | "invalid-tile-url"
   | "invalid-zoom";
 
-export interface NajmLocationRuntimeResolution {
-  config: NajmResolvedLocationConfig;
+export interface NajmLocationRuntimeResolution<TProvider extends NajmLocationMapProvider = NajmLocationMapProvider> {
+  config: Extract<NajmResolvedLocationConfig, { provider: TProvider | "disabled" }>;
   csp: {
     imgSrc: readonly string[];
     connectSrc: readonly string[];
@@ -83,11 +83,11 @@ export interface NajmLocationRuntimeDefinitionOptions {
   };
 }
 
-export interface NajmLocationRuntimeDefinition {
+export interface NajmLocationRuntimeDefinition<TProvider extends NajmLocationMapProvider = NajmLocationMapProvider> {
   resolve(
     environment: EnvRecord,
     options?: Readonly<{ isDevelopment?: boolean }>,
-  ): NajmLocationRuntimeResolution;
+  ): NajmLocationRuntimeResolution<TProvider>;
 }
 
 const PREFIX_PATTERN = /^[A-Z][A-Z0-9_]*$/;
@@ -157,6 +157,12 @@ function parsePublicUrl(value: string, isDevelopment: boolean): URL | null {
  * The returned resolver can be used by a dynamic layout and CSP/proxy code so
  * both receive the same validated runtime configuration.
  */
+export function defineNajmLocationRuntime<const TProvider extends NajmLocationMapProvider>(
+  options: NajmLocationRuntimeDefinitionOptions & { allowedProviders: readonly TProvider[] },
+): NajmLocationRuntimeDefinition<TProvider>;
+export function defineNajmLocationRuntime(
+  options: NajmLocationRuntimeDefinitionOptions,
+): NajmLocationRuntimeDefinition;
 export function defineNajmLocationRuntime(
   options: NajmLocationRuntimeDefinitionOptions,
 ): NajmLocationRuntimeDefinition {

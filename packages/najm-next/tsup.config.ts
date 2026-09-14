@@ -20,7 +20,7 @@ const shared: Options = {
   },
   outDir: 'dist',
   outExtension: () => ({ js: '.js' }),
-  external: ['next', 'react'],
+  external: ['next', 'react', 'najm-auth', 'najm-kit', 'najm-theme'],
   esbuildOptions(options) {
     options.keepNames = true;
   },
@@ -35,6 +35,7 @@ export default defineConfig([
       configurable: 'src/configurable.ts',
       app: 'src/app.ts',
       'app/server': 'src/app/server.ts',
+      'app/next': 'src/app/next.ts',
       'app/react': 'src/app/react.tsx',
       security: 'src/security.ts',
       'security/reports': 'src/security/reports.ts',
