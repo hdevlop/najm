@@ -1,15 +1,12 @@
 import type { Metadata, Viewport } from 'next';
 import { cookies } from 'next/headers';
 import type { NajmMode } from 'najm-kit';
-import { NajmAppProvider } from 'najm-kit/app';
-import { NThemeBrandingProvider } from 'najm-theme/react';
 import { loadServerTheme } from '@/lib/serverTheme';
 import { Toaster } from '@/components/ui/sonner';
 import '@/styles/index.css';
 import { auth } from '@/lib/auth';
 import { playgroundI18n, type Locale } from '@/locales';
-import { AuthProviderWrapper } from '@/providers/AuthProvider';
-import { QueryProvider } from '@/providers/QueryProvider';
+import { AppProviders } from '@/providers/AppProviders';
 import { UI_THEME_COOKIE } from '@/app/api/ui-theme/route';
 import { UI_LANGUAGE_COOKIE } from '@/app/api/ui-language/route';
 import { UI_TIME_ZONE_COOKIE } from '@/app/api/ui-timezone/route';
@@ -56,25 +53,22 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body suppressHydrationWarning>
-        <QueryProvider>
-          <AuthProviderWrapper initialSession={session}>
-            <NajmAppProvider
-              i18n={playgroundI18n.snapshot}
-              initialLanguage={language}
-              initialTheme={theme}
-              initialTimeZone={timeZone}
-              initialDesign={appearance.designConfig}
-              initialBranding={branding}
-              appName="Najm Playground"
-              formDevTools
-              currency="MAD"
-            >
-              <NThemeBrandingProvider branding={branding}>
-                {children}
-              </NThemeBrandingProvider>
-            </NajmAppProvider>
-          </AuthProviderWrapper>
-        </QueryProvider>
+        <AppProviders
+          i18n={playgroundI18n.snapshot}
+          snapshot={{
+            session,
+            preferences: {
+              language,
+              theme,
+              timeZone: timeZone ?? 'UTC',
+            },
+            appearance,
+            branding,
+            settings: {},
+          }}
+        >
+          {children}
+        </AppProviders>
         <Toaster />
       </body>
     </html>

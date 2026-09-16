@@ -204,7 +204,7 @@
     },
     "packages/najm-auth": {
       "name": "najm-auth",
-      "version": "4.0.1",
+      "version": "4.0.4",
       "dependencies": {
         "bcryptjs": "^3.0.2",
         "jose": "^6.1.3",
@@ -321,7 +321,7 @@
     },
     "packages/najm-cli": {
       "name": "najm-cli",
-      "version": "2.0.2",
+      "version": "2.1.0",
       "bin": {
         "najm": "./dist/index.js",
         "najm-cli": "./dist/index.js",
@@ -404,7 +404,7 @@
     },
     "packages/najm-email": {
       "name": "najm-email",
-      "version": "2.0.3",
+      "version": "2.0.4",
       "devDependencies": {
         "@types/nodemailer": "^8.0.1",
         "najm-core": "workspace:*",
@@ -474,7 +474,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.11.23",
+      "version": "2.15.0",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",
@@ -552,10 +552,12 @@
         "@codemirror/state": "^6.6.0",
         "@codemirror/theme-one-dark": "^6.1.0",
         "@codemirror/view": "^6.42.0",
+        "@googlemaps/js-api-loader": "^2.1.1",
         "@hookform/resolvers": "^5",
         "@lezer/highlight": "^1.2.0",
         "@tanstack/react-query": "^5",
         "@uiw/react-codemirror": "^4.25.0",
+        "leaflet": "^1.9.4",
         "najm-i18n": ">=2",
         "next": ">=14",
         "react": ">=18",
@@ -570,9 +572,11 @@
         "@codemirror/state",
         "@codemirror/theme-one-dark",
         "@codemirror/view",
+        "@googlemaps/js-api-loader",
         "@lezer/highlight",
         "@tanstack/react-query",
         "@uiw/react-codemirror",
+        "leaflet",
         "najm-i18n",
         "next",
       ],
@@ -607,20 +611,37 @@
     },
     "packages/najm-next": {
       "name": "najm-next",
-      "version": "0.3.0",
+      "version": "0.6.0",
       "devDependencies": {
+        "@tanstack/react-query": "^5",
+        "@testing-library/react": "^16",
         "@types/node": "^25.0.2",
         "@types/react": "^19.2.14",
+        "happy-dom": "^20.11.1",
+        "najm-auth": "workspace:*",
+        "najm-kit": "workspace:*",
+        "najm-theme": "workspace:*",
         "next": "16.2.11",
         "react": "19.2.4",
+        "react-dom": "19.2.4",
         "rimraf": "^6.0.1",
         "tsup": "^8.5.1",
         "typescript": "^5.9.3",
       },
       "peerDependencies": {
+        "@tanstack/react-query": "^5",
+        "najm-auth": "^4.0.4",
+        "najm-kit": "^2.15.0",
+        "najm-theme": "^0.2.1",
         "next": ">=15.3.0 <17",
         "react": ">=18.2.0 <20",
       },
+      "optionalPeers": [
+        "@tanstack/react-query",
+        "najm-auth",
+        "najm-kit",
+        "najm-theme",
+      ],
     },
     "packages/najm-rag": {
       "name": "najm-rag",

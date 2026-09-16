@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+- Added the unambiguous `NajmKitProvider`, `NajmKitProviderProps`, and
+  `NajmKitSnapshot` names. Existing `NajmAppProvider` names remain deprecated
+  aliases to the same implementation and context identity.
+- Added a structural `snapshot` prop to `NajmAppProvider`, allowing consumers
+  to seed language, theme, time zone, design, and branding without unpacking
+  the standard server UI snapshot into five separate props.
+
 ## 2.14.0 - 2026-09-13
 
 - Added valid-first ordered preference resolution, institution-owned currency,

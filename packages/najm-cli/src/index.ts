@@ -10,7 +10,6 @@ import { ChatSeedCommand } from "./Commands/ChatSeedCommand";
 import { RagInitCommand } from "./Commands/RagInitCommand";
 import { RagScanCommand } from "./Commands/RagScanCommand";
 
-
 async function main() {
    try {
       const args = process.argv.slice(2);

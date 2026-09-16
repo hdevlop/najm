@@ -43,12 +43,26 @@ export interface NajmNextProviderSet<TSnapshot, TQueryClient = unknown> {
   readonly location?: NajmNextProviderBinding<TSnapshot, TQueryClient>;
 }
 
+/**
+ * Optional state/cache integration that owns one client and its matching
+ * provider. Leaf adapters can implement this without making their dependency
+ * part of the generic Najm Next client entrypoint.
+ */
+export interface NajmNextQueryIntegration<TQueryClient> {
+  readonly createClient: () => TQueryClient;
+  readonly Provider: React.ComponentType<
+    Readonly<{ client: TQueryClient; children: React.ReactNode }>
+  >;
+}
+
 export interface NajmNextAppProviderProps<TSnapshot, TQueryClient = unknown> {
   /** Public, serializable request snapshot only. */
   readonly snapshot: TSnapshot;
-  /** App-created QueryClient. Mutually exclusive with `createQueryClient`. */
+  /** Optional query integration. Mutually exclusive with the legacy query props. */
+  readonly query?: NajmNextQueryIntegration<TQueryClient>;
+  /** @deprecated Prefer a leaf query integration through `query`. */
   readonly queryClient?: TQueryClient;
-  /** Called once for this mounted application, never on the server globally. */
+  /** @deprecated Prefer a leaf query integration through `query`. */
   readonly createQueryClient?: () => TQueryClient;
   readonly providers: NajmNextProviderSet<TSnapshot, TQueryClient>;
   readonly extensions?: NajmNextExtension<TSnapshot, TQueryClient>;
@@ -101,6 +115,62 @@ function wrap<TSnapshot, TQueryClient>(
   return <Provider {...context}>{children}</Provider>;
 }
 
+interface QueryLifetime<TQueryClient> {
+  readonly mode: "none" | "integration" | "external" | "owned";
+  readonly client?: TQueryClient;
+  readonly createClient?: () => TQueryClient;
+  readonly Provider?: React.ComponentType<
+    Readonly<{ client: TQueryClient; children: React.ReactNode }>
+  >;
+  readonly bindingProvider?: NajmNextProviderBinding<
+    unknown,
+    TQueryClient
+  >["Provider"];
+}
+
+function queryLifetime<TSnapshot, TQueryClient>(
+  query: NajmNextQueryIntegration<TQueryClient> | undefined,
+  queryClient: TQueryClient | undefined,
+  createQueryClient: (() => TQueryClient) | undefined,
+  queryBinding: NajmNextProviderBinding<TSnapshot, TQueryClient> | undefined,
+): QueryLifetime<TQueryClient> {
+  if (query) {
+    return {
+      mode: "integration",
+      createClient: query.createClient,
+      Provider: query.Provider,
+    };
+  }
+  if (queryClient !== undefined) {
+    return {
+      mode: "external",
+      client: queryClient,
+      bindingProvider: queryBinding?.Provider,
+    };
+  }
+  if (createQueryClient) {
+    return {
+      mode: "owned",
+      createClient: createQueryClient,
+      bindingProvider: queryBinding?.Provider,
+    };
+  }
+  return { mode: "none", bindingProvider: queryBinding?.Provider };
+}
+
+function sameQueryLifetime<TQueryClient>(
+  previous: QueryLifetime<TQueryClient>,
+  next: QueryLifetime<TQueryClient>,
+): boolean {
+  return (
+    previous.mode === next.mode &&
+    previous.client === next.client &&
+    previous.createClient === next.createClient &&
+    previous.Provider === next.Provider &&
+    previous.bindingProvider === next.bindingProvider
+  );
+}
+
 /**
  * Compose enabled providers once in this fixed order:
  *
@@ -112,20 +182,44 @@ function wrap<TSnapshot, TQueryClient>(
  */
 export function NajmNextAppProvider<TSnapshot, TQueryClient = unknown>({
   snapshot,
+  query,
   queryClient,
   createQueryClient,
   providers,
   extensions,
   children,
 }: NajmNextAppProviderProps<TSnapshot, TQueryClient>): React.JSX.Element {
-  const [ownedQueryClient] = React.useState<TQueryClient | undefined>(() =>
-    queryClient === undefined ? createQueryClient?.() : undefined,
-  );
+  if (
+    query !== undefined &&
+    (queryClient !== undefined ||
+      createQueryClient !== undefined ||
+      providers.query !== undefined)
+  ) {
+    throw new TypeError(
+      "najm-next/app/react: pass query integration or legacy query props, not both",
+    );
+  }
   if (queryClient !== undefined && createQueryClient !== undefined) {
     throw new TypeError(
       "najm-next/app/react: pass queryClient or createQueryClient, not both",
     );
   }
+  const currentQueryLifetime = queryLifetime(
+    query,
+    queryClient,
+    createQueryClient,
+    providers.query,
+  );
+  const mountedQueryLifetime = React.useRef(currentQueryLifetime);
+  if (!sameQueryLifetime(mountedQueryLifetime.current, currentQueryLifetime)) {
+    throw new TypeError(
+      "najm-next/app/react: changing Query mode, client, constructor, or provider requires remounting NajmNextAppProvider",
+    );
+  }
+  const createOwnedQueryClient = query?.createClient ?? createQueryClient;
+  const [ownedQueryClient] = React.useState<TQueryClient | undefined>(() =>
+    queryClient === undefined ? createOwnedQueryClient?.() : undefined,
+  );
   const activeQueryClient = queryClient ?? ownedQueryClient;
   const context = React.useMemo(
     () => ({ snapshot, queryClient: activeQueryClient }),
@@ -138,7 +232,12 @@ export function NajmNextAppProvider<TSnapshot, TQueryClient = unknown>({
   tree = wrap(providers.branding, context, tree);
   tree = wrap(providers.ui, context, tree);
   tree = wrap(extensions?.beforeUi, context, tree);
-  tree = wrap(providers.query, context, tree);
+  if (query !== undefined && activeQueryClient !== undefined) {
+    const QueryProvider = query.Provider;
+    tree = <QueryProvider client={activeQueryClient}>{tree}</QueryProvider>;
+  } else {
+    tree = wrap(providers.query, context, tree);
+  }
   tree = wrap(providers.auth, context, tree);
 
   return <>{tree}</>;

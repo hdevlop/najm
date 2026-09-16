@@ -12,6 +12,7 @@ ${pc.yellow('USAGE:')}
 
 ${pc.yellow('COMMANDS:')}
   ${pc.green('init')}         Initialize a new NajmApi project with optional database setup
+  ${pc.green('init next')}    Preview and scaffold the shared Najm Next app integration
   ${pc.green('create')}       Create a new project from scratch
   ${pc.green('new')}          Create a specific component (controller, service, repository, or module)
   ${pc.green('database')}     Add database support to an existing project
@@ -38,6 +39,7 @@ ${pc.yellow('RAG COMMANDS:')}
 
 ${pc.yellow('EXAMPLES:')}
   najm init                        Start interactive project creation with optional DB setup
+  najm init next                   Add config/server/providers/proxy and thin routes safely
   najm new                         Start interactive component generation
   najm new controller UserController  Create a new controller
   najm new module blog             Create a complete blog module

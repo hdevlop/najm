@@ -333,39 +333,56 @@ settings and the full snapshot to one server render; the next request retries.
 
 ## Client provider composition
 
-`najm-next/app/react` keeps the provider order in one place without importing
-optional owners. Bind the concrete provider instances already installed by the
-application at module scope. That preserves one physical Auth, Query, UI,
-Branding, and Location context and lets minimal apps omit all of them:
+Full Najm applications use the direct `NajmAppProvider` from
+`najm-next/app/client`. It owns Auth, one per-mount TanStack Query client, Kit
+UI and Theme branding; the complete public server snapshot is passed once:
 
 ```tsx
 'use client';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { bindNajmNextProvider, NajmNextAppProvider } from 'najm-next/app/react';
-
-const query = bindNajmNextProvider(QueryClientProvider, ({ queryClient }) => ({
-  client: queryClient!,
-}));
+import { NajmAppProvider } from 'najm-next/app/client';
 
 export function Providers({ snapshot, children }) {
   return (
-    <NajmNextAppProvider
+    <NajmAppProvider
+      authClient={auth.client}
       snapshot={snapshot}
-      createQueryClient={() => new QueryClient(appQueryOptions)}
-      providers={{ auth, query, ui, branding, location }}
-      extensions={{ beforeUi: keyboard }}
+      i18n={appI18n}
+      appName="My app"
+      currency="MAD"
     >
       {children}
-    </NajmNextAppProvider>
+    </NajmAppProvider>
   );
 }
 ```
 
-Composition is `Auth -> Query -> beforeUi -> UI -> Branding -> insideUi ->
-Location -> children`. School places its keyboard provider at `beforeUi`;
-Kafil keeps its live settings subscription in its bound UI component, already
-inside Query. Query retry functions and QueryClient construction stay in client
-code and are never serialized.
+Pass app-owned `location`, `query`, and `extensions` integrations directly.
+Extensions support `beforeUi` (inside Auth and Query) and `insideUi` (inside
+Kit UI and Theme branding) placements. `query={false}` disables Query; omitted
+Query uses Najm's defaults. Query mode, Query constructor/provider, and the Auth
+client are mount-lifetime choices, so changing one requires an intentional
+provider remount. Snapshot, location props and ordinary UI props remain
+reactive and do not remount descendants.
+
+`createNajmAppProvider` remains as a deprecated compatibility wrapper for
+applications using its captured `useUiProps` hook. That hook still runs inside
+Auth and Query, and explicit JSX props still win over derived values. New
+applications should use the direct component and a stable extension/provider
+slot when they need reactive application-specific integration.
+
+`najm-next/app/react` remains the low-level composition entrypoint for minimal
+apps and unusual provider stacks. It imports no optional owners; those apps bind
+only the providers they installed.
+
+The TanStack adapter defaults queries to a 60-second stale window, a 10-minute
+garbage-collection window, no focus refetch, and one retry for network/unknown
+or 5xx failures. Mutations are not retried. Applications pass only partial
+`queries` or `mutations` overrides; the adapter retains unspecified defaults.
+TanStack Query remains optional and is loaded only from this leaf entrypoint.
+
+The standard composition is `Auth -> Query -> beforeUi -> UI -> Branding ->
+insideUi -> Location -> children`. Query retry functions and QueryClient
+construction stay in client code and are never serialized.
 
 ## Request CSP and proxy composition
 

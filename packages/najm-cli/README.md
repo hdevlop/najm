@@ -26,11 +26,28 @@ najm create my-api
 
 ### `najm init next [project-name]`
 
-Initialize Next.js with Najm backend (App Router).
+Preview and initialize a Next.js App Router project with the shared Najm app
+integration. The command asks independently about Auth, Theme, and a disabled,
+Leaflet, or Google location runtime. It generates `najm.config.ts`, the
+server-only binding, client provider composition, a static proxy matcher, CSP
+reporting, root layout, and thin API routes.
+
+Full profiles mount the direct `NajmAppProvider` from `najm-next/app/client`;
+minimal or partial profiles keep using the dependency-neutral low-level
+composer so they do not install Auth, Theme, Query, or a map SDK unnecessarily.
 
 ```bash
 najm init next my-next-app
 ```
+
+The preview labels every target `create`, `unchanged`, or `conflict`. A conflict
+aborts before any file or dependency changes. Re-running an unchanged scaffold
+is idempotent. The CLI never writes real secrets or resets a database. Runtime
+location values stay in app-owned environment variables such as
+`MY_APP_LOCATION_MAP_PROVIDER` and `MY_APP_LOCATION_GOOGLE_API_KEY`.
+
+Generated integrations require at least `najm-next@0.6.0`; optional profiles
+pin `najm-auth@4.0.4`, `najm-kit@2.15.0`, and `najm-theme@0.2.1`.
 
 ### `najm new <type> <name>`
 

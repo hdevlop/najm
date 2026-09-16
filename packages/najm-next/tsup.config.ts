@@ -20,7 +20,14 @@ const shared: Options = {
   },
   outDir: 'dist',
   outExtension: () => ({ js: '.js' }),
-  external: ['next', 'react', 'najm-auth', 'najm-kit', 'najm-theme'],
+  external: [
+    '@tanstack/react-query',
+    'next',
+    'react',
+    'najm-auth',
+    'najm-kit',
+    'najm-theme',
+  ],
   esbuildOptions(options) {
     options.keepNames = true;
   },
@@ -37,6 +44,8 @@ export default defineConfig([
       'app/server': 'src/app/server.ts',
       'app/next': 'src/app/next.ts',
       'app/react': 'src/app/react.tsx',
+      'app/client': 'src/app/client.tsx',
+      tanstackQuery: 'src/query/tanstack.tsx',
       security: 'src/security.ts',
       'security/reports': 'src/security/reports.ts',
       'instrumentation/client': 'src/instrumentation/client.ts',
@@ -44,14 +53,19 @@ export default defineConfig([
       pwa: 'src/pwa.ts',
     },
     // esbuild strips module directives while bundling. Restore the client
-    // boundary on this leaf only; app/server and the pure app definition must
-    // remain server-safe.
+    // boundary on the React leaves only; app/server and the pure app definition
+    // must remain server-safe.
     async onSuccess() {
       const { readFile, writeFile } = await import('node:fs/promises');
-      const target = resolve(__dirname, 'dist', 'app', 'react.js');
-      const source = await readFile(target, 'utf8');
-      if (!source.startsWith(`'use client'`)) {
-        await writeFile(target, `'use client';\n${source}`, 'utf8');
+      for (const target of [
+        resolve(__dirname, 'dist', 'app', 'react.js'),
+        resolve(__dirname, 'dist', 'app', 'client.js'),
+        resolve(__dirname, 'dist', 'tanstackQuery.js'),
+      ]) {
+        const source = await readFile(target, 'utf8');
+        if (!source.startsWith(`'use client'`)) {
+          await writeFile(target, `'use client';\n${source}`, 'utf8');
+        }
       }
     },
   },

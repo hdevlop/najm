@@ -37,6 +37,8 @@
       "najm-next/app/server": ["./packages/najm-next/src/app/server"],
       "najm-next/app/next": ["./packages/najm-next/src/app/next"],
       "najm-next/app/react": ["./packages/najm-next/src/app/react"],
+      "najm-next/app/client": ["./packages/najm-next/src/app/client"],
+      "najm-next/query/tanstack": ["./packages/najm-next/src/query/tanstack"],
       "najm-next/security": ["./packages/najm-next/src/security"],
       "najm-next/security/reports": ["./packages/najm-next/src/security/reports"],
       "najm-next/instrumentation/client": ["./packages/najm-next/src/instrumentation/client"],

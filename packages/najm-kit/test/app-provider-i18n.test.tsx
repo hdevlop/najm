@@ -5,8 +5,15 @@ import { defineI18n } from "najm-i18n";
 import { useTranslation } from "najm-i18n/react";
 import { AppRouterContext } from "next/dist/shared/lib/app-router-context.shared-runtime";
 
-import { NajmAppProvider, type NajmAppI18n } from "../src/adapters/app";
+import {
+  NajmAppProvider,
+  NajmKitProvider,
+  type NajmAppI18n,
+} from "../src/adapters/app";
+import { useNBranding } from "../src/components/branding";
 import { useNajmFormat } from "../src/format/provider";
+import { useNajmDesign } from "../src/theme/design-provider";
+import { useNajmTheme, useNajmTimeZone } from "../src/providers/preferences";
 
 // `de-DE` for English on purpose: a language whose declared tag is nothing like
 // the language itself is the only way to prove `locales` came from the metadata
@@ -21,7 +28,7 @@ const languageMetadata = {
   ar: { locale: "ar-MA", direction: "rtl" },
 } as const;
 
-const snapshot: NajmAppI18n = {
+const i18nSnapshot: NajmAppI18n = {
   translations: catalogs,
   defaultLanguage: "en",
   supportedLanguages: ["en", "ar"],
@@ -32,6 +39,10 @@ const snapshot: NajmAppI18n = {
 function Probe() {
   const { t, language, changeLanguage } = useTranslation();
   const format = useNajmFormat();
+  const { theme } = useNajmTheme();
+  const { timeZone } = useNajmTimeZone();
+  const design = useNajmDesign();
+  const branding = useNBranding();
 
   return (
     <div>
@@ -39,6 +50,10 @@ function Probe() {
       <span data-testid="greeting">{t("greeting")}</span>
       <span data-testid="fallback">{t("onlyInEnglish")}</span>
       <span data-testid="money">{format.money(125_000)}</span>
+      <span data-testid="theme">{theme}</span>
+      <span data-testid="time-zone">{timeZone}</span>
+      <span data-testid="section-gap">{design.layout?.sectionGap}</span>
+      <span data-testid="logo">{branding?.logoExpanded}</span>
       <button type="button" data-testid="to-ar" onClick={() => void changeLanguage("ar")}>
         ar
       </button>
@@ -62,7 +77,7 @@ function renderApp(props: Partial<React.ComponentProps<typeof NajmAppProvider>> 
   // POST. Nothing here changes a preference, so a stub router is enough.
   return render(
     <AppRouterContext.Provider value={router}>
-      <NajmAppProvider i18n={snapshot} initialLanguage="en" currency="MAD" {...props}>
+      <NajmAppProvider i18n={i18nSnapshot} initialLanguage="en" currency="MAD" {...props}>
         <Probe />
       </NajmAppProvider>
     </AppRouterContext.Provider>,
@@ -70,6 +85,39 @@ function renderApp(props: Partial<React.ComponentProps<typeof NajmAppProvider>> 
 }
 
 describe("NajmAppProvider i18n snapshot", () => {
+  test("keeps the deprecated provider name as the same component identity", () => {
+    expect(NajmAppProvider).toBe(NajmKitProvider);
+  });
+
+  test("accepts the whole server UI snapshot without consumer projection", () => {
+    const view = renderApp({
+      initialLanguage: undefined,
+      snapshot: {
+        preferences: {
+          language: "ar",
+          theme: "dark",
+          timeZone: "Africa/Casablanca",
+        },
+        appearance: {
+          designConfig: {
+            version: 1,
+            theme: {},
+            layout: { sectionGap: "2rem" },
+          },
+        },
+        branding: {
+          slots: { sidebarLogoExpanded: "/logo.webp" },
+        },
+      },
+    });
+
+    expect(view.getByTestId("language").textContent).toBe("ar");
+    expect(view.getByTestId("theme").textContent).toBe("dark");
+    expect(view.getByTestId("time-zone").textContent).toBe("Africa/Casablanca");
+    expect(view.getByTestId("section-gap").textContent).toBe("2rem");
+    expect(view.getByTestId("logo").textContent).toBe("/logo.webp");
+  });
+
   test("serves catalogs, the default language, and the fallback policy", async () => {
     const view = renderApp();
 

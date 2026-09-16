@@ -6,6 +6,7 @@ import {
   bindNajmNextProvider,
   NajmNextAppProvider,
   type NajmNextProviderBinding,
+  type NajmNextQueryIntegration,
 } from "../src/app/react";
 
 type Snapshot = { session: { user: string } | null; settings: { enabled: boolean } };
@@ -79,6 +80,33 @@ describe("NajmNextAppProvider", () => {
     expect(html).toBe("<main>minimal</main>");
   });
 
+  test("owns a high-level query integration once in the documented order", () => {
+    let created = 0;
+    const query: NajmNextQueryIntegration<QueryClient> = {
+      createClient: () => ({ id: `integrated-${++created}` }),
+      Provider: ({ client, children }) => (
+        <Mark name="query" clientId={client.id}>{children}</Mark>
+      ),
+    };
+    const html = renderToStaticMarkup(
+      <NajmNextAppProvider<Snapshot, QueryClient>
+        snapshot={{ session: null, settings: { enabled: true } }}
+        query={query}
+        providers={{ auth: binding("auth"), ui: binding("ui") }}
+      >
+        <main>application</main>
+      </NajmNextAppProvider>,
+    );
+
+    expect(created).toBe(1);
+    expect(html.indexOf('data-provider="auth"')).toBeLessThan(
+      html.indexOf('data-provider="query"'),
+    );
+    expect(html.indexOf('data-provider="query"')).toBeLessThan(
+      html.indexOf('data-provider="ui"'),
+    );
+  });
+
   test("accepts an app-owned QueryClient and rejects two owners", () => {
     expect(() => renderToStaticMarkup(
       <NajmNextAppProvider<Snapshot, QueryClient>
@@ -86,6 +114,22 @@ describe("NajmNextAppProvider", () => {
         queryClient={{ id: "existing" }}
         createQueryClient={() => ({ id: "other" })}
         providers={{}}
+      >
+        child
+      </NajmNextAppProvider>,
+    )).toThrow("not both");
+  });
+
+  test("rejects a query integration combined with legacy query plumbing", () => {
+    const query: NajmNextQueryIntegration<QueryClient> = {
+      createClient: () => ({ id: "integrated" }),
+      Provider: ({ children }) => <>{children}</>,
+    };
+    expect(() => renderToStaticMarkup(
+      <NajmNextAppProvider<Snapshot, QueryClient>
+        snapshot={{ session: null, settings: { enabled: false } }}
+        query={query}
+        providers={{ query: binding("query") }}
       >
         child
       </NajmNextAppProvider>,

@@ -66,8 +66,30 @@ export interface NajmAppI18n {
   };
 }
 
-export interface NajmAppProviderProps
+/**
+ * Request-owned UI values returned by a standard Najm server bootstrap.
+ * Structural on purpose so Kit does not depend on a framework integration.
+ */
+export interface NajmKitSnapshot {
+  preferences: {
+    language: string;
+    theme: NonNullable<NajmNextUIProviderProps['initialTheme']>;
+    timeZone: string;
+  };
+  appearance: {
+    designConfig: NonNullable<NajmNextUIProviderProps['initialDesign']>;
+  };
+  branding: NBrandingInput;
+}
+
+export interface NajmKitProviderProps
   extends Omit<NajmNextUIProviderProps, 't'> {
+  /**
+   * Standard public server snapshot. It seeds language, theme, time zone,
+   * design, and branding without requiring applications to unpack each field.
+   * Explicit `initial*` props remain supported and take precedence.
+   */
+  snapshot?: NajmKitSnapshot;
   /**
    * Enables schema-driven form filling for every `NForm` and `WizardForm`.
    * `true` uses F8; an options object can choose another shortcut.
@@ -187,8 +209,9 @@ export interface NajmAppProviderProps
 const DEFAULT_LANGUAGE_ENDPOINT = '/api/ui-language';
 
 type InnerProps = Omit<
-  NajmAppProviderProps,
+  NajmKitProviderProps,
   | 'i18n'
+  | 'snapshot'
   | 'translations'
   | 'initialLanguage'
   | 'defaultLanguage'
@@ -285,20 +308,24 @@ function NajmAppNoI18n({
  * state machine of its own above this provider. The controlled `design` and
  * `branding` props still work for applications that already do.
  */
-export function NajmAppProvider({
+export function NajmKitProvider({
+  snapshot,
   i18n,
   translations = i18n?.translations,
-  initialLanguage,
+  initialLanguage = snapshot?.preferences.language,
+  initialDesign = snapshot?.appearance.designConfig,
+  initialTheme = snapshot?.preferences.theme,
+  initialTimeZone = snapshot?.preferences.timeZone,
   defaultLanguage = i18n?.defaultLanguage,
   fallbackToDefaultLanguage = i18n?.fallbackToDefaultLanguage,
   getLanguageDirection: languageDirection,
   locales: localeTags,
   languageEndpoint = DEFAULT_LANGUAGE_ENDPOINT,
   appName,
-  initialBranding,
+  initialBranding = snapshot?.branding,
   formDevTools,
   ...props
-}: NajmAppProviderProps) {
+}: NajmKitProviderProps) {
   // Derived, not inlined: `I18nProvider` keys its context value on
   // `getLanguageDirection`, so a fresh closure per render would re-render every
   // `useTranslation()` consumer in the tree.
@@ -357,7 +384,14 @@ export function NajmAppProvider({
   if (!translations) {
     return (
       <FormDevToolsProvider value={formDevTools}>
-        <NajmAppNoI18n {...props} locales={locales} initialBranding={seeded} />
+        <NajmAppNoI18n
+          {...props}
+          locales={locales}
+          initialBranding={seeded}
+          initialDesign={initialDesign}
+          initialTheme={initialTheme}
+          initialTimeZone={initialTimeZone}
+        />
       </FormDevToolsProvider>
     );
   }
@@ -372,8 +406,27 @@ export function NajmAppProvider({
         getLanguageDirection={getLanguageDirection}
         onLanguageChange={persistLanguage}
       >
-        <NajmAppUI {...props} locales={locales} initialBranding={seeded} />
+        <NajmAppUI
+          {...props}
+          locales={locales}
+          initialBranding={seeded}
+          initialDesign={initialDesign}
+          initialTheme={initialTheme}
+          initialTimeZone={initialTimeZone}
+        />
       </I18nProvider>
     </FormDevToolsProvider>
   );
 }
+
+/** @deprecated Use `NajmKitSnapshot`. */
+export type NajmAppSnapshot = NajmKitSnapshot;
+
+/** @deprecated Use `NajmKitProviderProps`. */
+export type NajmAppProviderProps = NajmKitProviderProps;
+
+/**
+ * @deprecated Use `NajmKitProvider`. This alias retains the same component and
+ * context identities throughout the compatibility window.
+ */
+export const NajmAppProvider = NajmKitProvider;

@@ -22,6 +22,8 @@ const NEW_ENTRIES = {
   "./app/server": "dist/app/server.js",
   "./app/next": "dist/app/next.js",
   "./app/react": "dist/app/react.js",
+  "./app/client": "dist/app/client.js",
+  "./query/tanstack": "dist/tanstackQuery.js",
   "./security": "dist/security.js",
   "./security/reports": "dist/security/reports.js",
   "./instrumentation/client": "dist/instrumentation/client.js",
@@ -40,10 +42,12 @@ describe("public entrypoints", () => {
   test("tsup builds every new subpath from its own source file", () => {
     const config = read("tsup.config.ts");
 
-    for (const entry of ["src/app.ts", "src/app/server.ts", "src/app/next.ts", "src/app/react.tsx", "src/security.ts", "src/security/reports.ts", "src/instrumentation/client.ts"]) {
+    for (const entry of ["src/app.ts", "src/app/server.ts", "src/app/next.ts", "src/app/react.tsx", "src/app/client.tsx", "src/query/tanstack.tsx", "src/security.ts", "src/security/reports.ts", "src/instrumentation/client.ts"]) {
       expect(config).toContain(entry);
     }
     expect(config).toContain("'dist', 'app', 'react.js'");
+    expect(config).toContain("'dist', 'app', 'client.js'");
+    expect(config).toContain("'dist', 'tanstackQuery.js'");
     expect(config).toContain("`'use client';\\n${source}`");
   });
 });
@@ -92,7 +96,7 @@ describe("import isolation (DX-01/DX-02)", () => {
   test("root tsconfig maps every new subpath", () => {
     const tsconfig = readFileSync(resolve(packageRoot, "..", "..", "tsconfig.json"), "utf8");
 
-    for (const subpath of ["najm-next/app", "najm-next/app/server", "najm-next/app/next", "najm-next/app/react", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
+    for (const subpath of ["najm-next/app", "najm-next/app/server", "najm-next/app/next", "najm-next/app/react", "najm-next/app/client", "najm-next/query/tanstack", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
       expect(tsconfig).toContain(`"${subpath}"`);
     }
   });
@@ -134,6 +138,36 @@ describe("import isolation (DX-01/DX-02)", () => {
     for (const optional of ["najm-auth", "najm-kit", "najm-theme", "@tanstack/react-query", "leaflet", "@googlemaps"]) {
       expect(source).not.toContain(`from \"${optional}`);
     }
+  });
+
+  test("query/tanstack is the explicit optional TanStack integration leaf", () => {
+    const source = read("src/query/tanstack.tsx");
+    expect(source.startsWith('"use client"')).toBe(true);
+    expect(importTargets(source)).toEqual([
+      "@tanstack/react-query",
+      "../app/react",
+    ]);
+    expect(read("src/app/react.tsx")).not.toContain(
+      'from "@tanstack/react-query"',
+    );
+  });
+
+  test("app/client is the explicit full client-stack integration leaf", () => {
+    const source = read("src/app/client.tsx");
+    expect(source.startsWith('"use client"')).toBe(true);
+    expect(importTargets(source)).toEqual([
+      "@tanstack/react-query",
+      "najm-auth/client",
+      "najm-auth/client/react",
+      "najm-kit/app",
+      "najm-theme",
+      "najm-theme/react",
+      "react",
+      "../query/tanstack",
+      "./react",
+    ]);
+    expect(source).not.toContain("server-only");
+    expect(source).not.toContain("process.env");
   });
 
   test("security, config, and app remain isolated from server bootstrap, backends, and UI init", () => {

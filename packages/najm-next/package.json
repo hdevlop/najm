@@ -1,6 +1,6 @@
 {
   "name": "najm-next",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "license": "MIT",
   "type": "module",
   "description": "Strict, versioned Next.js configuration for Najm applications — monorepo root discovery, build isolation, service-worker headers, and dev-origin policy with no per-app options",
@@ -41,6 +41,16 @@
       "types": "./dist/app/react.d.ts",
       "import": "./dist/app/react.js",
       "default": "./dist/app/react.js"
+    },
+    "./app/client": {
+      "types": "./dist/app/client.d.ts",
+      "import": "./dist/app/client.js",
+      "default": "./dist/app/client.js"
+    },
+    "./query/tanstack": {
+      "types": "./dist/tanstackQuery.d.ts",
+      "import": "./dist/tanstackQuery.js",
+      "default": "./dist/tanstackQuery.js"
     },
     "./security": {
       "types": "./dist/security.d.ts",
@@ -84,7 +94,7 @@
     "dev": "tsup --watch",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "lint": "bun run typecheck",
-    "test": "bun test ./test && bun run test:rsc",
+    "test": "bun test ./test && bun test --preload ./test-dom/setup.ts ./test-dom && bun run test:rsc",
     "test:rsc": "cd test/rsc && bun test --conditions react-server",
     "test:watch": "bun test --watch",
     "test:next16": "bun run build && bun integration/csp-proxy/run.ts && bun integration/app-server/run.ts",
@@ -100,17 +110,22 @@
   ],
   "author": "Hicham Jebara",
   "peerDependencies": {
+    "@tanstack/react-query": "^5",
     "next": ">=15.3.0 <17",
     "react": ">=18.2.0 <20",
     "najm-auth": "^4.0.4",
-    "najm-kit": "^2.14.0",
+    "najm-kit": "^2.15.0",
     "najm-theme": "^0.2.1"
   },
   "devDependencies": {
+    "@tanstack/react-query": "^5",
+    "@testing-library/react": "^16",
     "@types/react": "^19.2.14",
     "@types/node": "^25.0.2",
+    "happy-dom": "^20.11.1",
     "next": "16.2.11",
     "react": "19.2.4",
+    "react-dom": "19.2.4",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
@@ -119,6 +134,9 @@
     "najm-theme": "workspace:*"
   },
   "peerDependenciesMeta": {
+    "@tanstack/react-query": {
+      "optional": true
+    },
     "najm-auth": {
       "optional": true
     },

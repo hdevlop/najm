@@ -1,6 +1,6 @@
 {
   "name": "najm-cli",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "CLI tool for najm framework - scaffolding, code generation, and project setup",
   "type": "module",
   "main": "dist/index.js",
@@ -26,6 +26,7 @@
     "build": "bun run clean && bun run build:types && bun run build:lib",
     "dev": "bun --watch src/index.ts",
     "test": "bun test",
+    "test:next16": "bun integration/next/run.ts",
     "prepublishOnly": "bun run build"
   },
   "dependencies": {

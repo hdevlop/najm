@@ -228,6 +228,31 @@ can read off a path. It changes delivery mechanics only — session validation,
 permissions, privacy projection, and what bytes come back all remain the
 backend's.
 
+## App snapshot
+
+`NajmKitProvider` from `najm-kit/app` owns Kit's UI/i18n/formatting/preferences
+stack and accepts the standard public server snapshot directly. The
+snapshot seeds language, theme, time zone, design, and branding; application
+policy stays explicit:
+
+```tsx
+<NajmKitProvider
+  snapshot={snapshot}
+  i18n={appI18n}
+  appName="Example"
+  currency="MAD"
+>
+  {children}
+</NajmKitProvider>
+```
+
+Existing `initialLanguage`, `initialTheme`, `initialTimeZone`, `initialDesign`,
+and `initialBranding` props remain available as explicit overrides. The
+snapshot is structural, so Kit does not depend on the server or Next package.
+The former `NajmAppProvider` name and matching types remain deprecated aliases
+to this same implementation and context identity. Full Auth/Query/Theme stacks
+should use `NajmAppProvider` from `najm-next/app/client` instead.
+
 ## Status badges
 
 `<NBadge status="…" />` already maps a broad lifecycle vocabulary onto the
