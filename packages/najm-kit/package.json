@@ -1,6 +1,6 @@
 {
   "name": "najm-kit",
-  "version": "2.15.1",
+  "version": "2.15.2",
   "license": "MIT",
   "type": "module",
   "description": "Reusable React UI component package for Najm framework",
@@ -129,9 +129,7 @@
     "@codemirror/commands": "^6.10.0",
     "@codemirror/lang-json": "^6.0.0",
     "@codemirror/theme-one-dark": "^6.1.0",
-    "@lezer/highlight": "^1.2.0",
-    "leaflet": "^1.9.4",
-    "@googlemaps/js-api-loader": "^2.1.1"
+    "@lezer/highlight": "^1.2.0"
   },
   "peerDependenciesMeta": {
     "next": {
@@ -166,15 +164,10 @@
     },
     "@lezer/highlight": {
       "optional": true
-    },
-    "leaflet": {
-      "optional": true
-    },
-    "@googlemaps/js-api-loader": {
-      "optional": true
     }
   },
   "dependencies": {
+    "@googlemaps/js-api-loader": "^2.1.1",
     "@radix-ui/react-avatar": "^1",
     "@radix-ui/react-checkbox": "^1",
     "@radix-ui/react-collapsible": "^1",
@@ -199,6 +192,7 @@
     "cmdk": "^1",
     "culori": "^4.0.2",
     "date-fns": "^4",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.474",
     "overlayscrollbars": "^2.16.0",
     "overlayscrollbars-react": "^0.5.6",

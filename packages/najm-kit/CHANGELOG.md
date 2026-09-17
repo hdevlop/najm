@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.15.2 - 2026-09-17
+
+- Installed the map adapter loaders with Kit so the automatic app provider can
+  remain runtime-lazy while Leaflet-only, Google-only, and map-free Next builds
+  all resolve the complete provider graph without undeclared peer packages.
+
 ## 2.15.1 - 2026-09-17
 
 - Neutralized the shared location selected/not-selected copy in English,

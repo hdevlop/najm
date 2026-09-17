@@ -27,8 +27,8 @@ describe("location entrypoint isolation", () => {
     expect(manifest.exports["./location/runtime/leaflet"].import).toBe("./dist/location/runtimeLeaflet.mjs");
     expect(manifest.exports["./location/leaflet"].import).toBe("./dist/location/leaflet.mjs");
     expect(manifest.exports["./location/google"].import).toBe("./dist/location/google.mjs");
-    expect(manifest.peerDependenciesMeta.leaflet.optional).toBe(true);
-    expect(manifest.peerDependenciesMeta["@googlemaps/js-api-loader"].optional).toBe(true);
+    expect(manifest.dependencies.leaflet).toBe("^1.9.4");
+    expect(manifest.dependencies["@googlemaps/js-api-loader"]).toBe("^2.1.1");
   });
 
   test("keeps runtime provider selection lazy and free of application policy", () => {
