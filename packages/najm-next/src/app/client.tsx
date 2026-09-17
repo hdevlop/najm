@@ -61,8 +61,8 @@ export type NajmAppProviderProps<
   TLocationProps extends object = Record<string, never>,
 > = NajmClientUiProps & {
   readonly authClient: NajmAuthClient;
-  /** Pass true for Najm's defaults, a custom integration, or omit for no Query layer. */
-  readonly query?: NajmNextQueryIntegration<QueryClient> | true;
+  /** Omit for Najm's defaults or supply a stable custom Query integration. */
+  readonly query?: NajmNextQueryIntegration<QueryClient>;
   /** Legacy/custom override. Omit to consume `snapshot.settings.locationConfig`. */
   readonly location?: NajmClientLocationIntegration<TSnapshot, TLocationProps> | false;
   readonly extensions?: NajmNextExtension<TSnapshot, QueryClient>;
@@ -366,11 +366,21 @@ export function NajmAppProvider<
   extensions,
   ...props
 }: NajmAppProviderProps<TSnapshot, TLocationProps>): React.JSX.Element {
+  if (query !== undefined && (
+    typeof query !== "object" ||
+    query === null ||
+    typeof query.createClient !== "function" ||
+    (typeof query.Provider !== "function" && typeof query.Provider !== "object")
+  )) {
+    throw new TypeError(
+      "najm-next/app/client: query must be a Query integration; omit it for Najm defaults",
+    );
+  }
   return (
     <NajmAppProviderCore
       {...props}
       authClient={authClient}
-      query={query === true ? DEFAULT_QUERY : query}
+      query={query ?? DEFAULT_QUERY}
       location={location}
       extensions={extensions}
       useUiProps={useEmptyUiProps}

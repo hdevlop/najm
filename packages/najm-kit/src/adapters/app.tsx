@@ -71,10 +71,17 @@ export interface NajmAppI18n {
  * Structural on purpose so Kit does not depend on a framework integration.
  */
 export interface NajmKitSnapshot {
+  /** Optional for compatibility with snapshots emitted before display projection. */
+  app?: {
+    appName?: string;
+    currency?: string;
+  };
   preferences: {
     language: string;
     theme: NonNullable<NajmNextUIProviderProps['initialTheme']>;
     timeZone: string;
+    /** Institution-owned currency, when the application resolves one. */
+    currency?: string;
   };
   appearance: {
     designConfig: NonNullable<NajmNextUIProviderProps['initialDesign']>;
@@ -322,6 +329,7 @@ export function NajmKitProvider({
   locales: localeTags,
   languageEndpoint = DEFAULT_LANGUAGE_ENDPOINT,
   appName,
+  currency,
   initialBranding = snapshot?.branding,
   formDevTools,
   ...props
@@ -377,7 +385,12 @@ export function NajmKitProvider({
   // Spread second so an `appName` inside the payload still wins. Only read at
   // mount by `NBrandingStateProvider`, so a fresh object per render costs
   // nothing.
-  const seeded = appName ? { appName, ...initialBranding } : initialBranding;
+  const resolvedAppName = appName ?? snapshot?.app?.appName;
+  const resolvedCurrency =
+    currency ?? snapshot?.preferences.currency ?? snapshot?.app?.currency;
+  const seeded = resolvedAppName
+    ? { appName: resolvedAppName, ...initialBranding }
+    : initialBranding;
 
   // Without a catalog there is nothing for `I18nProvider` to serve, and
   // mounting it empty would shadow one an application had already placed above.
@@ -386,6 +399,7 @@ export function NajmKitProvider({
       <FormDevToolsProvider value={formDevTools}>
         <NajmAppNoI18n
           {...props}
+          currency={resolvedCurrency}
           locales={locales}
           initialBranding={seeded}
           initialDesign={initialDesign}
@@ -408,6 +422,7 @@ export function NajmKitProvider({
       >
         <NajmAppUI
           {...props}
+          currency={resolvedCurrency}
           locales={locales}
           initialBranding={seeded}
           initialDesign={initialDesign}

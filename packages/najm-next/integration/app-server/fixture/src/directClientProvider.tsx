@@ -7,6 +7,7 @@ import type { ReactNode } from 'react';
 const authClient = createAuthClient({ baseURL: '/api' });
 
 export interface DirectFixtureSnapshot {
+  app: { appName?: string; currency?: string };
   session: null;
   preferences: {
     language: string;
@@ -38,8 +39,6 @@ export function DirectClientProvider({
         defaultLanguage: 'en',
         supportedLanguages: ['en'],
       }}
-      appName="Direct fixture"
-      currency="MAD"
     >
       {children}
     </NajmAppProvider>

@@ -91,6 +91,10 @@ export interface NajmAppLocationPolicy {
 
 export interface NajmAppDefinition {
   readonly id: string;
+  /** Product-name fallback projected into the public UI snapshot. */
+  readonly appName?: string;
+  /** ISO 4217 display currency projected into the public UI snapshot. */
+  readonly currency?: string;
   readonly auth: NajmAppAuthPolicy;
   readonly preferences: NajmAppPreferencesPolicy;
   readonly csp: NajmAppCspPolicy;
@@ -150,6 +154,7 @@ export function assertNajmCspSource(value: unknown, field: string): asserts valu
 const APP_ID_PATTERN = /^[a-z][a-z0-9-]{0,63}$/;
 const ENV_PREFIX_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/;
 const COOKIE_NAME_PATTERN = /^[A-Za-z0-9._-]{1,128}$/;
+const CURRENCY_PATTERN = /^[A-Z]{3}$/;
 const TIME_ZONE_PATTERN = /^(?:UTC|[A-Za-z][A-Za-z0-9_+-]*\/[A-Za-z0-9_+-]+)$/;
 const ROUTE_FORBIDDEN_PATTERN = /[\s"'();,\\]/;
 
@@ -194,6 +199,26 @@ export function assertNajmAppDefinition(value: unknown): asserts value is NajmAp
 
   if (typeof def.id !== "string" || !APP_ID_PATTERN.test(def.id)) {
     throw new TypeError(`najm-next/app: id must match ${APP_ID_PATTERN}: ${formatValue(def.id)}`);
+  }
+  if (
+    def.appName !== undefined &&
+    (typeof def.appName !== "string" ||
+      def.appName.length === 0 ||
+      def.appName.length > 120 ||
+      def.appName !== def.appName.trim() ||
+      CONTROL_PATTERN.test(def.appName))
+  ) {
+    throw new TypeError(
+      `najm-next/app: appName must be a trimmed, non-empty string of at most 120 characters: ${formatValue(def.appName)}`,
+    );
+  }
+  if (
+    def.currency !== undefined &&
+    (typeof def.currency !== "string" || !CURRENCY_PATTERN.test(def.currency))
+  ) {
+    throw new TypeError(
+      `najm-next/app: currency must be a three-letter uppercase ISO 4217 code: ${formatValue(def.currency)}`,
+    );
   }
 
   const auth = def.auth as Record<string, unknown> | undefined;

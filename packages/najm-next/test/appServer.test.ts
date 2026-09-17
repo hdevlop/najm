@@ -428,7 +428,7 @@ describe("composed preference orders", () => {
 });
 
 describe("serializable public snapshot", () => {
-  test("round-trips through JSON with only the five public fields", async () => {
+  test("round-trips through JSON with only the allowlisted public fields", async () => {
     const serverApp = createFixtureServerApp(
       "school",
       defaultBackend({ session: { user: { language: "fr" }, roles: ["admin"] } }),
@@ -438,8 +438,9 @@ describe("serializable public snapshot", () => {
     if (!("loadUiSnapshot" in serverApp)) throw new Error("unexpected fixture type");
     const snapshot = await serverApp.loadUiSnapshot();
     expect(Object.keys(snapshot).sort()).toEqual(
-      ["appearance", "branding", "preferences", "session", "settings"].sort(),
+      ["app", "appearance", "branding", "preferences", "session", "settings"].sort(),
     );
+    expect(snapshot.app).toEqual({ appName: "School fixture" });
     expect(Object.isFrozen(snapshot)).toBe(true);
     const clone = JSON.parse(JSON.stringify(snapshot));
     expect(clone.preferences.language).toBe("fr");
@@ -462,9 +463,11 @@ describe("serializable public snapshot", () => {
     ]) {
       expect(serialized).not.toContain(forbidden);
     }
-    for (const key of ["app", "auth", "callbacks", "env", "server", "secret", "token"]) {
+    expect(snapshot.app).toEqual({ appName: "Kafil fixture", currency: "MAD" });
+    for (const key of ["auth", "callbacks", "env", "server", "secret", "token"]) {
       expect(snapshot).not.toHaveProperty(key);
     }
+    expect(snapshot.app).not.toHaveProperty("auth");
   });
 });
 

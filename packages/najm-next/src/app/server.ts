@@ -18,9 +18,9 @@
  * `readSettings`, `resolvePreferences`, `onDiagnostic`, `loadSettings`,
  * `loadUiSnapshot`, `getSession`, `requireSession`, `requireRole`) and refines
  * the generics to `TSettings, TPreferences, TAppearance, TBranding` with an
- * explicit `NajmServerUiSnapshot` shape `{ session, preferences, appearance,
- * branding, settings }`, so the serializable boundary is typed rather than
- * conventional.
+ * explicit `NajmServerUiSnapshot` shape `{ app, session, preferences,
+ * appearance, branding, settings }`, so the serializable boundary is typed
+ * rather than conventional.
  *
  * React Server Components only. Route handlers, server actions, and scripts
  * keep using the underlying owners directly — outside a render there is no
@@ -52,6 +52,12 @@ export interface NajmServerSession {
   readonly user: unknown;
   readonly roles?: readonly string[];
   readonly permissions?: readonly string[];
+}
+
+/** Allowlisted application display values safe to cross the RSC boundary. */
+export interface NajmPublicAppDisplay {
+  readonly appName?: string;
+  readonly currency?: string;
 }
 
 /**
@@ -125,10 +131,12 @@ export interface NajmServerDiagnostic {
 /**
  * The typed, public, serializable initial UI snapshot.
  *
- * Only these five fields. Never the app definition, callbacks, auth object,
- * raw env, server object, QueryClient, secrets, or unprojected settings.
+ * Only these allowlisted fields. `app` contains display defaults only, never
+ * the complete definition, callbacks, auth object, raw env, server object,
+ * QueryClient, secrets, or unprojected settings.
  */
 export interface NajmServerUiSnapshot<TSettings, TPreferences, TAppearance, TBranding, TSession extends NajmServerSession = NajmServerSession> {
+  readonly app: NajmPublicAppDisplay;
   readonly session: TSession | null;
   readonly preferences: TPreferences;
   readonly appearance: TAppearance;
@@ -238,6 +246,10 @@ export function createNajmServerApp<TSettings, TPreferences, TAppearance, TBrand
   }
 
   const onDiagnostic = options.onDiagnostic;
+  const app = Object.freeze({
+    ...(options.app.appName === undefined ? {} : { appName: options.app.appName }),
+    ...(options.app.currency === undefined ? {} : { currency: options.app.currency }),
+  });
 
   const report = (code: string, cause?: unknown) => {
     if (!onDiagnostic) return;
@@ -294,7 +306,7 @@ export function createNajmServerApp<TSettings, TPreferences, TAppearance, TBrand
 
     // The container only. Freezing values would mutate objects the
     // application owns and may reuse.
-    return Object.freeze({ session, preferences, appearance, branding, settings });
+    return Object.freeze({ app, session, preferences, appearance, branding, settings });
   }
 
   const loadUiSnapshot = cache(loadUiSnapshotUncached);

@@ -19,6 +19,7 @@ import {
 } from "../src/app/react";
 
 const snapshot = {
+  app: { appName: "Configured", currency: "MAD" },
   session: null,
   preferences: {
     language: "ar",
@@ -61,6 +62,10 @@ function Probe() {
       data-query={queryClient instanceof QueryClient}
     />
   );
+}
+
+function QueryProbe() {
+  return <span data-query={useQueryClient() instanceof QueryClient} />;
 }
 
 function ContextMark({
@@ -149,7 +154,6 @@ describe("NajmAppProvider", () => {
       <AppRouterContext.Provider value={router}>
         <NajmAppProvider
           authClient={createAuthClient({ baseURL: "/api" })}
-          query={true}
           snapshot={snapshot}
           location={{
             Provider: LocationProvider,
@@ -161,7 +165,6 @@ describe("NajmAppProvider", () => {
             defaultLanguage: "en",
             supportedLanguages: ["en", "ar"],
           }}
-          appName="Direct"
         >
           <Probe />
         </NajmAppProvider>
@@ -176,24 +179,52 @@ describe("NajmAppProvider", () => {
     expect(html).toContain('data-context="inside-ui" data-auth="yes" data-query="yes"');
     expect(html).toContain('data-ui-language="ar"');
     expect(html).toContain('data-location="disabled"');
-    expect(html).toContain('data-app-name="Direct"');
+    expect(html).toContain('data-app-name="Configured"');
   });
 
-  test("omits Query unless the direct provider opts in", () => {
+  test("mounts Query with shared defaults when the direct provider omits it", () => {
     const html = renderToStaticMarkup(
       <AppRouterContext.Provider value={router}>
         <NajmAppProvider
           authClient={createAuthClient({ baseURL: "/api" })}
           snapshot={snapshot}
         >
-          <main>no query</main>
+          <QueryProbe />
         </NajmAppProvider>
       </AppRouterContext.Provider>,
     );
 
-    expect(html).toContain("no query");
+    expect(html).toContain('data-query="true"');
+  });
+
+  test("rejects false at the direct provider runtime boundary", () => {
+    expect(() => renderToStaticMarkup(
+      <AppRouterContext.Provider value={router}>
+        <NajmAppProvider
+          authClient={createAuthClient({ baseURL: "/api" })}
+          snapshot={snapshot}
+          query={false as never}
+        >
+          <Probe />
+        </NajmAppProvider>
+      </AppRouterContext.Provider>,
+    )).toThrow("omit it for Najm defaults");
   });
 });
+
+function InvalidDirectQueryProp() {
+  return (
+    <NajmAppProvider
+      authClient={createAuthClient({ baseURL: "/api" })}
+      snapshot={snapshot}
+      // @ts-expect-error The full provider is always Query-enabled.
+      query={false}
+    >
+      <Probe />
+    </NajmAppProvider>
+  );
+}
+void InvalidDirectQueryProp;
 
 const typedLocation: NajmClientLocationIntegration<
   typeof snapshot,

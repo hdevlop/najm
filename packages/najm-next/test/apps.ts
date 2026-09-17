@@ -10,6 +10,8 @@ import { defineNajmApp, type NajmAppDefinition } from "../src/app";
 export function buildKafilStyleApp(): NajmAppDefinition {
   return defineNajmApp({
     id: "kafil-fixture",
+    appName: "Kafil fixture",
+    currency: "MAD",
     auth: {
       apiBaseURL: "/api",
       authPrefix: "/auth",
@@ -43,6 +45,7 @@ export function buildKafilStyleApp(): NajmAppDefinition {
 export function buildSchoolStyleApp(): NajmAppDefinition {
   return defineNajmApp({
     id: "school-fixture",
+    appName: "School fixture",
     auth: {
       apiBaseURL: "/api",
       authPrefix: "/auth",

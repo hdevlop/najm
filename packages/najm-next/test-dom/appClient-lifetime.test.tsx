@@ -26,6 +26,7 @@ const router = {
 
 function makeSnapshot(provider: string, revision: number) {
   return {
+    app: { appName: "Lifetime fixture", currency: "MAD" },
     session: null,
     preferences: {
       language: "en",
@@ -106,10 +107,10 @@ describe("NajmAppProvider mount lifetime", () => {
 
     render(
       <AppRouterContext.Provider value={router}>
-        <NajmAppProvider authClient={authClient} query={true} snapshot={makeSnapshot("disabled", 1)}>
+        <NajmAppProvider authClient={authClient} snapshot={makeSnapshot("disabled", 1)}>
           <ClientProbe />
         </NajmAppProvider>
-        <NajmAppProvider authClient={authClient} query={true} snapshot={makeSnapshot("disabled", 2)}>
+        <NajmAppProvider authClient={authClient} snapshot={makeSnapshot("disabled", 2)}>
           <ClientProbe />
         </NajmAppProvider>
       </AppRouterContext.Provider>,

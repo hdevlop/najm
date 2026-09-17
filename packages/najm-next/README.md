@@ -155,6 +155,8 @@ adds the matching CSP sources automatically:
 ```ts
 export const app = defineNajmApp({
   id: 'my-app',
+  appName: 'My app',
+  currency: 'MAD',
   // auth, preferences and csp omitted here
   location: true,
 });
@@ -336,11 +338,8 @@ export function Providers({ snapshot, children }) {
   return (
     <NajmAppProvider
       authClient={auth.client}
-      query={true}
       snapshot={snapshot}
       i18n={appI18n}
-      appName="My app"
-      currency="MAD"
     >
       {children}
     </NajmAppProvider>
@@ -348,12 +347,16 @@ export function Providers({ snapshot, children }) {
 }
 ```
 
-The provider consumes `snapshot.settings.locationConfig` automatically. Pass a
-custom `location` integration only as an advanced compatibility override.
-Pass `query={true}`, a custom `query`, and `extensions` directly.
-Extensions support `beforeUi` (inside Auth and Query) and `insideUi` (inside
-Kit UI and Theme branding) placements. Omitted Query mounts no Query owner; the
-deprecated factory retains its previous default during migration. Query mode,
+The server projects only the allowlisted `appName` and `currency` display
+defaults into `snapshot.app`; the provider consumes those values and
+`snapshot.settings.locationConfig` automatically. Explicit display props remain
+available for legacy or advanced overrides. Pass a custom `query` integration
+only when overriding the defaults, and pass `extensions` directly. Extensions
+support `beforeUi` (inside Auth and Query) and `insideUi` (inside Kit UI and
+Theme branding) placements. The direct full provider always mounts Query;
+`query={false}` and boolean activation are unsupported. The low-level composer
+remains the no-Query entrypoint, while the deprecated factory retains its
+compatibility option. Query mode,
 Query constructor/provider, and the Auth
 client are mount-lifetime choices, so changing one requires an intentional
 provider remount. Snapshot, location props and ordinary UI props remain
@@ -369,7 +372,7 @@ slot when they need reactive application-specific integration.
 apps and unusual provider stacks. It imports no optional owners; those apps bind
 only the providers they installed.
 
-The TanStack adapter defaults queries to a 60-second stale window, a 10-minute
+The built-in TanStack adapter defaults queries to a 60-second stale window, a 10-minute
 garbage-collection window, no focus refetch, and one retry for network/unknown
 or 5xx failures. Mutations are not retried. Applications pass only partial
 `queries` or `mutations` overrides; the adapter retains unspecified defaults.

@@ -32,7 +32,9 @@ Leaflet, or Google location runtime. It generates `najm.config.ts`, the
 server-only binding, client provider composition, a static proxy matcher, CSP
 reporting, root layout, and thin API routes.
 
-Full profiles mount the direct `NajmAppProvider` from `najm-next/app/client`;
+Full profiles declare the generated app name in `defineNajmApp` and mount the
+direct `NajmAppProvider` from `najm-next/app/client`; display defaults flow
+through the public snapshot and Query uses the full provider's shared defaults.
 minimal or partial profiles keep using the dependency-neutral low-level
 composer so they do not install Auth, Theme, Query, or a map SDK unnecessarily.
 

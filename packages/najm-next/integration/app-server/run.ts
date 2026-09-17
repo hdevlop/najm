@@ -79,6 +79,8 @@ async function oneResolutionPerNavigation() {
 
   // Layout (settings) and page (snapshot) agree on one resolution.
   assert(html.includes('kafil-layout:true'), 'nested layout did not render the saved setting');
+  assert(html.includes('data-kafil-app-name="Kafil fixture"'), 'Kafil display name was not projected');
+  assert(html.includes('data-kafil-app-currency="MAD"'), 'Kafil currency was not projected');
   for (const provider of ['auth', 'query', 'ui', 'branding', 'leaflet']) {
     assert(html.includes(`data-fixture-provider=\"${provider}\"`), `Kafil client composition omitted ${provider}`);
   }
@@ -100,6 +102,7 @@ async function oneResolutionPerNavigation() {
     school.includes('school:anonymous:es:light:UTC:EUR:7:/uploaded-logo.png'),
     `school page did not render its institution-first snapshot: ${school.slice(0, 400)}`,
   );
+  assert(school.includes('data-school-app-name="School fixture"'), 'School display name was not projected');
   assert(school.includes('school-layout:EUR'), 'school layout disagreed on the currency');
   for (const provider of ['auth', 'query', 'keyboard', 'ui', 'branding', 'google']) {
     assert(school.includes(`data-fixture-provider=\"${provider}\"`), `School client composition omitted ${provider}`);

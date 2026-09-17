@@ -1,8 +1,9 @@
 # Application provider examples
 
 The Playground root layout is the runnable full-stack example. It passes one
-serializable snapshot to `src/providers/AppProviders.tsx`, which mounts the
-direct provider with Playground's 30-second Query policy.
+serializable snapshot, including its allowlisted `app` display defaults, to
+`src/providers/AppProviders.tsx`, which mounts the direct provider with
+Playground's custom 30-second Query policy.
 
 ## Minimal installation
 
@@ -24,24 +25,22 @@ export function Providers({ children, snapshot }) {
 
 ## Kafil-style Leaflet integration
 
-The application owns tile and privacy policy. The full provider only selects
-the public runtime config from the current snapshot; `geocoder={null}` stays in
-the application wrapper:
+The app definition owns display and location policy. The server projects the
+display defaults and resolved runtime configuration into the snapshot:
 
 ```tsx
-const location = {
-  Provider: KafilLocationProvider,
-  selectProps: (snapshot: KafilUiSnapshot) => ({
-    config: snapshot.settings.locationConfig,
-  }),
-};
+const app = defineNajmApp({
+  // auth, preferences and CSP omitted
+  id: 'kafil',
+  appName: 'Kafil',
+  currency: 'MAD',
+  location: true,
+});
 
 <NajmAppProvider
   authClient={auth.client}
   snapshot={snapshot}
-  location={location}
   i18n={kafilUiI18n}
-  currency="MAD"
 >
   {children}
 </NajmAppProvider>
@@ -73,13 +72,12 @@ const keyboardBinding = bindNajmNextProvider(
     selectProps: (value) => ({ config: value.settings.locationConfig }),
   }}
   extensions={{ beforeUi: keyboardBinding }}
-  currency={snapshot.preferences.currency}
   i18n={schoolI18n}
 >
   {children}
 </NajmAppProvider>
 ```
 
-`SchoolLocationProvider` continues to lazy-load Google Places, localize the
-provider options, preserve Place metadata, reset sessions, and supply shared
-location labels. Those choices do not belong to the generic provider.
+School's institution-resolved `snapshot.preferences.currency` takes precedence
+over any static app default. Its custom Query integration preserves the
+no-retry policy; omitting `query` would select Najm's shared defaults.

@@ -57,6 +57,8 @@ describe('Najm Next integration scaffolding', () => {
     expect(providers).toContain('<NajmAppProvider');
     expect(providers).toContain('authClient={auth.client}');
     expect(providers).toContain('snapshot={snapshot}');
+    expect(providers).not.toContain('query={true}');
+    expect(providers).not.toContain('appName=');
     expect(providers).not.toContain('NajmNextAppProvider');
     expect(providers).not.toContain('bindNajmNextProvider');
     expect(providers).not.toContain('createNajmAppProvider');
@@ -64,6 +66,8 @@ describe('Najm Next integration scaffolding', () => {
     expect(providers).not.toContain('initialLanguage={');
     expect(providers).not.toContain('initialTheme={');
     expect(providers).not.toContain('initialTimeZone={');
+    expect(leaflet.files.find((file) => file.path === 'src/najm.config.ts')?.content)
+      .toContain("appName: 'Leaflet App'");
   });
 
   test('keeps matcher literals and server/client boundaries explicit', () => {

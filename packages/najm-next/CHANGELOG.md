@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.0 - 2026-09-17
+
+- Added validated `appName` and `currency` application defaults and projects
+  only those display values into the public server snapshot.
+- The direct full `NajmAppProvider` now mounts one Query client by default;
+  custom integrations remain supported while boolean activation is rejected.
+- Preserved legacy snapshots, the deprecated factory compatibility path, and
+  the dependency-neutral lower-level composer for applications without Query.
+
 ## 0.7.0 - 2026-09-17
 
 - Added `location: true` and serializable custom location policy to the app

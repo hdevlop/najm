@@ -1,6 +1,7 @@
 import { DirectClientProvider, type DirectFixtureSnapshot } from '../../directClientProvider';
 
 const snapshot: DirectFixtureSnapshot = {
+  app: { appName: 'Direct fixture', currency: 'MAD' },
   session: null,
   preferences: {
     language: 'en',

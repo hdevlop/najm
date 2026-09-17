@@ -321,7 +321,7 @@
     },
     "packages/najm-cli": {
       "name": "najm-cli",
-      "version": "2.2.0",
+      "version": "2.3.0",
       "bin": {
         "najm": "./dist/index.js",
         "najm-cli": "./dist/index.js",
@@ -474,7 +474,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.15.2",
+      "version": "2.15.3",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",
@@ -609,7 +609,7 @@
     },
     "packages/najm-next": {
       "name": "najm-next",
-      "version": "0.7.0",
+      "version": "0.8.0",
       "devDependencies": {
         "@tanstack/react-query": "^5",
         "@testing-library/react": "^16",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.15.3 - 2026-09-17
+
+- `NajmKitProvider` now consumes optional `snapshot.app` display defaults.
+  Explicit currency wins, followed by institution-resolved preference currency
+  and then the app default; persisted branding still wins over the app-name fallback.
+
 ## 2.15.2 - 2026-09-17
 
 - Installed the map adapter loaders with Kit so the automatic app provider can

@@ -56,6 +56,7 @@ export default async function RootLayout({
         <AppProviders
           i18n={playgroundI18n.snapshot}
           snapshot={{
+            app: { appName: 'Najm Playground', currency: 'MAD' },
             session,
             preferences: {
               language,

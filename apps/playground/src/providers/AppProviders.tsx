@@ -10,6 +10,7 @@ import type { ReactNode } from 'react';
 
 import { auth } from '@/lib/auth';
 export interface PlaygroundUiSnapshot {
+  app: { appName?: string; currency?: string };
   session: ServerSession | null;
   preferences: {
     language: string;
@@ -40,9 +41,7 @@ export function AppProviders({
       snapshot={snapshot}
       query={query}
       i18n={i18n}
-      appName="Najm Playground"
       formDevTools
-      currency="MAD"
     >
       {children}
     </NajmAppProvider>

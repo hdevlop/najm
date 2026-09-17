@@ -54,6 +54,7 @@ function Probe() {
       <span data-testid="time-zone">{timeZone}</span>
       <span data-testid="section-gap">{design.layout?.sectionGap}</span>
       <span data-testid="logo">{branding?.logoExpanded}</span>
+      <span data-testid="app-name">{branding?.appName}</span>
       <button type="button" data-testid="to-ar" onClick={() => void changeLanguage("ar")}>
         ar
       </button>
@@ -93,6 +94,7 @@ describe("NajmAppProvider i18n snapshot", () => {
     const view = renderApp({
       initialLanguage: undefined,
       snapshot: {
+        app: { appName: "Configured app", currency: "EUR" },
         preferences: {
           language: "ar",
           theme: "dark",
@@ -116,6 +118,40 @@ describe("NajmAppProvider i18n snapshot", () => {
     expect(view.getByTestId("time-zone").textContent).toBe("Africa/Casablanca");
     expect(view.getByTestId("section-gap").textContent).toBe("2rem");
     expect(view.getByTestId("logo").textContent).toBe("/logo.webp");
+  });
+
+  test("resolves app display defaults without overriding explicit or institutional values", () => {
+    const baseSnapshot = {
+      app: { appName: "Configured app", currency: "EUR" },
+      preferences: {
+        language: "en",
+        theme: "light" as const,
+        timeZone: "Africa/Casablanca",
+      },
+      appearance: {
+        designConfig: { version: 1 as const, theme: {}, components: {} },
+      },
+      branding: { slots: {} },
+    };
+    const configured = renderApp({ currency: undefined, snapshot: baseSnapshot });
+    expect(configured.getByTestId("app-name").textContent).toBe("Configured app");
+    expect(configured.getByTestId("money").textContent).toBe(
+      new Intl.NumberFormat("de-DE", { style: "currency", currency: "EUR" }).format(1250),
+    );
+    configured.unmount();
+
+    const institution = renderApp({
+      currency: undefined,
+      snapshot: {
+        ...baseSnapshot,
+        preferences: { ...baseSnapshot.preferences, currency: "USD" },
+        branding: { slots: {}, appName: "Persisted name" },
+      },
+    });
+    expect(institution.getByTestId("app-name").textContent).toBe("Persisted name");
+    expect(institution.getByTestId("money").textContent).toBe(
+      new Intl.NumberFormat("de-DE", { style: "currency", currency: "USD" }).format(1250),
+    );
   });
 
   test("serves catalogs, the default language, and the fallback policy", async () => {

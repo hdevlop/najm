@@ -15,6 +15,8 @@ describe("najm-next/app definition", () => {
     const school = buildSchoolStyleApp();
 
     expect(kafil.auth.proxySessionMode).toBe("optimistic");
+    expect(kafil.appName).toBe("Kafil fixture");
+    expect(kafil.currency).toBe("MAD");
     expect(school.auth.proxySessionMode).toBe("authoritative");
     expect(kafil.auth.rememberCookieName).toBe("kafil.remember");
     expect(school.auth.rememberCookieName).toBe("sms.remember");
@@ -38,6 +40,17 @@ describe("najm-next/app definition", () => {
     expect(() =>
       defineNajmApp({ ...base, auth: { ...base.auth, proxySessionMode: "sometimes" as never } }),
     ).toThrow('proxySessionMode');
+  });
+
+  test("validates optional public display defaults", () => {
+    const base = buildKafilStyleApp();
+    for (const appName of ["", " Kafil", "Kafil ", "x".repeat(121), "bad\nname"]) {
+      expect(() => defineNajmApp({ ...base, appName })).toThrow("appName");
+    }
+    for (const currency of ["mad", "MA", "MADD", "M4D"]) {
+      expect(() => defineNajmApp({ ...base, currency })).toThrow("currency");
+    }
+    expect(() => defineNajmApp({ ...base, appName: undefined, currency: undefined })).not.toThrow();
   });
 
   test("rejects routes that are not app-absolute paths", () => {

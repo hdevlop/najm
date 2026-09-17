@@ -3,8 +3,8 @@ import path from 'path';
 
 export const NAJM_NEXT_INTEGRATION_VERSIONS = Object.freeze({
   auth: '4.0.4',
-  kit: '2.15.1',
-  next: '0.7.0',
+  kit: '2.15.3',
+  next: '0.8.0',
   theme: '0.2.1',
 });
 
@@ -88,6 +88,7 @@ function appConfig(options: Required<NextIntegrationOptions>): string {
 
 export const app = defineNajmApp({
   id: '${options.appId}',
+  appName: '${title(options.appId)}',
   auth: {
     apiBaseURL: '/api',
     authPrefix: '/auth',
@@ -310,7 +311,6 @@ function providers(options: Required<NextIntegrationOptions>): string {
   return (
     <NajmAppProvider
       snapshot={snapshot}
-      appName="${title(options.appId)}"
     >
       {children}
     </NajmAppProvider>
@@ -366,6 +366,7 @@ const locationProvider = bindNajmNextProvider(
   return `${imports.join('\n')}
 
 export interface AppUiSnapshot {
+  app: { appName?: string; currency?: string };
   session: unknown;
   preferences: { language: 'en'; theme: 'light' | 'dark'; timeZone: string };
   appearance: ${appearanceType};
@@ -401,6 +402,7 @@ import type { PublicBranding } from 'najm-theme';
 import { auth } from '@/lib/auth';
 
 export interface AppUiSnapshot {
+  app: { appName?: string; currency?: string };
   session: ServerSession | null;
   preferences: { language: 'en'; theme: 'light' | 'dark'; timeZone: string };
   appearance: { designConfig: NajmDesignConfig; revision: number };
@@ -412,9 +414,7 @@ export function AppProviders({ children, snapshot }: Readonly<{ children: ReactN
   return (
     <NajmAppProvider
       authClient={auth.client}
-      query={true}
       snapshot={snapshot}
-      appName="${title(options.appId)}"
     >
       {children}
     </NajmAppProvider>

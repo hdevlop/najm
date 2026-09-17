@@ -7,6 +7,8 @@ import { defineNajmApp } from 'najm-next/app';
  */
 export const kafilStyleApp = defineNajmApp({
   id: 'kafil-fixture',
+  appName: 'Kafil fixture',
+  currency: 'MAD',
   auth: {
     apiBaseURL: '/api',
     authPrefix: '/auth',
@@ -41,6 +43,7 @@ export const kafilStyleApp = defineNajmApp({
  */
 export const schoolStyleApp = defineNajmApp({
   id: 'school-fixture',
+  appName: 'School fixture',
   auth: {
     apiBaseURL: '/api',
     authPrefix: '/auth',

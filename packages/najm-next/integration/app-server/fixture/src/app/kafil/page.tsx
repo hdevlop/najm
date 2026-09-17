@@ -10,6 +10,8 @@ export default async function KafilPage() {
   return <KafilClientProviders snapshot={snapshot}>
     <main
       data-kafil-language={snapshot.preferences.language}
+      data-kafil-app-name={snapshot.app.appName}
+      data-kafil-app-currency={snapshot.app.currency}
       data-kafil-revision={snapshot.appearance.revision}
       data-kafil-logo={snapshot.branding.logo}
     >
