@@ -149,6 +149,7 @@ describe("NajmAppProvider", () => {
       <AppRouterContext.Provider value={router}>
         <NajmAppProvider
           authClient={createAuthClient({ baseURL: "/api" })}
+          query={true}
           snapshot={snapshot}
           location={{
             Provider: LocationProvider,
@@ -178,13 +179,12 @@ describe("NajmAppProvider", () => {
     expect(html).toContain('data-app-name="Direct"');
   });
 
-  test("can disable Query without changing the full client entrypoint", () => {
+  test("omits Query unless the direct provider opts in", () => {
     const html = renderToStaticMarkup(
       <AppRouterContext.Provider value={router}>
         <NajmAppProvider
           authClient={createAuthClient({ baseURL: "/api" })}
           snapshot={snapshot}
-          query={false}
         >
           <main>no query</main>
         </NajmAppProvider>

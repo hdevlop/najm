@@ -1,4 +1,9 @@
 import type { EnvRecord } from "../internal/types";
+import {
+  getNajmLocationEnvironmentPrefix,
+  type NajmAppDefinition,
+  type NajmAppLocationPolicy,
+} from "../app";
 
 export type NajmLocationMapProvider = "disabled" | "leaflet" | "google";
 
@@ -88,6 +93,46 @@ export interface NajmLocationRuntimeDefinition<TProvider extends NajmLocationMap
     environment: EnvRecord,
     options?: Readonly<{ isDevelopment?: boolean }>,
   ): NajmLocationRuntimeResolution<TProvider>;
+}
+
+const DEFAULT_APP_LOCATION = Object.freeze({
+  provider: "leaflet" as const,
+  center: { latitude: 33.5731, longitude: -7.5898 },
+  zoom: 12,
+  leaflet: {
+    tileUrl: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: "&copy; OpenStreetMap contributors",
+  },
+});
+
+/** Build the single location runtime declared by a pure app definition. */
+export function defineNajmAppLocationRuntime(
+  app: NajmAppDefinition,
+): NajmLocationRuntimeDefinition | undefined {
+  if (app.location === undefined) return undefined;
+  const policy: NajmAppLocationPolicy = app.location === true ? {} : app.location;
+  const defaults = policy.defaults;
+  const provider = defaults?.provider ?? DEFAULT_APP_LOCATION.provider;
+  return defineNajmLocationRuntime({
+    environmentPrefix:
+      policy.environmentPrefix ?? getNajmLocationEnvironmentPrefix(app.id),
+    allowedProviders: policy.allowedProviders ?? [provider],
+    defaults: {
+      provider,
+      center: defaults?.center ?? DEFAULT_APP_LOCATION.center,
+      zoom: defaults?.zoom ?? DEFAULT_APP_LOCATION.zoom,
+      ...(provider === "leaflet"
+        ? {
+            leaflet: {
+              tileUrl: defaults?.leaflet?.tileUrl ?? DEFAULT_APP_LOCATION.leaflet.tileUrl,
+              attribution:
+                defaults?.leaflet?.attribution ?? DEFAULT_APP_LOCATION.leaflet.attribution,
+            },
+          }
+        : {}),
+      ...(provider === "google" ? { google: defaults?.google ?? {} } : {}),
+    },
+  });
 }
 
 const PREFIX_PATTERN = /^[A-Z][A-Z0-9_]*$/;

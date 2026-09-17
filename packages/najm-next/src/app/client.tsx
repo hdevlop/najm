@@ -8,6 +8,17 @@ import {
   type NajmKitProviderProps,
   type NajmKitSnapshot,
 } from "najm-kit/app";
+import {
+  getNajmLocationLabels,
+  type NCoordinates,
+  type NLocationCandidate,
+  type NLocationGeocoderAdapter,
+} from "najm-kit/location";
+import {
+  NLocationRuntimeProvider,
+  type NLocationRuntimeConfig,
+} from "najm-kit/location/runtime";
+import { useTranslation } from "najm-i18n/react";
 import type { PublicBranding } from "najm-theme";
 import { NThemeBrandingProvider } from "najm-theme/react";
 import * as React from "react";
@@ -24,6 +35,7 @@ import {
 export interface NajmClientAppSnapshot extends NajmKitSnapshot {
   readonly session: HydrateSession | null;
   readonly branding: PublicBranding;
+  readonly settings?: Readonly<Record<string, unknown>>;
 }
 
 type NajmClientUiProps = Omit<NajmKitProviderProps, "children" | "snapshot">;
@@ -49,9 +61,10 @@ export type NajmAppProviderProps<
   TLocationProps extends object = Record<string, never>,
 > = NajmClientUiProps & {
   readonly authClient: NajmAuthClient;
-  /** Uses Najm's TanStack defaults when omitted; pass false for no query layer. */
-  readonly query?: NajmNextQueryIntegration<QueryClient> | false;
-  readonly location?: NajmClientLocationIntegration<TSnapshot, TLocationProps>;
+  /** Pass true for Najm's defaults, a custom integration, or omit for no Query layer. */
+  readonly query?: NajmNextQueryIntegration<QueryClient> | true;
+  /** Legacy/custom override. Omit to consume `snapshot.settings.locationConfig`. */
+  readonly location?: NajmClientLocationIntegration<TSnapshot, TLocationProps> | false;
   readonly extensions?: NajmNextExtension<TSnapshot, QueryClient>;
   readonly snapshot: TSnapshot;
   readonly children: React.ReactNode;
@@ -91,7 +104,7 @@ interface ProviderRuntime<
   TLocationProps extends object,
 > {
   readonly authClient: NajmAuthClient;
-  readonly location?: NajmClientLocationIntegration<TSnapshot, TLocationProps>;
+  readonly location?: NajmClientLocationIntegration<TSnapshot, TLocationProps> | false;
   readonly uiProps: NajmClientUiProps;
   readonly useUiProps: UiPropsHook<TSnapshot>;
 }
@@ -102,7 +115,7 @@ interface ProviderCoreProps<
 > extends NajmClientAppProviderProps<TSnapshot> {
   readonly authClient: NajmAuthClient;
   readonly query: NajmNextQueryIntegration<QueryClient> | undefined;
-  readonly location?: NajmClientLocationIntegration<TSnapshot, TLocationProps>;
+  readonly location?: NajmClientLocationIntegration<TSnapshot, TLocationProps> | false;
   readonly extensions?: NajmNextExtension<TSnapshot, QueryClient>;
   readonly useUiProps: UiPropsHook<TSnapshot>;
 }
@@ -120,6 +133,81 @@ function sameQueryIntegration(
   return (
     previous?.createClient === next?.createClient &&
     previous?.Provider === next?.Provider
+  );
+}
+
+function createLazyGoogleGeocoder(
+  options: Extract<NLocationRuntimeConfig, { provider: "google" }>["google"],
+): NLocationGeocoderAdapter {
+  let adapterPromise: Promise<NLocationGeocoderAdapter> | undefined;
+  const load = () => {
+    adapterPromise ??= import("najm-kit/location/google").then(
+      ({ createGooglePlacesGeocoder }) => createGooglePlacesGeocoder(options),
+    );
+    return adapterPromise;
+  };
+  return {
+    id: "najm-google-places",
+    async search(query, context) {
+      return (await load()).search(query, context);
+    },
+    async resolve(candidate: NLocationCandidate, signal: AbortSignal) {
+      const adapter = await load();
+      return adapter.resolve?.(candidate, signal) ?? candidate;
+    },
+    async reverse(coordinates: NCoordinates, signal: AbortSignal) {
+      const adapter = await load();
+      return adapter.reverse?.(coordinates, signal) ?? null;
+    },
+    resetSession() {
+      void adapterPromise?.then((adapter) => adapter.resetSession?.());
+    },
+  };
+}
+
+function AutomaticLocationProvider({
+  children,
+  config,
+  language,
+}: Readonly<{
+  children: React.ReactNode;
+  config: NLocationRuntimeConfig;
+  language: string;
+}>) {
+  const localizedConfig = React.useMemo<NLocationRuntimeConfig>(() => {
+    if (config.provider !== "google") return config;
+    return { ...config, google: { ...config.google, language } };
+  }, [config, language]);
+  const geocoder = React.useMemo(
+    () => localizedConfig.provider === "google"
+      ? createLazyGoogleGeocoder(localizedConfig.google)
+      : null,
+    [localizedConfig],
+  );
+  return (
+    <NLocationRuntimeProvider
+      config={localizedConfig}
+      geocoder={geocoder}
+      labels={getNajmLocationLabels(language)}
+      searchMode={localizedConfig.provider === "google" ? "autocomplete" : "submit"}
+    >
+      {children}
+    </NLocationRuntimeProvider>
+  );
+}
+
+function LocalizedAutomaticLocationProvider({
+  children,
+  config,
+}: Readonly<{
+  children: React.ReactNode;
+  config: NLocationRuntimeConfig;
+}>) {
+  const { language } = useTranslation();
+  return (
+    <AutomaticLocationProvider config={config} language={language}>
+      {children}
+    </AutomaticLocationProvider>
   );
 }
 
@@ -200,13 +288,35 @@ function NajmAppProviderCore<
     }
 
     function LocationLayer({ children: nested, snapshot: current }: LayerProps) {
-      const integration = useRuntime().location;
-      if (!integration) return <>{nested}</>;
-      const LocationProvider = integration.Provider;
+      const runtime = useRuntime();
+      const integration = runtime.location;
+      if (integration === false) return <>{nested}</>;
+      if (integration) {
+        const LocationProvider = integration.Provider;
+        return (
+          <LocationProvider {...integration.selectProps(current)}>
+            {nested}
+          </LocationProvider>
+        );
+      }
+      const config = current.settings?.locationConfig as
+        | NLocationRuntimeConfig
+        | undefined;
+      if (!config) return <>{nested}</>;
+      if (runtime.uiProps.translations ?? runtime.uiProps.i18n?.translations) {
+        return (
+          <LocalizedAutomaticLocationProvider config={config}>
+            {nested}
+          </LocalizedAutomaticLocationProvider>
+        );
+      }
       return (
-        <LocationProvider {...integration.selectProps(current)}>
+        <AutomaticLocationProvider
+          config={config}
+          language={current.preferences.language}
+        >
           {nested}
-        </LocationProvider>
+        </AutomaticLocationProvider>
       );
     }
 
@@ -251,7 +361,7 @@ export function NajmAppProvider<
   TLocationProps extends object = Record<string, never>,
 >({
   authClient,
-  query = DEFAULT_QUERY,
+  query,
   location,
   extensions,
   ...props
@@ -260,7 +370,7 @@ export function NajmAppProvider<
     <NajmAppProviderCore
       {...props}
       authClient={authClient}
-      query={query === false ? undefined : query}
+      query={query === true ? DEFAULT_QUERY : query}
       location={location}
       extensions={extensions}
       useUiProps={useEmptyUiProps}

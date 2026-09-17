@@ -1,7 +1,12 @@
 import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
-import { defineNajmLocationRuntime } from "../src/location/server";
+import { defineNajmApp } from "../src/app";
+import {
+  defineNajmAppLocationRuntime,
+  defineNajmLocationRuntime,
+} from "../src/location/server";
+import { buildKafilStyleApp } from "./apps";
 
 const definition = defineNajmLocationRuntime({
   environmentPrefix: "TEST_LOCATION",
@@ -18,6 +23,15 @@ const definition = defineNajmLocationRuntime({
 });
 
 describe("defineNajmLocationRuntime", () => {
+  test("normalizes location true to the shared Leaflet preset and app prefix", () => {
+    const base = buildKafilStyleApp();
+    const app = defineNajmApp({ ...base, id: "farm-portal", location: true });
+    const resolved = defineNajmAppLocationRuntime(app)?.resolve({});
+
+    expect(resolved?.config.provider).toBe("leaflet");
+    expect(resolved?.config.defaultCenter).toEqual({ latitude: 33.5731, longitude: -7.5898 });
+    expect(resolved?.csp.imgSrc).toEqual(["https://tile.openstreetmap.org"]);
+  });
   test("publishes an isolated server entry and never reads process.env", () => {
     const packageRoot = resolve(import.meta.dir, "..");
     const manifest = JSON.parse(readFileSync(resolve(packageRoot, "package.json"), "utf8"));

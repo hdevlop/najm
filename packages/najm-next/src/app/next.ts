@@ -3,6 +3,10 @@ import type { AuthKit, ServerSession } from "najm-auth/client/server";
 import { createReactServerAuth } from "najm-auth/client/server/react";
 import type { NajmOrderedResolveInput, NajmCookieReader } from "najm-kit/server";
 import type { NajmThemeDefinition } from "najm-theme/contracts";
+import {
+  defineNajmAppLocationRuntime,
+  type NajmResolvedLocationConfig,
+} from "../location/server";
 
 import {
   createNajmServerApp,
@@ -54,13 +58,21 @@ export interface CreateNajmNextServerAppOptions<TSettings, TPreferences, TResolv
  */
 export function createNajmNextServerApp<TSettings, TPreferences, TResolvedPreferences = TPreferences>(
   options: CreateNajmNextServerAppOptions<TSettings, TPreferences, TResolvedPreferences>,
-): NajmServerApp<TSettings, TResolvedPreferences, Appearance, Branding, ServerSession> {
+): NajmServerApp<TSettings & { readonly locationConfig?: NajmResolvedLocationConfig }, TResolvedPreferences, Appearance, Branding, ServerSession> {
+  const locationConfig = defineNajmAppLocationRuntime(options.app)?.resolve(
+    process.env,
+    { isDevelopment: process.env.NODE_ENV === "development" },
+  ).config;
+  const withLocation = (settings: TSettings) =>
+    locationConfig === undefined
+      ? settings
+      : Object.assign({}, settings, { locationConfig });
   return createNajmServerApp({
     app: options.app,
     auth: createReactServerAuth(options.auth),
     theme: options.theme.react(options.themeOptions),
-    readSettings: options.readSettings,
-    fallbackSettings: options.fallbackSettings,
+    readSettings: async () => withLocation(await options.readSettings()),
+    fallbackSettings: withLocation(options.fallbackSettings),
     onDiagnostic: options.onDiagnostic,
     readCookies: cookies,
     readHeaders: headers,

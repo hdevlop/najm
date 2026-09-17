@@ -1,6 +1,18 @@
 # Changelog
 
-## Unreleased
+## 0.7.0 - 2026-09-17
+
+- Added `location: true` and serializable custom location policy to the app
+  definition, including the shared Leaflet preset and deterministic env prefix.
+- Next server snapshots and CSP proxy composition now resolve app-declared
+  location automatically; the legacy explicit location hooks remain supported.
+- The direct `NajmAppProvider` consumes snapshot location automatically and
+  makes Query an explicit opt-in. The deprecated factory retains its prior
+  Query default during the compatibility window.
+- Added shared lazy Google geocoding, reactive locale labels, and updated CLI
+  scaffolding without per-app location provider or proxy selectors.
+
+## 0.6.0 - 2026-09-15
 
 - Added the direct `NajmAppProvider` API with Auth, Query, extension, Kit UI,
   Theme branding, and typed location integration props. The compatibility

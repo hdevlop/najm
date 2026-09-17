@@ -166,4 +166,16 @@ describe("proxy composition around the auth contract", () => {
     await proxy(request("/"));
     expect(auth.lastRequestHeaders()["content-security-policy"]).toContain("unsafe-eval");
   });
+
+  test("derives location CSP directly from the app definition", async () => {
+    const auth = stubAuth(() => NextResponse.next());
+    const base = buildKafilStyleApp();
+    const app = { ...base, location: true } as const;
+    const proxy = composeNajmProxy({ auth, app, env: { NODE_ENV: "production" } });
+
+    const response = await proxy(request("/dashboard"));
+    expect(response.headers.get("content-security-policy")).toContain(
+      "https://tile.openstreetmap.org",
+    );
+  });
 });

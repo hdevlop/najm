@@ -148,41 +148,27 @@ shown.
 
 ## Runtime location configuration
 
-`najm-next/location/server` removes repeated environment parsing and CSP-source
-calculation while leaving provider policy with the application. It never reads
-`process.env`; the app passes its server environment explicitly.
+Declare the standard Leaflet integration once with `location: true`. The Next
+server adapter adds its resolved config to the public snapshot and the proxy
+adds the matching CSP sources automatically:
 
 ```ts
-// src/config/location.ts
-import { defineNajmLocationRuntime } from 'najm-next/location/server';
-
-export const appLocation = defineNajmLocationRuntime({
-  environmentPrefix: 'MY_APP_LOCATION',
-  allowedProviders: ['leaflet'],
-  defaults: {
-    provider: 'leaflet',
-    center: { latitude: 33.5731, longitude: -7.5898 },
-    zoom: 12,
-    leaflet: {
-      tileUrl: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-      attribution: 'OpenStreetMap contributors',
-    },
-  },
+export const app = defineNajmApp({
+  id: 'my-app',
+  // auth, preferences and csp omitted here
+  location: true,
 });
 ```
 
-Resolve the same definition from the dynamic server layout and the CSP/proxy
-path:
+The default is Leaflet centered at `33.5731, -7.5898`, zoom `12`, with the
+public OpenStreetMap tile endpoint and attribution. Its environment prefix is
+derived deterministically (`my-app` -> `MY_APP_LOCATION`). Omit `location` to
+mount no location context or network policy. A custom object can select Google,
+override the preset, or provide an explicit prefix. The lower-level
+`defineNajmLocationRuntime` API remains available for unusual integrations.
 
 ```ts
-const location = appLocation.resolve(process.env, {
-  isDevelopment: process.env.NODE_ENV === 'development',
-});
-
-location.config;        // serializable input for najm-kit/location/runtime
-location.csp.imgSrc;    // exact validated tile origins
-location.csp.connectSrc;
-location.issues;        // sanitized issue codes only
+const location = defineNajmAppLocationRuntime(app)?.resolve(process.env);
 ```
 
 The prefix creates `<PREFIX>_MAP_PROVIDER`, `_DEFAULT_LATITUDE`,
@@ -195,16 +181,19 @@ and must be restricted by referrer and API in Google Cloud; no environment
 object is serialized:
 
 ```ts
-export const schoolLocation = defineNajmLocationRuntime({
-  environmentPrefix: 'SCHOOL_LOCATION',
-  allowedProviders: ['google'],
-  defaults: {
+export const schoolApp = defineNajmApp({
+  // auth, preferences and csp omitted here
+  location: {
+    environmentPrefix: 'SCHOOL_LOCATION',
+    allowedProviders: ['google'],
+    defaults: {
     provider: 'google',
     center: { latitude: 33.5731, longitude: -7.5898 },
     google: {
       language: 'fr',
       region: 'MA',
       apiKeyEnvironmentFallbacks: ['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'],
+    },
     },
   },
 });
@@ -254,7 +243,9 @@ export const app = defineNajmApp({
     extraImgSrc: ['https://tile.openstreetmap.org'],
     frameSrc: ["'none'"],
   },
-  location: { environmentPrefix: 'MY_APP_LOCATION' },
+  theme: true,
+  branding: true,
+  location: true,
 });
 ```
 
@@ -345,6 +336,7 @@ export function Providers({ snapshot, children }) {
   return (
     <NajmAppProvider
       authClient={auth.client}
+      query={true}
       snapshot={snapshot}
       i18n={appI18n}
       appName="My app"
@@ -356,10 +348,13 @@ export function Providers({ snapshot, children }) {
 }
 ```
 
-Pass app-owned `location`, `query`, and `extensions` integrations directly.
+The provider consumes `snapshot.settings.locationConfig` automatically. Pass a
+custom `location` integration only as an advanced compatibility override.
+Pass `query={true}`, a custom `query`, and `extensions` directly.
 Extensions support `beforeUi` (inside Auth and Query) and `insideUi` (inside
-Kit UI and Theme branding) placements. `query={false}` disables Query; omitted
-Query uses Najm's defaults. Query mode, Query constructor/provider, and the Auth
+Kit UI and Theme branding) placements. Omitted Query mounts no Query owner; the
+deprecated factory retains its previous default during migration. Query mode,
+Query constructor/provider, and the Auth
 client are mount-lifetime choices, so changing one requires an intentional
 provider remount. Snapshot, location props and ordinary UI props remain
 reactive and do not remount descendants.
@@ -396,13 +391,12 @@ no accidental second enforcing policy):
 ```ts
 // src/proxy.ts
 import { composeNajmProxy } from 'najm-next/security';
-import { app, appLocation } from './najm.config';
+import { app } from './najm.config';
 import { auth } from './auth';
 
 export default composeNajmProxy({
   auth,
   app,
-  resolveLocationCsp: (env) => appLocation.resolve(env).csp,
 });
 
 // The matcher stays a static literal in the app: Next analyzes it at build

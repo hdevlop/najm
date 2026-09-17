@@ -64,7 +64,11 @@ describe("import isolation (DX-01/DX-02)", () => {
     // Reports is fully standalone; security may only reuse the pure app
     // definition (inlined at build — no runtime package dependency).
     expect(importTargets(read("src/security/reports.ts"))).toEqual([]);
-    expect(importTargets(read("src/security.ts"))).toEqual(["./app", "./app"]);
+    expect(importTargets(read("src/security.ts"))).toEqual([
+      "./app",
+      "./location/server",
+      "./app",
+    ]);
 
     for (const file of ["src/security.ts", "src/security/reports.ts"]) {
       const source = read(file);
@@ -160,11 +164,15 @@ describe("import isolation (DX-01/DX-02)", () => {
       "najm-auth/client",
       "najm-auth/client/react",
       "najm-kit/app",
+      "najm-kit/location",
+      "najm-kit/location/runtime",
+      "najm-i18n/react",
       "najm-theme",
       "najm-theme/react",
       "react",
       "../query/tanstack",
       "./react",
+      "najm-kit/location/google",
     ]);
     expect(source).not.toContain("server-only");
     expect(source).not.toContain("process.env");

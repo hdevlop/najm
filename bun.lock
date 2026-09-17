@@ -321,7 +321,7 @@
     },
     "packages/najm-cli": {
       "name": "najm-cli",
-      "version": "2.1.0",
+      "version": "2.2.0",
       "bin": {
         "najm": "./dist/index.js",
         "najm-cli": "./dist/index.js",
@@ -474,7 +474,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.15.0",
+      "version": "2.15.1",
       "dependencies": {
         "@radix-ui/react-avatar": "^1",
         "@radix-ui/react-checkbox": "^1",
@@ -611,7 +611,7 @@
     },
     "packages/najm-next": {
       "name": "najm-next",
-      "version": "0.6.0",
+      "version": "0.7.0",
       "devDependencies": {
         "@tanstack/react-query": "^5",
         "@testing-library/react": "^16",
@@ -619,6 +619,7 @@
         "@types/react": "^19.2.14",
         "happy-dom": "^20.11.1",
         "najm-auth": "workspace:*",
+        "najm-i18n": "workspace:*",
         "najm-kit": "workspace:*",
         "najm-theme": "workspace:*",
         "next": "16.2.11",
@@ -631,6 +632,7 @@
       "peerDependencies": {
         "@tanstack/react-query": "^5",
         "najm-auth": "^4.0.4",
+        "najm-i18n": "^2.1.2",
         "najm-kit": "^2.15.0",
         "najm-theme": "^0.2.1",
         "next": ">=15.3.0 <17",
@@ -639,6 +641,7 @@
       "optionalPeers": [
         "@tanstack/react-query",
         "najm-auth",
+        "najm-i18n",
         "najm-kit",
         "najm-theme",
       ],

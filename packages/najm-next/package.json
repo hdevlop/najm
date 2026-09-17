@@ -1,6 +1,6 @@
 {
   "name": "najm-next",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "license": "MIT",
   "type": "module",
   "description": "Strict, versioned Next.js configuration for Najm applications — monorepo root discovery, build isolation, service-worker headers, and dev-origin policy with no per-app options",
@@ -114,6 +114,7 @@
     "next": ">=15.3.0 <17",
     "react": ">=18.2.0 <20",
     "najm-auth": "^4.0.4",
+    "najm-i18n": "^2.1.2",
     "najm-kit": "^2.15.0",
     "najm-theme": "^0.2.1"
   },
@@ -130,6 +131,7 @@
     "tsup": "^8.5.1",
     "typescript": "^5.9.3",
     "najm-auth": "workspace:*",
+    "najm-i18n": "workspace:*",
     "najm-kit": "workspace:*",
     "najm-theme": "workspace:*"
   },
@@ -138,6 +140,9 @@
       "optional": true
     },
     "najm-auth": {
+      "optional": true
+    },
+    "najm-i18n": {
       "optional": true
     },
     "najm-kit": {

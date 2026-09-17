@@ -66,9 +66,27 @@ export interface NajmAppCspPolicy {
   readonly frameSrc: readonly string[];
 }
 
+export type NajmAppLocationProvider = "disabled" | "leaflet" | "google";
+
 export interface NajmAppLocationPolicy {
-  /** Application-owned environment prefix, for example `KAFIL_LOCATION`. */
-  readonly environmentPrefix: string;
+  /** Defaults to the normalized application id plus `_LOCATION`. */
+  readonly environmentPrefix?: string;
+  readonly allowedProviders?: readonly NajmAppLocationProvider[];
+  readonly defaults?: {
+    readonly provider?: NajmAppLocationProvider;
+    readonly center?: { readonly latitude: number; readonly longitude: number };
+    readonly zoom?: number;
+    readonly leaflet?: {
+      readonly tileUrl?: string;
+      readonly attribution?: string;
+    };
+    readonly google?: {
+      readonly mapId?: string;
+      readonly language?: string;
+      readonly region?: string;
+      readonly apiKeyEnvironmentFallbacks?: readonly string[];
+    };
+  };
 }
 
 export interface NajmAppDefinition {
@@ -76,7 +94,12 @@ export interface NajmAppDefinition {
   readonly auth: NajmAppAuthPolicy;
   readonly preferences: NajmAppPreferencesPolicy;
   readonly csp: NajmAppCspPolicy;
-  readonly location: NajmAppLocationPolicy;
+  /** Declares that the server snapshot owns Najm Theme appearance. */
+  readonly theme?: true;
+  /** Declares that the server snapshot owns Najm Theme branding. */
+  readonly branding?: true;
+  /** Omit to install no location context; `true` uses the shared Leaflet preset. */
+  readonly location?: true | NajmAppLocationPolicy;
 }
 
 /** The single report endpoint shared by every Najm Next application. */
@@ -238,13 +261,37 @@ export function assertNajmAppDefinition(value: unknown): asserts value is NajmAp
   assertCspSourceList(csp.extraConnectSrc, "csp.extraConnectSrc", false);
   assertCspSourceList(csp.extraFontSrc, "csp.extraFontSrc", false);
 
-  const location = def.location as Record<string, unknown> | undefined;
-  if (typeof location !== "object" || location === null || Array.isArray(location)) {
-    throw new TypeError("najm-next/app: location policy must be an object");
+  if (def.theme !== undefined && def.theme !== true) {
+    throw new TypeError("najm-next/app: theme must be true when enabled");
   }
-  if (typeof location.environmentPrefix !== "string" || !ENV_PREFIX_PATTERN.test(location.environmentPrefix)) {
-    throw new TypeError(`najm-next/app: location.environmentPrefix must contain uppercase letters, numbers, and underscores: ${formatValue(location.environmentPrefix)}`);
+  if (def.branding !== undefined && def.branding !== true) {
+    throw new TypeError("najm-next/app: branding must be true when enabled");
   }
+
+  const location = def.location as Record<string, unknown> | true | undefined;
+  if (location !== undefined && location !== true) {
+    if (typeof location !== "object" || location === null || Array.isArray(location)) {
+      throw new TypeError("najm-next/app: location must be true or a configuration object");
+    }
+    if (
+      location.environmentPrefix !== undefined &&
+      (typeof location.environmentPrefix !== "string" || !ENV_PREFIX_PATTERN.test(location.environmentPrefix))
+    ) {
+      throw new TypeError(`najm-next/app: location.environmentPrefix must contain uppercase letters, numbers, and underscores: ${formatValue(location.environmentPrefix)}`);
+    }
+    if (location.allowedProviders !== undefined) {
+      if (!Array.isArray(location.allowedProviders) || location.allowedProviders.some(
+        (provider) => provider !== "disabled" && provider !== "leaflet" && provider !== "google",
+      )) {
+        throw new TypeError("najm-next/app: location.allowedProviders contains an unsupported provider");
+      }
+    }
+  }
+}
+
+/** Deterministic environment prefix used by `location: true`. */
+export function getNajmLocationEnvironmentPrefix(appId: string): string {
+  return `${appId.replaceAll("-", "_").toUpperCase()}_LOCATION`;
 }
 
 function assertCspSourceList(value: unknown, field: string, required: boolean): void {

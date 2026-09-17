@@ -3,8 +3,8 @@ import path from 'path';
 
 export const NAJM_NEXT_INTEGRATION_VERSIONS = Object.freeze({
   auth: '4.0.4',
-  kit: '2.15.0',
-  next: '0.6.0',
+  kit: '2.15.1',
+  next: '0.7.0',
   theme: '0.2.1',
 });
 
@@ -79,9 +79,12 @@ function locationDefinition(choice: NextLocationChoice): string {
 }
 
 function appConfig(options: Required<NextIntegrationOptions>): string {
-  const prefix = options.appId.replace(/-/g, '_').toUpperCase();
+  const locationPolicy = options.location === 'disabled'
+    ? ''
+    : options.location === 'leaflet'
+      ? '  location: true,\n'
+      : `  location: {\n${locationDefinition(options.location)}\n  },\n`;
   return `import { defineNajmApp } from 'najm-next/app';
-import { defineNajmLocationRuntime } from 'najm-next/location/server';
 
 export const app = defineNajmApp({
   id: '${options.appId}',
@@ -110,12 +113,7 @@ export const app = defineNajmApp({
     reportPath: '/api/csp-report',
     frameSrc: ["'none'"],
   },
-  location: { environmentPrefix: '${prefix}_LOCATION' },
-});
-
-export const location = defineNajmLocationRuntime({
-  environmentPrefix: app.location.environmentPrefix,
-${locationDefinition(options.location)}
+${locationPolicy}
 });
 `;
 }
@@ -222,13 +220,14 @@ function serverBinding(options: Required<NextIntegrationOptions>): string {
 
 import { cookies, headers } from 'next/headers';
 import { createNajmServerApp } from 'najm-next/app/server';
+import { defineNajmAppLocationRuntime } from 'najm-next/location/server';
 ${authImports}${themeImports}${preferenceImports}
-import { app, location } from '@/najm.config';
+import { app } from '@/najm.config';
 
 ${authBinding}
 ${themeBinding}
 
-const locationConfig = location.resolve(process.env, {
+const locationConfig = defineNajmAppLocationRuntime(app)?.resolve(process.env, {
   isDevelopment: process.env.NODE_ENV === 'development',
 }).config;
 
@@ -236,8 +235,8 @@ export const najmServer = createNajmServerApp({
   app,
   auth: serverAuth,
   theme: serverTheme,
-  readSettings: async () => ({ locationConfig }),
-  fallbackSettings: { locationConfig },
+  readSettings: async () => locationConfig ? { locationConfig } : {},
+  fallbackSettings: locationConfig ? { locationConfig } : {},
   readCookies: cookies,
   readHeaders: headers,
   ${resolvePreferences}
@@ -391,62 +390,14 @@ export function AppProviders({ children, snapshot }: Readonly<{ children: ReactN
 }
 
 function fullClientProviders(options: Required<NextIntegrationOptions>): string {
-  const locationImports = options.location === 'leaflet'
-    ? `import { NLeafletLocationRuntimeProvider, type NLeafletLocationRuntimeProviderProps } from 'najm-kit/location/runtime/leaflet';\n`
-    : options.location === 'google'
-      ? `import { lazy, useMemo } from 'react';\nimport { NLocationProvider, type NLocationMapAdapter } from 'najm-kit/location';\nimport type { NLocationRuntimeConfig } from 'najm-kit/location/runtime';\n`
-      : `import type { NLocationRuntimeConfig } from 'najm-kit/location/runtime';\n`;
-  const locationType = options.location === 'leaflet'
-    ? `NLeafletLocationRuntimeProviderProps['config']`
-    : options.location === 'google'
-      ? `Exclude<NLocationRuntimeConfig, { provider: 'leaflet' }>`
-      : `Extract<NLocationRuntimeConfig, { provider: 'disabled' }>`;
-  const locationComponent = options.location === 'google'
-    ? `function GoogleLocationProvider({ children, config }: Readonly<{ children: ReactNode; config: Exclude<NLocationRuntimeConfig, { provider: 'leaflet' }> }>) {
-  const adapter = useMemo<NLocationMapAdapter | null>(() => {
-    if (config.provider !== 'google') return null;
-    const options = config.google;
-    const Map = lazy(async () => {
-      const { createGoogleLocationAdapter } = await import('najm-kit/location/google');
-      return { default: createGoogleLocationAdapter(options).Map };
-    });
-    return { id: 'google', Map };
-  }, [config]);
-  return (
-    <NLocationProvider
-      adapter={adapter}
-      defaultCenter={config.defaultCenter}
-      defaultZoom={config.defaultZoom}
-    >
-      {children}
-    </NLocationProvider>
-  );
-}
-
-`
-    : '';
-  const locationProp = options.location === 'leaflet'
-    ? `
-      location={{
-        Provider: NLeafletLocationRuntimeProvider,
-        selectProps: (value) => ({ config: value.settings.locationConfig }),
-      }}`
-    : options.location === 'google'
-      ? `
-      location={{
-        Provider: GoogleLocationProvider,
-        selectProps: (value) => ({ config: value.settings.locationConfig }),
-      }}`
-      : '';
-
   return `'use client';
 
 import type { ReactNode } from 'react';
 import type { ServerSession } from 'najm-auth/client/server';
 import { NajmAppProvider } from 'najm-next/app/client';
 import type { NajmDesignConfig } from 'najm-kit';
+import type { NLocationRuntimeConfig } from 'najm-kit/location/runtime';
 import type { PublicBranding } from 'najm-theme';
-${locationImports}
 import { auth } from '@/lib/auth';
 
 export interface AppUiSnapshot {
@@ -454,14 +405,15 @@ export interface AppUiSnapshot {
   preferences: { language: 'en'; theme: 'light' | 'dark'; timeZone: string };
   appearance: { designConfig: NajmDesignConfig; revision: number };
   branding: PublicBranding;
-  settings: { locationConfig: ${locationType} };
+  settings: { locationConfig?: NLocationRuntimeConfig };
 }
 
-${locationComponent}export function AppProviders({ children, snapshot }: Readonly<{ children: ReactNode; snapshot: AppUiSnapshot }>) {
+export function AppProviders({ children, snapshot }: Readonly<{ children: ReactNode; snapshot: AppUiSnapshot }>) {
   return (
     <NajmAppProvider
       authClient={auth.client}
-      snapshot={snapshot}${locationProp}
+      query={true}
+      snapshot={snapshot}
       appName="${title(options.appId)}"
     >
       {children}
@@ -487,14 +439,11 @@ function proxyTemplate(options: Required<NextIntegrationOptions>): string {
   return `${authImport}
 import { composeNajmProxy } from 'najm-next/security';
 
-import { app, location } from '@/najm.config';
+import { app } from '@/najm.config';
 
 export default composeNajmProxy({
   ${authBinding}
   app,
-  resolveLocationCsp: (env) => location.resolve(env, {
-    isDevelopment: env.NODE_ENV === 'development',
-  }).csp,
 });
 
 // Keep this literal in the application: Next.js statically analyzes it.

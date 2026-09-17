@@ -25,6 +25,7 @@ import {
   type NajmAppDefinition,
   type NajmEnvRecord,
 } from "./app";
+import { defineNajmAppLocationRuntime } from "./location/server";
 
 export type { NajmEnvRecord } from "./app";
 
@@ -91,7 +92,8 @@ export interface NajmProxyOptions {
    * `(env) => location.resolve(env, { isDevelopment }).csp`. Called per
    * request so CSP and layout resolve from the same runtime input.
    */
-  readonly resolveLocationCsp: (env: NajmEnvRecord) => NajmLocationCspContribution;
+  /** @deprecated App-declared location is resolved automatically. */
+  readonly resolveLocationCsp?: (env: NajmEnvRecord) => NajmLocationCspContribution;
   /**
    * Request environment override (tests, fixtures). Defaults to the process
    * environment read lazily per request; never captured at import time.
@@ -289,8 +291,8 @@ export function composeNajmProxy(options: NajmProxyOptions): (request: Request) 
     throw new TypeError("najm-next/security: auth must expose a proxy(request, init?) function");
   }
   assertNajmAppDefinition(app);
-  if (typeof resolveLocationCsp !== "function") {
-    throw new TypeError("najm-next/security: resolveLocationCsp must be a function");
+  if (resolveLocationCsp !== undefined && typeof resolveLocationCsp !== "function") {
+    throw new TypeError("najm-next/security: resolveLocationCsp must be a function when provided");
   }
   if (options.env !== undefined && (typeof options.env !== "object" || options.env === null || Array.isArray(options.env))) {
     throw new TypeError("najm-next/security: env must be an object");
@@ -299,6 +301,7 @@ export function composeNajmProxy(options: NajmProxyOptions): (request: Request) 
     throw new TypeError("najm-next/security: isDevelopment must be a boolean");
   }
 
+  const appLocation = defineNajmAppLocationRuntime(app);
   return async function najmProxy(request: Request): Promise<Response> {
     const env = options.env ?? readDefaultEnv();
     const isDevelopment = options.isDevelopment ?? env.NODE_ENV === "development";
@@ -307,7 +310,10 @@ export function composeNajmProxy(options: NajmProxyOptions): (request: Request) 
       mode: NAJM_CSP_POLICY_MODE,
       isDevelopment,
       app,
-      locationCsp: resolveLocationCsp(env),
+      locationCsp:
+        resolveLocationCsp?.(env) ??
+        appLocation?.resolve(env, { isDevelopment }).csp ??
+        { imgSrc: [], connectSrc: [] },
       overrides: options.overrides,
     });
     const response = await auth.proxy(request, {

@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 2.15.1 - 2026-09-17
+
+- Neutralized the shared location selected/not-selected copy in English,
+  French, Arabic, and Spanish so domain wording stays in feature controls.
+
+## 2.15.0 - 2026-09-15
 
 - Added the unambiguous `NajmKitProvider`, `NajmKitProviderProps`, and
   `NajmKitSnapshot` names. Existing `NajmAppProvider` names remain deprecated

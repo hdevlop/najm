@@ -45,7 +45,7 @@ describe("NLocationInput", () => {
     fireEvent.click(view.getByRole("button", { name: "Choose test point" }));
     fireEvent.click(view.getByRole("button", { name: "Cancel" }));
     await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
-    expect(view.getByText("Delivery location not selected")).toBeDefined();
+    expect(view.getByText("Location not selected")).toBeDefined();
     expect(commits).toHaveLength(0);
 
     fireEvent.click(view.getByRole("button", { name: "Select location on map" }));
@@ -54,7 +54,7 @@ describe("NLocationInput", () => {
     await waitFor(() => expect(view.queryByRole("dialog")).toBeNull());
     expect(commits).toHaveLength(1);
     expect(commits[0]).toEqual({ address: "Tangier test address", latitude: 35.75, longitude: -5.83 });
-    expect(view.getByText("Delivery location selected")).toBeDefined();
+    expect(view.getByText("Location selected")).toBeDefined();
   });
 
   test("preserves coordinates and warns after editing a confirmed address", async () => {
@@ -130,7 +130,7 @@ describe("NLocationInput", () => {
 
     const view = render(<ControlledHarness />);
     fireEvent.click(view.getByRole("button", { name: "Load pin" }));
-    await waitFor(() => expect(view.getByText("Delivery location selected")).toBeDefined());
+    await waitFor(() => expect(view.getByText("Location selected")).toBeDefined());
     await user.clear(view.getByRole("textbox"));
     await user.type(view.getByRole("textbox"), "Edited pinned address");
     expect(view.getByText("Address changed after the pin was selected")).toBeDefined();
