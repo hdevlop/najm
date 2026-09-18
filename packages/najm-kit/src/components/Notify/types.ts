@@ -43,4 +43,15 @@ export interface NNotifyLabels {
 
 export type NNotifyAction = "markRead" | "markAll" | "open" | "viewAll";
 
+/**
+ * What a command callback may return.
+ *
+ * Deliberately not `Promise<void>`: React Query's `mutateAsync` resolves with
+ * the mutation's result, and a `Promise<T>` is not assignable to a
+ * `Promise<void>`. Narrowing it would make every application wrap every
+ * command in an async arrow that throws the value away. The package only ever
+ * awaits these.
+ */
+export type NNotifyCommandResult = void | Promise<unknown>;
+
 export type NNotifyErrorHandler = (error: unknown, action: NNotifyAction) => void;

@@ -1,7 +1,7 @@
 import * as React from "react";
 import { cn } from "../../lib/cn";
 import { NButton } from "../Button";
-import type { NNotifyErrorHandler } from "./types";
+import type { NNotifyCommandResult, NNotifyErrorHandler } from "./types";
 
 export interface NNotifyHeaderProps {
   title: string;
@@ -9,7 +9,7 @@ export interface NNotifyHeaderProps {
   markingAllLabel?: string;
   /** Application-owned pending state; the component also tracks its own. */
   markAllPending?: boolean;
-  onMarkAllRead?: () => void | Promise<void>;
+  onMarkAllRead?: () => NNotifyCommandResult;
   onError?: NNotifyErrorHandler;
   children?: React.ReactNode;
   className?: string;

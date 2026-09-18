@@ -6,6 +6,7 @@ import { NErrorState } from "../feedback/NErrorState";
 import { NLoadingState } from "../feedback/NLoadingState";
 import { NNotifyItem, type NNotifyItemProps } from "./NNotifyItem";
 import type {
+  NNotifyCommandResult,
   NNotifyErrorHandler,
   NNotifyItemData,
   NNotifyLabels,
@@ -13,8 +14,8 @@ import type {
 
 export interface NNotifyRenderItemHelpers {
   pending: boolean;
-  onMarkRead?: (id: string) => void | Promise<void>;
-  onOpenItem?: (item: NNotifyItemData) => void | Promise<void>;
+  onMarkRead?: (id: string) => NNotifyCommandResult;
+  onOpenItem?: (item: NNotifyItemData) => NNotifyCommandResult;
   onError?: NNotifyErrorHandler;
 }
 
@@ -24,10 +25,10 @@ export interface NNotifyListProps {
   loading?: boolean;
   /** `true` uses `labels.errorTitle`; a string replaces it. */
   error?: string | boolean;
-  onRetry?: () => void | Promise<void>;
+  onRetry?: () => NNotifyCommandResult;
   markReadPendingId?: string | null;
-  onMarkRead?: (id: string) => void | Promise<void>;
-  onOpenItem?: (item: NNotifyItemData) => void | Promise<void>;
+  onMarkRead?: (id: string) => NNotifyCommandResult;
+  onOpenItem?: (item: NNotifyItemData) => NNotifyCommandResult;
   onError?: NNotifyErrorHandler;
   /** Escape hatch. The default row covers the common workflow already. */
   renderItem?: (

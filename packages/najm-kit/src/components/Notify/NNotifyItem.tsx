@@ -4,6 +4,7 @@ import { NBadge } from "../Badge";
 import { NButton } from "../Button";
 import { Card, CardContent } from "../ui/card";
 import type {
+  NNotifyCommandResult,
   NNotifyErrorHandler,
   NNotifyItemData,
   NNotifyLabels,
@@ -64,8 +65,8 @@ export interface NNotifyItemProps {
     Partial<Pick<NNotifyLabels, "markingRead" | "unreadState" | "justNow">>;
   /** Application-owned pending state for this row. */
   pending?: boolean;
-  onMarkRead?: (id: string) => void | Promise<void>;
-  onOpenItem?: (item: NNotifyItemData) => void | Promise<void>;
+  onMarkRead?: (id: string) => NNotifyCommandResult;
+  onOpenItem?: (item: NNotifyItemData) => NNotifyCommandResult;
   /** Runs after a successful standalone mark-read. */
   onMarkedRead?: (item: NNotifyItemData) => void;
   onError?: NNotifyErrorHandler;

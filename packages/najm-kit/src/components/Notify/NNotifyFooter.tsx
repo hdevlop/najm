@@ -1,12 +1,12 @@
 import * as React from "react";
 import { cn } from "../../lib/cn";
 import { NButton } from "../Button";
-import type { NNotifyErrorHandler } from "./types";
+import type { NNotifyCommandResult, NNotifyErrorHandler } from "./types";
 import { useNNotifyClose } from "./NNotifyContext";
 
 export interface NNotifyFooterProps {
   label?: string;
-  onViewAll?: () => void | Promise<void>;
+  onViewAll?: () => NNotifyCommandResult;
   /** Render an application link instead of a button. */
   asChild?: boolean;
   children?: React.ReactNode;

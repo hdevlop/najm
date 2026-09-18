@@ -25,7 +25,8 @@ export interface NLanguageMenuProps<T extends string = string> {
   label: string;
   pendingLabel?: string;
   pending?: boolean;
-  onChange: (value: T) => void | Promise<void>;
+  /** Awaited; may resolve with anything (a mutation result, typically). */
+  onChange: (value: T) => void | Promise<unknown>;
   onError?: (error: unknown) => void;
   align?: "start" | "center" | "end";
   className?: string;

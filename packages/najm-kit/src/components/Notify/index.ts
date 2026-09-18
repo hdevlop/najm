@@ -16,6 +16,7 @@ export { NNotifyMenu } from "./NNotifyMenu";
 export type { NNotifyMenuProps } from "./NNotifyMenu";
 export type {
   NNotifyAction,
+  NNotifyCommandResult,
   NNotifyErrorHandler,
   NNotifyItemData,
   NNotifyLabels,

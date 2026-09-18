@@ -6,6 +6,7 @@ import { NNotifyList } from "./NNotifyList";
 import { NNotifyRoot } from "./NNotifyRoot";
 import { NNotifyTrigger, type NNotifyTriggerProps } from "./NNotifyTrigger";
 import type {
+  NNotifyCommandResult,
   NNotifyErrorHandler,
   NNotifyItemData,
   NNotifyLabels,
@@ -22,11 +23,11 @@ export interface NNotifyMenuProps {
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
-  onRetry?: () => void | Promise<void>;
-  onMarkRead?: (id: string) => void | Promise<void>;
-  onMarkAllRead?: () => void | Promise<void>;
-  onOpenItem?: (item: NNotifyItemData) => void | Promise<void>;
-  onViewAll?: () => void | Promise<void>;
+  onRetry?: () => NNotifyCommandResult;
+  onMarkRead?: (id: string) => NNotifyCommandResult;
+  onMarkAllRead?: () => NNotifyCommandResult;
+  onOpenItem?: (item: NNotifyItemData) => NNotifyCommandResult;
+  onViewAll?: () => NNotifyCommandResult;
   onError?: NNotifyErrorHandler;
   /** An application link rendered as the view-all action. */
   viewAllLink?: React.ReactNode;

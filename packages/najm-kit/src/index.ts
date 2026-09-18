@@ -359,6 +359,7 @@ export type {
   NNotifyMenuProps,
   NNotifyRenderItemHelpers,
   NNotifyAction,
+  NNotifyCommandResult,
   NNotifyErrorHandler,
   NNotifyItemData,
   NNotifyLabels,

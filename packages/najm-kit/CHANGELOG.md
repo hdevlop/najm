@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.16.4 - 2026-09-18
+
+- Widened the notification and language command callbacks from `Promise<void>`
+  to `void | Promise<unknown>` (exported as `NNotifyCommandResult`). React
+  Query's `mutateAsync` resolves with the mutation's result, which is not
+  assignable to `Promise<void>`, so 2.16.3 forced every consumer to wrap every
+  command in an async arrow that discarded the value. Existing callbacks stay
+  valid; only the accepted set widens.
+
 ## 2.16.3 - 2026-09-18
 
 - Added the notification menu every Najm dashboard was rebuilding: flat
