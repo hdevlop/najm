@@ -332,3 +332,39 @@ export type { SidebarProps, SidebarItemProps, LinkComponentType,   NavItem,
   NavItemGroup,
   NAppShellClassNames,
   SidebarWidth, SidebarWidths, UserMenuAction, NAppShellUser, NAppShellAction, NAppShellProps, NAppCommandItem, NCommandPaletteProps, NPageLayoutProps, NPageHeaderBreakpoint, NPageHeaderProps, NGridProps, NGridItemProps, NGridCols, NGridSpan } from "./components/layout";
+
+// Notifications — flat compound parts plus one preset. Applications own the
+// data, the queries, the router, the topic registry and the catalogs; the
+// package owns the menu, its states and its focus behavior.
+export {
+  NNotifyRoot,
+  NNotifyTrigger,
+  NNotifyContent,
+  NNotifyHeader,
+  NNotifyList,
+  NNotifyItem,
+  NNotifyFooter,
+  NNotifyMenu,
+  formatNotifyCount,
+  formatNotifyTime,
+} from "./components/Notify";
+export type {
+  NNotifyRootProps,
+  NNotifyTriggerProps,
+  NNotifyContentProps,
+  NNotifyHeaderProps,
+  NNotifyListProps,
+  NNotifyItemProps,
+  NNotifyFooterProps,
+  NNotifyMenuProps,
+  NNotifyRenderItemHelpers,
+  NNotifyAction,
+  NNotifyErrorHandler,
+  NNotifyItemData,
+  NNotifyLabels,
+  NNotifyTone,
+} from "./components/Notify";
+
+// Shared page-header / navbar controls.
+export { NGlobalActions, NLanguageMenu, NThemeToggle, NFullscreenToggle } from "./components/GlobalActions";
+export type { NGlobalActionsProps, NLanguageMenuProps, NLanguageOption, NThemeToggleProps, NFullscreenToggleProps } from "./components/GlobalActions";

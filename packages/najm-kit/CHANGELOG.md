@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.16.3 - 2026-09-18
+
+- Added the notification menu every Najm dashboard was rebuilding: flat
+  `NNotifyRoot`, `NNotifyTrigger`, `NNotifyContent`, `NNotifyHeader`,
+  `NNotifyList`, `NNotifyItem` and `NNotifyFooter`, plus one `NNotifyMenu`
+  preset for the common list-with-read-button workflow. There is no namespace
+  object; the parts are ordinary named exports.
+- Added the shared page-header controls: `NGlobalActions`, `NLanguageMenu`,
+  `NThemeToggle` and `NFullscreenToggle`.
+- Applications keep what is theirs. The package takes normalized
+  `NNotifyItemData`, translated `NNotifyLabels` and callbacks; it never imports
+  a router, a query client, an API client or a topic registry, and it emits no
+  product copy for a failure.
+- Every command prop is awaited, tracks its own pending state, accepts an
+  application-owned pending flag and refuses a repeated click. A rejected
+  command reports through `onError(error, action)` and never fakes completion:
+  a failed mark-read does not navigate and does not close the menu.
+- `NNotifyContent` renders nothing while the menu is closed, so a connected
+  child can own the preview query and refetch on every open.
+- Badge counts hide at zero, localize 1-99 and cap at `99+`; digits follow the
+  `locale` prop or the document language, and `formatCount` replaces the rule.
+  `formatNotifyCount` and `formatNotifyTime` are exported for consumers that
+  need the same rule outside the menu.
+- New runtime dependency: `screenfull@^6.0.2`, for `NFullscreenToggle`. It is
+  SSR-safe, and the control disables itself where the API is unavailable
+  instead of doing nothing.
+
 ## 2.16.0 - 2026-09-18
 
 - `<NBadge status="…" />` now ships the whole status presentation. The packaged

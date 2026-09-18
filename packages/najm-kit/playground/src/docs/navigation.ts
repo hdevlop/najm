@@ -109,6 +109,7 @@ export const navGroups: NavGroup[] = [
       { slug: 'app-shell', label: 'App Shell' },
       { slug: 'sidebar', label: 'Sidebar' },
       { slug: 'page-header', label: 'Page Header' },
+      { slug: 'global-actions', label: 'Global Actions', badge: 'New' },
       { slug: 'grid', label: 'Grid', badge: 'New' },
     ],
   },

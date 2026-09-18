@@ -210,6 +210,7 @@
     "react-day-picker": "^9",
     "react-file-icon": "^1.6.0",
     "react-international-phone": "^4.8.0",
+    "screenfull": "^6.0.2",
     "sonner": "^2",
     "tailwind-merge": "^3",
     "tw-animate-css": "^1",

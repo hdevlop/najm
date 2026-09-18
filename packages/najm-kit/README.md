@@ -1349,3 +1349,170 @@ a complete finite pair in range or both `null`. Search is absent unless an
 explicit `NLocationGeocoderAdapter` is supplied. The Google subpath exports
 `createGoogleLocationAdapter` and `createGooglePlacesGeocoder`; its browser key
 must be restricted by exact origins and enabled APIs.
+
+
+## Header actions and notifications
+
+Every Najm dashboard grows the same four controls in its page header: a bell
+with an unread badge and a short preview list, a language menu, a theme toggle,
+and a fullscreen toggle. The package owns all of their presentation and
+interaction. Applications keep what is actually theirs — the API client, the
+query keys and polling, the router, the notification topics, the translation
+catalogs, and what a language change must also persist.
+
+```tsx
+import {
+  NGlobalActions,
+  NLanguageMenu,
+  NThemeToggle,
+  NFullscreenToggle,
+  NNotifyMenu,
+} from "najm-kit";
+
+<NGlobalActions>
+  <NNotifyMenu {...notifications} />
+  <NLanguageMenu
+    label={t("language.label")}
+    onChange={changeLanguage}
+    options={languages}
+    value={language}
+  />
+  <NThemeToggle label={t("theme.toggle")} onError={showError} />
+  <NFullscreenToggle label={t("fullscreen.toggle")} />
+</NGlobalActions>
+```
+
+`NGlobalActions` is the group container. It works inside `NPageHeaderActions`,
+the legacy `actions` prop, and a navbar slot, and it fetches, translates,
+authorizes and persists nothing.
+
+### The simple preset: `NNotifyMenu`
+
+`NNotifyMenu` renders the whole list-with-read-button workflow from normalized
+data, labels and callbacks. Use it when the preview data is already available.
+
+```tsx
+<NNotifyMenu
+  items={items}
+  labels={labels}
+  loading={list.isPending}
+  error={list.isError}
+  markAllPending={markAll.isPending}
+  markReadPendingId={markRead.isPending ? markRead.variables : null}
+  onError={reportCommandFailure}
+  onMarkAllRead={() => markAll.mutateAsync()}
+  onMarkRead={(id) => markRead.mutateAsync(id)}
+  onOpenItem={(item) => router.push(item.href ?? "/notifications")}
+  onRetry={() => list.refetch()}
+  unreadCount={unreadCount}
+  viewAllLink={<Link href="/notifications">{labels.viewAll}</Link>}
+/>
+```
+
+### The normalized row
+
+```ts
+interface NNotifyItemData {
+  id: string;
+  title: string;
+  body?: string;
+  href?: string;
+  read: boolean;
+  createdAt?: string | Date;
+  icon?: ComponentType<{ className?: string }> | ReactNode;
+  tone?: "default" | "success" | "warning" | "destructive";
+}
+```
+
+There is no `topic`, payload, aggregate, recipient or response shape in it, and
+`href` is data: the package never imports a router. It hands the item back
+through `onOpenItem` and the application decides what navigation means. An
+application whose records are already titled maps them directly:
+
+```ts
+const items = rows.map((row) => ({
+  id: row.id,
+  title: row.title,
+  body: row.body,
+  href: row.href ?? undefined,
+  read: row.readAt !== null,
+  createdAt: row.createdAt,
+}));
+```
+
+An application whose records carry a topic keeps its registry — the safe copy
+for an unknown topic, the icon, the tone and the internal route are product
+decisions, not package ones:
+
+```ts
+const items = rows.map((row) => {
+  const view = buildNotificationViewModel(row.topic, locale, fallback);
+  return {
+    id: row.id,
+    title: view.title,
+    body: view.body,
+    href: `${view.href}?focus=${row.id}`,
+    read: row.readAt !== null,
+    createdAt: row.createdAt,
+    icon: view.icon,
+    tone: view.token,
+  };
+});
+```
+
+### The compound form, for lazily loaded previews
+
+The parts are exported flat — there is no `NNotifications.Root` namespace. Use
+them when the preview query must only run while the menu is open, because
+`NNotifyContent` does not render its children while the menu is closed:
+
+```tsx
+<NNotifyRoot onOpenChange={setOpen} open={open}>
+  <NNotifyTrigger
+    label={labels.open}
+    unreadCount={unreadCount}
+    unreadLabel={labels.unread}
+  />
+  <NNotifyContent>
+    <ConnectedNotificationPreview />
+  </NNotifyContent>
+</NNotifyRoot>
+```
+
+`ConnectedNotificationPreview` is an application component and may call
+application hooks; it composes `NNotifyHeader`, `NNotifyList` and
+`NNotifyFooter` around its own query. Najm Kit calls none of those hooks.
+
+### Commands, pending and failure
+
+Every command prop is awaited. `NNotifyHeader`, `NNotifyItem` and
+`NNotifyFooter` track their own pending state, refuse a repeated click while one
+is in flight, and accept an application-owned pending flag as well
+(`markAllPending`, `markReadPendingId`). A rejected command reports through
+`onError(error, action)` and — this is the point — never fakes completion: a
+failed mark-read does not navigate, does not close the menu, and leaves the row
+enabled again. The package emits no product copy for the failure; the
+application already has a place to show one.
+
+### Labels and counts
+
+`NNotifyLabels` carries every visible string, including `unread(count)` for the
+screen-reader announcement. The badge hides at zero, shows a localized number
+for 1-99 and `99+` above that. Digits follow `locale`, or the document language
+when it is omitted; `formatCount` replaces the rule entirely.
+
+### `NLanguageMenu`, `NThemeToggle`, `NFullscreenToggle`
+
+`NLanguageMenu` owns the dropdown, the selected state and the pending state, and
+awaits the application's `onChange`. It never calls `useTranslation` or a
+language endpoint itself, so an application keeps its own transaction — persist
+the user preference, change the package language, refresh the session,
+invalidate queries, synchronize an external notification locale. Flags are
+optional injected nodes (`icon`, `iconLabel`); the package does not depend on
+`flag-icons`.
+
+`NThemeToggle` reads `theme` and `setTheme` from `useNajmTheme`, awaits
+persistence, and always releases its pending state. `NFullscreenToggle` owns
+capability detection through `screenfull`, is safe to render during SSR and
+hydration, disables itself where the API is missing, and stays hidden below `sm`
+unless `hiddenBelow` says otherwise.
