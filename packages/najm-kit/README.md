@@ -739,6 +739,51 @@ const list = useResponsiveOffsetList({
 />
 ```
 
+Shared entity reads and commands use the same client entry. Commands await all
+declared cache invalidations before running the consumer success callback.
+
+```tsx
+import { useEntityCommand, useEntityQuery } from 'najm-kit/query';
+import { createEntityKeys } from 'najm-kit/query/keys';
+
+const familyKeys = createEntityKeys('families');
+
+const families = useEntityQuery({
+  queryKey: familyKeys.list({ status: 'active' }),
+  queryFn: api.families.list,
+});
+
+const updateFamily = useEntityCommand({
+  mutationFn: api.families.update,
+  invalidate: [familyKeys.all],
+  successMessage: 'Family updated.',
+});
+```
+
+`errorMessage` takes a string or a resolver. A string is only the fallback when
+the failure carries no message of its own; a resolver is the application
+deciding what the failure means, so its answer is what the toast shows. Pass
+`getErrorMessage` to replace the normalization applied to unresolved errors.
+
+`najm-kit/query/keys` is server-safe and has no React or browser runtime. Keep
+feature-specific key relationships in the application. Applications using the
+older endpoint-map pattern can migrate without copying its implementation:
+
+```tsx
+import { useEntityCRUD } from 'najm-kit/query/crud';
+
+const crud = useEntityCRUD(['students', 'parents'], {
+  getAll: api.students.list,
+  getById: api.students.get,
+  create: api.students.create,
+  update: api.students.update,
+  delete: api.students.remove,
+});
+```
+
+The CRUD compatibility entry also requires the optional `najm-i18n` peer and
+uses the application's active catalog for its established success fallbacks.
+
 ## Hooks
 
 ```tsx

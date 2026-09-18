@@ -1,0 +1,1 @@
+export { useEntityCRUD } from "./useEntityCRUD";

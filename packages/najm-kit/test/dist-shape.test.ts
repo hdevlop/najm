@@ -24,6 +24,7 @@ const ENTRIES = ["index.mjs", "adapters/next.mjs", "adapters/app.mjs"];
 const SERVER_SAFE_ENTRIES = [
   "format.mjs",
   "pagination.mjs",
+  "queryKeys.mjs",
   "server/index.mjs",
   "server/react.mjs",
 ];
@@ -178,6 +179,17 @@ describeBuilt("dist shape", () => {
         expect(graph, `${entry} reaches ${token}`).not.toContain(token);
       }
     }
+  });
+
+  test("query hooks are client entries while query keys stay server-safe", () => {
+    for (const entry of ["query.mjs", "queryCrud.mjs"]) {
+      const source = readFileSync(join(DIST, entry), "utf8");
+      expect(source.startsWith("'use client'"), `${entry} is not client-marked`).toBe(true);
+    }
+
+    const keys = readFileSync(join(DIST, "queryKeys.mjs"), "utf8");
+    expect(keys.startsWith("'use client'")).toBe(false);
+    expect(collectGraph("queryKeys.mjs")).not.toContain("@tanstack/react-query");
   });
 });
 

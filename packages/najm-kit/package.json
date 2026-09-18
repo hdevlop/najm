@@ -50,6 +50,16 @@
       "import": "./dist/query.mjs",
       "default": "./dist/query.mjs"
     },
+    "./query/keys": {
+      "types": "./dist/queryKeys.d.ts",
+      "import": "./dist/queryKeys.mjs",
+      "default": "./dist/queryKeys.mjs"
+    },
+    "./query/crud": {
+      "types": "./dist/queryCrud.d.ts",
+      "import": "./dist/queryCrud.mjs",
+      "default": "./dist/queryCrud.mjs"
+    },
     "./format": {
       "types": "./dist/format.d.ts",
       "import": "./dist/format.mjs",

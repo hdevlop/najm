@@ -13,6 +13,16 @@ export {
 export type { UseOffsetInfiniteQueryOptions } from "./useOffsetInfiniteQuery";
 export { useResponsiveOffsetList } from "./useResponsiveOffsetList";
 export type { UseResponsiveOffsetListOptions } from "./useResponsiveOffsetList";
+export { useEntityQuery } from "./useEntityQuery";
+export type { EntityQueryOptions } from "./useEntityQuery";
+export {
+  getEntityCommandErrorMessage,
+  useEntityCommand,
+} from "./useEntityCommand";
+export type {
+  EntityCommandErrorResolver,
+  EntityCommandOptions,
+} from "./useEntityCommand";
 
 // Re-exported so a list file has one import rather than three.
 export {

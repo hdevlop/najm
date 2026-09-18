@@ -8,6 +8,8 @@ export default defineConfig({
     'adapters/app': 'src/adapters/app.tsx',
     json: 'src/json/index.ts',
     query: 'src/query/index.ts',
+    queryKeys: 'src/query/keys.ts',
+    queryCrud: 'src/query/crud.ts',
     // Server-safe leaf entries. The root barrel is one module that reaches the
     // whole component library, so importing it from a server component or a
     // route handler resolves react-hook-form under the `react-server`
@@ -97,7 +99,7 @@ export default defineConfig({
   // -context bug that `splitting: true` above exists to prevent.
   async onSuccess() {
     const { readFile, writeFile } = await import('node:fs/promises');
-    for (const relativeTarget of ['adapters/app.mjs', 'location/index.mjs', 'location/runtime.mjs', 'location/runtimeLeaflet.mjs', 'location/leaflet.mjs', 'location/google.mjs']) {
+    for (const relativeTarget of ['adapters/app.mjs', 'query.mjs', 'queryCrud.mjs', 'location/index.mjs', 'location/runtime.mjs', 'location/runtimeLeaflet.mjs', 'location/leaflet.mjs', 'location/google.mjs']) {
       const target = resolve(__dirname, 'dist', relativeTarget);
       const source = await readFile(target, 'utf8');
       if (!source.startsWith(`'use client'`)) {
