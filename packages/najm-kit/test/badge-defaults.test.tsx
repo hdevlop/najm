@@ -45,11 +45,21 @@ const badge = (container: HTMLElement) =>
   container.querySelector("[data-slot=badge]")!;
 
 describe("NBadge without a provider", () => {
-  test("behaves exactly as before", () => {
+  test("colors and labels a packaged status from the package alone", () => {
     const { container } = render(<NBadge status="out-for-delivery" look="soft" />);
 
-    expect(container.textContent).toContain("Out For Delivery");
+    // No provider, no catalog, no i18n: the packaged English is what a
+    // standalone badge is for.
+    expect(container.textContent).toContain("Out for delivery");
     expect(badge(container).className).toContain("bg-warning/10");
+  });
+
+  test("a status badge is soft and pill-shaped by default", () => {
+    const { container } = render(<NBadge status="paid" />);
+
+    const className = badge(container).className;
+    expect(className).toContain("bg-success/10");
+    expect(className).toContain("rounded-full");
   });
 
   test("a content badge keeps its own defaults", () => {
@@ -153,7 +163,7 @@ describe("NBadge provider labels", () => {
     expect(container.textContent).toContain("Currently active");
   });
 
-  test("a mapped key with no translator falls through to the humanized token", () => {
+  test("a mapped key with no translator falls through to the packaged label", () => {
     const { container } = render(
       <NajmUIProvider badgeDefaults={{ statusLabelKeys: LABEL_KEYS }}>
         <NBadge status="out_for_delivery" />
@@ -161,8 +171,17 @@ describe("NBadge provider labels", () => {
     );
 
     // Rendering the raw catalog key would put debug text in the interface.
-    expect(container.textContent).toContain("Out For Delivery");
+    expect(container.textContent).toContain("Out for delivery");
     expect(container.textContent).not.toContain("status.outForDelivery");
+  });
+
+  test("an unresolved catalog key falls through rather than rendering itself", () => {
+    const { container } = mount(<NBadge status="delivered" />, {
+      statusLabelKeys: { delivered: "status.missingEntirely" },
+    });
+
+    expect(container.textContent).not.toContain("status.missingEntirely");
+    expect(container.textContent).toContain("Delivered");
   });
 });
 

@@ -212,6 +212,12 @@ export default {
       updateStatus: 'Update this order status?',
     },
   },
+  status: {
+    // Only the wording this app disagrees with. Every other status below is
+    // labelled by the package, with no entry here and no token-to-key map.
+    in_preparation: 'Purchasing and preparation',
+    delivered: 'Handed to the customer',
+  },
   validation: {
     required: '{{field}} is required',
     invalidEmail: 'Invalid email format',

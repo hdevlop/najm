@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.16.0 - 2026-09-18
+
+- `<NBadge status="…" />` now ships the whole status presentation. The packaged
+  vocabulary gains the lifecycle, payment and attendance tokens both Najm
+  applications were mapping themselves — `present`, `absent`, `late`, `partial`,
+  `partially_paid`, `pending_funding`, `overdue`, `unpaid`, `ended`, `error`,
+  `info`, `warning` and `success` — and every packaged status now has an
+  English, French, Arabic and Spanish label.
+- Added a conventional catalog lookup: a `status.<token>` entry in the
+  application’s catalog wins over the packaged label, so an application whose
+  catalog already follows that shape needs no token-to-key map at all. The
+  prefix is configurable through `badgeDefaults.statusKeyPrefix`, and `""`
+  switches the convention off.
+- `NajmKitProvider` now supplies the active language to badges alongside `t`,
+  so a language switch relabels them without a remount. `NajmUIProvider` takes
+  the same value as a `language` prop for applications that mount it directly.
+- A catalog key that resolves to nothing now falls through to the packaged
+  label instead of rendering the key itself.
+- Added `formatStatusLabel`, `findStatusLabel`, `findPackagedStatusLabel`,
+  `resolveStatusLabelLanguage` and `NAJM_STATUS_LABELS` to the server-safe
+  `najm-kit/format` entry, so plain text and badges resolve identically.
+- **Behavior change:** soft and pill are now the defaults for a *status* badge.
+  Content badges such as `<NBadge>Beta</NBadge>` are unaffected, and an explicit
+  or provider `look`/`shape` still wins. An application that wants the previous
+  appearance sets `badgeDefaults={{ look: 'solid', shape: 'default' }}`.
+
 ## 2.15.3 - 2026-09-17
 
 - `NajmKitProvider` now consumes optional `snapshot.app` display defaults.

@@ -255,48 +255,79 @@ should use `NajmAppProvider` from `najm-next/app/client` instead.
 
 ## Status badges
 
-`<NBadge status="…" />` already maps a broad lifecycle vocabulary onto the
-semantic colors, so it is correct without configuration:
+`<NBadge status="…" />` ships the whole thing: the lifecycle, review,
+fulfilment, payment and attendance vocabulary mapped onto the semantic colors,
+labels for it in English, French, Arabic and Spanish, and the soft pill shape a
+status wears. No configuration, no provider, no catalog:
 
 ```tsx
 import { NBadge } from 'najm-kit';
 
-<NBadge status="out_for_delivery" />   // warning, "Out For Delivery"
+<NBadge status="out_for_delivery" />   // warning, soft pill, "Out for delivery"
+<NBadge status="overdue" />            // destructive
 <NBadge status="nebulous" />           // neutral, "Nebulous"
 ```
 
-What an application usually adds on top is the same three things at every call
-site: its look, its shape, and its own translated label. Declare them once:
+Soft and pill are the defaults for a *status* badge only. A content badge —
+`<NBadge>Beta</NBadge>` — keeps the solid look it has always had.
+
+### The application's own wording
+
+An application whose catalog is keyed by the convention needs no map at all.
+`status.<token>` is looked up through the provider's `t`, and a hit wins over
+the packaged label:
+
+```json
+{ "status": { "in_preparation": "Purchasing and preparation" } }
+```
+
+`NajmKitProvider` and `NajmAppProvider` supply both the translator and the
+active language, so switching language relabels every badge below without a
+remount. Mounting `NajmUIProvider` directly, pass `t` and `language` yourself.
+
+Anything the convention does not cover goes on `badgeDefaults`, which lives on
+`NajmUIProvider` and is inherited by `NajmNextUIProvider` and
+`NajmAppProvider`:
 
 ```tsx
 <NajmAppProvider
   badgeDefaults={{
-    look: 'soft',
-    shape: 'pill',
-    statusLabelKeys: {
-      active: 'status.active',
-      out_for_delivery: 'status.outForDelivery',
-    },
+    // Only what differs. A catalog keyed camelCase against snake_case tokens,
+    // a status this package has never heard of, a different look.
+    statusMap: { on_leave: 'info' },
+    statusLabelKeys: { on_leave: 'status.onLeave' },
+    statusKeyPrefix: 'status', // '' switches the convention off
   }}
 >
 ```
 
-`badgeDefaults` lives on `NajmUIProvider` and is inherited by
-`NajmNextUIProvider` and `NajmAppProvider`, so there is one place to set it.
-The keys are the application's catalog keys, resolved through the same `t` the
-provider already has — this package ships no status catalog. A language change
-recomputes every label without a remount.
+### The same labels as plain text
 
-Resolution, most specific first:
+`formatStatusLabel` resolves the identical text without a badge, from the
+server-safe `najm-kit/format` leaf — for a sentence, an export, or an email:
 
-1. An explicit prop beats every provider default.
-2. `label` beats string children; string children beat the provider's label.
-3. A `statusLabels` literal beats a `statusLabelKeys` catalog lookup.
-4. An unmapped status is humanized (`pending_review` → `Pending Review`).
-5. A per-instance `statusMap`/`iconMap` merges over the provider's, so
-   overriding one status costs one status.
-6. Provider status defaults apply **only** when `status` is set —
-   `<NBadge>Beta</NBadge>` keeps the ordinary content-badge look.
+```ts
+import { formatStatusLabel } from 'najm-kit/format';
+
+formatStatusLabel('out_for_delivery', { language: 'fr' }); // "En cours de livraison"
+formatStatusLabel('in_preparation', { language: 'fr', t }); // the catalog's wording
+```
+
+### Resolution, most specific first
+
+1. An explicit prop beats every provider default, which beats the packaged one.
+2. `label` beats string children; string children beat any resolved label.
+3. A `statusLabels` literal beats a `statusLabelKeys` catalog lookup, which
+   beats the conventional `status.<token>` lookup, which beats the packaged
+   label for the active language.
+4. A key the catalog does not hold never renders as itself — it falls through.
+5. An unmapped status is humanized (`bespoke_state` → `Bespoke State`).
+6. A per-instance `statusMap`/`iconMap` merges over the provider's, which
+   merges over the packaged one, so overriding one status costs one status.
+7. Provider and packaged status defaults apply **only** when `status` is set.
+
+A regional tag resolves to its base language (`fr-MA` → `fr`), and an
+unpackaged language falls back to English rather than to the raw token.
 
 Statuses are matched through one rule, exported as `normalizeStatusToken`, so
 `Out-For-Delivery `, `out for delivery`, and `out_for_delivery` are the same

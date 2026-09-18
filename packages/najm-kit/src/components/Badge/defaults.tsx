@@ -2,7 +2,7 @@ import * as React from "react";
 
 import type { NajmTranslate } from "../../providers/paginationLabels";
 import type { BadgeColor, BadgeIcon, BadgeShape, BadgeSize, NBadgeLook } from "./Badge";
-import { normalizeStatusToken } from "./status";
+import { findStatusLabel } from "./statusLabels";
 
 /**
  * Application-wide presentation policy for `<NBadge status="…" />`.
@@ -12,9 +12,11 @@ import { normalizeStatusToken } from "./status";
  * look, the same shape, and the same translation lookup. Declared once on the
  * provider, none of that reaches a call site.
  *
- * What stays in the application: the vocabulary and the catalog. `statusMap`
- * and `statusLabelKeys` take *its* status tokens and *its* catalog keys — this
- * package ships neither.
+ * What stays in the application: what it does *differently*. The packaged
+ * vocabulary, its four-language labels, and the conventional `status.<token>`
+ * catalog lookup already cover the common statuses, so `statusMap` and
+ * `statusLabelKeys` are for the tokens and keys that are genuinely this
+ * application’s own.
  */
 export interface NBadgeDefaults {
   look?: NBadgeLook;
@@ -29,6 +31,13 @@ export interface NBadgeDefaults {
   statusLabels?: Record<string, string>;
   /** Status token to catalog key, resolved through the provider's `t`. */
   statusLabelKeys?: Record<string, string>;
+  /**
+   * Catalog prefix for the conventional lookup. Defaults to `"status"`.
+   *
+   * Set it to `""` to switch the convention off entirely, for an application
+   * whose catalog happens to hold an unrelated `status.*` branch.
+   */
+  statusKeyPrefix?: string;
 }
 
 export interface NBadgeDefaultsContextValue {
@@ -41,6 +50,14 @@ export interface NBadgeDefaultsContextValue {
    * and every badge below recomputes its label without remounting.
    */
   t?: NajmTranslate;
+  /**
+   * Active language, for the packaged labels.
+   *
+   * Supplied by `NajmKitProvider` from the mounted i18n provider; an
+   * application mounting `NajmUIProvider` itself passes it beside `t`. Omitted,
+   * the packaged labels resolve to English.
+   */
+  language?: string;
 }
 
 const NBadgeDefaultsContext =
@@ -59,11 +76,12 @@ export interface NBadgeDefaultsProviderProps extends NBadgeDefaultsContextValue 
 export function NBadgeDefaultsProvider({
   defaults,
   t,
+  language,
   children,
 }: NBadgeDefaultsProviderProps) {
   const value = React.useMemo<NBadgeDefaultsContextValue>(
-    () => ({ defaults, t }),
-    [defaults, t],
+    () => ({ defaults, t, language }),
+    [defaults, t, language],
   );
 
   return (
@@ -79,29 +97,30 @@ export function useNBadgeDefaults(): NBadgeDefaultsContextValue | null {
 }
 
 /**
- * The provider's label for a status, or `undefined` when it claims none.
+ * The label for a status: the application's, then the packaged one.
  *
  * A finished string in `statusLabels` wins over a catalog key: it is the more
  * specific answer, and an application supplying both for one status means the
- * literal. A key with no translator available resolves to nothing rather than
- * rendering the key itself — the caller falls through to humanizing the token,
- * which is wrong-looking text instead of debug text.
+ * literal. Behind those, the conventional `status.<token>` catalog entry, then
+ * the packaged label for the active language.
+ *
+ * Returns `undefined` only when nothing claims the token at all, so the caller
+ * humanizes it. A catalog key that resolves to nothing never renders as itself
+ * — debug text in an interface is worse than an English default.
  */
 export function resolveBadgeStatusLabel(
   status: string,
   defaults: NBadgeDefaults | undefined,
   t: NajmTranslate | undefined,
+  language?: string,
 ): string | undefined {
-  if (!defaults) return undefined;
-  const normalized = normalizeStatusToken(status);
-
-  const literal =
-    defaults.statusLabels?.[status] ?? defaults.statusLabels?.[normalized];
-  if (literal !== undefined) return literal;
-
-  const key =
-    defaults.statusLabelKeys?.[status] ?? defaults.statusLabelKeys?.[normalized];
-  return key !== undefined && t ? t(key) : undefined;
+  return findStatusLabel(status, {
+    language,
+    labels: defaults?.statusLabels,
+    labelKeys: defaults?.statusLabelKeys,
+    keyPrefix: defaults?.statusKeyPrefix,
+    t,
+  });
 }
 
 /**

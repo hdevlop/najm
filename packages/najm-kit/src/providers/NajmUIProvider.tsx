@@ -84,6 +84,15 @@ export interface NajmUIProviderProps
    * rebuilding them re-renders every table beneath.
    */
   t?: NajmTranslate;
+  /**
+   * The active language, for the packaged status-badge labels.
+   *
+   * Separate from `t` because those labels are the package's own, not the
+   * application's catalog: `t` answers what the application calls a status,
+   * this answers which language to fall back to when it calls it nothing.
+   * `NajmKitProvider` supplies both from the i18n provider it mounts.
+   */
+  language?: string;
   /** Catalog prefix for the labels. Defaults to `"common.pagination"`. */
   paginationKeyPrefix?: string;
   /**
@@ -136,6 +145,7 @@ type UICoreProps = Pick<
   | "children"
   | "className"
   | "t"
+  | "language"
   | "paginationKeyPrefix"
   | "toolbarKeyPrefix"
   | "dir"
@@ -156,6 +166,7 @@ function NajmUICore({
   children,
   className,
   t,
+  language,
   paginationKeyPrefix = DEFAULT_PAGINATION_KEY_PREFIX,
   toolbarKeyPrefix = DEFAULT_TOOLBAR_KEY_PREFIX,
   dir,
@@ -210,7 +221,11 @@ function NajmUICore({
               application can supply `statusLabelKeys` later, and a language
               change has to recompute labels through the same `t` the tables
               already use. */}
-          <NBadgeDefaultsProvider defaults={badgeDefaults} t={t}>
+          <NBadgeDefaultsProvider
+            defaults={badgeDefaults}
+            t={t}
+            language={language}
+          >
             <NFeedbackDefaultsProvider value={feedbackValue}>
               {children}
             </NFeedbackDefaultsProvider>
@@ -246,6 +261,7 @@ export function NajmUIProvider({
   initialDesign,
   className,
   t,
+  language,
   paginationKeyPrefix,
   toolbarKeyPrefix,
   dir,
@@ -265,6 +281,7 @@ export function NajmUIProvider({
       <NajmUICore
         className={className}
         t={t}
+        language={language}
         paginationKeyPrefix={paginationKeyPrefix}
         toolbarKeyPrefix={toolbarKeyPrefix}
         dir={dir}

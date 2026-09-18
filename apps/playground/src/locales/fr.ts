@@ -197,6 +197,10 @@ export default {
       updateStatus: 'Mettre à jour le statut de cette commande ?',
     },
   },
+  status: {
+    in_preparation: 'Achat et préparation',
+    delivered: 'Remise au client',
+  },
   validation: {
     required: '{{field}} est requis',
     invalidEmail: 'Format d\'email invalide',

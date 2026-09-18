@@ -62,7 +62,7 @@ describe("Badge", () => {
   test("colors a status from the built-in vocabulary without a statusMap", () => {
     const { container } = render(<NBadge status="out-for-delivery" look="soft" />);
 
-    expect(container.textContent).toContain("Out For Delivery");
+    expect(container.textContent).toContain("Out for delivery");
     expect(container.querySelector("[data-slot=badge]")?.className).toContain("bg-warning/10");
   });
 

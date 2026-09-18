@@ -160,8 +160,12 @@ function Badge({
   // and pill-shaped is not asking for that everywhere.
   const statusDefaults = status ? ambient?.defaults : undefined;
 
-  const effectiveLook = look ?? statusDefaults?.look;
-  const effectiveShape = shape ?? statusDefaults?.shape;
+  // Soft and pill are the packaged look of a *status*, which is a label on a
+  // row rather than a control: it has to sit in a table cell without competing
+  // with the data beside it, and the pill is what says "state", not "button".
+  // A content badge keeps the solid primary it has always had.
+  const effectiveLook = look ?? statusDefaults?.look ?? (status ? "soft" : undefined);
+  const effectiveShape = shape ?? statusDefaults?.shape ?? (status ? "pill" : undefined);
   const effectiveSize = size ?? statusDefaults?.size;
   const effectiveShowIcon = showIcon ?? statusDefaults?.showIcon;
   const effectiveStatusMap = mergeBadgeMaps(statusDefaults?.statusMap, statusMap);
@@ -185,8 +189,12 @@ function Badge({
     label ??
     (typeof children === "string" ? children : undefined) ??
     (status
-      ? resolveBadgeStatusLabel(status, statusDefaults, ambient?.t) ??
-        humanizeToken(status)
+      ? resolveBadgeStatusLabel(
+          status,
+          statusDefaults,
+          ambient?.t,
+          ambient?.language,
+        ) ?? humanizeToken(status)
       : undefined);
   const content = typeof children !== "string" && children ? children : resolvedLabel ?? children;
   const resolvedIcon = icon ?? (resolvedColor ? effectiveIconMap?.[resolvedColor] : undefined);

@@ -21,3 +21,19 @@ export {
   slugify,
 } from "./format";
 export type { NajmFormatConfig, SlugifyOptions } from "./format";
+/**
+ * Status labels live beside the badge vocabulary they belong to, and are
+ * re-exported here because the text form is needed off the client too — a
+ * server component naming a status in a sentence, an export, an email. Pure
+ * data and pure functions, so the `react-server` constraint above holds.
+ */
+export {
+  DEFAULT_STATUS_KEY_PREFIX,
+  DEFAULT_STATUS_LABEL_LANGUAGE,
+  NAJM_STATUS_LABELS,
+  findPackagedStatusLabel,
+  findStatusLabel,
+  formatStatusLabel,
+  resolveStatusLabelLanguage,
+} from "../components/Badge/statusLabels";
+export type { NajmStatusLabelOptions } from "../components/Badge/statusLabels";

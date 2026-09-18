@@ -90,7 +90,10 @@ export interface NajmKitSnapshot {
 }
 
 export interface NajmKitProviderProps
-  extends Omit<NajmNextUIProviderProps, 't'> {
+  // `language` is derived here, not declared: this provider mounts the i18n
+  // provider itself, so the active language is already known below it and a
+  // second, static copy of it would only ever be wrong after a switch.
+  extends Omit<NajmNextUIProviderProps, 't' | 'language'> {
   /**
    * Standard public server snapshot. It seeds language, theme, time zone,
    * design, and branding without requiring applications to unpack each field.
@@ -251,7 +254,7 @@ function NajmAppUI({
   const resolved = locale ?? locales?.[language] ?? language;
 
   return (
-    <NajmNextUIProvider t={t} {...props}>
+    <NajmNextUIProvider t={t} language={language} {...props}>
       <NBrandingStateProvider
         branding={branding}
         initialBranding={initialBranding}
@@ -279,7 +282,9 @@ function NajmAppNoI18n({
   ...props
 }: InnerProps) {
   return (
-    <NajmNextUIProvider {...props}>
+    // No catalog, so no `t` — but the packaged status labels still have a
+    // language to answer in, and an application that declared a locale meant it.
+    <NajmNextUIProvider language={locale} {...props}>
       <NBrandingStateProvider
         branding={branding}
         initialBranding={initialBranding}
