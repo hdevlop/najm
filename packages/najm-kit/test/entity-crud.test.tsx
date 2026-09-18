@@ -57,6 +57,11 @@ describe("entity CRUD compatibility", () => {
       expect(hook.result.current.list.data).toEqual([{ id: "widget-1" }]),
     );
 
+    // Compiles only while the bridge stays as permissive as the untyped hook
+    // it replaces — an established consumer annotates nothing at the call site.
+    const rows: { id: string }[] = hook.result.current.list.data;
+    expect(rows[0]!.id).toBe("widget-1");
+
     await act(async () => {
       await hook.result.current.create.mutateAsync({ name: "Second" });
     });

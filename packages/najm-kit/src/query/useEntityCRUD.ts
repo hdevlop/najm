@@ -6,7 +6,10 @@ import type { QueryKey } from "@tanstack/react-query";
 import { useEntityCommand } from "./useEntityCommand";
 import { useEntityQuery } from "./useEntityQuery";
 
-interface ApiResponse<T = unknown> {
+// `any`, deliberately: this bridge reproduces the untyped endpoint-map hook it
+// replaces, so an established consumer keeps compiling. New feature code uses
+// `useEntityQuery` and `useEntityCommand`, which carry the full TanStack types.
+interface ApiResponse<T = any> {
   data?: T;
   message?: string;
   success?: boolean;
