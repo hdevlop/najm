@@ -48,10 +48,12 @@ const nativeFieldTypes = new Set(["text", "number", "password", "textarea", "tim
 // Composite inputs render their trigger as a `BaseInput` div, so the `<label for>`
 // that FormControl wires up points at a non-labelable element and names nothing —
 // the control reaches the accessibility tree anonymous. These types carry no other
-// name source, so the form label becomes their `aria-label`. `select` is absent on
+// name source, so the form label becomes their `aria-label`. `phone` belongs here
+// too: its inner element is a real `<input>`, but the `<label for>` still targets the
+// `BaseInput` wrapper, so the placeholder was its only name. `select` is absent on
 // purpose: SelectInput already resolves `ariaLabel || placeholder`, and renaming it
 // from the label would break every consumer selecting it by placeholder today.
-const labelNamedCompositeTypes = new Set(["date", "combobox", "multiselect"]);
+const labelNamedCompositeTypes = new Set(["date", "combobox", "multiselect", "phone"]);
 
 export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, formDescription, required = false, disabled = false, readOnly = false, hidden = false, icon, iconColor, classNames, background, ...rest }) => {
   const InputComponent = Inputs[type];

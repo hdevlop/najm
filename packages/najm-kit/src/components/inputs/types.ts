@@ -293,6 +293,7 @@ export interface PhoneInputProps extends BaseProps {
   defaultCountry?: string;
   placeholder?: string;
   disabled?: boolean;
+  ariaLabel?: string;
 }
 
 export interface LangInputProps extends BaseProps {

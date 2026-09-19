@@ -10,6 +10,7 @@ export function PhoneInput({
   defaultCountry = "ma",
   placeholder = "Enter phone number",
   disabled = false,
+  ariaLabel,
   className,
   variant = "default",
   status = "default",
@@ -49,6 +50,7 @@ export function PhoneInput({
         countries={defaultCountries}
         disabled={disabled}
         placeholder={placeholder}
+        inputProps={ariaLabel ? { "aria-label": ariaLabel } : undefined}
         inputStyle={{
           height: "100%",
           width: "100%",
