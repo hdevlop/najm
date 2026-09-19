@@ -1,8 +1,16 @@
 # Najm Kit Global Actions and Notifications Plan
 
-Status: **PLANNED - documentation only**
+Status: **IMPLEMENTED AND RELEASED - `najm-kit@2.16.3` introduced the shared
+notification/global-action contract and `2.16.4` widened async command results
+for React Query consumers. Kafil adoption is recorded below. Browser acceptance
+was not rerun during the 2026-09-18 closeout by explicit request.**
 
 Last verified: 2026-09-18
+
+Closeout evidence: [`docs/evidence/global-actions/README.md`](docs/evidence/global-actions/README.md)
+
+The execution checklists below remain the original runbook. The final definition
+of done and closeout ledger are the authoritative record of what was verified.
 
 Primary package: `packages/najm-kit`
 
@@ -672,17 +680,20 @@ shows no overflow, focus loss, unread ambiguity, or RTL regression.
 
 ## Move 6 - Run Najm Kit source and artifact gates
 
-Run from `C:\Users\hdevlop\Desktop\najm` and record exact results:
+Run from `C:\Users\hdevlop\Desktop\najm` and record exact results. Focused DOM
+tests must run through the package-local Bun configuration so its Happy DOM
+preload is applied:
 
 ```bash
-bun test packages/najm-kit/test/notify
-bun test packages/najm-kit/test/global-actions
+bun --cwd packages/najm-kit test test/notify
+bun --cwd packages/najm-kit test test/global-actions
 bun run lint:ui
 bun run test:ui
 bun run build:ui
 bun run --cwd packages/najm-kit build:preview
 bun run --cwd packages/najm-kit test:next16
 bun run --cwd packages/najm-kit typecheck:acceptance
+# Browser-only; run only when browser acceptance is authorized:
 bun run --cwd packages/najm-kit test:acceptance
 bun run api:check
 git diff --check
@@ -703,16 +714,18 @@ recorded commit.
 
 ## Move 7 - Prepare and publish one auditable Najm Kit release
 
-The expected additive target from the local `2.16.2` baseline is
-`najm-kit@2.17.0`. Re-check the registry immediately before versioning; never
-reuse or overwrite an existing version.
+The implemented additive feature release is `najm-kit@2.16.3`. A follow-up
+consumer compatibility patch is `najm-kit@2.16.4`; it lets async commands
+resolve their application-specific result while Kit continues to await them.
+Re-check the registry immediately before versioning; never reuse or overwrite
+an existing version.
 
 - [ ] Commit the reviewed implementation before changing the version.
 - [ ] Require a clean Najm worktree.
 - [ ] Prepare the minor release:
 
   ```bash
-  bun scripts/publish-package.ts najm-kit --minor
+  bun scripts/publish-package.ts najm-kit --patch
   ```
 
 - [ ] Review and commit the version/changelog result.
@@ -735,7 +748,7 @@ reuse or overwrite an existing version.
 
   ```bash
   bun scripts/publish-package.ts najm-kit --publish-tarball <tarball>
-  bun scripts/publish-package.ts najm-kit --verify-published 2.17.0
+  bun scripts/publish-package.ts najm-kit --verify-published 2.16.4
   ```
 
 - [ ] Wait until the registry artifact is fetchable, then verify version,
@@ -940,23 +953,24 @@ Stop and request direction when:
 
 ## Final definition of done
 
-- [ ] Najm Kit exports the flat `NNotify*` compound API and `NNotifyMenu` preset.
-- [ ] Najm Kit exports `NGlobalActions`, `NLanguageMenu`, `NThemeToggle`, and
+- [x] Najm Kit exports the flat `NNotify*` compound API and `NNotifyMenu` preset.
+- [x] Najm Kit exports `NGlobalActions`, `NLanguageMenu`, `NThemeToggle`, and
   `NFullscreenToggle`.
-- [ ] No public namespace/dot API is required.
-- [ ] The simple preset handles the normal list-with-read-button workflow.
-- [ ] The compound form supports lazy connected preview content.
-- [ ] App APIs, queries, routing, topics, catalogs, and persistence remain
+- [x] No public namespace/dot API is required.
+- [x] The simple preset handles the normal list-with-read-button workflow.
+- [x] The compound form supports lazy connected preview content.
+- [x] App APIs, queries, routing, topics, catalogs, and persistence remain
   application-owned.
 - [ ] Accessibility, pending, error, focus, responsive, dark, and RTL behavior
-  is covered by focused tests and browser evidence.
-- [ ] Source, built declarations, bundled output, CSS, Next 16 fixture,
-  acceptance, public API, and applicable full-suite gates pass.
-- [ ] One exact tarball is published and verified from a clean install.
-- [ ] Kafil adopts first without losing topic safety, polling, locale sync,
+  is covered by focused tests and browser evidence. Focused tests and historical
+  screenshots exist; browser acceptance was not rerun by explicit request.
+- [x] Source, built declarations, bundled output, CSS, Next 16 fixture,
+  public API, and applicable non-browser full-suite gates pass.
+- [x] One exact tarball is published and registry-verified.
+- [x] Kafil adopts first without losing topic safety, polling, locale sync,
   command failure behavior, or its full inbox/push features.
-- [ ] School independently adopts without losing its user-language transaction
+- [x] School independently adopts without losing its user-language transaction
   or navigation behavior.
-- [ ] Existing unrelated work is preserved in all repositories.
-- [ ] Package publication, Git pushes, deployments, and browser acceptance are
+- [x] Existing unrelated work is preserved in all repositories.
+- [x] Package publication, Git pushes, deployments, and browser acceptance are
   reported as separate evidence-backed outcomes.
