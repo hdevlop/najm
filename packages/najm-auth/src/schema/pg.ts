@@ -35,7 +35,12 @@ export const rolesTable = pgTable('roles', {
   ...baseFields(5),
   name: text('name').notNull(),
   description: text('description'),
-});
+}, (table) => ({
+  // A role name is a domain identity: guards match `admin` by name, and seeding
+  // reconciles roles by name. Two rows sharing a name make authorization
+  // ambiguous, so the database — not a check-then-insert query — enforces it.
+  nameUnique: uniqueIndex('roles_name_unique').on(table.name),
+}));
 
 /**
  * Users table - Core user authentication data

@@ -2,8 +2,29 @@
 
 ## Unreleased
 
+Expected to publish as **4.0.5**. The version is not prepared yet; the release
+workflow owns that step.
+
+- fix(auth): make role names unique database identities. `roles.name` now carries
+  a `roles_name_unique` index in both the PostgreSQL and SQLite schemas, so two
+  rows can no longer share a name under concurrent, legacy, manual, or repeated
+  seeding.
+- fix(auth): seed roles **by name** instead of by the proposed primary key. A
+  role that already exists under a legacy or random ID is reused, and downstream
+  admin users and role-permission rows reference the live ID rather than an ID
+  that was skipped on conflict. Role primary keys are never rewritten, because
+  `users.role_id` has no `ON UPDATE CASCADE` contract.
+- fix(auth): answer a lost role create/rename race with the existing
+  role-exists conflict (409) instead of leaking the raw uniqueness violation as
+  a 500. `RoleValidator.checkNameUnique()` remains for the friendly message, but
+  the database is now the concurrency-safe authority.
 - Accept frozen route policy arrays directly in `defineAuth`, and allow its
   `rememberCookieName` to become the default for all generated route handlers.
+
+**Consumers must clean duplicate role names before adopting this schema.** This
+is a persistence invariant change even though it ships as a patch: a migration
+that adds the unique index fails while duplicates remain, and consumer
+migrations are application-owned.
 
 ## 4.0.4 - 2026-09-13
 

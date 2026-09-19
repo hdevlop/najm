@@ -27,7 +27,10 @@ export const rolesTable = sqliteTable('roles', {
   ...baseFields(5),
   name: text('name').notNull(),
   description: text('description'),
-});
+}, (table) => ({
+  // Same domain identity as the PostgreSQL dialect; see schema/pg.ts.
+  nameUnique: uniqueIndex('roles_name_unique').on(table.name),
+}));
 
 /**
  * Users table - Core user authentication data

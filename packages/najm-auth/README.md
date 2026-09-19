@@ -608,7 +608,7 @@ users
 
 roles
 ├── id (string, primary key)
-├── name (string, unique)
+├── name (string, unique — `roles_name_unique` in both dialects)
 ├── description (string, nullable)
 ├── createdAt (timestamp)
 └── updatedAt (timestamp)
@@ -699,6 +699,21 @@ const customUsers = sqliteTable('users', {
 ---
 
 ## Seeding
+
+Role names are database-enforced identities. `authSeed()` reconciles the `roles`
+entry **by name**, not by the primary key it proposes, so a role that already
+exists under a legacy or randomly generated ID is reused rather than inserted a
+second time. Downstream resolvers receive the row the database actually holds,
+which keeps `users.role_id` and `role_permissions.role_id` pointing at the live
+ID. Repeat seeding is idempotent and never rewrites a role's primary key —
+`users.role_id` carries no `ON UPDATE CASCADE` contract.
+
+> **Adopting this from an earlier version:** the unique index is a persistence
+> invariant, not only a validation change. Consolidate any duplicate role names
+> **before** you apply a migration that adds it, or the migration fails. Consumer
+> migrations are application-owned; this package ships the schema declaration,
+> not your migration.
+
 
 ### Low-Level Seeding (authSeed)
 

@@ -33,6 +33,13 @@ const toSeedId = (prefix: string, value: string): string => {
 export const authSeed = (config: AuthSeedConfig): Record<string, SeedEntry> => ({
   roles: {
     schema: createRoleDto,
+    // Roles are identified by name, not by the proposed primary key. Without
+    // this the seeder falls back to the primary key, and a role that already
+    // exists under a legacy/random ID is inserted a second time under the
+    // deterministic one. Query-back by name then hands downstream resolvers the
+    // live row, so users and role_permissions reference the ID the database
+    // actually holds — never a proposed ID that was skipped on conflict.
+    by: ['name'],
     rows: (config.roles ?? [
       { name: 'admin', description: 'System administrator with full access' },
       { name: 'user', description: 'Regular user with limited access' },
