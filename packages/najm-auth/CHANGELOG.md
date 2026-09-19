@@ -1,9 +1,6 @@
 # Changelog
 
-## Unreleased
-
-Expected to publish as **4.0.5**. The version is not prepared yet; the release
-workflow owns that step.
+## 4.0.5 - 2026-09-19
 
 - fix(auth): make role names unique database identities. `roles.name` now carries
   a `roles_name_unique` index in both the PostgreSQL and SQLite schemas, so two
