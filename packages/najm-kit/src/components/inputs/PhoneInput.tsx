@@ -46,7 +46,13 @@ export function PhoneInput({
         className="w-full"
         defaultCountry={defaultCountry}
         value={value}
-        onChange={onChange}
+        onChange={(phone, { country }) => {
+          // Upstream emits the bare dial code when mounting with an empty
+          // controlled value. Do not write that initialization event into a
+          // wizard form while its stored value is being restored.
+          if (value === "" && phone === `+${country.dialCode}`) return;
+          onChange?.(phone);
+        }}
         countries={defaultCountries}
         disabled={disabled}
         placeholder={placeholder}
