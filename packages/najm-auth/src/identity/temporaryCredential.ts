@@ -34,10 +34,15 @@ export const MOROCCAN_CIN_TEMPORARY_CREDENTIAL_KIND = 'ma-cin';
 
 const MOROCCAN_CIN = /^[a-z]{1,3}\d{5,17}$/i;
 
-/** A Moroccan CIN is 1–3 letters followed by digits, 8–20 characters overall. */
+/**
+ * A Moroccan CIN is 1–3 letters followed by digits, 7–20 characters overall.
+ * The floor is 7, not 8: the issued formats are one or two letters followed
+ * by five or six digits, so `BB46123` and `A123456` are real cards that an
+ * 8 floor turned away.
+ */
 export function isMoroccanCin(value: string): boolean {
   const trimmed = value.trim();
-  return trimmed.length >= 8 && trimmed.length <= 20 && MOROCCAN_CIN.test(trimmed);
+  return trimmed.length >= 7 && trimmed.length <= 20 && MOROCCAN_CIN.test(trimmed);
 }
 
 /**

@@ -1,5 +1,19 @@
 # Changelog
 
+## 4.0.6 - 2026-09-19
+
+- fix(auth): accept a 7-character Moroccan CIN. `isMoroccanCin` required 8
+  characters, but the issued card formats are one or two letters followed by
+  five or six digits, so real CINs such as `BB46123` and `A123456` were
+  refused. `moroccanCinTemporaryCredential` and the `ma-cin` credential kind
+  follow, so a family provisioned with a 7-character guardian CIN can now sign
+  in with it. The 20-character ceiling and the `1-3 letters + 5-17 digits`
+  shape are unchanged.
+
+This only widens what is accepted, so no stored hash, kind, or session changes
+meaning. A consumer that mirrors the floor in its own validation should relax
+it to 7 as well.
+
 ## 4.0.5 - 2026-09-19
 
 - fix(auth): make role names unique database identities. `roles.name` now carries

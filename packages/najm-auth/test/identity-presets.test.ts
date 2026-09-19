@@ -9,6 +9,7 @@ import { AuthIdentityContextService } from '../src/auth/AuthIdentityContextServi
 import {
   EXACT_TEMPORARY_CREDENTIAL_KIND,
   MOROCCAN_CIN_TEMPORARY_CREDENTIAL_KIND,
+  isMoroccanCin,
   moroccanCinTemporaryCredential,
   resolveTemporaryCredentialKind,
   toTemporaryCredential,
@@ -183,6 +184,13 @@ describe('temporary credential kinds', () => {
 
   test('moroccanCinTemporaryCredential refuses to mislabel an invalid value', () => {
     expect(() => moroccanCinTemporaryCredential('not-a-cin')).toThrow(/valid Moroccan CIN/);
+  });
+
+  test('the CIN floor is 7, the length of a real card', () => {
+    expect(isMoroccanCin('BB46123')).toBe(true);
+    expect(isMoroccanCin('A123456')).toBe(true);
+    expect(isMoroccanCin('A12345')).toBe(false);
+    expect(moroccanCinTemporaryCredential('BB46123').value).toBe('BB46123');
   });
 
   test('an unknown stored kind fails closed instead of falling back', () => {
