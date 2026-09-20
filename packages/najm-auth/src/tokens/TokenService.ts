@@ -22,6 +22,17 @@ export interface ConsumedSetPasswordToken {
   type: SetPasswordTokenType;
 }
 
+/**
+ * A freshly minted one-time set-password token. `jti` identifies this exact
+ * token so a caller that fails to deliver it can discard it again without
+ * touching a newer one.
+ */
+export interface SetPasswordToken {
+  token: string;
+  userId: string;
+  jti: string;
+}
+
 @Injectable()
 export class TokenService {
   @Inject(AUTH_CONFIG) private config!: AuthConfig;
@@ -780,7 +791,7 @@ export class TokenService {
     userId: string,
     type: SetPasswordTokenType,
     expiresIn: string,
-  ): Promise<{ token: string; userId: string }> {
+  ): Promise<SetPasswordToken> {
     const jti = nanoid(16);
     const data = {
       userId,
@@ -796,14 +807,14 @@ export class TokenService {
     // Cache TTL mirrors the token expiry so a consumed/expired token can't be reused.
     await this.cache.set(`${this.resetTokenPrefix}${userId}`, jti, timestring(expiresIn, 'ms'));
 
-    return { token, userId };
+    return { token, userId, jti };
   }
 
   /**
    * Generate secure password reset token
    * Returns both the plain token (to send via email) and userId for identification
    */
-  async generateResetToken(userId: string): Promise<{ token: string; userId: string }> {
+  async generateResetToken(userId: string): Promise<SetPasswordToken> {
     // Short expiry (1h): the user is actively waiting for the email.
     return this.generateSetPasswordToken(userId, 'reset', '1h');
   }
@@ -813,8 +824,28 @@ export class TokenService {
    * Longer expiry (3d) than reset because an invited user may not check
    * their email immediately. Consumed via the same reset-password endpoint.
    */
-  async generateInviteToken(userId: string): Promise<{ token: string; userId: string }> {
+  async generateInviteToken(userId: string): Promise<SetPasswordToken> {
     return this.generateSetPasswordToken(userId, 'invite', '3d');
+  }
+
+  /**
+   * Discard a set-password token this process just minted, identified by the
+   * `jti` its generator returned. For the caller whose email send failed:
+   * minting already superseded any earlier link for that user, so leaving the
+   * fresh one live would keep a link alive that nobody received.
+   *
+   * Compare-and-delete, never a blind delete — a newer link minted in the
+   * meantime must survive a late failure from an older send. Returns whether
+   * this exact token was still the live one.
+   */
+  async discardSetPasswordToken(userId: string, jti: string): Promise<boolean> {
+    const consume = (this.cache as Partial<CacheService>).compareAndDelete;
+    if (typeof consume !== 'function') {
+      Err.invalidOperation(
+        'Discarding a set-password token requires a cache with atomic compare-and-delete',
+      );
+    }
+    return consume.call(this.cache, `${this.resetTokenPrefix}${userId}`, jti);
   }
 
   /**

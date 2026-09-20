@@ -70,6 +70,22 @@ type ProvisionUserBody = ProvisionUserInput & {
   requireCredentialSetup?: typeof PASSWORD_SETUP_PURPOSE;
 };
 
+/** Outcome of an administrative reset to a system-issued temporary credential. */
+export type TemporaryCredentialReset = {
+  userId: string;
+  purpose: typeof PASSWORD_SETUP_PURPOSE;
+  temporaryCredentialKind: string;
+};
+
+/**
+ * Outcome of an administrative mail-out. `emailSent` is what the provider
+ * actually reported — never an assumption that sending succeeded.
+ */
+export type AdministrativeDelivery = {
+  userId: string;
+  emailSent: boolean;
+};
+
 /** Login answer: either a complete session, or a pending credential setup. */
 export type LoginResult =
   | (TokenPair & { nextStep: 'authenticated'; user: SanitizedUser })
@@ -157,20 +173,43 @@ export class AuthService {
       emailVerified: false,
     });
 
-    const { token } = await this.tokenService.generateInviteToken(user.id);
-    const inviteLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
-    const accountType = body.role?.trim().toLowerCase();
-    const accountLabel = accountType ? `${accountType} account` : 'account';
-
     // Unlike forgot-password (which stays silent to prevent enumeration), invite
     // is an admin action — surface whether the mail actually left so the caller
-    // can resend or fall back to sharing the link out-of-band.
+    // can resend.
+    const { emailSent } = await this.deliverInvitation(
+      user.id,
+      body.email,
+      (user as any).name,
+      body.role,
+    );
+
+    return { ...user, emailSent };
+  }
+
+  /**
+   * Mint an invite token and send the activation mail. Shared by first-time
+   * invitation and re-invitation, so both rest on one token contract and one
+   * template and neither can drift into an ad hoc message.
+   *
+   * Nothing here logs the token, the link, the message body, or the recipient.
+   */
+  private async deliverInvitation(
+    userId: string,
+    email: string,
+    userName: string | null | undefined,
+    role: string | null | undefined,
+  ): Promise<{ emailSent: boolean; jti: string }> {
+    const { token, jti } = await this.tokenService.generateInviteToken(userId);
+    const inviteLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
+    const accountType = role?.trim().toLowerCase() || undefined;
+    const accountLabel = accountType ? `${accountType} account` : 'account';
+
     let emailSent = false;
     try {
       const logo = this.config.accountInviteLogo;
       const logoCid = logo ? 'najm-account-invite-logo' : undefined;
       const result = await this.emailService.send({
-        to: body.email,
+        to: email,
         subject: this.t('emails.accountInvite.subject', {
           accountLabel,
           appName: this.config.appName,
@@ -181,7 +220,7 @@ export class AuthService {
           inviteLink,
           logoAlt: logo?.alt,
           logoSrc: logoCid ? `cid:${logoCid}` : undefined,
-          userName: (user as any).name || body.email,
+          userName: userName || email,
         }),
         attachments: logo ? [{
           filename: logo.filename,
@@ -194,10 +233,10 @@ export class AuthService {
       });
       emailSent = result.success;
     } catch (error) {
-      this.logger.warn('Account invite email failed', { email: body.email, error });
+      this.logger.warn('Account invite email failed', { userId, error });
     }
 
-    return { ...user, emailSent };
+    return { emailSent, jti };
   }
 
   /**
@@ -656,5 +695,160 @@ export class AuthService {
     this.cookieManager.clearSessionCookie();
 
     return { message: this.t('success.passwordReset') };
+  }
+
+  // ==========================================================================
+  // Administrative recovery for an account that already exists
+  //
+  // Three operations an application's own admin surface composes. Each is
+  // bound to a user id, never to a submitted email; none creates a user,
+  // issues a session, or returns a credential, token, or link. Who may call
+  // them, which targets are eligible, how often, and what is audited belong to
+  // the application — this package owns only the credential, token, and
+  // session mechanics underneath.
+  // ==========================================================================
+
+  /**
+   * Replace an existing account's stored credential with a system-issued
+   * temporary one and durably require the holder to replace it at their next
+   * login.
+   *
+   * The hash write and the durable requirement commit together, so no failure
+   * can leave the temporary credential accepted with nothing forcing its
+   * replacement, nor the requirement standing over an unchanged password.
+   * Session revocation runs inside that same transaction: a cache or session
+   * failure rolls the credential back rather than reporting a reset that a
+   * still-live browser could sail past. No session is issued.
+   *
+   * Strength validation is deliberately skipped — the value is issued by the
+   * system, not chosen by the user — but bcrypt's 72-byte boundary is not.
+   */
+  @Transaction()
+  async resetToTemporaryCredential(
+    userId: string,
+    credential: TemporaryCredentialInput,
+  ): Promise<TemporaryCredentialReset> {
+    if (!this.credentialSetupRequirements) {
+      Err.invalidOperation('Credential setup is unavailable: CredentialSetupRequirementService is not registered');
+    }
+
+    // Resolve the account first, so an unknown id fails as a 404 before
+    // anything is hashed rather than as a silent no-op.
+    const user = await this.userService.getById(userId);
+
+    const temporary = toTemporaryCredential(credential);
+    const kind = resolveTemporaryCredentialKind(temporary.kind);
+    if (kind.isTemporaryShape && !kind.isTemporaryShape(temporary.value)) {
+      Err(`Invalid temporary credential for kind '${kind.name}'`, 400);
+    }
+    const password = kind.normalize(temporary.value);
+    if (!password?.trim()) {
+      Err('resetToTemporaryCredential requires a non-empty temporaryCredential', 400);
+    }
+
+    await this.userService.update(user.id, { password }, { validatePasswordStrength: false });
+    await this.credentialSetupRequirements.markRequired(user.id, PASSWORD_SETUP_PURPOSE, {
+      temporaryCredentialKind: kind.name,
+    });
+
+    return {
+      userId: user.id,
+      purpose: PASSWORD_SETUP_PURPOSE,
+      temporaryCredentialKind: kind.name,
+    };
+  }
+
+  /**
+   * Send one password-reset link to an account selected by id. The recipient is
+   * read from that account at command time, so neither an administrator nor a
+   * stale client can redirect the link by supplying an address.
+   *
+   * Delivery is reported truthfully: unlike `forgotPassword` there is no email
+   * enumeration to protect against, because the caller already knows the
+   * account exists. Account status and email verification are left exactly as
+   * they were, and requesting the link does not end the user's current session
+   * — `resetPassword` revokes it when the new password is actually saved.
+   *
+   * Minting supersedes any earlier link for this user. A failed send discards
+   * the fresh token too, so a failure never leaves a live link nobody received.
+   */
+  async sendPasswordReset(userId: string): Promise<AdministrativeDelivery> {
+    const user = await this.userService.getById(userId);
+    const email = typeof user.email === 'string' ? user.email.trim() : '';
+    if (!email) {
+      Err('This account has no email address to send a password reset to', 409);
+    }
+
+    const { token, jti } = await this.tokenService.generateResetToken(user.id);
+    const resetLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
+
+    let emailSent = false;
+    try {
+      const result = await this.emailService.sendHtml(
+        email,
+        this.t('emails.passwordReset.subject'),
+        passwordResetTemplate({
+          resetLink,
+          userName: (user as any).name || email,
+        }),
+      );
+      emailSent = result.success;
+    } catch (error) {
+      this.logger.warn('Administrative password reset email failed', { userId: user.id, error });
+    }
+
+    if (!emailSent) {
+      await this.discardUndeliveredToken(user.id, jti);
+    }
+
+    return { userId: user.id, emailSent };
+  }
+
+  /**
+   * Re-send the activation link for an account that is still pending.
+   *
+   * It creates no second user and no second profile — that is the whole reason
+   * it exists beside `inviteUser`, which does create one. Only a `pending`
+   * account qualifies: an active or inactive account is reset or reactivated,
+   * never re-invited. Whether a given pending account is genuinely an invited
+   * one rather than an application awaiting a decision is the caller's to
+   * decide; this package cannot see an application.
+   */
+  async resendInvitation(userId: string): Promise<AdministrativeDelivery> {
+    const user = await this.userService.getById(userId);
+    if (user.status !== 'pending') {
+      Err('Only a pending account can be re-invited', 409);
+    }
+    const email = typeof user.email === 'string' ? user.email.trim() : '';
+    if (!email) {
+      Err('This account has no email address to send an invitation to', 409);
+    }
+
+    const { emailSent, jti } = await this.deliverInvitation(
+      user.id,
+      email,
+      (user as any).name,
+      (user as any).role,
+    );
+
+    if (!emailSent) {
+      await this.discardUndeliveredToken(user.id, jti);
+    }
+
+    return { userId: user.id, emailSent };
+  }
+
+  /**
+   * Discard a link that was minted but never delivered. A cache that cannot
+   * consume atomically is reported rather than pretended away; the caller has
+   * already been told the mail did not leave, so the truthful result stands
+   * either way.
+   */
+  private async discardUndeliveredToken(userId: string, jti: string): Promise<void> {
+    try {
+      await this.tokenService.discardSetPasswordToken(userId, jti);
+    } catch (error) {
+      this.logger.warn('Undelivered set-password token could not be discarded', { userId, error });
+    }
   }
 }

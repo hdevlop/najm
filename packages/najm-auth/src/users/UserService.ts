@@ -199,7 +199,17 @@ export class UserService {
 
   }
 
-  async update(id: string, data: Record<string, any>): Promise<SanitizedUser> {
+  /**
+   * `options.validatePasswordStrength: false` is for a system-issued temporary
+   * credential the user is durably required to replace — the same opt-out
+   * `create()` already offers provisioning. A user-chosen password never takes
+   * it.
+   */
+  async update(
+    id: string,
+    data: Record<string, any>,
+    options: { validatePasswordStrength?: boolean } = {},
+  ): Promise<SanitizedUser> {
     const { password, image } = data;
 
     await this.userValidator.checkEmailUnique(data.email, id);
@@ -207,7 +217,14 @@ export class UserService {
     // Validate password strength if being updated
     let hashedPassword: string | undefined;
     if (password) {
-      this.userValidator.validatePasswordStrength(password);
+      if (options.validatePasswordStrength === false) {
+        // Opting out of complexity is never opting out of bcrypt's hard
+        // 72-byte significance boundary, which the strength check would
+        // otherwise have enforced on the way past.
+        this.userValidator.validatePasswordLength(password);
+      } else {
+        this.userValidator.validatePasswordStrength(password);
+      }
       hashedPassword = await this.encryptionService.hashPassword(password);
     }
 
