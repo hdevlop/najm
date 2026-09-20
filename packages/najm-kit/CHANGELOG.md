@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.16.9 - 2026-09-20
+
+- Added shared currency select choices and codes to the root and server entry
+  points for applications with institution-selected currency.
+- Added the time zones previously offered by School to Najm's canonical
+  `TimeZoneInput` and preference list.
+
 ## 2.16.7 - 2026-09-20
 
 - Added reusable lifecycle and school-related badge status labels in English,

@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  NAJM_CURRENCIES,
+  NAJM_CURRENCY_OPTIONS,
   NAJM_TIME_ZONES,
   defineNajmPreferences,
   type NajmCookieReader,
@@ -32,6 +34,14 @@ function fakeI18n<const Languages extends readonly string[]>(
 }
 
 const i18n = fakeI18n(["en", "fr", "ar", "es"] as const, "en");
+
+test("shared currency choices match the server allow-list and Intl codes", () => {
+  expect(NAJM_CURRENCIES).toEqual(NAJM_CURRENCY_OPTIONS.map(({ value }) => value));
+  expect(new Set(NAJM_CURRENCIES).size).toBe(NAJM_CURRENCIES.length);
+  for (const currency of NAJM_CURRENCIES) {
+    expect(new Intl.NumberFormat("en", { style: "currency", currency }).resolvedOptions().currency).toBe(currency);
+  }
+});
 
 /** Anything shaped like Next's cookie store. */
 function cookieReader(values: Record<string, string>): NajmCookieReader {

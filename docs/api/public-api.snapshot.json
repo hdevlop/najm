@@ -171,6 +171,8 @@
     "najm-kit": [
       "export { NajmThemeProvider, useNajmAppearance, useNajmThemeMode } from \"./theme/provider\";",
       "export { NThemeCustomizer } from \"./components/ThemeCustomizer\";",
+      "export { NAJM_CURRENCIES, NAJM_CURRENCY_OPTIONS, type NajmCurrency } from \"./lib/currencies\";",
+      "export { NAJM_TIME_ZONES, type NajmTimeZone } from \"./lib/timeZones\";",
       "export { NThemePresets, NAJM_SAVED_THEME_VALUE, } from \"./components/ThemeCustomizer\";",
       "export { DEFAULT_THEME_FILE_NAME, normalizeThemeFileName, parseThemeFile, stringifyThemeFile, } from \"./components/ThemeCustomizer\";",
       "export type { NThemeCustomizerProps, NThemeCustomizerTab, NThemeCustomizerFontOption, NThemeCustomizerLabels, NThemePreset, NThemePresetsLabels, NThemePresetsProps, NThemePresetsStatus, } from \"./components/ThemeCustomizer\";",

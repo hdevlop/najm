@@ -1311,6 +1311,14 @@ export const preferences = defineNajmPreferences({ i18n: appI18n, timeZones: zon
 <TimeZoneInput items={zones.map((value) => ({ value, label: "" }))} />
 ```
 
+### Currency choices
+
+`NAJM_CURRENCY_OPTIONS` provides reusable select items, and `NAJM_CURRENCIES`
+provides their codes for `defineNajmPreferences({ currencies })` and validation.
+Both are available from `najm-kit` and the React-free `najm-kit/server` entry.
+The package does not choose an institution's default currency; applications
+set `defaultCurrency` themselves and may use a subset of these choices.
+
 ### Cookie options
 
 `cookieOptions` merges per key over the defaults. `secure` is **not** set by

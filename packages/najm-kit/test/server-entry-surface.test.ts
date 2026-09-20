@@ -123,6 +123,9 @@ describeBuilt("server entries in dist", () => {
       "clearNajmUiPreferences",
       "logoutWithNajmPreferenceCleanup",
       "NAJM_TIME_ZONES",
+      "NAJM_CURRENCIES",
+      "NAJM_CURRENCY_OPTIONS",
+      "NajmCurrency",
       "NajmTimeZone",
       "NajmMode",
     ]) {

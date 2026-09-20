@@ -1,6 +1,8 @@
 // Theme
 export { NajmThemeProvider, useNajmAppearance, useNajmThemeMode } from "./theme/provider";
 export { NThemeCustomizer } from "./components/ThemeCustomizer";
+export { NAJM_CURRENCIES, NAJM_CURRENCY_OPTIONS, type NajmCurrency } from "./lib/currencies";
+export { NAJM_TIME_ZONES, type NajmTimeZone } from "./lib/timeZones";
 export {
   NThemePresets,
   NAJM_SAVED_THEME_VALUE,

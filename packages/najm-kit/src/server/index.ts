@@ -60,6 +60,7 @@ export {
 // The canonical zone list, shared with `TimeZoneInput`. Exported so an
 // application can assert the two agree rather than copy one into the other.
 export { NAJM_DEFAULT_TIME_ZONE, NAJM_TIME_ZONES, type NajmTimeZone } from "../lib/timeZones";
+export { NAJM_CURRENCIES, NAJM_CURRENCY_OPTIONS, type NajmCurrency } from "../lib/currencies";
 
 // The theme mode union, so a consumer types its layout and providers without
 // declaring a competing `"light" | "dark"`.
