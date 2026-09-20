@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.16.7 - 2026-09-20
+
+- Added reusable lifecycle and school-related badge status labels in English,
+  French, Arabic, and Spanish, with matching semantic colors.
+- Resolved camelCase application catalog keys for snake_case badge statuses,
+  and normalized camelCase status values consistently for labels and colors.
+
 ## 2.16.4 - 2026-09-18
 
 - Widened the notification and language command callbacks from `Promise<void>`

@@ -68,6 +68,11 @@ describe("shared status colors", () => {
       overdue: "destructive",
       unpaid: "destructive",
       expired: "destructive",
+      graduated: "success",
+      maintenance: "warning",
+      planned: "info",
+      on_leave: "neutral",
+      missed: "destructive",
     };
 
     for (const [status, color] of Object.entries(expected)) {
@@ -103,6 +108,8 @@ describe("packaged labels", () => {
     expect(formatStatusLabel("out_for_delivery", { language: "es" })).toBe(
       "En reparto",
     );
+    expect(formatStatusLabel("on_leave", { language: "fr" })).toBe("En congé");
+    expect(formatStatusLabel("graduated", { language: "ar" })).toBe("متخرج");
   });
 
   test("cover every packaged status in every packaged language", () => {
@@ -134,6 +141,19 @@ describe("packaged labels", () => {
         "En cours de livraison",
       );
     }
+  });
+
+  test("uses camelCase catalog keys for snake_case and camelCase statuses", () => {
+    const catalog: Record<string, string> = {
+      "status.onLeave": "On leave",
+      "status.partiallyPaid": "Partially paid",
+    };
+    const t = (key: string) => catalog[key] ?? key;
+
+    expect(findStatusLabel("on_leave", { t })).toBe("On leave");
+    expect(findStatusLabel("onLeave", { t })).toBe("On leave");
+    expect(findStatusLabel("partially_paid", { t })).toBe("Partially paid");
+    expect(findStatusLabel("partiallyPaid", { t })).toBe("Partially paid");
   });
 
   test("an unknown token humanizes and claims nothing", () => {

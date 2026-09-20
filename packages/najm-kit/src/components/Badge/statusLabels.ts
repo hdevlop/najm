@@ -75,6 +75,18 @@ export const NAJM_STATUS_LABELS: Record<string, Record<string, string>> = {
     validated: "Validated",
     verified: "Verified",
     warning: "Warning",
+    planned: "Planned",
+    deleted: "Deleted",
+    revoked: "Revoked",
+    graduated: "Graduated",
+    transferred: "Transferred",
+    on_leave: "On leave",
+    rescheduled: "Rescheduled",
+    reviewed: "Reviewed",
+    graded: "Graded",
+    missed: "Missed",
+    maintenance: "Maintenance",
+    retired: "Retired",
   },
   fr: {
     absent: "Absent",
@@ -125,6 +137,18 @@ export const NAJM_STATUS_LABELS: Record<string, Record<string, string>> = {
     validated: "Validé",
     verified: "Vérifié",
     warning: "Avertissement",
+    planned: "Planifié",
+    deleted: "Supprimé",
+    revoked: "Révoqué",
+    graduated: "Diplômé",
+    transferred: "Transféré",
+    on_leave: "En congé",
+    rescheduled: "Reprogrammé",
+    reviewed: "Examiné",
+    graded: "Noté",
+    missed: "Manqué",
+    maintenance: "Maintenance",
+    retired: "Retiré",
   },
   ar: {
     absent: "غائب",
@@ -175,6 +199,18 @@ export const NAJM_STATUS_LABELS: Record<string, Record<string, string>> = {
     validated: "مُصادق عليه",
     verified: "مُتحقق منه",
     warning: "تحذير",
+    planned: "مخطط",
+    deleted: "محذوف",
+    revoked: "ملغى",
+    graduated: "متخرج",
+    transferred: "منقول",
+    on_leave: "في إجازة",
+    rescheduled: "أعيد جدولته",
+    reviewed: "تمت المراجعة",
+    graded: "مصحح",
+    missed: "فائت",
+    maintenance: "صيانة",
+    retired: "متقاعد",
   },
   es: {
     absent: "Ausente",
@@ -225,6 +261,18 @@ export const NAJM_STATUS_LABELS: Record<string, Record<string, string>> = {
     validated: "Validado",
     verified: "Verificado",
     warning: "Advertencia",
+    planned: "Planificado",
+    deleted: "Eliminado",
+    revoked: "Revocado",
+    graduated: "Graduado",
+    transferred: "Transferido",
+    on_leave: "De permiso",
+    rescheduled: "Reprogramado",
+    reviewed: "Revisado",
+    graded: "Calificado",
+    missed: "Perdido",
+    maintenance: "Mantenimiento",
+    retired: "Retirado",
   },
 };
 
@@ -311,13 +359,14 @@ function lookup(
  *
  * 1. an application literal in `labels`,
  * 2. an application catalog key in `labelKeys`,
- * 3. the conventional `status.<token>` entry, when the catalog has one,
+ * 3. the conventional `status.<token>` entry, including a camelCase catalog
+ *    key for a snake_case status, when the catalog has one,
  * 4. the packaged label for the active language.
  *
  * Steps 2 and 3 are what let an application delete its token-to-key table: a
  * catalog already keyed `status.delivered` is found without being described.
- * An application whose keys do not follow the convention — camelCase entries
- * against snake_case tokens, say — keeps `labelKeys` and still wins.
+ * An application whose keys use another prefix or naming rule can keep
+ * `labelKeys`, which still wins over the conventional lookup.
  */
 export function findStatusLabel(
   status: string,
@@ -333,8 +382,14 @@ export function findStatusLabel(
   const mapped = key !== undefined ? translated(t, key) : undefined;
   if (mapped !== undefined) return mapped;
 
+  const camelCase = normalized.replace(/_([a-z])/g, (_, letter: string) =>
+    letter.toUpperCase(),
+  );
   const conventional = keyPrefix
-    ? translated(t, `${keyPrefix}.${normalized}`)
+    ? translated(t, `${keyPrefix}.${normalized}`) ??
+      (camelCase !== normalized
+        ? translated(t, `${keyPrefix}.${camelCase}`)
+        : undefined)
     : undefined;
   if (conventional !== undefined) return conventional;
 

@@ -21,6 +21,9 @@ export const NAJM_STATUS_COLORS: Record<string, BadgeColor> = {
   success: "success",
   validated: "success",
   verified: "success",
+  graduated: "success",
+  graded: "success",
+  reviewed: "success",
 
   in_preparation: "warning",
   in_progress: "warning",
@@ -35,11 +38,15 @@ export const NAJM_STATUS_COLORS: Record<string, BadgeColor> = {
   processing: "warning",
   submitted: "warning",
   warning: "warning",
+  maintenance: "warning",
 
   info: "info",
   paused: "info",
   purchased: "info",
   scheduled: "info",
+  planned: "info",
+  rescheduled: "info",
+  transferred: "info",
 
   absent: "neutral",
   archived: "neutral",
@@ -51,6 +58,10 @@ export const NAJM_STATUS_COLORS: Record<string, BadgeColor> = {
   inactive: "neutral",
   stopped: "neutral",
   unknown: "neutral",
+  deleted: "neutral",
+  on_leave: "neutral",
+  retired: "neutral",
+  revoked: "neutral",
 
   blocked: "destructive",
   error: "destructive",
@@ -61,6 +72,7 @@ export const NAJM_STATUS_COLORS: Record<string, BadgeColor> = {
   rejected: "destructive",
   suspended: "destructive",
   unpaid: "destructive",
+  missed: "destructive",
 };
 
 /**
@@ -93,7 +105,11 @@ export const NAJM_COLOR_TEXT_CLASSES: Record<BadgeColor, string> = {
  * agree with a badge should not have to guess it.
  */
 export function normalizeStatusToken(status: string): string {
-  return status.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return status
+    .trim()
+    .replace(/([a-z0-9])([A-Z])/g, "$1_$2")
+    .toLowerCase()
+    .replace(/[\s-]+/g, "_");
 }
 
 function lookup(
