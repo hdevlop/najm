@@ -80,10 +80,17 @@ export type TemporaryCredentialReset = {
 /**
  * Outcome of an administrative mail-out. `emailSent` is what the provider
  * actually reported — never an assumption that sending succeeded.
+ *
+ * `undeliveredLinkLive` is the one case a caller cannot infer: the mail did not
+ * leave AND the link minted for it could not be taken out of circulation, so a
+ * usable link exists that no one received. It is false whenever the mail left
+ * — that link is live on purpose — and false when an undelivered one was
+ * successfully discarded.
  */
 export type AdministrativeDelivery = {
   userId: string;
   emailSent: boolean;
+  undeliveredLinkLive: boolean;
 };
 
 /** Login answer: either a complete session, or a pending credential setup. */
@@ -797,11 +804,11 @@ export class AuthService {
       this.logger.warn('Administrative password reset email failed', { userId: user.id, error });
     }
 
-    if (!emailSent) {
-      await this.discardUndeliveredToken(user.id, jti);
-    }
+    const undeliveredLinkLive = emailSent
+      ? false
+      : !(await this.discardUndeliveredToken(user.id, jti));
 
-    return { userId: user.id, emailSent };
+    return { userId: user.id, emailSent, undeliveredLinkLive };
   }
 
   /**
@@ -831,24 +838,33 @@ export class AuthService {
       (user as any).role,
     );
 
-    if (!emailSent) {
-      await this.discardUndeliveredToken(user.id, jti);
-    }
+    const undeliveredLinkLive = emailSent
+      ? false
+      : !(await this.discardUndeliveredToken(user.id, jti));
 
-    return { userId: user.id, emailSent };
+    return { userId: user.id, emailSent, undeliveredLinkLive };
   }
 
   /**
-   * Discard a link that was minted but never delivered. A cache that cannot
-   * consume atomically is reported rather than pretended away; the caller has
-   * already been told the mail did not leave, so the truthful result stands
-   * either way.
+   * Take a link that was minted but never delivered out of circulation, and
+   * answer whether it is really gone.
+   *
+   * A `false` from the store is not a failure: compare-and-delete only refuses
+   * when the stored jti is no longer this one, which means a newer mint already
+   * superseded this link and it can no longer be consumed either way. A throw
+   * is the failure — the store was unreachable, the jti it holds is still ours,
+   * and a usable link now exists that nobody received. That does not change
+   * what the caller is told about delivery, but it must not be swallowed: it is
+   * logged as an error and reported up, so the result stays truthful about more
+   * than the mail.
    */
-  private async discardUndeliveredToken(userId: string, jti: string): Promise<void> {
+  private async discardUndeliveredToken(userId: string, jti: string): Promise<boolean> {
     try {
       await this.tokenService.discardSetPasswordToken(userId, jti);
+      return true;
     } catch (error) {
-      this.logger.warn('Undelivered set-password token could not be discarded', { userId, error });
+      this.logger.error('Undelivered set-password token is still live', { userId, error });
+      return false;
     }
   }
 }

@@ -241,7 +241,7 @@ describe('administrative password reset for one selected account', () => {
 
     const result = await service.sendPasswordReset('user-1');
 
-    expect(result).toEqual({ userId: 'user-1', emailSent: true });
+    expect(result).toEqual({ userId: 'user-1', emailSent: true, undeliveredLinkLive: false });
     expect(state.minted).toEqual([{ type: 'reset', userId: 'user-1' }]);
     expect(state.sent).toHaveLength(1);
     expect(state.sent[0].to).toBe('fatima@example.ma');
@@ -265,7 +265,7 @@ describe('administrative password reset for one selected account', () => {
 
     const result = await service.sendPasswordReset('user-1');
 
-    expect(result).toEqual({ userId: 'user-1', emailSent: false });
+    expect(result).toEqual({ userId: 'user-1', emailSent: false, undeliveredLinkLive: false });
     expect(state.discarded).toEqual([{ userId: 'user-1', jti: 'jti-1' }]);
   });
 
@@ -276,11 +276,14 @@ describe('administrative password reset for one selected account', () => {
 
     const result = await service.sendPasswordReset('user-1');
 
-    expect(result).toEqual({ userId: 'user-1', emailSent: false });
+    expect(result).toEqual({ userId: 'user-1', emailSent: false, undeliveredLinkLive: false });
     expect(state.discarded).toEqual([{ userId: 'user-1', jti: 'jti-1' }]);
   });
 
-  test('a discard that itself fails still returns the truthful delivery result', async () => {
+  test('a discard that itself fails reports the link it could not retire', async () => {
+    // The mail did not leave and the token store was unreachable, so the jti it
+    // holds is still this one: a usable link exists that nobody received. The
+    // delivery answer stays truthful, and so does this one.
     const { service } = recoveryService({
       send: async () => ({ success: false }),
       discard: async () => { throw new Error('cache unavailable'); },
@@ -289,6 +292,22 @@ describe('administrative password reset for one selected account', () => {
     expect(await service.sendPasswordReset('user-1')).toEqual({
       userId: 'user-1',
       emailSent: false,
+      undeliveredLinkLive: true,
+    });
+  });
+
+  test('a link a newer mint already superseded is not reported as live', async () => {
+    // Compare-and-delete answers false when the stored jti is no longer ours.
+    // That link cannot be consumed either way, so nothing is stranded.
+    const { service } = recoveryService({
+      send: async () => ({ success: false }),
+      discard: async () => false,
+    });
+
+    expect(await service.sendPasswordReset('user-1')).toEqual({
+      userId: 'user-1',
+      emailSent: false,
+      undeliveredLinkLive: false,
     });
   });
 
@@ -324,7 +343,7 @@ describe('re-inviting an account that is still pending', () => {
 
     const result = await service.resendInvitation('user-1');
 
-    expect(result).toEqual({ userId: 'user-1', emailSent: true });
+    expect(result).toEqual({ userId: 'user-1', emailSent: true, undeliveredLinkLive: false });
     expect(state.created).toHaveLength(0);
     expect(state.minted).toEqual([{ type: 'invite', userId: 'user-1' }]);
     expect(state.sent[0].to).toBe('fatima@example.ma');
@@ -364,8 +383,23 @@ describe('re-inviting an account that is still pending', () => {
     expect(await service.resendInvitation('user-1')).toEqual({
       userId: 'user-1',
       emailSent: false,
+      undeliveredLinkLive: false,
     });
     expect(state.discarded).toEqual([{ userId: 'user-1', jti: 'jti-1' }]);
+  });
+
+  test('an invite whose discard fails reports the link it could not retire', async () => {
+    const { service } = recoveryService({
+      account: PENDING,
+      send: async () => ({ success: false }),
+      discard: async () => { throw new Error('cache unavailable'); },
+    });
+
+    expect(await service.resendInvitation('user-1')).toEqual({
+      userId: 'user-1',
+      emailSent: false,
+      undeliveredLinkLive: true,
+    });
   });
 
   test('repeated sends mint a new link each time', async () => {
