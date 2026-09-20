@@ -3,7 +3,16 @@ import type { NajmResponsiveBreakpoint } from "../../theme/design-types";
 
 export type NTableColumnBreakpoint = Exclude<NajmResponsiveBreakpoint, "base">;
 
-export interface NTableColumnMeta {
+export type NTableEditorType = "text" | "number" | "select" | "checkbox" | "textarea";
+
+export interface NTableEditorOption<TValue = any> {
+  value: TValue;
+  label: string;
+}
+
+type NTableEditorResolver<TData, TValue> = TValue | ((row: TData) => TValue);
+
+export interface NTableColumnMeta<TData = any, TValue = any> {
   /**
    * Whether this column is eligible to exist in NTable.
    * Defaults to true. Set from the application's role/capability decision.
@@ -15,16 +24,25 @@ export interface NTableColumnMeta {
    * Applies to table view only.
    */
   hiddenBelow?: NTableColumnBreakpoint;
+  /** Whether this cell can be edited. A function can decide per row. */
+  editable?: boolean | ((row: TData) => boolean);
+  /** Input presented while the cell is being edited. Defaults to `text`. */
+  editor?: NTableEditorType;
+  /** Choices for a select editor. A function can derive them from the row. */
+  options?: NTableEditorResolver<TData, ReadonlyArray<NTableEditorOption<TValue>>>;
+  /** Return an error message to keep the editor open and reject the value. */
+  validate?: (value: TValue, row: TData) => string | null | undefined;
+  /** Numeric editor minimum. A function can derive it from the row. */
+  min?: NTableEditorResolver<TData, number | undefined>;
+  /** Numeric editor maximum. A function can derive it from the row. */
+  max?: NTableEditorResolver<TData, number | undefined>;
+  /** Numeric editor step. Defaults to `any`. */
+  step?: number | string;
 }
 
-/**
- * TanStack `ColumnDef` plus Najm's responsive metadata on `meta`.
- *
- * The runtime expectation is that `meta` may carry `{ visible, hiddenBelow }`,
- * so consumers get autocomplete for those fields.
- */
+/** TanStack `ColumnDef` plus Najm's responsive and inline-editing metadata. */
 export type NTableColumnDef<TData, TValue = any> = ColumnDef<TData, TValue> & {
-  meta?: ColumnDef<TData, TValue>["meta"] & NTableColumnMeta;
+  meta?: ColumnDef<TData, TValue>["meta"] & NTableColumnMeta<TData, TValue>;
 };
 
 const HIDDEN_BELOW_CLASSES = {

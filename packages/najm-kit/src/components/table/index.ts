@@ -1,4 +1,4 @@
-export { NTable, type NTableProps, type NTableState, type NTableClassNames, type TableHeaderColor, type NTableMenu, type NTableMenuProp, type NTableColumnDef, type NTableColumnMeta, type NTableColumnBreakpoint, type NTableCardPagination, type NTableLoadMorePagination, type NTableInfinitePagination, type NTablePaginationVariant, type NTablePaginationLabels, type NTableToolbarLabels } from "./NTable";
+export { NTable, type NTableProps, type NTableState, type NTableClassNames, type TableHeaderColor, type NTableMenu, type NTableMenuProp, type NTableColumnDef, type NTableColumnMeta, type NTableColumnBreakpoint, type NTableEditorType, type NTableEditorOption, type NTableCardPagination, type NTableLoadMorePagination, type NTableInfinitePagination, type NTablePaginationVariant, type NTablePaginationLabels, type NTableToolbarLabels } from "./NTable";
 export { buildPageItems, type NTablePageItem } from "./paginationPages";
 export { NTableDefaultsProvider, useNTableDefaults, useResolvedToolbarLabels, type NTableDefaults } from "./TableDefaults";
 export { NTableContent } from "./NTableContent";

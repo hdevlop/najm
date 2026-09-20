@@ -27,7 +27,7 @@ import type {
 import type { NTableToolbarLabels } from "./toolbarContract";
 export type { NTableClassNames } from "./store";
 export type { TableHeaderColor } from "./tableColors";
-export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint } from "./responsiveColumns";
+export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableEditorType, NTableEditorOption } from "./responsiveColumns";
 export type { NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels } from "./paginationContract";
 export type { NTableToolbarLabels } from "./toolbarContract";
 
@@ -186,7 +186,7 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   getRowClassName?: (row: T) => string | undefined | null | false;
   menu?: NTableMenuProp<T>;
   menuButton?: boolean;
-  onCellEdit?: (row: T, columnId: string, value: any) => Promise<any>;
+  onCellEdit?: (row: T, columnId: string, value: any) => Promise<any> | any;
   onBulkDelete?: (ids: string[]) => void;
   pageSizeOptions?: number[];
   noResultsText?: string;

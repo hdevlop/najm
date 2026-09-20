@@ -815,11 +815,25 @@ import { useSelection } from 'najm-kit';
   below the chosen Tailwind breakpoint. The column remains visible at that
   breakpoint and above (mobile-first). Table view only.
 
+Inline editing is part of the same metadata contract. Set
+`editable?: boolean | ((row) => boolean)` and pass `onCellEdit` to activate it.
+Use `editor?: "text" | "number" | "select" | "checkbox" | "textarea"` to
+choose the control. Number editors also accept `min`, `max`, and `step`; select
+editors use `options`; every editor can use `validate`.
+
 ```tsx
 import { NTable, type NTableColumnDef } from "najm-kit";
 
 const columns: NTableColumnDef<Family>[] = [
-  { accessorKey: "name", header: "Family account" },
+  {
+    accessorKey: "name",
+    header: "Family account",
+    meta: {
+      editable: (family) => canEdit(family),
+      editor: "text",
+      validate: (value) => value.trim() ? null : "Name is required",
+    },
+  },
   {
     accessorKey: "email",
     header: "Email",
@@ -829,6 +843,12 @@ const columns: NTableColumnDef<Family>[] = [
     },
   },
 ];
+
+<NTable
+  data={families}
+  columns={columns}
+  onCellEdit={(family, columnId, value) => updateFamily(family.id, { [columnId]: value })}
+/>
 ```
 
 Notes:

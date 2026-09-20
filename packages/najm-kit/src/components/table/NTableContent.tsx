@@ -1,6 +1,15 @@
 import React, { useCallback } from "react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import { Checkbox } from "../ui/checkbox";
+import { Input } from "../ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../ui/select";
+import { Textarea } from "../ui/textarea";
 import { NajmScroll } from "../ui/scroll";
 import { flexRender } from "@tanstack/react-table";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronRight, ChevronDown } from "lucide-react";
@@ -8,6 +17,7 @@ import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import { useTableSurfaceAppearance } from "./tableSurface";
 import { resolveHiddenBelowClass } from "./responsiveColumns";
+import type { NTableColumnMeta, NTableEditorOption, NTableEditorType } from "./responsiveColumns";
 import {
   DEFAULT_TABLE_BORDER_COLOR,
   DEFAULT_TABLE_HEADER_COLOR,
@@ -17,40 +27,234 @@ import {
 
 const ROW_CONTEXT_HANDLED = "__ntableRowContextHandled";
 
+function resolveEditorValue<TData, TValue>(
+  value: TValue | ((row: TData) => TValue),
+  row: TData,
+): TValue {
+  return typeof value === "function"
+    ? (value as (currentRow: TData) => TValue)(row)
+    : value;
+}
+
 function EditableCell({ cell, onCellEdit }: { cell: any; onCellEdit: (row: any, columnId: string, value: any) => Promise<any> | any }) {
   const columnDef = cell.column.columnDef as any;
-  const meta = columnDef.meta || {};
+  const meta = (columnDef.meta || {}) as NTableColumnMeta<any, any>;
   const row = cell.row.original;
   const columnId = cell.column.id;
-  const editor: string = meta.editor || "text";
+  const editor: NTableEditorType = meta.editor || "text";
   const initial = cell.getValue();
   const [editing, setEditing] = React.useState(false);
   const [value, setValue] = React.useState<any>(initial);
   const [saving, setSaving] = React.useState(false);
+  const [error, setError] = React.useState<string | null>(null);
+  const savingRef = React.useRef(false);
+  const skipBlurCommitRef = React.useRef(false);
 
   React.useEffect(() => { if (!editing) setValue(initial); }, [initial, editing]);
 
   const commit = async (next: any) => {
-    if (next === initial) { setEditing(false); return; }
+    if (savingRef.current) return;
+    if (next === initial) {
+      skipBlurCommitRef.current = true;
+      setEditing(false);
+      return;
+    }
+    const validationError = meta.validate?.(next, row);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
+    setError(null);
+    savingRef.current = true;
     setSaving(true);
-    try { await onCellEdit(row, columnId, next); setEditing(false); }
-    catch { setValue(initial); setEditing(false); }
-    finally { setSaving(false); }
+    try {
+      await onCellEdit(row, columnId, next);
+      skipBlurCommitRef.current = true;
+      setEditing(false);
+    } catch {
+      setValue(initial);
+      skipBlurCommitRef.current = true;
+      setEditing(false);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+  };
+
+  const beginEditing = () => {
+    skipBlurCommitRef.current = false;
+    setError(null);
+    setEditing(true);
+  };
+
+  const cancel = () => {
+    skipBlurCommitRef.current = true;
+    setValue(initial);
+    setError(null);
+    setEditing(false);
+  };
+
+  const commitOnBlur = (next: any) => {
+    if (skipBlurCommitRef.current) {
+      skipBlurCommitRef.current = false;
+      return;
+    }
+    void commit(next);
   };
 
   if (!editing && editor !== "checkbox" && editor !== "select") {
     return (
-      <div className={cn("min-h-8 -mx-2 px-2 py-1 rounded cursor-text", "hover:bg-muted/60 hover:ring-1 hover:ring-border")} onClick={(e) => { e.stopPropagation(); setEditing(true); }}>
+      <div
+        data-ntable-editable-display
+        className={cn("min-h-8 -mx-2 px-2 py-1 rounded cursor-text", "hover:bg-muted/60 hover:ring-1 hover:ring-border")}
+        onClick={(event) => {
+          event.stopPropagation();
+          beginEditing();
+        }}
+      >
         {flexRender(columnDef.cell, cell.getContext())}
         {saving && <Loader2 className="inline-block ml-2 h-3 w-3 animate-spin" />}
       </div>
     );
   }
 
+  const stopPropagation = (event: React.SyntheticEvent) => event.stopPropagation();
+
+  if (editor === "checkbox") {
+    return (
+      <div onClick={stopPropagation} className="flex items-center">
+        <Checkbox
+          aria-label={`Edit ${columnId}`}
+          checked={Boolean(value)}
+          disabled={saving}
+          onCheckedChange={(checked) => {
+            const next = Boolean(checked);
+            setValue(next);
+            void commit(next);
+          }}
+        />
+        {saving && <Loader2 className="ml-2 h-3 w-3 animate-spin" />}
+      </div>
+    );
+  }
+
+  if (editor === "select") {
+    const options = meta.options
+      ? resolveEditorValue(meta.options, row)
+      : [];
+    return (
+      <div onClick={stopPropagation}>
+        <Select
+          value={value == null ? "" : String(value)}
+          disabled={saving}
+          onValueChange={(selectedValue) => {
+            const selectedOption = options.find(
+              (option: NTableEditorOption<any>) => String(option.value) === selectedValue,
+            );
+            const next = selectedOption?.value ?? selectedValue;
+            setValue(next);
+            void commit(next);
+          }}
+        >
+          <SelectTrigger
+            aria-label={`Edit ${columnId}`}
+            aria-invalid={Boolean(error)}
+            className={cn("h-8 w-full", error && "ring-2 ring-destructive")}
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option: NTableEditorOption<any>) => (
+              <SelectItem key={String(option.value)} value={String(option.value)}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {saving && <Loader2 className="ml-2 h-3 w-3 animate-spin" />}
+        {error && <div role="alert" className="text-xs text-destructive">{error}</div>}
+      </div>
+    );
+  }
+
+  if (editor === "textarea") {
+    return (
+      <div onClick={stopPropagation} className="relative">
+        <div className="invisible">{flexRender(columnDef.cell, cell.getContext())}</div>
+        <Textarea
+          autoFocus
+          aria-label={`Edit ${columnId}`}
+          aria-invalid={Boolean(error)}
+          value={value ?? ""}
+          disabled={saving}
+          onChange={(event) => setValue(event.target.value)}
+          onBlur={(event) => commitOnBlur(event.currentTarget.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Escape") cancel();
+            if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
+              void commit(event.currentTarget.value);
+            }
+          }}
+          className={cn(
+            "absolute inset-0 min-h-full text-sm",
+            error && "ring-2 ring-destructive",
+          )}
+        />
+        {error && <div role="alert" className="absolute -bottom-4 left-0 text-xs text-destructive">{error}</div>}
+      </div>
+    );
+  }
+
   return (
-    <div onClick={(e) => e.stopPropagation()}>
+    <div onClick={stopPropagation} className="relative w-full">
       <div className="invisible truncate">{flexRender(columnDef.cell, cell.getContext())}</div>
-      <input autoFocus value={value ?? ""} onChange={(e) => setValue(e.target.value)} onBlur={() => commit(value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(value); } if (e.key === "Escape") { setValue(initial); setEditing(false); } }} className="absolute inset-0 h-full w-full px-2 text-sm" />
+      <Input
+        autoFocus
+        aria-label={`Edit ${columnId}`}
+        aria-invalid={Boolean(error)}
+        type={editor === "number" ? "number" : "text"}
+        value={value ?? ""}
+        disabled={saving}
+        min={editor === "number" && meta.min !== undefined ? resolveEditorValue(meta.min, row) : undefined}
+        max={editor === "number" && meta.max !== undefined ? resolveEditorValue(meta.max, row) : undefined}
+        step={editor === "number" ? meta.step ?? "any" : undefined}
+        onChange={(event) => {
+          setValue(
+            editor === "number"
+              ? event.target.value === ""
+                ? null
+                : Number(event.target.value)
+              : event.target.value,
+          );
+        }}
+        onBlur={(event) => {
+          const next = editor === "number"
+            ? event.currentTarget.value === ""
+              ? null
+              : Number(event.currentTarget.value)
+            : event.currentTarget.value;
+          commitOnBlur(next);
+        }}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") {
+            event.preventDefault();
+            const next = editor === "number"
+              ? event.currentTarget.value === ""
+                ? null
+                : Number(event.currentTarget.value)
+              : event.currentTarget.value;
+            void commit(next);
+          } else if (event.key === "Escape") {
+            cancel();
+          }
+        }}
+        className={cn(
+          "absolute inset-0 h-full w-full px-2 text-sm",
+          error && "ring-2 ring-destructive",
+        )}
+      />
+      {saving && <Loader2 className="absolute right-2 top-1/2 h-3 w-3 -translate-y-1/2 animate-spin" />}
+      {error && <div role="alert" className="absolute -bottom-4 left-0 whitespace-nowrap text-xs text-destructive">{error}</div>}
     </div>
   );
 }
@@ -286,7 +490,11 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                     {row.getVisibleCells().map((cell) => {
                       const columnDef = cell.column.columnDef as any;
                       const meta = columnDef.meta || {};
-                      const isEditable = Boolean(onCellEdit) && Boolean(meta.editable);
+                      const isEditable = Boolean(onCellEdit) && (
+                        typeof meta.editable === "function"
+                          ? Boolean(meta.editable(row.original))
+                          : Boolean(meta.editable)
+                      );
                       const responsiveClass = resolveHiddenBelowClass(meta.hiddenBelow);
                       return (
                         <TableCell key={cell.id} title={typeof cell.getValue?.() === "string" ? (cell.getValue() as string) : undefined} className={cn("h-14 overflow-hidden text-ellipsis", responsiveClass)}>
