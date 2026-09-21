@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.16.10 - 2026-09-21
+
+- Added `NTable.onCellClick(row, columnId, event)` for table-view data cells.
+  Cell clicks remain distinct from `onRowClick` and expose the resolved TanStack
+  column ID to application handlers.
+
 ## 2.16.9 - 2026-09-20
 
 - Added shared currency select choices and codes to the root and server entry
