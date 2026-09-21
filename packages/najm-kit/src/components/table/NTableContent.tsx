@@ -280,6 +280,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
     ? { borderColor: resolvedBorderColor }
     : undefined;
   const onRowClick = useTableStore.use.onRowClick();
+  const onCellClick = useTableStore.use.onCellClick();
   const onRowContextMenu = useTableStore.use.onRowContextMenu();
   const onBackgroundContextMenu = useTableStore.use.onBackgroundContextMenu();
   const getRowClassName = useTableStore.use.getRowClassName();
@@ -497,7 +498,15 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                       );
                       const responsiveClass = resolveHiddenBelowClass(meta.hiddenBelow);
                       return (
-                        <TableCell key={cell.id} title={typeof cell.getValue?.() === "string" ? (cell.getValue() as string) : undefined} className={cn("h-14 overflow-hidden text-ellipsis", responsiveClass)}>
+                        <TableCell
+                          key={cell.id}
+                          title={typeof cell.getValue?.() === "string" ? (cell.getValue() as string) : undefined}
+                          onClick={onCellClick ? (event) => {
+                            event.stopPropagation();
+                            onCellClick(row.original, cell.column.id, event);
+                          } : undefined}
+                          className={cn("h-14 overflow-hidden text-ellipsis", responsiveClass, onCellClick && "cursor-pointer")}
+                        >
                           {isEditable ? <EditableCell cell={cell} onCellEdit={onCellEdit} /> : flexRender(columnDef.cell, cell.getContext())}
                         </TableCell>
                       );

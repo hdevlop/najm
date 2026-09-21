@@ -182,6 +182,11 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   borderColor?: string;
   showCheckbox?: boolean;
   onRowClick?: (row: T) => void;
+  /**
+   * Called when a data cell is clicked in table view. Cell clicks do not
+   * propagate to `onRowClick`.
+   */
+  onCellClick?: (row: T, columnId: string, event: React.MouseEvent<HTMLTableCellElement>) => void;
   onRowContextMenu?: (e: React.MouseEvent, row: T) => void;
   getRowClassName?: (row: T) => string | undefined | null | false;
   menu?: NTableMenuProp<T>;
@@ -529,6 +534,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     onEdit: props.onEdit ?? null,
     onDelete: props.onDelete ?? null,
     onRowClick: props.onRowClick ?? null,
+    onCellClick: props.onCellClick ?? null,
     onRowContextMenu: (onRowContextMenu || effectiveRowMenu) ? handleRowContextMenu : null,
     onBackgroundContextMenu: normalizedMenu.background ? handleBackgroundContextMenu : null,
     openRowMenu: autoOpenRowMenu,
