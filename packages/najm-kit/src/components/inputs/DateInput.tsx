@@ -27,7 +27,7 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
             when the calendar opens.
           */}
           <button type="button" aria-label={ariaLabel} className="w-full flex items-center cursor-pointer gap-2 justify-start text-left font-normal bg-transparent border-0 p-0 outline-none">
-            <span className={cn("cursor-pointer", value ? "text-foreground" : "text-muted-foreground")}>
+            <span className={cn("flex-1 truncate text-sm cursor-pointer", value ? "text-foreground" : "text-muted-foreground")}>
               {value ? format(toDate(value)!, "PPP") : placeholder}
             </span>
           </button>
