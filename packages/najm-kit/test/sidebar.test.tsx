@@ -103,6 +103,36 @@ describe("SidebarItem", () => {
     act(() => btn.click());
     expect(container.textContent).toContain("Overview");
   });
+
+  test("shows an interactive submenu on hover in the collapsed rail", async () => {
+    const onNavigate = mock(() => {});
+    const item: NavItem = {
+      id: "access",
+      label: "AccessControle",
+      children: [{ id: "roles", label: "Roles", href: "/roles" }],
+    };
+    const { container, unmount } = render(
+      <NSidebarItem item={item} collapsed linkComponent={FakeLink} onNavigate={onNavigate} />
+    );
+    const trigger = container.querySelector("button") as HTMLButtonElement;
+    expect(trigger.textContent).toContain("AccessControle");
+    fireEvent.mouseEnter(trigger.parentElement!);
+    await waitFor(() => expect(document.querySelector("[data-slot='popover-content'] a[href='/roles']")).toBeTruthy());
+    const child = document.querySelector("[data-slot='popover-content'] a[href='/roles']") as HTMLAnchorElement;
+    expect(child.textContent).toContain("Roles");
+    fireEvent.click(child);
+    expect(onNavigate).toHaveBeenCalledWith("/roles");
+    unmount();
+  });
+
+  test("shows a leaf label on hover only when collapsed", async () => {
+    const item: NavItem = { id: "home", label: "Dashboard", href: "/" };
+    const { container, rerender } = render(<NSidebarItem item={item} collapsed />);
+    fireEvent.mouseEnter(container.querySelector("button")!.parentElement!);
+    await waitFor(() => expect(document.querySelector("[data-slot='popover-content']")?.textContent).toContain("Dashboard"));
+    rerender(<NSidebarItem item={item} />);
+    expect(document.querySelector("[data-slot='popover-content']")).toBeNull();
+  });
 });
 
 describe("Sidebar", () => {

@@ -1,6 +1,7 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { cn } from "../../lib/cn";
 import { ChevronDown } from "lucide-react";
+import { Popover, PopoverAnchor, PopoverContent } from "../ui/popover";
 import type { SidebarItemProps, NavItem } from "./types";
 import { SIDEBAR_COLLAPSED_ITEM_INSET_CLASS } from "./layout";
 
@@ -28,11 +29,30 @@ export function NSidebarItem({
   const hasChildren = item.children && item.children.length > 0;
   const childActive = hasActiveChild(item, activePath, isActive);
   const [open, setOpen] = useState(childActive);
+  const [hoverOpen, setHoverOpen] = useState(false);
+  const [popoverSide, setPopoverSide] = useState<"left" | "right">("right");
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const Icon = item.icon;
 
   useEffect(() => {
     if (childActive) setOpen(true);
   }, [childActive]);
+
+  useEffect(() => () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+  }, []);
+
+  const showHover = (element: HTMLElement) => {
+    if (item.disabled) return;
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    setPopoverSide(getComputedStyle(element).direction === "rtl" ? "left" : "right");
+    setHoverOpen(true);
+  };
+
+  const hideHover = () => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = setTimeout(() => setHoverOpen(false), 150);
+  };
 
   const baseClasses = cn(
     "flex items-center gap-3 w-full rounded-md text-sm px-2 font-medium transition-colors h-8 text-start",
@@ -49,6 +69,10 @@ export function NSidebarItem({
   const handleClick = () => {
     if (item.disabled) return;
     if (hasChildren) {
+      if (collapsed) {
+        setHoverOpen(true);
+        return;
+      }
       setOpen(!open);
       return;
     }
@@ -61,6 +85,7 @@ export function NSidebarItem({
   const content = (
     <>
       {Icon && <Icon className="h-4 w-4 shrink-0" />}
+      {collapsed && <span className="sr-only">{item.label}</span>}
       {!collapsed && (
         <>
           <span className="flex-1 truncate">{item.label}</span>
@@ -87,6 +112,7 @@ export function NSidebarItem({
               return;
             }
             onNavigate?.(item.href!);
+            setHoverOpen(false);
           }}
         >
           {content}
@@ -99,6 +125,49 @@ export function NSidebarItem({
       </button>
     );
   };
+
+  if (collapsed && !item.disabled) {
+    return (
+      <Popover open={hoverOpen} onOpenChange={setHoverOpen}>
+        <PopoverAnchor asChild>
+          <span className="block" onMouseEnter={(e) => showHover(e.currentTarget)}
+            onMouseLeave={hideHover} onFocus={(e) => showHover(e.currentTarget)}>
+            {renderLink()}
+          </span>
+        </PopoverAnchor>
+        <PopoverContent
+          side={popoverSide}
+          align="start"
+          sideOffset={8}
+          className="w-52 p-1"
+          onMouseEnter={(e) => showHover(e.currentTarget)}
+          onMouseLeave={hideHover}
+          onOpenAutoFocus={(e) => e.preventDefault()}
+          onCloseAutoFocus={(e) => e.preventDefault()}
+        >
+          <div className="px-2 py-1.5 text-sm font-semibold">{item.label}</div>
+          {hasChildren && (
+            <div className="flex flex-col gap-1">
+              {item.children!.map((child) => (
+                <NSidebarItem
+                  key={child.id}
+                  item={child}
+                  activePath={activePath}
+                  isActive={isActive}
+                  onNavigate={(target) => {
+                    setHoverOpen(false);
+                    onNavigate?.(target);
+                  }}
+                  linkComponent={LinkComponent}
+                  classNames={classNames}
+                />
+              ))}
+            </div>
+          )}
+        </PopoverContent>
+      </Popover>
+    );
+  }
 
   if (!hasChildren) return renderLink();
 
