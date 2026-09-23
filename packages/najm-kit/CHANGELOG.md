@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.16.12 - 2026-09-23
+
+- Collapsed `NSidebar` items now show their label on hover or focus. Groups show
+  their navigable children in the same popover, including in right-to-left layouts.
+
 ## 2.16.11 - 2026-09-23
 
 - Fixed `DateInput` rendering its selected date at the inherited body size
