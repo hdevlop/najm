@@ -306,10 +306,9 @@ export class UserService {
       Err('Admin email and password must be provided via config parameter');
     }
 
-    // Enforce strong password for admin
-    if (config.password.length < 12) {
-      Err('Admin password must be at least 12 characters');
-    }
+    // Validate before replacing an existing admin so an invalid password
+    // cannot delete the account before create() rejects it.
+    this.userValidator.validatePasswordStrength(config.password);
 
     const adminRole = await this.roleValidator.checkAdminRoleExists();
     const existingUser = await this.userRepository.getByEmail(config.email);
