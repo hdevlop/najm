@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.16.11 - 2026-09-23
+
+- Fixed `DateInput` rendering its selected date at the inherited body size
+  (16px) instead of the 14px used by text, select and combobox fields. Long
+  dates now truncate rather than pushing the calendar icon out of the field.
+
 ## 2.16.10 - 2026-09-21
 
 - Added `NTable.onCellClick(row, columnId, event)` for table-view data cells.
