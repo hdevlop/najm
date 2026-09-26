@@ -1,5 +1,20 @@
 # Changelog
 
+## 4.1.0 - 2026-09-26
+
+- Add exported `ownershipCondition(db, tokens, context)` and the equivalent
+  `@Owned` repository method for composing row ownership and domain filters in
+  a single Drizzle WHERE. App-specific roles stay in consumer configuration.
+- Support same-table alternative ownership tokens in `@Owned`, including its
+  existing read helpers. Reject mixed-table alternatives; unknown roles deny
+  access even when their names match JavaScript object prototype properties.
+- Preserve single-token legacy helpers, metadata, and trusted out-of-request
+  seed/job behavior. Document explicit migration from unsafe
+  `scope(query).where(filter)` chains; upgrading does not repair those call sites
+  automatically. Clarify permission versus record-ownership checks.
+- Add in-memory SQLite execution, PostgreSQL SQL generation, request-container
+  isolation, compatibility, and built public-surface regression coverage.
+
 ## 4.0.6 - 2026-09-19
 
 - fix(auth): accept a 7-character Moroccan CIN. `isMoroccanCin` required 8

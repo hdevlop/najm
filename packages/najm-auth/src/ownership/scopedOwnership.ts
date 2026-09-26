@@ -139,7 +139,7 @@ export class OwnershipToken {
   readonly name:   string;
   readonly table:  any;
 
-  private _rules: Record<string, (uid: string, query: any) => ScopeResult> = {};
+  private _rules: Record<string, (uid: string, query: any) => ScopeResult> = Object.create(null);
   private _writeScopeCol?: any;
   private _adminRoles?: string[];
 

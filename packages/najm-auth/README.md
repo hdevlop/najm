@@ -508,44 +508,36 @@ export const Product = own(products)
     join(products.userId, _users.id),
     where(_users.id)
   )
-  .writeBy(products.userId);  // Enforce on create/update
+  .writeBy(products.userId);  // Metadata for consumers; not an automatic write guard
 ```
 
 ### Using @Policy and @Owned
 
 ```typescript
-import { configureOwnership, Policy, CanList, CanRead, CanCreate, CanUpdate, CanDelete } from 'najm-auth';
-
-const config = configureOwnership({
-  adminRoles: ['admin'],
-  rules: {
-    'user': {
-      'products': Product.getRules()['user']
-    }
-  }
-});
+import { Owned, Policy, CanList, CanRead, CanCreate, CanUpdate, CanDelete } from 'najm-auth';
+import { and, eq, type SQL } from 'drizzle-orm';
 
 @Policy(Product)
 @Controller('/api/products')
 export class ProductController {
   @Get('/')
-  @CanList()                   // List only owned products
-  getAll(@GuardParams() filter: any) { }
+  @CanList()                   // Checks read permission; repository scopes rows
+  getAll() { /* delegate to a scoped service/repository read */ }
 
   @Get('/:id')
-  @CanRead()                   // Read only if owner
+  @CanRead()                   // Checks read permission; lookup must scope the ID
   getOne() { }
 
   @Post('/')
-  @CanCreate()                 // Create (ownership assigned automatically)
+  @CanCreate()                 // Service must validate/assign ownership
   create(@Body() data: any) { }
 
   @Put('/:id')
-  @CanUpdate()                 // Update only if owner
+  @CanUpdate()                 // Service must load an owned record before writing
   update(@Body() data: any) { }
 
   @Delete('/:id')
-  @CanDelete()                 // Delete only if owner
+  @CanDelete()                 // Service must load an owned record before deleting
   delete() { }
 }
 
@@ -554,20 +546,53 @@ export class ProductController {
 export class ProductRepository {
   @DB() db!: Database;
 
-  // Auto-scoped to current user
-  async findMany(opts?: { where?: any; limit?: number }) {
-    return this.findMany(opts);  // Only returns owned products
-  }
+  // These methods are supplied by @Owned; do not define recursive wrappers.
+  declare ownershipCondition: () => SQL | undefined;
+  declare findMany: (opts?: { where?: SQL; limit?: number }) => Promise<ProductRow[]>;
+  declare findOne: (opts: { where: SQL }) => Promise<ProductRow | null>;
 
-  async findOne(opts: { where: any }) {
-    return this.findOne(opts);   // Returns null if not owned
-  }
-
-  async scopedQuery() {
-    return this.scopedQuery();   // Raw scoped query builder
+  async getById(id: string) {
+    const [row] = await this.db.select().from(products)
+      .where(and(this.ownershipCondition(), eq(products.id, id))).limit(1);
+    return row ?? null;
   }
 }
 ```
+
+### Composable ownership (4.1+)
+
+`@Owned(Product)` now provides `ownershipCondition()` for custom queries.
+It returns a parameterized `id IN (authorized IDs)` predicate; join-based rules
+do not multiply outer rows. Combine it with filters in one
+`.where(and(this.ownershipCondition(), filter))`. The owned table must have an
+`id` column. A standalone `ownershipCondition(db, tokens, context)` and the
+`OwnershipReadContext` / `OwnershipConditionMethods` types are also exported.
+
+`@Owned(Product, SharedProduct)` grants either rule (OR), then your query's
+filters apply (AND). Every alternative must reference the same table object.
+Alternatives work with `ownershipCondition`, `findMany`, `findOne`, and
+`scopedQuery`. Single-token helpers retain their existing behavior.
+
+Configure school-wide, tenant-wide, or other privileged roles in the app:
+
+```typescript
+const Product = own(products, { adminRoles: ['admin', 'operations'] })
+  .for('member', where(products.userId));
+```
+
+Those roles bypass row ownership only; route permissions still apply. Unknown
+roles and anonymous active requests get no rows. Outside request context,
+seed/job reads remain unscoped for compatibility; never treat a manually
+constructed repository without request injection as an authenticated boundary.
+
+**Migrating custom queries:** replace `this.scope(query).where(filter)` with
+`query.where(and(this.ownershipCondition(), filter))`. Drizzle replaces an
+earlier WHERE when another `.where()` is called. The legacy `scope()` and
+`scopedQuery()` APIs remain for compatibility, but their result must not be
+followed by `.where()`; for simple reads use `findMany({ where: filter })`.
+An upgrade alone does not rewrite unsafe queries in consumers. Keep role
+and cross-user integration tests in each app. `@Policy` and `@CanRead` check
+permissions, not the ownership of a requested record ID.
 
 ### Advanced Ownership: Multi-Role Scoping
 

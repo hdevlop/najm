@@ -3,6 +3,7 @@ import { sql, and }          from 'drizzle-orm';
 import { Injectable, Inject, DI, Container, REQUEST_ID } from 'najm-core';
 import { USER }              from 'najm-guard';
 import { OwnershipToken }    from './scopedOwnership';
+import { ownershipCondition, validateOwnershipAlternatives } from './ownershipCondition';
 
 export const OWNED_META = Symbol.for('najm:owned');
 
@@ -54,7 +55,9 @@ export class ScopeContext {
 }
 
 
-export function Owned(token: OwnershipToken) {
+export function Owned(token: OwnershipToken, ...alternatives: OwnershipToken[]) {
+  const tokens = [token, ...alternatives];
+  validateOwnershipAlternatives(tokens);
   return function (target: Function) {
     Reflect.defineMetadata(OWNED_META, token, target);
 
@@ -62,6 +65,14 @@ export function Owned(token: OwnershipToken) {
 
     // ── Inject ScopeContext ──────────────────────────────────────────────
     Inject(ScopeContext)(proto, '_scopeCtx');
+
+    Object.defineProperty(proto, 'ownershipCondition', {
+      value(this: any) {
+        return ownershipCondition(this.db, tokens, this._scopeCtx);
+      },
+      configurable: true,
+      enumerable: false,
+    });
 
     // ── Shared user resolution ──────────────────────────────────────────
     function getUser(self: any): { id: string; role: string } | null {
@@ -92,10 +103,12 @@ export function Owned(token: OwnershipToken) {
 
     // ── this.scope(query) ────────────────────────────────────────────────
     // Kept for backward compat — applies JOINs + WHERE in one shot.
+    // Never append .where() to this result: use ownershipCondition() instead.
     Object.defineProperty(proto, 'scope', {
       get(this: any) {
         return (query: any): any => {
           if (!hasActiveContext(this)) return query;
+          if (alternatives.length) return query.where(this.ownershipCondition());
           const user = getUser(this);
           if (!user) return query.where(sql`1 = 0`);
           return token.applyScope(user.id, user.role, query);
@@ -120,6 +133,9 @@ export function Owned(token: OwnershipToken) {
         if (!user) return [];
 
         const base = this.db.select().from(token.table);
+        if (alternatives.length) {
+          return applyQueryOptions(base, opts, combineConditions(this.ownershipCondition(), opts.where));
+        }
         const { query: q, condition: scopeCondition } = token.applyScopeSplit(user.id, user.role, base);
         return applyQueryOptions(q, opts, combineConditions(scopeCondition, opts.where));
       };

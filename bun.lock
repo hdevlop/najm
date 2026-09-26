@@ -204,7 +204,7 @@
     },
     "packages/najm-auth": {
       "name": "najm-auth",
-      "version": "4.0.4",
+      "version": "4.1.0",
       "dependencies": {
         "bcryptjs": "^3.0.2",
         "jose": "^6.1.3",

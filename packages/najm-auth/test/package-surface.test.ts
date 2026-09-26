@@ -8,6 +8,12 @@ const packageJson = JSON.parse(readFileSync(join(packageRoot, 'package.json'), '
 const read = (relative: string) => readFileSync(join(packageRoot, relative), 'utf8');
 
 describe('published surface', () => {
+  test('exports the reusable ownership condition at runtime', async () => {
+    const built = await import(pathToFileURL(join(packageRoot, 'dist/index.js')).href);
+    expect(typeof built.ownershipCondition).toBe('function');
+    expect(typeof built.Owned).toBe('function');
+    expect(read('dist/index.d.ts')).toContain('...alternatives: OwnershipToken[]');
+  });
   test('the identity/ma subpath is exported and built', () => {
     expect(packageJson.exports['./identity/ma']).toEqual({
       types: './dist/identity/ma.d.ts',
@@ -46,6 +52,9 @@ describe('published surface', () => {
       'LoginResult',
       'IdentityConfig',
       'GitHubOAuthConfig',
+      'ownershipCondition',
+      'OwnershipReadContext',
+      'OwnershipConditionMethods',
     ]) {
       expect(rootTypes).toContain(name);
     }
