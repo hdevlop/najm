@@ -8,7 +8,7 @@
         "@clack/prompts": "^1.7.0",
         "@hono/node-server": "^2.0.11",
         "bcrypt": "^6.0.0",
-        "diject": "^0.1.8",
+        "diject": "^0.1.9",
         "dotenv-pro": "^0.2.0",
         "forji": "^1.0.5",
         "hono": "^4.12.31",
@@ -360,7 +360,7 @@
       "name": "najm-core",
       "version": "2.0.6",
       "dependencies": {
-        "diject": "^0.1.8",
+        "diject": "^0.1.9",
         "hono": "^4.12.31",
         "reflect-metadata": "^0.2.2",
       },
@@ -474,7 +474,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.16.2",
+      "version": "2.16.12",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",
@@ -1973,7 +1973,7 @@
 
     "diff": ["diff@4.0.4", "", {}, "sha512-X07nttJQkwkfKfvTPG/KSnE2OMdcUCao6+eXF3wmnIQRn2aPAHH3VxDbDOdegkd6JbPsXqShpvEOHfAT+nCNwQ=="],
 
-    "diject": ["diject@0.1.8", "", { "peerDependencies": { "reflect-metadata": "^0.2.0" } }, "sha512-tv2FFf7jEF14HJ1PSNb/KfEqFCwU7e7B4R2sVBaC5UfCSHA62lbhc+RGt6hP1/jMIiouQ+2JoRID3BqsQbyiGA=="],
+    "diject": ["diject@0.1.9", "", { "peerDependencies": { "reflect-metadata": "^0.2.0" } }, "sha512-wmQDpS798To4FI/tSb5wpzeMsLEz+Y4lL6iMgte7cVTh75DoIbo95nEIwUrmVTDP1hx8RRK79Mjof0lkOyBQGQ=="],
 
     "dir-glob": ["dir-glob@3.0.1", "", { "dependencies": { "path-type": "^4.0.0" } }, "sha512-WkrWp9GR4KXfKGYzOLmTuGVi1UWFfws377n9cc55/tb6DuqyF6pcQ5AbiHEshaDpY9v6oaSr2XCDidGmMwdzIA=="],
 

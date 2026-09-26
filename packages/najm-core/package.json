@@ -27,7 +27,7 @@
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "dependencies": {
-    "diject": "^0.1.8",
+    "diject": "^0.1.9",
     "hono": "^4.12.31",
     "reflect-metadata": "^0.2.2"
   },
