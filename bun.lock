@@ -358,7 +358,7 @@
     },
     "packages/najm-core": {
       "name": "najm-core",
-      "version": "2.0.6",
+      "version": "2.1.0",
       "dependencies": {
         "diject": "^0.1.9",
         "hono": "^4.12.31",
