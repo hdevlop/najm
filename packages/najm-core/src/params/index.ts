@@ -23,6 +23,7 @@ export * from './decorators';
 // ============================================
 export { CONTEXT, REQUEST, PARSER, PARAM_CONFIG,PARAMS } from './tokens';
 export { getRequestData, getRequestParser } from './requestContext';
+export { resolveCustomParam } from './customParams';
 
 // ============================================
 // TYPES
@@ -35,4 +36,7 @@ export type {
    ParameterMetadata,
    ParamPluginConfig,
    ParamInjection,
+   ParamResolveContext,
+   ParamResolve,
+   CustomParamOptions,
 } from './types';

@@ -647,6 +647,33 @@ Notes:
 
 ---
 
+### Custom parameters in controller tools
+
+Parameters declared with najm-core's `createParamDecorator(resolve)` work in
+`@McpTool` controller methods as they do in REST routes. The resolver runs
+after the tool's guards, inside that one call, so tool calls batched in one
+message never see each other's value. It reads `query()` and `param()` from
+the tool's validated input and `header()` from the transport request.
+
+```typescript
+export const Tenant = createParamDecorator(({ query, header }) => query('tenant') ?? header('x-tenant'));
+
+@Controller('/projects')
+class ProjectController {
+  @Get('/')
+  @McpTool('List the tenant projects')
+  @Validate({ query: z.object({ tenant: z.string().optional() }) })
+  list(@Tenant() tenant: string) {
+    return this.projects.list(tenant);
+  }
+}
+```
+
+A custom parameter adds no tool argument by itself: declare what it reads in
+`@Validate` so the tool's input schema advertises it.
+
+---
+
 ### Automatic tool return serialization
 
 Tool methods can return plain values directly. `najm-mcp` will normalize them into MCP tool results:

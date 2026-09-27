@@ -2,7 +2,8 @@
 // decorators/all.ts - All decorators defined in one place (alternative approach)
 // ============================================================================
 
-import { createParamDecorator } from './factory';
+import { createBuiltInParamDecorator } from './factory';
+export { createParamDecorator } from './factory';
 export { getParameterMetadata } from '../metadata';
 
 // This approach defines all decorators from a configuration object
@@ -10,54 +11,54 @@ export { getParameterMetadata } from '../metadata';
 // Disadvantages: Less modular than separate files
 
 // Body decorators
-export const Body = createParamDecorator('body');
-export const JsonBody = createParamDecorator('json');
-export const TextBody = createParamDecorator('text');
-export const FormData = createParamDecorator('formData');
-export const ArrayBufferBody = createParamDecorator('arrayBuffer');
-export const BlobBody = createParamDecorator('blob');
+export const Body = createBuiltInParamDecorator('body');
+export const JsonBody = createBuiltInParamDecorator('json');
+export const TextBody = createBuiltInParamDecorator('text');
+export const FormData = createBuiltInParamDecorator('formData');
+export const ArrayBufferBody = createBuiltInParamDecorator('arrayBuffer');
+export const BlobBody = createBuiltInParamDecorator('blob');
 
 // URL/Route decorators
-export const Params = createParamDecorator('params');
-export const Query = createParamDecorator('query');
-export const Queries = createParamDecorator('queries');
-export const Path = createParamDecorator('path');
-export const Url = createParamDecorator('url');
-export const Method = createParamDecorator('method');
-export const RoutePath = createParamDecorator('routePath');
-export const MatchedRoutes = createParamDecorator('matchedRoutes');
-export const RouteIndex = createParamDecorator('routeIndex');
+export const Params = createBuiltInParamDecorator('params');
+export const Query = createBuiltInParamDecorator('query');
+export const Queries = createBuiltInParamDecorator('queries');
+export const Path = createBuiltInParamDecorator('path');
+export const Url = createBuiltInParamDecorator('url');
+export const Method = createBuiltInParamDecorator('method');
+export const RoutePath = createBuiltInParamDecorator('routePath');
+export const MatchedRoutes = createBuiltInParamDecorator('matchedRoutes');
+export const RouteIndex = createBuiltInParamDecorator('routeIndex');
 
 // Header decorators
-export const Headers = createParamDecorator('headers');
-export const ContentType = createParamDecorator('contentType');
-export const ContentLength = createParamDecorator('contentLength');
-export const Origin = createParamDecorator('origin');
-export const Referer = createParamDecorator('referer');
-export const Language = createParamDecorator('language');
-export const Encoding = createParamDecorator('encoding');
-export const Connection = createParamDecorator('connection');
-export const Upgrade = createParamDecorator('upgrade');
-export const Protocol = createParamDecorator('protocol');
+export const Headers = createBuiltInParamDecorator('headers');
+export const ContentType = createBuiltInParamDecorator('contentType');
+export const ContentLength = createBuiltInParamDecorator('contentLength');
+export const Origin = createBuiltInParamDecorator('origin');
+export const Referer = createBuiltInParamDecorator('referer');
+export const Language = createBuiltInParamDecorator('language');
+export const Encoding = createBuiltInParamDecorator('encoding');
+export const Connection = createBuiltInParamDecorator('connection');
+export const Upgrade = createBuiltInParamDecorator('upgrade');
+export const Protocol = createBuiltInParamDecorator('protocol');
 
 // Context and request decorators
-export const Ctx = createParamDecorator('context');
-export const Req = createParamDecorator('req');
-export const File = createParamDecorator('file');
-export const IP = createParamDecorator('ip');
-export const Raw = createParamDecorator('raw');
-export const Valid = createParamDecorator('valid');
+export const Ctx = createBuiltInParamDecorator('context');
+export const Req = createBuiltInParamDecorator('req');
+export const File = createBuiltInParamDecorator('file');
+export const IP = createBuiltInParamDecorator('ip');
+export const Raw = createBuiltInParamDecorator('raw');
+export const Valid = createBuiltInParamDecorator('valid');
 
 // Guard-related decorators
-export const User = createParamDecorator('user');
-export const Owner = createParamDecorator('owner');
-export const Info = createParamDecorator('info');
-export const Data = createParamDecorator('data');
-export const Filter = createParamDecorator('filter');
-export const GuardParams = createParamDecorator('guardParams');
+export const User = createBuiltInParamDecorator('user');
+export const Owner = createBuiltInParamDecorator('owner');
+export const Info = createBuiltInParamDecorator('info');
+export const Data = createBuiltInParamDecorator('data');
+export const Filter = createBuiltInParamDecorator('filter');
+export const GuardParams = createBuiltInParamDecorator('guardParams');
 
 // Authorization decorators
-export const Role = createParamDecorator('role');
-export const Permissions = createParamDecorator('permissions');
+export const Role = createBuiltInParamDecorator('role');
+export const Permissions = createBuiltInParamDecorator('permissions');
 
 export type { ParameterMetadata } from '../types';

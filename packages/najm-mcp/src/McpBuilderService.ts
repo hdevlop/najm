@@ -1,4 +1,5 @@
 import {
+  CONTEXT,
   Container,
   DI,
   Inject,
@@ -7,7 +8,9 @@ import {
   ParamResolver,
   Service,
   getParameterMetadata,
+  resolveCustomParam,
   type ParameterMetadata,
+  type ParamResolveContext,
 } from 'najm-core';
 import { McpServer as McpSdkServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import {
@@ -130,7 +133,7 @@ export class McpBuilderService {
 
         const instance = await this.container.resolve(tool.target);
         const method = instance[tool.methodKey as any] as Function;
-        const orderedArgs = this.resolveControllerArgs(tool, method, input);
+        const orderedArgs = await this.resolveControllerArgs(tool, method, input);
         const result = await method.call(instance, ...orderedArgs);
 
         return this.toToolResult(result);
@@ -237,7 +240,7 @@ export class McpBuilderService {
     }
   }
 
-  private resolveControllerArgs(tool: RegisteredTool, method: Function, params: Record<string, any>): any[] {
+  private async resolveControllerArgs(tool: RegisteredTool, method: Function, params: Record<string, any>): Promise<any[]> {
     const metadata = (getParameterMetadata(method) ?? []) as ParameterMetadata[];
     const { paramValues, queryValues, bodyValue, paramKeys, queryKeys } = this.splitControllerInput(tool, metadata, params);
     const argCount = Math.max(
@@ -253,7 +256,12 @@ export class McpBuilderService {
     const decoratedIndices = new Set<number>();
 
     for (const meta of metadata) {
-      args[meta.index] = this.resolveControllerParameter(meta, paramValues, queryValues, bodyValue);
+      // Custom parameters are resolved here, after the guards and inside this
+      // call only: tool calls of one message share a request store, so a
+      // value kept there could reach another call.
+      args[meta.index] = meta.type === 'custom'
+        ? await resolveCustomParam(meta, this.createToolParamContext(paramValues, queryValues))
+        : this.resolveControllerParameter(meta, paramValues, queryValues, bodyValue);
       decoratedIndices.add(meta.index);
     }
 
@@ -383,6 +391,28 @@ export class McpBuilderService {
       default:
         return undefined;
     }
+  }
+
+  /**
+   * What a custom parameter resolver reads during a tool call: the call's own
+   * validated input for query and params keys, and the transport request's
+   * headers when the call arrived over HTTP.
+   */
+  private createToolParamContext(
+    paramValues: Record<string, any>,
+    queryValues: Record<string, any>,
+  ): ParamResolveContext {
+    const container = this.container;
+
+    return {
+      transport: 'mcp',
+      container,
+      header(name) {
+        return container.get(CONTEXT)?.req.header(name) ?? undefined;
+      },
+      query: (name) => queryValues[name],
+      param: (name) => paramValues[name],
+    };
   }
 
   private getAlsValue(token: any, propertyKey?: string): any {

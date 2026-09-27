@@ -1,5 +1,26 @@
 # najm-core
 
+## Unreleased (minor)
+
+### Added
+
+- `createParamDecorator(resolve)` — public custom parameter decorators. The
+  resolver runs once per invocation after route middlewares and guards, may be
+  async, and receives `{ transport, container, header, query, param }`; a
+  rejection fails the request before the handler runs. Values are passed to
+  the invocation only, so concurrent requests stay isolated.
+- `resolveCustomParam(meta, context)` and the `ParamResolveContext`,
+  `ParamResolve` and `CustomParamOptions` types, so transports such as
+  `najm-mcp` resolve the same parameters.
+
+### Changed
+
+- The `'custom'` parameter type, previously reserved and always `undefined`,
+  now carries a resolver. Handlers with one never take the synchronous
+  argument fast path.
+- The built-in decorators use an internal `createBuiltInParamDecorator`
+  factory; it was never exported.
+
 ## 1.3.0
 
 ### Breaking / Migration Notes

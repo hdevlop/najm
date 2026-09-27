@@ -6,7 +6,8 @@ import type { ParamInjection } from './types';
 import { ParamResolver } from './ParamResolver';
 import { getParameterMetadata } from './metadata';
 
-const ASYNC_PARAM_TYPES = new Set(['body', 'file', 'json', 'text', 'formData', 'arrayBuffer', 'blob']);
+// A custom resolver may return a promise, so it never takes the sync fast path.
+const ASYNC_PARAM_TYPES = new Set(['body', 'file', 'json', 'text', 'formData', 'arrayBuffer', 'blob', 'custom']);
 
 @Service()
 @Meta({ layer: 'plugin' })

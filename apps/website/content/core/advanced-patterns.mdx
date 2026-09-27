@@ -113,8 +113,8 @@ class TenantService {
   }
 }
 
-// Or create custom parameter decorator
-export const TenantId = createParamDecorator(TENANT_ID);
+// Or create a custom parameter decorator
+export const TenantId = createParamDecorator(({ container }) => container.get(TENANT_ID));
 
 @Controller('/api/data')
 class DataController {
@@ -124,6 +124,51 @@ class DataController {
   }
 }
 ```
+
+### Custom Parameter Decorators
+
+`createParamDecorator(resolve)` defines a parameter whose value your code
+computes. `resolve` runs once per invocation, after the route's middlewares
+and guards and before the handler, for REST routes and MCP tool calls alike.
+It may be async; a rejection fails that invocation before the handler runs.
+The value goes to that invocation's argument only, so concurrent requests and
+tool calls never see each other's value.
+
+```typescript
+import { createParamDecorator, Err } from 'najm-core';
+import { USER } from 'najm-guard';
+
+export const Tenant = createParamDecorator(async ({ header, query, container }, options?: { optional?: boolean }) => {
+  const id = header('x-tenant') ?? query('tenant');
+  if (!id) return options?.optional ? null : Err(400, 'Tenant is required');
+
+  const tenants = await container.resolve(TenantService);
+  return tenants.requireForUser(id, container.get(USER));
+});
+
+@Controller('/api/projects')
+class ProjectController {
+  @Get('/')
+  @McpTool('List the tenant projects')
+  @Validate({ query: z.object({ tenant: z.string().optional() }) })
+  list(@Tenant() tenant: TenantRecord, @User() user: AuthUser) {
+    return this.projects.list(tenant.id, user);
+  }
+}
+```
+
+The resolver receives:
+
+| Field | REST route | MCP tool call |
+| --- | --- | --- |
+| `transport` | `'http'` | `'mcp'` |
+| `header(name)` | the request header, validated first | the transport request's header, when there is one |
+| `query(name)` | like `@Query(name)`: validated, else raw | the tool input's value for a declared query key |
+| `param(name)` | like `@Params(name)`: validated, else raw | the tool input's value for a declared params key |
+| `container` | the request container, for ALS values such as `USER` | the same |
+
+A custom parameter adds no tool argument by itself: declare the input it
+reads in the route's `@Validate` schema so MCP clients can send it.
 
 ### ALS Best Practices
 

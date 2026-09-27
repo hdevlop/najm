@@ -3,12 +3,13 @@
 // ============================================================================
 
 import { Container, createAlsToken } from 'diject';
-import { ParameterMetadata, HRequest } from './types';
+import { ParameterMetadata, HRequest, ParamResolveContext } from './types';
 import { CONTEXT } from './tokens';
 import { Context } from 'hono';
 import { Err } from '../errors';
 import { getParameterMetadata } from './metadata';
 import { getRequestData, getRequestParser } from './requestContext';
+import { resolveCustomParam } from './customParams';
 
 const USER = createAlsToken<any>('user');
 const ROLE = createAlsToken<string>('role');
@@ -335,6 +336,9 @@ export class ParamResolver {
          case 'context':
             return getContext();
 
+         case 'custom':
+            return resolveCustomParam(meta, this.createHttpParamContext(this.container.get(CONTEXT)));
+
          default:
             return undefined;
       }
@@ -530,12 +534,49 @@ export class ParamResolver {
          case 'context':
             extract = (context) => context;
             break;
+         case 'custom':
+            async = true;
+            extract = (context) => resolveCustomParam(meta, this.createHttpParamContext(context));
+            break;
          default:
             extract = () => undefined;
             break;
       }
 
       return { index, extract, async };
+   }
+
+   /**
+    * What a custom parameter resolver reads during a REST request. Values are
+    * read the way the built-in decorators read them, validated data first.
+    * Without a request context (a guard evaluated outside HTTP) every read is
+    * undefined rather than an error.
+    */
+   private createHttpParamContext(context: Context | undefined): ParamResolveContext {
+      const container = this.container;
+
+      return {
+         transport: 'http',
+         container,
+         header(name) {
+            const validated = container.get(VALIDATED_HEADERS);
+            const key = name.toLowerCase();
+            if (validated && typeof validated === 'object' && key in validated) {
+               return validated[key];
+            }
+            return context?.req.header(name) ?? undefined;
+         },
+         query(name) {
+            const validated = container.get(VALIDATED_QUERY);
+            if (validated !== undefined) return validated?.[name];
+            return context?.req.query(name);
+         },
+         param(name) {
+            const validated = container.get(VALIDATED_PARAMS);
+            if (validated !== undefined) return validated?.[name];
+            return context?.req.param(name);
+         },
+      };
    }
 
    // ============================================================================

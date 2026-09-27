@@ -12,6 +12,7 @@ bun add najm-core diject hono reflect-metadata
 
 - **`Server`** — Main HTTP server class with plugin system, DI container, lifecycle hooks
 - **Merged plugins** — `params`, `router`, `middleware`, `resolution` are auto-registered on first boot
+- **Custom parameters** — `createParamDecorator(resolve)` for values computed per invocation (see below)
 - **DI re-exports** — `Service`, `Controller`, `Repository`, `Inject`, `DI`, `Scope` from diject
 - **Tokens** — `REQUEST_ID`, `SERVER_OPTS`, `APP`, `BASE_PATH`, `LOGGER`
 - **Logging** — `LoggerService`, `@Log()` decorator
@@ -56,6 +57,32 @@ class UserController {
 await new Server()
   .load(UserController, UserService)
   .listen(3000);
+```
+
+## Custom Parameter Decorators
+
+`createParamDecorator(resolve)` defines a parameter whose value your code
+computes. `resolve` runs once per invocation — after the route's middlewares
+and guards, before the handler — and may be async; a rejection fails that
+invocation before the handler runs. The value is passed to that invocation
+only, never kept in shared state. `najm-mcp` calls the same resolver for tool
+calls, reading `query()`/`param()` from the tool input.
+
+```typescript
+import { createParamDecorator, Err } from 'najm-core';
+
+export const Tenant = createParamDecorator(async ({ header, container }) => {
+  const tenants = await container.resolve(TenantService);
+  return (await tenants.find(header('x-tenant'))) ?? Err(404, 'Unknown tenant');
+});
+
+@Controller('/projects')
+class ProjectController {
+  @Get('/')
+  list(@Tenant() tenant: TenantRecord) {
+    return this.projects.list(tenant.id);
+  }
+}
 ```
 
 ## Plugin Architecture

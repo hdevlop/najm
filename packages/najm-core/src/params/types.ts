@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { RedirectStatusCode } from 'hono/utils/http-status';
-import type { InjectionDefinition, Constructor } from 'diject';
+import type { InjectionDefinition, Constructor, Container } from 'diject';
 
 // ============================================================================
 // REQUEST/RESPONSE TYPES
@@ -71,6 +71,50 @@ export interface ParameterMetadata {
    type: ParamType;
    propertyKey?: string;
    options?: any;
+}
+
+// ============================================================================
+// CUSTOM PARAMETER TYPES
+// ============================================================================
+
+/**
+ * What a `createParamDecorator` resolver can read about the invocation it
+ * serves. REST routes and MCP tool calls pass the same shape, so one resolver
+ * serves both transports.
+ */
+export interface ParamResolveContext {
+   /** The transport invoking the handler. */
+   readonly transport: 'http' | 'mcp';
+   /** The container. Request values such as the authenticated user are read through it. */
+   readonly container: Container;
+   /**
+    * A request header, by case-insensitive name. For an MCP tool call this is
+    * the transport request's header, when there is one.
+    */
+   header(name: string): string | undefined;
+   /**
+    * A query value, read the way `@Query(name)` reads it: the validated query
+    * when the route validated one, else the raw query string. For an MCP tool
+    * call, the tool input's value for a declared query key.
+    */
+   query(name: string): unknown;
+   /**
+    * A route parameter, read the way `@Params(name)` reads it. For an MCP tool
+    * call, the tool input's value for a declared params key.
+    */
+   param(name: string): unknown;
+}
+
+/** Computes a custom parameter's value for one invocation. */
+export type ParamResolve<T = unknown, O = undefined> = (
+   context: ParamResolveContext,
+   options: O | undefined,
+) => T | Promise<T>;
+
+/** What `createParamDecorator` stores in `ParameterMetadata.options`. */
+export interface CustomParamOptions {
+   resolve: ParamResolve<unknown, any>;
+   options?: unknown;
 }
 
 // ============================================================================
