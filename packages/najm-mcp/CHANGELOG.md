@@ -1,6 +1,8 @@
 # Changelog
 
-## Unreleased (minor, requires najm-core with `createParamDecorator`)
+## 2.2.0 - 2026-09-27
+
+- Requires najm-core 2.1.0 or later (peer range `^2.1.0`).
 
 - feat(params): tool calls resolve `createParamDecorator` parameters after
   their guards, inside that call only. `query()` and `param()` read the tool's
