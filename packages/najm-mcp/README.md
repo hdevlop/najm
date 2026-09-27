@@ -362,11 +362,40 @@ import { mcp } from 'najm-mcp';
   transports?: ('http' | 'sse' | 'stdio')[];  // default: ['http']
   cors?: boolean | { origin?: string | string[]; credentials?: boolean }; // default: true
   exposeErrorDetails?: boolean; // default: false
+  toolInput?: (tool) => Record<string, ZodSchema> | undefined;
+  invocationScope?: (tool) => Record<string, unknown> | undefined;
+  aroundInvoke?: (context, next) => Promise<unknown>;
   auth?: { type: 'najm-auth' } | {
     type: 'bearer' | 'api-key';
     validate: (token: string) => boolean | McpAuthContext | Promise<boolean | McpAuthContext>;
   };
 }))
+```
+
+`toolInput` adds fields to the advertised MCP schema without adding controller
+parameters. The parsed fields appear in `context.toolInput` and are removed
+from the controller body. `invocationScope` sets values in a fresh ALS child
+scope before validation and guards; caller identity remains available there.
+`aroundInvoke` runs after guards and surrounds argument resolution plus the
+awaited controller call. All three callbacks can select tools by `tool.group`
+or `tool.name`. Direct calls, HTTP and SSE use the same invocation path.
+
+```typescript
+import { z } from 'zod';
+
+mcp({
+  name: 'example',
+  version: '1.0.0',
+  toolInput: (tool) => tool.group === 'records'
+    ? { selectedYear: z.string().optional() }
+    : undefined,
+  invocationScope: (tool) => tool.group === 'records'
+    ? { selectedYear: undefined }
+    : undefined,
+  aroundInvoke: (context, next) => context.tool.group === 'records'
+    ? context.container.run({ selectedYear: context.toolInput.selectedYear }, next)
+    : next(),
+});
 ```
 
 ---

@@ -9,6 +9,7 @@ import {
   getParameterMetadata,
   type ParameterMetadata,
 } from 'najm-core';
+import { MCP_CONFIG } from './tokens';
 import {
   getMcpAnnotations,
   getMcpConfirmation,
@@ -18,7 +19,7 @@ import {
 } from './decorator';
 import { McpRegistryService } from './McpRegistryService';
 import { getSchemaShape } from './schemaUtils';
-import type { McpValidationConfig } from './types';
+import type { McpConfig, McpValidationConfig, RegisteredTool } from './types';
 
 @Service()
 @Meta({ layer: 'plugin', order: 39 })
@@ -26,6 +27,7 @@ export class McpScannerService {
   @Scan() private scanner!: ScannerService;
   @Inject() private registry!: McpRegistryService;
   @Inject(LoggerService) private log!: LoggerService;
+  @Inject(MCP_CONFIG) private config!: McpConfig;
 
   private validationGetter?: (target: any, methodName?: string | symbol) => McpValidationConfig | undefined;
 
@@ -61,7 +63,7 @@ export class McpScannerService {
 
       this.warnUnsupportedParameters(name, method);
 
-      this.registry.registerTool({
+      const registered: RegisteredTool = {
         ...tool,
         name,
         group,
@@ -73,7 +75,25 @@ export class McpScannerService {
         validationParamKeys,
         validationQueryKeys,
         confirmation,
-      });
+      };
+      const invocationInput = this.config.toolInput?.(registered);
+      if (invocationInput) {
+        const existing = new Set([
+          ...Object.keys(getSchemaShape(validation?.params) ?? {}),
+          ...Object.keys(getSchemaShape(validation?.query) ?? {}),
+          ...Object.keys(getSchemaShape(validation?.body) ?? {}),
+        ]);
+        for (const [key, schema] of Object.entries(invocationInput)) {
+          if (existing.has(key)) {
+            throw new Error(`[najm-mcp] Tool "${name}" declares duplicate input "${key}"`);
+          }
+          if (typeof schema?.parse !== 'function' || typeof schema?.safeParse !== 'function') {
+            throw new Error(`[najm-mcp] Tool "${name}" input "${key}" must be a Zod schema`);
+          }
+        }
+        registered.invocationInput = invocationInput;
+      }
+      this.registry.registerTool(registered);
     }
   }
 

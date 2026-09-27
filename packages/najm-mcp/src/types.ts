@@ -1,4 +1,5 @@
-import type { Constructor, InjectionDefinition } from 'najm-core';
+import type { Constructor, Container, InjectionDefinition } from 'najm-core';
+import type { ZodType } from 'zod';
 
 export type McpTransport = 'http' | 'sse' | 'stdio';
 
@@ -63,6 +64,13 @@ export interface McpConfig {
    * therefore double-execute. Make timeout-sensitive tools idempotent.
    */
   toolTimeout?: number;
+  /** Additional validated fields advertised for selected tools. These fields
+   * are available to aroundInvoke, not passed to controller body arguments. */
+  toolInput?: (tool: Readonly<RegisteredTool>) => Record<string, ZodType> | undefined;
+  /** Values to set in a fresh ALS child scope before input validation and guards. */
+  invocationScope?: (tool: Readonly<RegisteredTool>) => Record<string, unknown> | undefined;
+  /** Runs after guards, around argument resolution and the awaited handler. */
+  aroundInvoke?: (context: McpInvocationContext, next: () => Promise<unknown>) => Promise<unknown> | unknown;
   /**
    * Max request body size in bytes for streamable HTTP (default 1 MiB; <= 0
    * disables the check). NOTE: enforced via the Content-Length header only —
@@ -115,6 +123,17 @@ export interface McpValidationSchema {
   strip?: () => McpValidationSchema;
 }
 
+export interface McpInvocationContext {
+  tool: Readonly<RegisteredTool>;
+  /** Validated controller input, excluding fields declared by toolInput. */
+  input: Readonly<Record<string, any>>;
+  /** Parsed fields declared by toolInput for this invocation only. */
+  toolInput: Readonly<Record<string, unknown>>;
+  container: Container;
+  /** Available on HTTP transports; undefined for direct/stdio calls. */
+  header(name: string): string | undefined;
+}
+
 export interface McpValidationConfig {
   body?: McpValidationSchema;
   params?: McpValidationSchema;
@@ -154,6 +173,7 @@ export interface RegisteredTool extends ToolMeta {
   validationArgs?: string[];
   validationParamKeys?: string[];
   validationQueryKeys?: string[];
+  invocationInput?: Record<string, ZodType>;
   annotations?: McpAnnotations;
   confirmation?: McpToolConfirmation;
 }

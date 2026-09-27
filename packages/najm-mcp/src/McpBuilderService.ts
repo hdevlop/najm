@@ -36,14 +36,10 @@ import { McpException, McpErrorCode } from './exception';
 import { getSchemaShape } from './schemaUtils';
 
 export function resolveRegisteredToolInputSchema(tool: RegisteredTool): Record<string, unknown> | undefined {
-  if (!tool.validation) {
-    return undefined;
-  }
-
-  const paramsShape = getSchemaShape(tool.validation.params) ?? {};
-  const queryShape = getSchemaShape(tool.validation.query) ?? {};
-  const bodyShape = getSchemaShape(tool.validation.body) ?? {};
-  const merged = { ...paramsShape, ...queryShape, ...bodyShape };
+  const paramsShape = getSchemaShape(tool.validation?.params) ?? {};
+  const queryShape = getSchemaShape(tool.validation?.query) ?? {};
+  const bodyShape = getSchemaShape(tool.validation?.body) ?? {};
+  const merged = { ...paramsShape, ...queryShape, ...bodyShape, ...tool.invocationInput };
   return Object.keys(merged).length > 0 ? merged : undefined;
 }
 
@@ -106,7 +102,8 @@ export class McpBuilderService {
     }
   }
 
-  // ALS invariant: callers must invoke this inside the desired request scope; invokeTool does NOT create a new ALS scope so @User/@Policy/guards resolve from the caller's context.
+  // Every invocation inherits caller identity in a separate ALS child scope.
+  // An application can reset domain keys with invocationScope before guards.
   async invokeTool(name: string, params?: Record<string, any>): Promise<{
     content: Array<{ type: 'text'; text: string }>;
     isError?: boolean;
@@ -122,22 +119,34 @@ export class McpBuilderService {
     try {
       const timeout = this.config.toolTimeout ?? 30_000;
 
-      return await this.withTimeout(async () => {
-        let input = params ?? {};
+      return await this.container.run(this.config.invocationScope?.(tool) ?? {}, () =>
+        this.withTimeout(async () => {
+          const { controllerInput, toolInput } = this.parseInvocationInput(tool, params ?? {});
+          const input = tool.validation
+            ? this.validateInput(tool, controllerInput)
+            : controllerInput;
 
-        if (tool.validation) {
-          input = this.validateInput(tool, input);
-        }
+          await this.executeClassGuards(tool.target, tool.methodKey);
 
-        await this.executeClassGuards(tool.target, tool.methodKey);
+          const next = async () => {
+            const instance = await this.container.resolve(tool.target);
+            const method = instance[tool.methodKey as any] as Function;
+            const orderedArgs = await this.resolveControllerArgs(tool, method, input);
+            return method.call(instance, ...orderedArgs);
+          };
+          const result = this.config.aroundInvoke
+            ? await this.config.aroundInvoke({
+              tool,
+              input,
+              toolInput,
+              container: this.container,
+              header: (name) => this.container.get(CONTEXT)?.req.header(name) ?? undefined,
+            }, next)
+            : await next();
 
-        const instance = await this.container.resolve(tool.target);
-        const method = instance[tool.methodKey as any] as Function;
-        const orderedArgs = await this.resolveControllerArgs(tool, method, input);
-        const result = await method.call(instance, ...orderedArgs);
-
-        return this.toToolResult(result);
-      }, timeout);
+          return this.toToolResult(result);
+        }, timeout),
+      );
     } catch (error) {
       this.log.error?.(`MCP tool failed: ${tool.name}`, error);
 
@@ -153,6 +162,16 @@ export class McpBuilderService {
 
       return this.buildErrorResult(error);
     }
+  }
+
+  private parseInvocationInput(tool: RegisteredTool, params: Record<string, any>) {
+    const controllerInput = { ...params };
+    const toolInput: Record<string, unknown> = {};
+    for (const [key, schema] of Object.entries(tool.invocationInput ?? {})) {
+      toolInput[key] = schema.parse(controllerInput[key]);
+      delete controllerInput[key];
+    }
+    return { controllerInput, toolInput };
   }
 
   private async executeClassGuards(target: any, methodKey: string | symbol): Promise<void> {

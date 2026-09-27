@@ -269,7 +269,12 @@ export class McpTransportService {
   }
 
   private resolveDiscoveryArgs(tool: any): string[] {
-    return Array.from(new Set([...(tool.validationParamKeys ?? []), ...(tool.validationArgs ?? [])]));
+    return Array.from(new Set([
+      ...(tool.validationParamKeys ?? []),
+      ...(tool.validationQueryKeys ?? []),
+      ...(tool.validationArgs ?? []),
+      ...Object.keys(tool.invocationInput ?? {}),
+    ]));
   }
 
   private mountSse(path: string): void {

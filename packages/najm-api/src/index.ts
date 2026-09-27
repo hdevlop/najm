@@ -74,7 +74,7 @@ export type { TimeWindow, KeyStrategy, CustomRateLimitKey, RateLimitKeyContext, 
 export type { CorsPluginConfig } from 'najm-cors';
 export type { CookiePluginConfig, CookieOptions } from 'najm-cookies';
 export type { I18nPluginConfig } from 'najm-i18n';
-export type { McpConfig, RegisteredTool } from 'najm-mcp';
+export type { McpConfig, McpInvocationContext, RegisteredTool } from 'najm-mcp';
 export type { DatabaseConfig, TransactionalOptions } from 'najm-database';
 export type { StorageConfig } from 'najm-storage';
 export type { EmailConfig, EmailPluginConfig, EmailMessage, SendResult } from 'najm-email';
