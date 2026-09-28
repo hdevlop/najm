@@ -1,5 +1,16 @@
 # Changelog
 
+## 4.2.0 - 2026-09-28
+
+- Support `@Owned(Token, ...alternatives)` on an instance property with the
+  exported `OwnedWhere` function type, allowing `ownedWhere!: OwnedWhere`
+  without repeating a method declaration or introducing a base repository.
+- Install property predicates during context injection, including native class
+  field output. Resolve ownership per call and retain independent, inherited,
+  and symbol-named properties without sharing actors between requests.
+- Preserve the existing class decorator and read helpers. Add SQLite execution,
+  emitted-field, container, concurrent-request, and compatibility coverage.
+
 ## 4.1.0 - 2026-09-26
 
 - Add exported `ownershipCondition(db, tokens, context)` and the equivalent

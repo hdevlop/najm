@@ -10,6 +10,8 @@ import { Container } from 'diject';
 import { own, join, where } from '../src/ownership/scopedOwnership';
 import { Owned, ScopeContext, OWNED_META } from '../src/ownership/OwnedDecorator';
 import { ownershipCondition, type OwnershipReadContext } from '../src/ownership/ownershipCondition';
+import type { OwnedWhere } from '../src';
+import ts from 'typescript';
 
 const items = sqliteTable('items', { id: text('id').primaryKey(), ownerId: text('owner_id'), state: text('state') });
 const shares = sqliteTable('shares', { id: text('id').primaryKey(), itemId: text('item_id'), userId: text('user_id') });
@@ -144,5 +146,80 @@ describe('Owned decorator compatibility and alternatives', () => {
         expect(read(repo.ownershipCondition())).toEqual([...expected]);
       });
     }
+  });
+});
+
+class PropertyRepository {
+  db: any;
+  @Owned(direct, shared) ownedWhere!: OwnedWhere;
+}
+
+describe('Owned property decorator', () => {
+  test('applies alternatives and application filters through the chosen property', () => {
+    const repo = new PropertyRepository();
+    repo.db = db;
+    (repo as any)._scopeCtx = signedIn();
+    expect(read(and(repo.ownedWhere(), eq(items.state, 'open')))).toEqual(['a', 'b']);
+    expect(read(and(repo.ownedWhere(), eq(items.id, 'd')))).toEqual([]);
+    for (const context of [signedIn('unknown'), { hasActiveContext: () => true, getUser: () => null }]) {
+      (repo as any)._scopeCtx = context;
+      expect(read(repo.ownedWhere())).toEqual([]);
+    }
+    (repo as any)._scopeCtx = signedIn('operator');
+    expect(repo.ownedWhere()).toBeUndefined();
+  });
+
+  test('keeps independently named and inherited properties tied to their own rules', () => {
+    const sharedKey = Symbol('sharedWhere');
+    class Base { db: any; @Owned(direct) ownWhere!: OwnedWhere; }
+    class Child extends Base { @Owned(shared) [sharedKey]!: OwnedWhere; }
+    const repo = new Child();
+    repo.db = db;
+    (repo as any)._scopeCtx = signedIn();
+    expect(read(repo.ownWhere())).toEqual(['a', 'c']);
+    expect(read(repo[sharedKey]())).toEqual(['b']);
+    expect(Object.keys(repo)).not.toContain('ownWhere');
+  });
+
+  for (const useDefineForClassFields of [true, false]) {
+    test(`injects emitted fields with useDefineForClassFields=${useDefineForClassFields}`, async () => {
+      const compiled = ts.transpileModule(`
+        class EmittedRepository {
+          db: any;
+          @Owned(direct, shared) private ownedWhere!: OwnedWhere;
+          read() { return this.ownedWhere(); }
+        }
+      `, { compilerOptions: {
+        target: ts.ScriptTarget.ES2022,
+        experimentalDecorators: true,
+        emitDecoratorMetadata: true,
+        useDefineForClassFields,
+      } }).outputText;
+      const Repository = new Function('Owned', 'direct', 'shared', `${compiled}; return EmittedRepository;`)(Owned, direct, shared);
+      const container = new Container();
+      container.set(ScopeContext as any, {});
+      container.set(Repository, {});
+      const repo: any = await container.resolve(Repository);
+      repo.db = db;
+      expect(repo.read()).toBeUndefined();
+      const reader = repo.ownedWhere;
+      for (const [id, expected] of [['alice', ['a', 'b', 'c']], ['bob', ['b']]] as const) {
+        await container.run({ requestId: `property-${id}`, user: { id, role: 'member' } } as any, async () => {
+          expect(read(reader())).toEqual([...expected]);
+        });
+      }
+      await Promise.all(['alice', 'bob'].map((id) => container.run({
+        requestId: `concurrent-${id}`, user: { id, role: 'member' },
+      } as any, async () => {
+        await new Promise((resolve) => setTimeout(resolve, 1));
+        expect(read(reader())).toEqual(id === 'alice' ? ['a', 'b', 'c'] : ['b']);
+      })));
+      expect(repo.read()).toBeUndefined();
+    });
+  }
+
+  test('rejects property rules from different tables and static properties', () => {
+    expect(() => Owned(direct, own(shares))).toThrow('same table');
+    expect(() => Owned(direct)(PropertyRepository, 'staticWhere')).toThrow('instance property');
   });
 });

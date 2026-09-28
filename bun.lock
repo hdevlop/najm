@@ -179,7 +179,7 @@
     },
     "packages/najm-api": {
       "name": "najm-api",
-      "version": "2.0.5",
+      "version": "2.1.0",
       "dependencies": {
         "najm-auth": "workspace:*",
         "najm-cache": "workspace:*",
@@ -204,7 +204,7 @@
     },
     "packages/najm-auth": {
       "name": "najm-auth",
-      "version": "4.1.0",
+      "version": "4.2.0",
       "dependencies": {
         "bcryptjs": "^3.0.2",
         "jose": "^6.1.3",

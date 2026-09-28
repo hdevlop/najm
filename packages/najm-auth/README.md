@@ -561,6 +561,36 @@ export class ProductRepository {
 
 ### Composable ownership (4.1+)
 
+For custom queries, the property form puts the rules and type together:
+
+```typescript
+import { Owned, type OwnedWhere } from 'najm-auth';
+
+@Repository('default')
+export class ProductRepository {
+  @DB() db!: Database;
+
+  @Owned(Product, SharedProduct)
+  private ownedWhere!: OwnedWhere;
+
+  async getById(id: string) {
+    const [row] = await this.db.select().from(products)
+      .where(and(this.ownedWhere(), eq(products.id, id))).limit(1);
+    return row ?? null;
+  }
+}
+```
+
+Use any instance property name; `OwnedWhere` is the shared function type.
+Resolve the repository through Najm's container before calling it. Context
+injection installs the function after construction, including when TypeScript
+emits native class fields. The function reads the current request on every call,
+so a singleton repository can safely serve different actors. Multiple decorated
+properties may use independent rules, including on inherited repositories.
+The class form and its `ownershipCondition`, `findMany`, `findOne`, and
+`scopedQuery` helpers remain available. The property form supplies only the
+decorated predicate; it does not rewrite queries or add CRUD helpers.
+
 `@Owned(Product)` now provides `ownershipCondition()` for custom queries.
 It returns a parameterized `id IN (authorized IDs)` predicate; join-based rules
 do not multiply outer rows. Combine it with filters in one

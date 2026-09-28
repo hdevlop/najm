@@ -9,4 +9,4 @@ export { Policy, CanList, CanRead, CanCreate, CanUpdate, CanDelete } from './Sco
 export { Owned, ScopeContext } from './OwnedDecorator';
 export type { OwnedMethods } from './OwnedDecorator';
 export { ownershipCondition } from './ownershipCondition';
-export type { OwnershipReadContext, OwnershipConditionMethods } from './ownershipCondition';
+export type { OwnedWhere, OwnershipReadContext, OwnershipConditionMethods } from './ownershipCondition';

@@ -16,7 +16,7 @@
       "export { storage, StorageService, StorageController, StorageMcpTools, StorageStudioController, AuditService } from 'najm-storage';",
       "export { email, EmailService } from 'najm-email';",
       "export { auth, authSchema, authSeed, seedAuthData } from 'najm-auth';",
-      "export { isAuth, AuthGuard, Can, PermissionGuard, Role, RoleGuard, isAdmin, isAdministrator, defineRoles, own, join, where, Policy, CanList, CanRead, CanCreate, CanUpdate, CanDelete, configureOwnership, } from 'najm-auth';",
+      "export { isAuth, AuthGuard, Can, PermissionGuard, Role, RoleGuard, isAdmin, isAdministrator, defineRoles, own, Owned, join, where, Policy, CanList, CanRead, CanCreate, CanUpdate, CanDelete, configureOwnership, } from 'najm-auth';",
       "export { USER, OWNER, INFO, DATA, FILTER, ROLE, PERMISSIONS, GUARD_PARAMS, } from 'najm-guard';",
       "export { AUTH_CONFIG, AUTH_SCHEMA, AUTH_USER, AUTH_ROLE, AUTH_PERMISSIONS, } from 'najm-auth';",
       "export type { GuardMetadata, CreateGuardOptions, GuardPluginConfig, GuardResult, GuardReturnType, } from 'najm-guard';",
@@ -30,7 +30,7 @@
       "export type { DatabaseConfig, TransactionalOptions } from 'najm-database';",
       "export type { StorageConfig } from 'najm-storage';",
       "export type { EmailConfig, EmailPluginConfig, EmailMessage, SendResult } from 'najm-email';",
-      "export type { AuthConfig, AuthPluginConfig, AuthUser, JwtPayload, TokenPair, GoogleOAuthConfig, OAuthConfig, OAuthProvider, } from 'najm-auth';"
+      "export type { AuthConfig, AuthPluginConfig, AuthUser, OwnedWhere, JwtPayload, TokenPair, GoogleOAuthConfig, OAuthConfig, OAuthProvider, } from 'najm-auth';"
     ],
     "najm-auth": [
       "export { auth } from './AuthPlugin';",

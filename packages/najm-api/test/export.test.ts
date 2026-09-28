@@ -7,6 +7,7 @@ import {
   auth,
   mcp,
   Cookie,
+  Owned,
 } from '../src/index';
 import { createGuard } from '../src/guard';
 import { authSchema } from '../src/auth';
@@ -23,6 +24,7 @@ test('re-exports common plugin APIs from the root entry', () => {
   expect(typeof auth).toBe('function');
   expect(typeof mcp).toBe('function');
   expect(typeof Cookie).toBe('function');
+  expect(typeof Owned).toBe('function');
 });
 
 test('exposes feature subpath entries', () => {

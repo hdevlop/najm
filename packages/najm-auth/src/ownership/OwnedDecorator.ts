@@ -7,6 +7,46 @@ import { ownershipCondition, validateOwnershipAlternatives } from './ownershipCo
 
 export const OWNED_META = Symbol.for('najm:owned');
 
+const OWNED_PROPERTIES = Symbol.for('najm:owned-properties');
+const propertyContexts = new WeakMap<object, ScopeContext>();
+
+type OwnedProperty = { key: string | symbol; tokens: readonly OwnershipToken[] };
+
+function ownedProperty(proto: object, key: string | symbol, tokens: readonly OwnershipToken[]) {
+  const inherited: OwnedProperty[] = Reflect.getMetadata(OWNED_PROPERTIES, proto) ?? [];
+  const properties = [...inherited.filter((property) => property.key !== key), { key, tokens }];
+  Reflect.defineMetadata(OWNED_PROPERTIES, properties, proto);
+
+  Object.defineProperty(proto, key, {
+    value(this: any) { return ownershipCondition(this.db, tokens, this._scopeCtx); },
+    configurable: true,
+    enumerable: false,
+  });
+
+  if (!Reflect.hasOwnMetadata(OWNED_PROPERTIES, proto, '_scopeCtx')) {
+    Inject(ScopeContext)(proto, '_scopeCtx');
+    Reflect.defineMetadata(OWNED_PROPERTIES, true, proto, '_scopeCtx');
+    Object.defineProperty(proto, '_scopeCtx', {
+      get(this: object) { return propertyContexts.get(this); },
+      set(this: any, context: ScopeContext) {
+        propertyContexts.set(this, context);
+        // DI assigns context after construction. Replace native class fields
+        // that would otherwise shadow the decorator's prototype method.
+        const properties: OwnedProperty[] = Reflect.getMetadata(OWNED_PROPERTIES, this) ?? [];
+        for (const property of properties) {
+          Object.defineProperty(this, property.key, {
+            value: () => ownershipCondition(this.db, property.tokens, this._scopeCtx),
+            configurable: true,
+            enumerable: false,
+          });
+        }
+      },
+      configurable: true,
+      enumerable: false,
+    });
+  }
+}
+
 // ── Interface ──────────────────────────────────────────────────────────────
 
 export interface OwnedMethods<T = any> {
@@ -55,10 +95,17 @@ export class ScopeContext {
 }
 
 
-export function Owned(token: OwnershipToken, ...alternatives: OwnershipToken[]) {
+/** Decorate a repository class, or an `ownedWhere!: OwnedWhere` property. */
+export function Owned(token: OwnershipToken, ...alternatives: OwnershipToken[]): ClassDecorator & PropertyDecorator {
   const tokens = [token, ...alternatives];
   validateOwnershipAlternatives(tokens);
-  return function (target: Function) {
+  return function (target: Function | object, propertyKey?: string | symbol) {
+    if (propertyKey !== undefined) {
+      if (typeof target === 'function') throw new Error('@Owned requires an instance property');
+      ownedProperty(target, propertyKey, tokens);
+      return;
+    }
+    if (typeof target !== 'function') throw new Error('@Owned requires a repository class');
     Reflect.defineMetadata(OWNED_META, token, target);
 
     const proto = target.prototype;

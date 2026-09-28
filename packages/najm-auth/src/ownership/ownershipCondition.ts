@@ -1,6 +1,9 @@
 import { inArray, or, sql, type SQL } from 'drizzle-orm';
 import type { OwnershipToken } from './scopedOwnership';
 
+/** Request-aware ownership predicate supplied by an @Owned property. */
+export type OwnedWhere = () => SQL | undefined;
+
 /** Request context consumed by ownershipCondition; ScopeContext implements it. */
 export interface OwnershipReadContext {
   hasActiveContext(): boolean;
