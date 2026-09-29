@@ -1,5 +1,25 @@
 # Changelog
 
+## 4.2.3 - 2026-09-29
+
+- Serve every refresh that presents the same cookie at once without revoking
+  the session. Browser tabs share one refresh cookie and hidden-tab timers
+  fire together, so three tabs refreshing at once revoked the family (the
+  third token matched neither hash), and a tab that lost the rotation got a
+  401 and then called `/auth/logout` with the winner's live cookie.
+- A rotated refresh token is now rebuilt from the token it replaced. Inside
+  the grace window, presenting the replaced token rotates nothing and returns
+  a new access token and that same successor, any number of times, so the
+  cookie jar ends up with the current token whichever response lands last. A
+  rotation whose response never reached the browser recovers the same way.
+  Reuse after the window, or of a token the family never issued, still
+  revokes the family.
+- `NajmAuthClient` no longer calls `/auth/logout` after a refresh refused
+  with 401; the server clears its own cookies for a final 401.
+- `AuthService.refreshTokens()` may return no `refreshToken` when a family
+  rotated by an earlier release presents its replaced token; its return type
+  says so.
+
 ## 4.2.2 - 2026-09-29
 
 - Read PostgreSQL `timestamp without time zone` values as UTC. najm-auth
