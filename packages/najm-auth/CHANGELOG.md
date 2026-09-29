@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.2.2 - 2026-09-29
+
+- Read PostgreSQL `timestamp without time zone` values as UTC. najm-auth
+  writes them with `toISOString()`, and `new Date()` read them back as the
+  server's local time, so on a server ahead of UTC the refresh grace window
+  and login lockouts ended early by the offset. In UTC+1 the grace window had
+  closed before it opened: two refreshes with the same token (two tabs
+  reloading, a restored browser session) revoked the session family, and a
+  lockout never held. SQLite values and `Date` objects are unchanged.
+
 ## 4.2.0 - 2026-09-28
 
 - Support `@Owned(Token, ...alternatives)` on an instance property with the
