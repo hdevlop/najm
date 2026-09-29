@@ -15,6 +15,7 @@ import { EncryptionService } from '../src/auth/EncryptionService';
 import { clean } from '../src/shared';
 import { TokenService } from '../src/tokens/TokenService';
 import { registerDto } from '../src/users/UserDto';
+import { inTimeZone, postgresTimestamp } from './timeZone';
 
 const authConfig = {
   jwt: {
@@ -844,6 +845,40 @@ describe('auth security regressions', () => {
     expect(claims).toBe(2);
     expect(revokedFamilies).toEqual([]);
     expect(cleared).toEqual([]);
+  });
+
+  test('the grace window holds for a PostgreSQL timestamp on a server ahead of UTC', async () => {
+    const refreshToken = jwt.sign(
+      { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
+      authConfig.jwt.refreshSecret,
+      { expiresIn: '7d' },
+    );
+    const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
+    const revokedFamilies: string[] = [];
+
+    await inTimeZone('Asia/Tokyo', async () => {
+      const { service } = createTokenService({
+        cookie: { getRefreshToken: () => refreshToken },
+        repo: {
+          // `timestamp without time zone` returns UTC wall time with no zone.
+          getByFamily: async () => ({
+            userId: 'user-1',
+            token: 'current-token-hash',
+            tokenFamily: 'family-1',
+            previousHash: presentedHash,
+            previousValidUntil: postgresTimestamp(Date.now() + 60_000),
+            previousUsedAt: null,
+          }),
+          markPreviousUsed: async () => [{ userId: 'user-1' }],
+          rotateRefreshToken: async () => [{ userId: 'user-1' }],
+          getRoleAndPermissions: async () => ({ roleName: 'user', permissions: [] }),
+          revokeFamily: async (family: string) => { revokedFamilies.push(family); },
+        },
+      });
+
+      expect((await service.refreshTokens()).accessToken).toBeDefined();
+    });
+    expect(revokedFamilies).toEqual([]);
   });
 
   test('refresh cannot recreate a family revoked by concurrent logout', async () => {

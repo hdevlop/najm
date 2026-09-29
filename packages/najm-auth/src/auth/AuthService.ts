@@ -15,6 +15,7 @@ import { AUTH_CONFIG } from '../auth.tokens';
 import timestring from 'timestring';
 import { AuthSessionService } from './AuthSessionService';
 import { isEmailIdentifier, normalizeAuthIdentifier } from './authIdentity';
+import { storedTimeMs } from '../shared/storedTime';
 import {
   resolveTemporaryCredentialKind,
   toTemporaryCredential,
@@ -121,7 +122,7 @@ export class AuthService {
 
   private isLockoutActive(lockoutUntil?: string | null): boolean {
     if (!lockoutUntil) return false;
-    return new Date(lockoutUntil).getTime() > Date.now();
+    return storedTimeMs(lockoutUntil) > Date.now();
   }
 
   private nextLockoutUntil(): string {

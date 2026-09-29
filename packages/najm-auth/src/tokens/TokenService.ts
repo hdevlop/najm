@@ -13,6 +13,7 @@ import type { AuthConfig, JwtPayload } from '../types';
 import { CookieManager } from '../auth/CookieManager';
 import { CredentialSetupRequirementRepository } from '../credentialSetup/CredentialSetupRequirementRepository';
 import { PASSWORD_SETUP_PURPOSE } from '../credentialSetup/types';
+import { storedTimeMs } from '../shared/storedTime';
 import { Err } from 'najm-core';
 
 export type SetPasswordTokenType = 'reset' | 'invite';
@@ -250,7 +251,7 @@ export class TokenService {
       stored.previousHash &&
       presentedHash === stored.previousHash &&
       stored.previousValidUntil &&
-      new Date(stored.previousValidUntil).getTime() > Date.now() &&
+      storedTimeMs(stored.previousValidUntil) > Date.now() &&
       !stored.previousUsedAt;
 
     if (canRecover) {
@@ -589,7 +590,7 @@ export class TokenService {
       stored.previousHash &&
       presentedHash === stored.previousHash &&
       stored.previousValidUntil &&
-      new Date(stored.previousValidUntil).getTime() > Date.now() &&
+      storedTimeMs(stored.previousValidUntil) > Date.now() &&
       !stored.previousUsedAt;
 
     if (canRecover) {
@@ -771,7 +772,7 @@ export class TokenService {
         stored.previousHash &&
         presentedHash === stored.previousHash &&
         stored.previousValidUntil &&
-        new Date(stored.previousValidUntil).getTime() > Date.now() &&
+        storedTimeMs(stored.previousValidUntil) > Date.now() &&
         !stored.previousUsedAt;
 
       return canRecover ? decoded.tokenFamily : null;

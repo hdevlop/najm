@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { AuthService } from '../src/auth/AuthService';
+import { inTimeZone, postgresTimestamp } from './timeZone';
 
 const activeUser = {
   id: 'user-1',
@@ -42,6 +43,27 @@ describe('login identifier resolution', () => {
     })).rejects.toMatchObject({ message: 'errors.invalidCredentials', status: 401 });
 
     expect(compared).toEqual(['stored-hash', 'dummy-hash']);
+  });
+
+  test('a PostgreSQL lockout holds on a server ahead of UTC', async () => {
+    const compared: string[] = [];
+    const locked = authService({
+      findByEmailInsensitive: async () => ({
+        ...activeUser,
+        // `timestamp without time zone` returns UTC wall time with no zone.
+        lockoutUntil: postgresTimestamp(Date.now() + 15 * 60_000),
+      }),
+      comparePassword: async (_candidate, hash) => {
+        compared.push(hash);
+        return true;
+      },
+    });
+
+    await inTimeZone('Asia/Tokyo', () => expect(locked.service.loginUser({
+      identifier: 'alice@example.test',
+      password: 'StrongPass123',
+    })).rejects.toMatchObject({ message: 'errors.invalidCredentials', status: 401 }));
+    expect(locked.established.count).toBe(0);
   });
 
   test('the threshold attempt activates lockout without changing the public 401 response', async () => {
