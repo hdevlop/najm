@@ -2,7 +2,7 @@
 import { Injectable, Inject } from 'najm-core';
 import { I18n, type TFn } from 'najm-i18n';
 import { CacheService } from 'najm-cache';
-import { createHash } from 'crypto';
+import { createHash, createHmac } from 'crypto';
 import jwt from 'jsonwebtoken';
 import { nanoid } from 'nanoid';
 import { TokenRepository } from './TokenRepository';
@@ -32,6 +32,23 @@ export interface SetPasswordToken {
   token: string;
   userId: string;
   jti: string;
+}
+
+/**
+ * The outcome of a refresh. `refreshToken` is absent only when the request
+ * presented a token that a release before 4.2.3 had just replaced: that
+ * rotation's token cannot be rebuilt, and its own response set the cookie.
+ */
+export interface RefreshedSession {
+  userId: string;
+  tokenFamily: string;
+  roles: string[];
+  permissions: string[];
+  sessionVersion: number;
+  accessToken: string;
+  accessTokenExpiresAt: number;
+  refreshToken?: string;
+  refreshTokenExpiresAt?: number;
 }
 
 @Injectable()
@@ -243,18 +260,7 @@ export class TokenService {
 
     const presentedHash = this.hashToken(refreshToken);
 
-    if (presentedHash === stored.token) {
-      return { userId, tokenFamily };
-    }
-
-    const canRecover =
-      stored.previousHash &&
-      presentedHash === stored.previousHash &&
-      stored.previousValidUntil &&
-      storedTimeMs(stored.previousValidUntil) > Date.now() &&
-      !stored.previousUsedAt;
-
-    if (canRecover) {
+    if (presentedHash === stored.token || this.withinGraceWindow(stored, presentedHash)) {
       return { userId, tokenFamily };
     }
 
@@ -414,11 +420,34 @@ export class TokenService {
     return { token, expiresAt };
   }
 
+  /**
+   * The refresh token that replaces `replaced`. Its jti is derived from the
+   * replaced token and its lifetime is the one the family row records, so a
+   * request that presents the replaced token inside the grace window can
+   * rebuild the token its rotation issued and hand the browser that one.
+   */
+  private successorRefreshToken(
+    replaced: string,
+    data: { userId: string; tokenFamily: string },
+    expiresAt: number,
+  ): { token: string; expiresAt: number } {
+    const jti = createHmac('sha256', this.config.jwt.refreshSecret)
+      .update(`successor:${replaced}`)
+      .digest('base64url')
+      .slice(0, 16);
+    const iat = expiresAt - Math.floor(timestring(this.config.jwt.refreshExpiresIn, 's'));
+    const token = jwt.sign(
+      { ...data, jti, type: 'refresh', iat, exp: expiresAt },
+      this.config.jwt.refreshSecret,
+    );
+    return { token, expiresAt };
+  }
+
   generateRefreshToken(data: { userId: string; tokenFamily?: string }): string {
     return this.signRefreshToken({ userId: data.userId, tokenFamily: data.tokenFamily ?? nanoid(16) }).token;
   }
 
-  private async createTokenPair(userId: string, family: string) {
+  private async createTokenPair(userId: string, family: string, replaced?: string) {
     const { roleName, permissions } = await this.tokenRepository.getRoleAndPermissions(userId);
 
     const accessTokenData = {
@@ -428,7 +457,13 @@ export class TokenService {
       tokenFamily: family,
     };
     const access = await this.signAccessToken(accessTokenData);
-    const refresh = this.signRefreshToken({ userId, tokenFamily: family });
+    const refresh = replaced
+      ? this.successorRefreshToken(
+        replaced,
+        { userId, tokenFamily: family },
+        this.expiresAt(this.config.jwt.refreshExpiresIn),
+      )
+      : this.signRefreshToken({ userId, tokenFamily: family });
 
     return {
       userId,
@@ -539,16 +574,22 @@ export class TokenService {
 
   /**
    * Rotate only the family row observed by refreshTokens(). This conditional
-   * update fails closed if logout deleted the family or another refresh won.
+   * update returns null if logout deleted the family or another refresh won.
+   * The row records the new token's own expiry, which serveReplacedToken
+   * reads back to rebuild it.
    */
-  private async rotateTokens(userId: string, tokenFamily: string, expectedCurrentHash: string) {
-    const generated = await this.createTokenPair(userId, tokenFamily);
-    const expireInSecond = timestring(this.config.jwt.refreshExpiresIn, 's');
+  private async rotateTokens(
+    userId: string,
+    tokenFamily: string,
+    replaced: string,
+    expectedCurrentHash: string,
+  ): Promise<RefreshedSession | null> {
+    const generated = await this.createTokenPair(userId, tokenFamily, replaced);
     const rotated = await this.tokenRepository.rotateRefreshToken({
       userId,
       token: this.hashToken(generated.refreshToken),
       tokenFamily,
-      expiresAt: new Date(Date.now() + expireInSecond * 1000).toISOString(),
+      expiresAt: new Date(generated.refreshTokenExpiresAt * 1000).toISOString(),
       previousHash: expectedCurrentHash,
       previousValidUntil: new Date(
         Date.now() + TokenService.PREVIOUS_GRACE_SECONDS * 1000,
@@ -556,9 +597,7 @@ export class TokenService {
       previousUsedAt: null,
     }, expectedCurrentHash);
 
-    if (!rotated?.length) {
-      Err(this.t('errors.refreshTokenInvalid'), 401);
-    }
+    if (!rotated?.length) return null;
 
     if (!await this.invalidation.markFamilyIssued(tokenFamily, userId)) {
       this.rejectRefreshSession();
@@ -567,12 +606,21 @@ export class TokenService {
   }
 
   /**
-   * Refresh tokens with secure token comparison
-   * Compares provided token with hashed version in database
+   * Rotate the refresh token the cookie presents.
+   *
+   * Browser tabs share one cookie jar, so several requests can present the
+   * same token at once: tabs whose access tokens were issued together, or a
+   * tab and a server render. The first rotates it and sets the new cookie.
+   * The others present the token it replaced within the grace window and get
+   * that same new token back without a second rotation, so however many there
+   * are, and in whatever order their responses land, the browser ends up with
+   * the one current token and none is mistaken for a stolen one. The same path
+   * recovers a rotation whose response never reached the browser. Reuse after
+   * the window, or of a token the family never issued, revokes the family.
    */
-  async refreshTokens() {
+  async refreshTokens(): Promise<RefreshedSession> {
     const { refreshToken, userId, tokenFamily } = this.readRefreshSessionCookie();
-    const stored = await this.tokenRepository.getByFamily(tokenFamily);
+    let stored = await this.tokenRepository.getByFamily(tokenFamily);
     await this.assertRefreshFamilyAllowed(tokenFamily, userId);
 
     if (!stored || stored.userId !== userId) {
@@ -583,31 +631,74 @@ export class TokenService {
     await this.requireActiveRefreshUser(userId, tokenFamily);
 
     if (presentedHash === stored.token) {
-      return this.rotateTokens(userId, tokenFamily, stored.token);
+      const rotated = await this.rotateTokens(userId, tokenFamily, refreshToken, stored.token);
+      if (rotated) return rotated;
+      // Another request rotated this token between the read and the write. It
+      // was current a moment ago, so it is served, never treated as stolen.
+      stored = await this.tokenRepository.getByFamily(tokenFamily);
+      if (stored?.userId === userId && this.withinGraceWindow(stored, presentedHash)) {
+        return this.serveReplacedToken(userId, tokenFamily, refreshToken, stored);
+      }
+      return Err(this.t('errors.refreshTokenInvalid'), 401);
     }
 
-    const canRecover =
-      stored.previousHash &&
-      presentedHash === stored.previousHash &&
-      stored.previousValidUntil &&
-      storedTimeMs(stored.previousValidUntil) > Date.now() &&
-      !stored.previousUsedAt;
-
-    if (canRecover) {
-      // Atomically claim the grace slot for THIS family, keyed on the presented
-      // previous hash.
-      const claimed = await this.tokenRepository.markPreviousUsed(tokenFamily, presentedHash);
-      if (!claimed?.length) {
-        // Lost the race: a concurrent request already claimed the grace slot
-        // and rotated. Do not revoke — the winner's session is legitimate.
-        Err(this.t('errors.refreshTokenInvalid'), 401);
-      }
-      return this.rotateTokens(userId, tokenFamily, stored.token);
+    if (this.withinGraceWindow(stored, presentedHash)) {
+      return this.serveReplacedToken(userId, tokenFamily, refreshToken, stored);
     }
 
     // Reuse outside the grace window: revoke only this suspect family.
     await this.revokeSuspectRefreshFamily(userId, tokenFamily);
     this.rejectRefreshSession();
+  }
+
+  /** Whether `presentedHash` is the token this family replaced less than the grace window ago. */
+  private withinGraceWindow(
+    stored: { previousHash?: string | null; previousValidUntil?: string | null },
+    presentedHash: string,
+  ): boolean {
+    return Boolean(
+      stored.previousHash
+      && presentedHash === stored.previousHash
+      && stored.previousValidUntil
+      && storedTimeMs(stored.previousValidUntil) > Date.now(),
+    );
+  }
+
+  /**
+   * Serve a request that presented the token another request just replaced.
+   * It rotates nothing: it returns a new access token and the refresh token
+   * that rotation issued, rebuilt from the replaced one. A current token that
+   * is not that successor (a rotation by an earlier release) is left alone and
+   * only the access token is returned.
+   */
+  private async serveReplacedToken(
+    userId: string,
+    tokenFamily: string,
+    replaced: string,
+    stored: { token: string; expiresAt: string },
+  ): Promise<RefreshedSession> {
+    const successor = this.successorRefreshToken(
+      replaced,
+      { userId, tokenFamily },
+      Math.floor(storedTimeMs(stored.expiresAt) / 1000),
+    );
+    const refresh = this.hashToken(successor.token) === stored.token ? successor : undefined;
+    const { roleName, permissions } = await this.tokenRepository.getRoleAndPermissions(userId);
+    const roles = roleName ? [roleName] : [];
+    const access = await this.signAccessToken({ userId, roles, permissions: permissions ?? [], tokenFamily });
+    if (!await this.invalidation.markFamilyIssued(tokenFamily, userId)) {
+      this.rejectRefreshSession();
+    }
+    return {
+      userId,
+      tokenFamily,
+      roles,
+      permissions: permissions ?? [],
+      sessionVersion: access.sessionVersion,
+      accessToken: access.token,
+      accessTokenExpiresAt: access.expiresAt,
+      ...(refresh && { refreshToken: refresh.token, refreshTokenExpiresAt: refresh.expiresAt }),
+    };
   }
 
   private async requireActiveRefreshUser(userId: string, tokenFamily: string) {
@@ -764,18 +855,9 @@ export class TokenService {
       if (!stored || stored.userId !== userId) return null;
 
       const presentedHash = this.hashToken(refreshToken);
-      if (presentedHash === stored.token) {
-        return decoded.tokenFamily;
-      }
-
-      const canRecover =
-        stored.previousHash &&
-        presentedHash === stored.previousHash &&
-        stored.previousValidUntil &&
-        storedTimeMs(stored.previousValidUntil) > Date.now() &&
-        !stored.previousUsedAt;
-
-      return canRecover ? decoded.tokenFamily : null;
+      return presentedHash === stored.token || this.withinGraceWindow(stored, presentedHash)
+        ? decoded.tokenFamily
+        : null;
     } catch {
       return null;
     }

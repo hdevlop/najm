@@ -453,7 +453,14 @@ export class NajmAuthClient {
         // reaching TokenService's terminal cookie cleanup. Logout is an
         // unguarded, unthrottled cleanup endpoint, so use it as the circuit's
         // final recovery step before the browser is redirected to login.
-        await this.requestServerLogout().catch(() => undefined);
+        //
+        // Not after a 401. The server clears its own cookies when a 401 is
+        // final, and a tab refused because another tab's refresh won holds
+        // that tab's live cookie in the shared jar: a logout from here would
+        // revoke every tab's session.
+        if (!(err instanceof AuthError && err.status === 401)) {
+          await this.requestServerLogout().catch(() => undefined);
+        }
         this.resetState();
         this.emit('sessionExpired', null);
         if (err instanceof AuthError && err.status === 401) {

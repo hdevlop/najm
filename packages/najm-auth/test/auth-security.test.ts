@@ -802,14 +802,14 @@ describe('auth security regressions', () => {
     expect(revokedFamilyMarkers).toEqual(['auth:revoked-family:family-1']);
   });
 
-  test('concurrent grace-window refreshes produce exactly one successful rotation', async () => {
+  test('grace-window refreshes are all served without rotating, revoking or clearing cookies', async () => {
     const refreshToken = jwt.sign(
       { userId: 'user-1', type: 'refresh', tokenFamily: 'family-1' },
       authConfig.jwt.refreshSecret,
       { expiresIn: '7d' },
     );
     const presentedHash = createHash('sha256').update(refreshToken).digest('hex');
-    let claims = 0;
+    let rotations = 0;
     const revokedFamilies: string[] = [];
     const cleared: string[] = [];
 
@@ -828,21 +828,23 @@ describe('auth security regressions', () => {
           previousHash: presentedHash,
           previousValidUntil: new Date(Date.now() + 60_000).toISOString(),
           previousUsedAt: null,
+          expiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
         }),
-        // First caller claims the slot; every later caller gets zero rows.
-        markPreviousUsed: async () => (claims++ === 0 ? [{ userId: 'user-1' }] : []),
-        rotateRefreshToken: async () => [{ userId: 'user-1' }],
+        rotateRefreshToken: async () => { rotations += 1; return [{ userId: 'user-1' }]; },
         getRoleAndPermissions: async () => ({ roleName: 'user', permissions: [] }),
         revokeFamily: async (family: string) => { revokedFamilies.push(family); },
       },
     });
 
-    const winner = await service.refreshTokens();
-    expect(winner.accessToken).toBeDefined();
-
-    // The loser fails instead of rotating a second time, and does NOT revoke.
-    await expect(service.refreshTokens()).rejects.toThrow();
-    expect(claims).toBe(2);
+    // Tabs that presented the replaced token each get an access token. The
+    // current hash here is not a successor this release can rebuild, so no
+    // refresh token either; concurrent-refresh-db.test.ts covers the one that is.
+    const served = await Promise.all([service.refreshTokens(), service.refreshTokens()]);
+    for (const session of served) {
+      expect(session.accessToken).toBeDefined();
+      expect(session.refreshToken).toBeUndefined();
+    }
+    expect(rotations).toBe(0);
     expect(revokedFamilies).toEqual([]);
     expect(cleared).toEqual([]);
   });
@@ -868,6 +870,7 @@ describe('auth security regressions', () => {
             previousHash: presentedHash,
             previousValidUntil: postgresTimestamp(Date.now() + 60_000),
             previousUsedAt: null,
+            expiresAt: postgresTimestamp(Date.now() + 7 * 86_400_000),
           }),
           markPreviousUsed: async () => [{ userId: 'user-1' }],
           rotateRefreshToken: async () => [{ userId: 'user-1' }],

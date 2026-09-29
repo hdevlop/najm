@@ -115,6 +115,32 @@ describe('NajmAuthClient logout/refresh race', () => {
     }
   });
 
+  test('does not log the session out when a refresh is refused with 401', async () => {
+    // The server answers 401 to a tab that lost a refresh race while another
+    // tab's rotation is live in the shared cookie jar. A logout from here
+    // would carry that live cookie and revoke every tab's session. The server
+    // clears its own cookies when a 401 is final, so nothing is left to clean.
+    const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
+    const calls: string[] = [];
+    let expired = 0;
+    client.on('sessionExpired', () => { expired += 1; });
+    client.api = {
+      blockAuthenticatedRequests: () => undefined,
+      allowAuthenticatedRequests: () => undefined,
+      post: async (path: string) => {
+        calls.push(path);
+        throw new AuthError(401, 'Refresh token invalid');
+      },
+    } as any;
+
+    await expect(client.refresh()).rejects.toThrow('Session expired');
+
+    expect(calls).toEqual(['/auth/refresh']);
+    expect(expired).toBe(1);
+    expect(client.getState()).toMatchObject({ accessToken: null, isAuthenticated: false });
+    client.destroy();
+  });
+
   test('clears the server session immediately when refresh is rate limited', async () => {
     const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
     const calls: string[] = [];

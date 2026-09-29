@@ -489,9 +489,11 @@ export class AuthService {
     return this.authSessionService.establish(user);
   }
 
-  async refreshTokens(): Promise<TokenPair> {
+  async refreshTokens(): Promise<Omit<TokenPair, 'refreshToken'> & { refreshToken?: string }> {
     const generated = await this.tokenService.refreshTokens();
-    this.cookieManager.setRefreshToken(generated.refreshToken);
+    // Absent only for a token an earlier release rotated: that rotation's own
+    // response set the cookie.
+    if (generated.refreshToken) this.cookieManager.setRefreshToken(generated.refreshToken);
 
     // Refresh the session cookie so SSR reads stay fresh.
     const user = await this.tokenService.getUserById(generated.userId);
