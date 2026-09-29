@@ -1,8 +1,15 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { Hono } from 'hono';
+import { getRoutes } from 'najm-core';
+import { createGuard, getGuardMetadata } from 'najm-guard';
 import { MCP_REGISTRY } from 'najm-mcp';
 import {
   FileCategory,
   StorageController,
+  StorageStudioController,
   StorageMcpTools,
   StorageService,
   StorageValidator,
@@ -670,6 +677,35 @@ describe('storage service convenience methods', () => {
 // ===========================================================================
 
 describe('storage plugin MCP toggle', () => {
+  test('MCP-only endpoints require an explicit guard decision', () => {
+    expect(() => storage({ routes: false, mcp: true })).toThrow('storage.guards must be configured explicitly');
+  });
+
+  test('applies serving and management guards to their respective surfaces', () => {
+    class ServeGuard { canActivate() { return true; } }
+    class ManageGuard { canActivate() { return true; } }
+    storage({ guards: [createGuard(ServeGuard)()], manageGuards: [createGuard(ManageGuard)()], mcp: true, studio: true });
+      expect(getGuardMetadata(StorageController, 'serveFile').some((item) => item.guardClass === ServeGuard)).toBe(true);
+    expect(getGuardMetadata(StorageController, 'listFiles').some((item) => item.guardClass === ManageGuard)).toBe(true);
+      expect(getGuardMetadata(StorageController, 'listFiles').some((item) => item.guardClass === ServeGuard)).toBe(false);
+    expect(getGuardMetadata(StorageController, 'serveFile').some((item) => item.guardClass === ManageGuard)).toBe(false);
+    expect(getGuardMetadata(StorageStudioController).some((item) => item.guardClass === ManageGuard)).toBe(true);
+    expect(getGuardMetadata(StorageMcpTools).some((item) => item.guardClass === ManageGuard)).toBe(true);
+  });
+
+  test('requires allowed roots and an explicit production choice for path uploads', () => {
+    expect(() => storage({ guards: [], mcp: true, mcpUploadFromPath: { allowedRoots: [] } })).toThrow('at least one allowed root');
+    const previous = process.env.NODE_ENV;
+    try {
+      process.env.NODE_ENV = 'production';
+      expect(() => storage({ guards: [], mcp: true, mcpUploadFromPath: { allowedRoots: ['.'] } })).toThrow('allowInProduction');
+      expect(() => storage({ guards: [], mcp: true, mcpUploadFromPath: { allowedRoots: ['.'], allowInProduction: true } })).not.toThrow();
+    } finally {
+      if (previous === undefined) delete process.env.NODE_ENV;
+      else process.env.NODE_ENV = previous;
+    }
+  });
+
   test('requires an explicit public or guarded route decision', () => {
     expect(() => storage()).toThrow('storage.guards must be configured explicitly');
   });
@@ -727,6 +763,23 @@ describe('storage plugin MCP toggle', () => {
 // ===========================================================================
 
 describe('storage MCP tools', () => {
+  test('does not publish path uploads unless explicitly enabled', async () => {
+    const { service } = createTestContext();
+    const tools = new StorageMcpTools(service) as any;
+    const registered: string[] = [];
+    tools.container = { has: () => true, resolve: async () => ({ registerTool: (tool: { name: string }) => registered.push(tool.name) }) };
+    await tools.activate();
+    expect(registered).not.toContain('storage_upload_from_path');
+    await expect(tools.storageUploadFromPath({ namespace: 'ns', filePath: 'copy.txt', sourcePath: '/tmp/file.txt' }))
+      .rejects.toThrow('disabled');
+
+    const enabled = new StorageMcpTools(service) as any;
+    enabled.config = { mcpUploadFromPath: { allowedRoots: ['.'] } };
+    enabled.container = tools.container;
+    await enabled.activate();
+    expect(registered).toContain('storage_upload_from_path');
+  });
+
   test('registers all MCP tools during activate', async () => {
     const { service } = createTestContext();
     const tools = new StorageMcpTools(service) as any;
@@ -759,7 +812,6 @@ describe('storage MCP tools', () => {
       'storage_info',
       'storage_list',
       'storage_upload',
-      'storage_upload_from_path',
     ]);
     expect(checkedTokens).toEqual([MCP_REGISTRY]);
     expect(resolvedTokens).toEqual([MCP_REGISTRY]);
@@ -824,7 +876,7 @@ describe('storage MCP tools', () => {
     await tools.activate();
     await tools.activate();
 
-    expect(registered).toHaveLength(5);
+    expect(registered).toHaveLength(4);
   });
 
   test('storage_list returns files for namespace', async () => {
@@ -928,5 +980,49 @@ describe('storage MCP tools', () => {
     expect(files.has('book-1/images/remove.png')).toBe(false);
 
     await expect(tools.storageDelete({ namespace: 'book-1', filePath: 'images/missing.png' })).rejects.toThrow('File not found');
+  });
+});
+
+describe('storage path boundaries', () => {
+  test('accepts only real files inside configured roots, including through symlinks', async () => {
+    const temp = await mkdtemp(join(tmpdir(), 'najm-storage-review-'));
+    const allowed = join(temp, 'allowed');
+    const outside = join(temp, 'outside');
+    await mkdir(allowed);
+    await mkdir(outside);
+    await writeFile(join(allowed, 'safe.txt'), 'safe');
+    await writeFile(join(outside, 'secret.txt'), 'secret');
+    const { service, files } = createTestContext();
+    (service as any).config = { mcpUploadFromPath: { allowedRoots: [allowed] } };
+    try {
+      await service.uploadFromPath('ns', 'copy.txt', join(allowed, 'safe.txt'));
+      expect(files.get('ns/copy.txt')?.data.toString()).toBe('safe');
+      await expect(service.uploadFromPath('ns', 'leak.txt', join(outside, 'secret.txt')))
+        .rejects.toThrow('outside the allowed roots');
+      await symlink(outside, join(allowed, 'escape'), process.platform === 'win32' ? 'junction' : 'dir');
+      await expect(service.uploadFromPath('ns', 'leak.txt', join(allowed, 'escape', 'secret.txt')))
+        .rejects.toThrow('outside the allowed roots');
+      expect(files.has('ns/leak.txt')).toBe(false);
+    } finally {
+      await rm(temp, { recursive: true, force: true });
+    }
+  });
+
+  test('routes namespace deletion before the single-file wildcard', async () => {
+    const app = new Hono({ strict: false });
+    for (const route of getRoutes(StorageController).filter((item) => item.method === 'delete')) {
+      app.delete(route.path, (context) => context.json({ handler: route.methodName }));
+    }
+    expect(await (await app.request('/ns/files', { method: 'DELETE' })).json())
+      .toEqual({ handler: 'deleteNamespace' });
+    expect(await (await app.request('/ns/files/a.txt', { method: 'DELETE' })).json())
+      .toEqual({ handler: 'deleteFile' });
+  });
+
+  test('optional controllers answer 404 when their feature is disabled', () => {
+    const serve = getRoutes(StorageController).find((item) => item.methodName === 'listFiles')!;
+    const studio = getRoutes(StorageStudioController).find((item) => item.methodName === 'listNamespaces')!;
+    expect(() => serve.handler.call({ storageConfig: { routes: false } }, 'ns')).toThrow('Not Found');
+    expect(() => studio.handler.call({ storageConfig: { studio: false } })).toThrow('Not Found');
   });
 });

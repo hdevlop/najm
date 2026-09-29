@@ -16,7 +16,9 @@ import { McpServer as McpSdkServer } from '@modelcontextprotocol/sdk/server/mcp.
 import {
   DATA,
   FILTER,
-  getGuardMetadata,
+  getEffectiveGuards,
+  GUARD_CONFIG,
+  type GuardPluginConfig,
   GUARD_PARAMS,
   INFO,
   OWNER,
@@ -175,9 +177,10 @@ export class McpBuilderService {
   }
 
   private async executeClassGuards(target: any, methodKey: string | symbol): Promise<void> {
-    const classGuards = getGuardMetadata(target) ?? [];
-    const methodGuards = getGuardMetadata(target, String(methodKey)) ?? [];
-    const guards = [...classGuards, ...methodGuards];
+    const config = this.container.has(GUARD_CONFIG)
+      ? this.container.get(GUARD_CONFIG) as GuardPluginConfig
+      : undefined;
+    const guards = getEffectiveGuards(target, String(methodKey), config);
 
     if (guards.length === 0) return;
 

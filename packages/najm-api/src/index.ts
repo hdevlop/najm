@@ -2,7 +2,7 @@
 export * from 'najm-core';
 
 // Common plugin factories and decorators
-export { guards, GuardPlugin, createGuard, composeGuards } from 'najm-guard';
+export { guards, GuardPlugin, createGuard, composeGuards, Public } from 'najm-guard';
 export { Validate, validation } from 'najm-validation';
 export { cache, CacheService, MemoryDriver, RedisDriver, isRedisAvailable } from 'najm-cache';
 export { rateLimit, RateLimit, SkipRateLimit, RateLimitService } from 'najm-rate';

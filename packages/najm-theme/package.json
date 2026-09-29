@@ -1,6 +1,6 @@
 {
   "name": "najm-theme",
-  "version": "0.2.1",
+  "version": "0.2.2",
   "license": "MIT",
   "type": "module",
   "description": "Managed runtime theming for Najm applications — appearance, theme presets, and branding assets with persistence, transport, and composable settings UI",
@@ -86,6 +86,7 @@
   "dependencies": {
     "najm-core": "workspace:*",
     "najm-database": "workspace:*",
+    "najm-guard": "workspace:*",
     "najm-i18n": "workspace:*",
     "najm-validation": "workspace:*"
   },

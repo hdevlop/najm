@@ -14,6 +14,7 @@
 
 import { Body, Controller, Ctx, Get, Post, Put, ResMsg, User } from "najm-core";
 import { Validate } from "najm-validation";
+import { Public } from "najm-guard";
 import type { Context } from "hono";
 
 import { pickAppearancePatch } from "../../contracts/appearance";
@@ -52,6 +53,7 @@ export class AppearanceController {
    * chose them.
    */
   @Get()
+  @Public()
   @ResMsg("theme.appearance.retrieved")
   async getAppearance(@Ctx() c: Context, @User() user: unknown) {
     return this.service.getPublic(await this.request.scopeId(c, user));

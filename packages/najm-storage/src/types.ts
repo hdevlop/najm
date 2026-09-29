@@ -43,12 +43,12 @@ export interface StorageConfig {
   routes?: boolean;
   /** Register MCP tools for file operations (default: false) */
   mcp?: boolean;
-  /**
-   * Guards applied to the storage REST controllers.
-   * This option is required: pass guards such as `isAuth()` to protect routes,
-   * or pass `[]` to explicitly opt into public storage routes.
-   */
+  /** Guards for serving files. Required whenever HTTP routes or MCP tools are enabled. */
   guards?: StorageRouteGuard[];
+  /** Guards for listing, metadata, uploads, deletion, Studio, and MCP tools. Defaults to guards. */
+  manageGuards?: StorageRouteGuard[];
+  /** Enable the MCP server-path upload tool inside these roots; production needs explicit approval. */
+  mcpUploadFromPath?: { allowedRoots: string[]; allowInProduction?: boolean };
   /** Required when provider is 'database' — auto-selects schema */
   dialect?: StorageDialect;
   /** Explicit drizzle schema override (advanced use — takes priority over dialect) */

@@ -2,8 +2,8 @@
 // najm-storage - Storage Service
 // ============================================================================
 
-import { readFile, stat } from 'node:fs/promises';
-import { resolve as resolvePath } from 'node:path';
+import { readFile, realpath, stat } from 'node:fs/promises';
+import { isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { Service, Meta, Inject, DI, Container, LoggerService } from 'najm-core';
 import { Events } from 'najm-event';
 import { STORAGE_CONFIG } from './tokens';
@@ -326,11 +326,26 @@ export class StorageService {
   }
 
   async uploadFromPath(namespace: string, filePath: string, sourcePath: string): Promise<FileInfo> {
-    const absolute = resolvePath(sourcePath);
+    const policy = this.config.mcpUploadFromPath;
+    if (!policy?.allowedRoots?.length ||
+        (process.env.NODE_ENV === 'production' && policy.allowInProduction !== true)) {
+      throw new Error('Server-path uploads are disabled');
+    }
+    if (!isAbsolute(sourcePath)) throw new Error('Source path must be absolute');
+    const absolute = await realpath(resolvePath(sourcePath));
+    const permitted = await Promise.all(policy.allowedRoots.map(async (root) => {
+      const resolvedRoot = await realpath(resolvePath(root));
+      const info = await stat(resolvedRoot);
+      if (!info.isDirectory()) throw new Error(`Allowed root is not a directory: ${root}`);
+      const inside = relative(resolvedRoot, absolute);
+      return inside !== '..' && !inside.startsWith(`..${sep}`) && !isAbsolute(inside);
+    }));
+    if (!permitted.includes(true)) throw new Error('Source path is outside the allowed roots');
     const info = await stat(absolute).catch(() => null);
     if (!info || !info.isFile()) {
       throw new Error(`Source file not found: ${absolute}`);
     }
+    this.validator.validateSize(info.size);
     const data = await readFile(absolute);
     const mimeType = this.validator.resolveMimeType(null, absolute);
     await this.save(namespace, filePath, Buffer.from(data), mimeType);

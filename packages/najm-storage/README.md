@@ -140,7 +140,7 @@ When the `storage` plugin is registered with `studio: true`, a `StorageStudioCon
 
 ## Security Defaults
 
-Storage REST routes require an explicit access decision. Configure `guards`
+Storage HTTP routes and MCP tools require an explicit access decision. Configure `guards`
 with route guards such as `isAuth()`, or pass `guards: []` only when the file
 routes are intentionally public.
 
@@ -155,8 +155,8 @@ server.use(storage({
 }));
 ```
 
-`storage()` without `guards` throws during plugin setup whenever generic REST
-or Studio routes are enabled. Public routes must be written as
+`storage()` without `guards` throws during plugin setup whenever generic REST,
+Studio, or MCP endpoints are enabled. Public endpoints must be written as
 `storage({ guards: [] })` so accidental unauthenticated upload, list, serve,
 preview, or Studio APIs do not ship silently. A service-only registration with
 `routes: false` and Studio disabled has no HTTP surface and does not require
@@ -170,7 +170,25 @@ Other default protections:
 - dangerous executable/script extensions are blocked unless security checks are
   explicitly bypassed in lower-level helper calls
 - MCP tools are disabled by default and require both `mcp: true` and the MCP
-  plugin
+  plugin. The server-path upload tool requires a separate opt-in.
+
+Separate file serving from management with `manageGuards`. When omitted, it
+uses `guards`. Management covers list, file information, upload, delete,
+Studio, and MCP tools:
+
+```ts
+storage({
+  guards: [isAuth()],
+  manageGuards: [isAdmin()],
+  mcp: false,
+});
+```
+
+`storage_upload_from_path` is absent by default. To enable it, set
+`mcpUploadFromPath: { allowedRoots: ['/srv/imports'] }` alongside `mcp: true`.
+The source and allowed roots are resolved with `realpath` before reading, so a
+link outside an allowed root is refused. Production additionally requires
+`allowInProduction: true` in that option.
 
 ### Studio Routes
 

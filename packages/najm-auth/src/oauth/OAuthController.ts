@@ -3,6 +3,7 @@ import { Controller, Ctx, Get, Post, Query, User } from 'najm-core';
 import type { Context } from 'hono';
 import { RateLimit, type RateLimitKeyContext } from 'najm-rate';
 import { isAuth } from '../auth/AuthGuard';
+import { Public } from 'najm-guard';
 import { OAuthService } from './OAuthService';
 
 const callbackKey = (ctx: Context, { clientIp }: RateLimitKeyContext): string => {
@@ -17,12 +18,14 @@ export class OAuthController {
   constructor(private oauth: OAuthService) { }
 
   @Get('/start')
+  @Public()
   @RateLimit({ limit: 20, window: '15m', key: 'ip' })
   start(@Ctx() ctx: Context, @Query('returnTo') returnTo?: string) {
     return ctx.redirect(this.oauth.startGoogleLogin(returnTo), 302);
   }
 
   @Get('/callback')
+  @Public()
   @RateLimit({ limit: 20, window: '15m', key: callbackKey })
   async callback(
     @Ctx() ctx: Context,

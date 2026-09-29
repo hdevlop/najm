@@ -18,6 +18,7 @@ import {
   User,
 } from "najm-core";
 import { Validate } from "najm-validation";
+import { Public } from "najm-guard";
 import type { Context } from "hono";
 
 import { capabilitiesFor } from "../../contracts/capabilities";
@@ -55,6 +56,7 @@ export class BrandingController {
   ) {}
 
   @Get()
+  @Public()
   @ResMsg("theme.branding.retrieved")
   async getBranding(@Ctx() c: Context, @User() user: unknown) {
     return this.service.getPublic(await this.request.scopeId(c, user));
@@ -157,6 +159,7 @@ export class BrandingController {
    * cannot collide with `GET .../:fileName`.
    */
   @Get("/assets/:fileName")
+  @Public()
   async serveAsset(
     @Ctx() c: Context,
     @User() user: unknown,
@@ -186,6 +189,7 @@ export class BrandingController {
    * definition, so there is no path here to traverse and no file to race.
    */
   @Get(`/${FACTORY_ASSET_ROUTE_SEGMENT}/:fileName`)
+  @Public()
   async serveFactoryAsset(@Params() params: { fileName?: string }): Promise<Response> {
     const response = this.assets.serveFactoryAsset(params?.fileName);
     if (!response) {

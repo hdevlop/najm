@@ -2,10 +2,11 @@
 // najm-storage - MCP Tools
 // ============================================================================
 
-import { Container, DI, Meta, Service } from 'najm-core';
+import { Container, DI, Inject, Meta } from 'najm-core';
 import { z } from 'zod';
-import type { FileInfo } from './types';
+import type { FileInfo, StorageConfig } from './types';
 import { StorageService } from './StorageService';
+import { STORAGE_CONFIG } from './tokens';
 
 const storageListSchema = z.object({
   namespace: z.string().describe('Namespace (e.g. book ID, entity ID)'),
@@ -52,6 +53,7 @@ interface McpRegistryServiceLike {
 @Meta({ layer: 'plugin' })
 export class StorageMcpTools {
   @DI() private container!: Container;
+  @Inject(STORAGE_CONFIG) private config!: StorageConfig;
 
   private toolsRegistered = false;
 
@@ -92,15 +94,17 @@ export class StorageMcpTools {
       annotations: { idempotentHint: true },
     });
 
-    registry.registerTool({
-      name: 'storage_upload_from_path',
-      description: 'Upload a file from a local disk path to a namespace (no base64 encoding needed)',
-      methodKey: 'storageUploadFromPath',
-      target: StorageMcpTools,
-      args: [],
-      validation: { body: storageUploadFromPathSchema },
-      annotations: { idempotentHint: true },
-    });
+    if (this.config?.mcpUploadFromPath) {
+      registry.registerTool({
+        name: 'storage_upload_from_path',
+        description: 'Upload a file from an allowed local directory to a namespace',
+        methodKey: 'storageUploadFromPath',
+        target: StorageMcpTools,
+        args: [],
+        validation: { body: storageUploadFromPathSchema },
+        annotations: { idempotentHint: true },
+      });
+    }
 
     registry.registerTool({
       name: 'storage_delete',
@@ -132,6 +136,7 @@ export class StorageMcpTools {
   }
 
   async storageUploadFromPath(input: StorageUploadFromPathInput): Promise<FileInfo> {
+    if (!this.config?.mcpUploadFromPath) throw new Error('Server-path uploads are disabled');
     return this.storageService.uploadFromPath(input.namespace, input.filePath, input.sourcePath);
   }
 

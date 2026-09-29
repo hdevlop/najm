@@ -4,7 +4,7 @@
 
 import { Hono, MiddlewareHandler } from 'hono';
 import { randomUUID } from 'node:crypto';
-import { container, Container } from 'diject';
+import { container, Container, getDecoratorMetadataValue } from 'diject';
 import { createLogger, LoggerService } from '../logging/LoggerService';
 import { BootService } from '../boot/BootService';
 import { BootDiagnostics } from '../boot/BootDiagnostics';
@@ -14,7 +14,7 @@ import { ScannerService } from '../scanner';
 import { router } from '../router';
 import { params } from '../params';
 import { middleware } from '../middleware';
-import { APP, BASE_PATH, SERVER_OPTS, LOGGER } from './tokens';
+import { APP, BASE_PATH, SERVER_OPTS, LOGGER, DECLARED_CONTROLLERS, DECLARED_PLUGIN_SERVICES, DECLARED_PLUGIN_BOOT_SERVICES, DECLARED_APP_SERVICES } from './tokens';
 import { PluginRegistry } from './PluginRegistry';
 import { createListener, type ServerHandle } from './listener';
 import { collectInjectables, loadInjectablesFromRoots } from './moduleLoader';
@@ -336,6 +336,9 @@ export class Server {
          await this.resolveScanRoots();
 
          const pluginServices = this.registry.applyTo(this.container);
+         const pluginBootServices = new Set(pluginServices.filter(
+            (service) => getDecoratorMetadataValue(service, 'layer') === 'plugin',
+         ));
          const coreServices = this.isDiagnosticsEnabled()
             ? [...CORE_SERVICES, BootDiagnostics]
             : CORE_SERVICES;
@@ -346,8 +349,23 @@ export class Server {
             .set(BASE_PATH, this.basePath)
             .set(coreServices)
             .alias(LOGGER, LoggerService)
-            .set(pluginServices)
+            .set(DECLARED_PLUGIN_SERVICES, new Set(pluginServices))
+            .set(DECLARED_PLUGIN_BOOT_SERVICES, pluginBootServices)
+            .set(DECLARED_APP_SERVICES, new Set(this.appServices))
+            .set(DECLARED_CONTROLLERS, new Set([...pluginServices, ...this.appServices]))
+            .set(pluginServices, { metadata: { layer: 'plugin' } })
             .set([...this.appServices], { metadata: { layer: 'app' } });
+
+         if (process.env.NODE_ENV !== 'production') {
+            const declared = this.container.get(DECLARED_CONTROLLERS) as Set<Constructor>;
+            const skipped = this.container.find({ type: 'controller' })
+               .filter((controller): controller is Constructor => typeof controller === 'function' && !declared.has(controller));
+            if (skipped.length) {
+               this.logger.warn('Decorated controllers were imported but not declared; their routes are not mounted', {
+                  controllers: skipped.map((controller) => controller.name),
+               });
+            }
+         }
 
          const bootService = await this.container.resolve(BootService);
          await bootService.boot();

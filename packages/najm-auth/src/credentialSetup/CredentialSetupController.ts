@@ -1,5 +1,6 @@
 import { Body, Controller, Get, Post, ResMsg } from 'najm-core';
 import { RateLimit } from 'najm-rate';
+import { Public } from 'najm-guard';
 import { Validate } from 'najm-validation';
 import { credentialSetupChangeDto, type CredentialSetupChangeDto } from './CredentialSetupDto';
 import { PasswordSetupService } from './PasswordSetupService';
@@ -13,6 +14,7 @@ export class CredentialSetupController {
   constructor(private passwords: PasswordSetupService) { }
 
   @Get('/setup')
+  @Public()
   @RateLimit({ limit: 30, window: '15m', key: 'ip' })
   @ResMsg('auth.success.credentialSetupPending')
   status() {
@@ -20,6 +22,7 @@ export class CredentialSetupController {
   }
 
   @Post('/change')
+  @Public()
   @RateLimit({ limit: 5, window: '15m', key: 'ip' })
   @Validate(credentialSetupChangeDto)
   @ResMsg('auth.success.credentialSetupPasswordReplaced')
@@ -28,6 +31,7 @@ export class CredentialSetupController {
   }
 
   @Post('/cancel')
+  @Public()
   @RateLimit({ limit: 10, window: '15m', key: 'ip' })
   @ResMsg('auth.success.credentialSetupCancelled')
   cancel() {

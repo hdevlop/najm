@@ -1,6 +1,7 @@
 import type { CoreService } from './types';
 import { Container, DI, Meta, Scope, Service } from 'diject';
 import { LoggerService } from '../logging/LoggerService';
+import { DECLARED_PLUGIN_SERVICES, DECLARED_PLUGIN_BOOT_SERVICES, DECLARED_APP_SERVICES } from '../server/tokens';
 
 type Phase = 'scan' | 'configure' | 'activate' | 'onReady';
 
@@ -54,11 +55,19 @@ export class BootService {
 
    private async bootInfrastructure(): Promise<void> {
       const coreTokens = this.container.find({ layer: 'core', $sort: { order: 'asc' } });
-      const pluginTokens = this.container.find({ layer: 'plugin', $sort: { order: 'asc' } });
-      this.infrastructure = await this.container.boot([
-         ...coreTokens,
-         ...pluginTokens,
-      ]);
+      const declaredPlugins = this.container.has(DECLARED_PLUGIN_SERVICES)
+         ? this.container.get(DECLARED_PLUGIN_SERVICES) as Set<Function>
+         : undefined;
+      const bootPlugins = this.container.has(DECLARED_PLUGIN_BOOT_SERVICES)
+         ? this.container.get(DECLARED_PLUGIN_BOOT_SERVICES) as Set<Function>
+         : undefined;
+      const pluginTokens = this.container.find({ layer: 'plugin', $sort: { order: 'asc' } })
+         .filter((token) => (!declaredPlugins || declaredPlugins.has(token as Function)) &&
+            (!bootPlugins || bootPlugins.has(token as Function)));
+      const infrastructureTokens = [...coreTokens, ...pluginTokens];
+      this.infrastructure = infrastructureTokens.length
+         ? await this.container.boot(infrastructureTokens)
+         : [];
    }
 
    // ============================================================================
@@ -91,11 +100,15 @@ export class BootService {
    // ============================================================================
 
    private async bootAppServices(): Promise<void> {
-      const appTokens = this.container.find({ layer: 'app' });
+      const declaredApps = this.container.has(DECLARED_APP_SERVICES)
+         ? this.container.get(DECLARED_APP_SERVICES) as Set<Function>
+         : undefined;
+      const appTokens = this.container.find({ layer: 'app' })
+         .filter((token) => !declaredApps || declaredApps.has(token as Function));
       const bootableTokens = appTokens.filter(
          (token) => this.container.registry.get(token)?.scope !== Scope.REQUEST,
       );
-      await this.container.boot(bootableTokens);
+      if (bootableTokens.length) await this.container.boot(bootableTokens);
    }
 
    public getTimings(): readonly BootTiming[] {

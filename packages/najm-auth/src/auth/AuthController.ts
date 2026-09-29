@@ -4,6 +4,7 @@ import { Params, Body, User, Headers, Ctx } from 'najm-core';
 import { AuthService } from './AuthService';
 import { isAuth } from './AuthGuard';
 import { isAdmin } from '../roles/RoleGuards';
+import { Public } from 'najm-guard';
 import { Validate } from 'najm-validation';
 import { RateLimit, UNRESOLVED_CLIENT_ADDRESS, type RateLimitKeyContext } from 'najm-rate';
 import type { Context } from 'hono';
@@ -104,6 +105,7 @@ export class AuthController {
   constructor(private authService: AuthService) { }
 
   @Post('/login')
+  @Public()
   @RateLimit({
     limit: loginRateLimit.limit,
     window: loginRateLimit.window,
@@ -127,6 +129,7 @@ export class AuthController {
   }
 
   @Post('/refresh')
+  @Public()
   @RateLimit({ limit: 15, window: '15m', key: cookieFingerprint() })
   @ResMsg('auth.success.tokenRefreshed')
   async refreshTokens() {
@@ -134,6 +137,7 @@ export class AuthController {
   }
 
   @Post('/session/recover')
+  @Public()
   @RateLimit({ limit: 120, window: '1m', key: cookieFingerprint() })
   @ResMsg('auth.success.sessionRecovered')
   async recoverSession(
@@ -149,6 +153,7 @@ export class AuthController {
   }
 
   @Post('/logout')
+  @Public()
   async logoutUser(
     @User('id') userId: string | undefined,
     @Headers('authorization') authorization?: string
@@ -168,6 +173,7 @@ export class AuthController {
   }
 
   @Get('/me')
+  @Public()
   @RateLimit({ limit: 30, window: '1m', key: cookieFingerprint() })
   @ResMsg('auth.users.success.retrieved')
   async userProfile(@Headers('authorization') authorization?: string) {
@@ -175,6 +181,7 @@ export class AuthController {
   }
 
   @Post('/forgot-password')
+  @Public()
   @RateLimit({ limit: 3, window: '15m', key: authEmailRateLimitKey, message: 'Too many password reset requests. Please try again later.' })
   @Validate(resetPasswordDto)
   @ResMsg('auth.success.passwordResetSent')
@@ -183,6 +190,7 @@ export class AuthController {
   }
 
   @Post('/reset-password')
+  @Public()
   @RateLimit({ limit: 5, window: '15m', key: 'ip', message: 'Too many password reset attempts. Please try again later.' })
   @Validate(confirmResetPasswordDto)
   @ResMsg('auth.success.passwordReset')

@@ -3,7 +3,7 @@
   "packages": {
     "najm-api": [
       "export * from 'najm-core';",
-      "export { guards, GuardPlugin, createGuard, composeGuards } from 'najm-guard';",
+      "export { guards, GuardPlugin, createGuard, composeGuards, Public } from 'najm-guard';",
       "export { Validate, validation } from 'najm-validation';",
       "export { cache, CacheService, MemoryDriver, RedisDriver, isRedisAvailable } from 'najm-cache';",
       "export { rateLimit, RateLimit, SkipRateLimit, RateLimitService } from 'najm-rate';",
@@ -99,7 +99,7 @@
       "export { Server, plugin, handle } from './server';",
       "export type { ContributionToken, PluginContribution } from './server';",
       "export type { NajmPlugin, ServerOpts, Loadable, ScanTarget } from './server/types';",
-      "export { SERVER_OPTS, APP, BASE_PATH, LOGGER } from './server/tokens';",
+      "export { SERVER_OPTS, APP, BASE_PATH, LOGGER, DECLARED_CONTROLLERS, DECLARED_PLUGIN_SERVICES, DECLARED_APP_SERVICES } from './server/tokens';",
       "export { LoggerService, Log } from './logging';",
       "export type { LoggerConfig, LogEntry, ILogger, LogLevel } from './logging/types';",
       "export * from './errors';",
@@ -152,7 +152,7 @@
     "najm-guard": [
       "export type { GuardMetadata, CreateGuardOptions, GuardPluginConfig, GuardResult, GuardReturnType, CompositeGuardParams } from './types';",
       "export { USER, OWNER, INFO, DATA, FILTER, ROLE, PERMISSIONS, GUARD_PARAMS, GUARDS_META, GUARD_CONFIG } from './tokens';",
-      "export { createGuard, composeGuards, getGuardMetadata, hasGuards } from './decorator';",
+      "export { createGuard, composeGuards, getGuardMetadata, getEffectiveGuards, Public, hasGuards } from './decorator';",
       "export * from './GuardPlugin';",
       "export { runGuards, applyGuardResult } from './guardRunner';",
       "export { GuardService } from './GuardService';",

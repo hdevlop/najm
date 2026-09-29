@@ -4,7 +4,7 @@ import { ScannerService, Scan, ScanType, INJECTION_TYPES, Err, LOGGER } from 'na
 import { RequestParser } from 'najm-core';
 import { Context, MiddlewareHandler, Next } from 'hono';
 import type { GuardMetadata, GuardPluginConfig } from './types';
-import { getGuardMetadata } from './decorator';
+import { getEffectiveGuards } from './decorator';
 import { GUARD_CONFIG } from './tokens';
 import { ParamResolver } from 'najm-core';
 import { runGuards } from './guardRunner';
@@ -38,21 +38,8 @@ export class GuardService {
       if (!this.enabled) return;
 
       this.scanner.scan(ScanType.CONTROLLER, {
-         onClass: (controller) => {
-            const guards = getGuardMetadata(controller);
-            if (guards?.length) {
-               this.container.setInjection({
-                  type: INJECTION_TYPES.MIDDLEWARE,
-                  target: controller,
-                  handler: this.createGuardsMiddleware(guards),
-                  order: 40,
-                  source: 'guard',
-               });
-               this.guardCount += guards.length;
-            }
-         },
          onMethod: (controller, methodName) => {
-            const guards = getGuardMetadata(controller, methodName);
+            const guards = getEffectiveGuards(controller, methodName, this.config);
             if (guards?.length) {
                this.container.setInjection({
                   type: INJECTION_TYPES.MIDDLEWARE,

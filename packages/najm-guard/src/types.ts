@@ -59,6 +59,8 @@ export type GuardPluginConfig = boolean | {
    enabled?: boolean;
    /** Paths to exclude from guards (supports wildcards) */
    exclude?: string[];
+   /** Guards used when a controller method declares no guard and is not @Public(). */
+   default?: Array<ClassDecorator & MethodDecorator>;
 };
 
 /**

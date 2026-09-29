@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { Body, Controller, Get, Params, Post, Query, Server, Service, User } from 'najm-core';
-import { createGuard } from 'najm-guard';
+import { createGuard, guards, Public } from 'najm-guard';
 import { USER } from 'najm-guard';
 import { Validate } from 'najm-validation';
 import { z } from 'zod';
@@ -32,6 +32,27 @@ async function bootWith(...classes: any[]): Promise<{ server: Server; builder: M
 }
 
 describe('McpBuilderService.invokeTool (in-process)', () => {
+  test('applies configured default guards to tools and honors @Public', async () => {
+    @Service()
+    class DenyGuard { canActivate() { return false; } }
+    const Deny = createGuard(DenyGuard);
+
+    @Controller('/guard-default-tools')
+    class DemoController {
+      @Get('/blocked') @McpTool('Blocked by default') blocked() { return { ok: true }; }
+      @Get('/public') @McpTool('Explicitly public') @Public() publicTool() { return { ok: true }; }
+    }
+
+    server = await new Server({ isolated: true, silent: true })
+      .use(guards({ default: [Deny()] }))
+      .use(mcp({ name: 'guard-default-tool-test', version: '1.0.0', path: '/mcp', transports: ['http'] }))
+      .load(DenyGuard, DemoController)
+      .init();
+    const builder = server.container.get(McpBuilderService) as McpBuilderService;
+    expect((await builder.invokeTool('blocked', {})).isError).toBe(true);
+    expect((await builder.invokeTool('public_tool', {})).isError).toBeUndefined();
+  });
+
   test('happy path: invokes a registered tool and returns the result', async () => {
     @Controller('/orders')
     class OrdersController {

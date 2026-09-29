@@ -5,6 +5,7 @@
 import { Container, Service, Meta, Inject, Constructor, DI } from 'diject';
 import { ScanType, ScanTypeValue, ScanCallbacks } from './types';
 import { registerScanInjector } from './decorator';
+import { DECLARED_CONTROLLERS } from '../server/tokens';
 
 // Helper function to check if something is a constructor
 function isConstructor(value: any): value is Constructor {
@@ -31,7 +32,12 @@ export class ScannerService {
 
    find(type: ScanTypeValue): Constructor[] {
       const query = this.isLayer(type) ? { layer: type } : { type };
-      return this.container.find(query).filter(isConstructor);
+      const matches = this.container.find(query).filter(isConstructor);
+      if (type !== ScanType.CONTROLLER) return matches;
+      const declared = this.container.has(DECLARED_CONTROLLERS)
+         ? this.container.get(DECLARED_CONTROLLERS) as Set<Constructor>
+         : undefined;
+      return declared ? matches.filter((controller) => declared.has(controller)) : matches;
    }
 
    private isLayer(type: ScanTypeValue): boolean {

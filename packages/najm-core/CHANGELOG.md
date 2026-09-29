@@ -1,5 +1,20 @@
 # najm-core
 
+## 3.0.0
+
+### Breaking change
+
+- Controllers are mounted only when the server declares them through `.load()`,
+  `.scan()`, or a plugin's `.services()`. Importing a decorated controller no
+  longer mounts its routes. Add previously import-only controllers to the
+  appropriate declaration before upgrading. Development startup warns about
+  decorated controllers that were imported but omitted.
+- Boot lifecycle discovery uses the same server-specific declarations for app
+  and plugin services. A class imported into diject's shared container cannot
+  start a service for a plugin that did not declare it. Services without an
+  explicit plugin boot layer remain lazy, and an empty boot list no longer
+  causes diject to boot every singleton.
+
 ## 2.1.0 - 2026-09-27
 
 ### Added

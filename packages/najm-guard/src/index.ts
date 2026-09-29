@@ -27,6 +27,8 @@ export {
    createGuard,
    composeGuards,
    getGuardMetadata,
+   getEffectiveGuards,
+   Public,
    hasGuards
 } from './decorator';
 

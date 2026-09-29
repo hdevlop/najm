@@ -4,7 +4,35 @@
 
 import { MetaHelper, Constructor } from 'najm-core';
 import { GUARDS_META } from './tokens';
-import type { GuardMetadata, CreateGuardOptions } from './types';
+import type { GuardMetadata, CreateGuardOptions, GuardPluginConfig } from './types';
+
+const PUBLIC_META = Symbol.for('najm:guard:public');
+const defaultGuardCache = new WeakMap<object, GuardMetadata[]>();
+
+/** Explicitly allow an otherwise unguarded endpoint when default guards are configured. */
+export function Public(): ClassDecorator & MethodDecorator {
+   return (target: any, propertyKey?: string | symbol) => {
+      if (propertyKey !== undefined) MetaHelper.define(PUBLIC_META, true, target, propertyKey);
+      else MetaHelper.define(PUBLIC_META, true, target);
+   };
+}
+
+export function getEffectiveGuards(target: any, methodName: string, config?: GuardPluginConfig): GuardMetadata[] {
+   const methodGuards = getGuardMetadata(target, methodName);
+   const classGuards = getGuardMetadata(target);
+   if (methodGuards.length) return [...classGuards, ...methodGuards];
+   if (classGuards.length) return classGuards;
+   if (MetaHelper.get<boolean>(PUBLIC_META, target.prototype, methodName) ||
+       MetaHelper.get<boolean>(PUBLIC_META, target)) return [];
+   if (!config || typeof config === 'boolean' || !config.default?.length) return [];
+   const cached = defaultGuardCache.get(config);
+   if (cached) return cached;
+   class DefaultGuardTarget {}
+   for (const guard of config.default) guard(DefaultGuardTarget);
+   const defaults = getGuardMetadata(DefaultGuardTarget);
+   defaultGuardCache.set(config, defaults);
+   return defaults;
+}
 
 // ============================================================================
 // GUARD FACTORY

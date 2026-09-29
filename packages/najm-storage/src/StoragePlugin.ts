@@ -18,6 +18,8 @@ const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provi
   routes: config.routes ?? true,
   mcp: config.mcp ?? false,
   guards: config.guards,
+  manageGuards: config.manageGuards,
+  mcpUploadFromPath: config.mcpUploadFromPath,
   dialect: config.dialect,             // optional — auto-detected if omitted
   schema: config.schema,               // optional — overrides auto-detection
   database: config.database ?? 'default',
@@ -39,8 +41,8 @@ const mergeConfig = (config: StorageConfig): Required<Pick<StorageConfig, 'provi
 });
 
 function assertExplicitGuards(config: StorageConfig): void {
-  const hasHttpRoutes = config.routes !== false || config.studio === true;
-  if (!hasHttpRoutes) return;
+  const hasEndpoints = config.routes !== false || config.studio === true || config.mcp === true;
+  if (!hasEndpoints) return;
 
   if (!Object.prototype.hasOwnProperty.call(config, 'guards')) {
     throw new Error(
@@ -77,15 +79,37 @@ function applyRouteGuards(guards: StorageConfig['guards'], controllers: Function
 export const storage = (config: StorageConfig = {}) => {
   assertExplicitGuards(config);
   const merged = mergeConfig(config);
+  if (merged.mcpUploadFromPath) {
+    if (!merged.mcp || merged.mcpUploadFromPath.allowedRoots.length === 0) {
+      throw new Error('storage.mcpUploadFromPath requires mcp: true and at least one allowed root');
+    }
+    if (process.env.NODE_ENV === 'production' && merged.mcpUploadFromPath.allowInProduction !== true) {
+      throw new Error('storage.mcpUploadFromPath requires allowInProduction: true in production');
+    }
+  }
   const routeControllers = [
     ...(merged.routes ? [StorageController] : []),
     ...(merged.studio ? [StorageStudioController] : []),
   ];
 
-  applyRouteGuards(merged.guards, routeControllers);
+  if (merged.routes) {
+    for (const [methods, guards] of [
+      [['serveFile', 'servePreview'], merged.guards],
+      [['listFiles', 'getFileInfo', 'uploadFile', 'deleteFile', 'deleteNamespace'], merged.manageGuards ?? merged.guards],
+    ] as const) {
+      for (const method of methods) {
+        const descriptor = Object.getOwnPropertyDescriptor(StorageController.prototype, method)!;
+        for (const guard of guards ?? []) {
+          (guard as MethodDecorator)(StorageController.prototype, method, descriptor);
+        }
+      }
+    }
+  }
+  if (merged.studio) applyRouteGuards(merged.manageGuards ?? merged.guards, [StorageStudioController]);
+  if (merged.mcp) applyRouteGuards(merged.manageGuards ?? merged.guards, [StorageMcpTools]);
 
   const builder = plugin('storage')
-    .version('2.0.0')
+    .version('3.0.0')
     .depends(events())
     .services(StorageService, StorageValidator)
     // The identity-stable way in for packages that store files through this
@@ -103,7 +127,8 @@ export const storage = (config: StorageConfig = {}) => {
     builder.requires('database');
   }
 
-  if (routeControllers.length > 0 && merged.guards?.length) {
+  if ((routeControllers.length > 0 || merged.mcp) &&
+      (merged.guards?.length || merged.manageGuards?.length)) {
     builder.requires('guards');
   }
 

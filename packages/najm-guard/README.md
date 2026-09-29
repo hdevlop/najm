@@ -145,3 +145,13 @@ class MyGuard {
 - `composeGuards` applies guards in order; all must pass for access to be granted
 - For PBAC, combine with `najm-auth`'s `Can`, `canRead`, `canCreate`, etc.
 - Guards that need to share data with downstream handlers should return the data via the result object, not via direct ALS manipulation
+
+## Default guards and public routes
+
+`guards({ default: [isAuth()] })` protects controller methods without an
+explicit class or method guard. Add `@Public()` to deliberate public routes,
+such as login and health checks. Explicit guards always run, even on a method
+marked `@Public()`. HTTP routes and MCP tools use the same decision.
+
+Register the configured `guards()` plugin before plugins that depend on guards,
+such as `auth()`, so the server uses that configuration.

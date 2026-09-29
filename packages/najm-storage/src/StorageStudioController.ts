@@ -2,14 +2,19 @@
 // najm-storage - Studio Controller (admin API)
 // ============================================================================
 
-import { Controller, Get, Post, Delete, Put, Patch, Params, Body, Ctx, ArrayBufferBody, ContentType, Query } from 'najm-core';
+import { Controller, Get, Post, Delete, Put, Patch, Params, Body, Ctx, ArrayBufferBody, ContentType, Query, Inject } from 'najm-core';
 import type { Context } from 'hono';
 import { StorageService } from './StorageService';
 import { AuditService } from './AuditService';
 import type { PreviewOptions } from './types';
+import type { StorageConfig } from './types';
+import { STORAGE_CONFIG } from './tokens';
+import { storageFeatureGate } from './featureGate';
 
+@storageFeatureGate('studio')
 @Controller('/storage-studio')
 export class StorageStudioController {
+  @Inject(STORAGE_CONFIG) readonly storageConfig!: StorageConfig;
   constructor(
     private storage: StorageService,
     private audit: AuditService,

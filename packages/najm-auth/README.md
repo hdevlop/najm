@@ -220,7 +220,8 @@ All routes are prefixed with `/auth` and auto-registered by the plugin.
 Applications with an approval-owned onboarding flow should set
 `publicRegistration: false`. This removes the unauthenticated route while
 retaining `AuthService.registerUser()`, `provisionUser()`, and other internal
-account-management APIs for trusted application services.
+account-management APIs for trusted application services. The registration
+controller also answers 404 when disabled if an older core mounts it anyway.
 
 ### Identity presets
 

@@ -2,14 +2,19 @@
 // najm-storage - Storage Controller
 // ============================================================================
 
-import { Controller, Get, Post, Delete, Query } from 'najm-core';
+import { Controller, Get, Post, Delete, Query, Inject } from 'najm-core';
 import { Params, Ctx, ArrayBufferBody, ContentType } from 'najm-core';
 import type { Context } from 'hono';
 import { StorageService } from './StorageService';
 import type { PreviewOptions } from './types';
+import type { StorageConfig } from './types';
+import { STORAGE_CONFIG } from './tokens';
+import { storageFeatureGate } from './featureGate';
 
+@storageFeatureGate('routes')
 @Controller('')
 export class StorageController {
+  @Inject(STORAGE_CONFIG) readonly storageConfig!: StorageConfig;
   constructor(private storageService: StorageService) {}
 
   /**
@@ -117,7 +122,16 @@ export class StorageController {
   }
 
   // ============================================================================
-  // DELETE /:namespace/files/* — delete single file
+  // DELETE /:namespace/files — delete all files in namespace
+  // ============================================================================
+
+  @Delete('/:namespace/files')
+  async deleteNamespace(@Params('namespace') namespace: string) {
+    return this.storageService.deleteNamespace(namespace);
+  }
+
+  // ============================================================================
+  // DELETE /:namespace/files/* — delete a single file
   // ============================================================================
 
   @Delete('/:namespace/files/*')
@@ -127,14 +141,5 @@ export class StorageController {
   ) {
     const filePath = this.extractFilePath(c, namespace, 'files/');
     return this.storageService.deleteFile(namespace, filePath);
-  }
-
-  // ============================================================================
-  // DELETE /:namespace/files — delete all files in namespace
-  // ============================================================================
-
-  @Delete('/:namespace/files')
-  async deleteNamespace(@Params('namespace') namespace: string) {
-    return this.storageService.deleteNamespace(namespace);
   }
 }
