@@ -3,6 +3,7 @@
 import { useTranslation } from "najm-i18n/react";
 import type { QueryKey } from "@tanstack/react-query";
 
+import { useResolvedFeedbackLabels } from "../components/feedback/feedbackDefaults";
 import { useEntityCommand } from "./useEntityCommand";
 import { useEntityQuery } from "./useEntityQuery";
 
@@ -34,6 +35,31 @@ function namesOf(entities: string | readonly string[]) {
   return names;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/** The message of an Axios (`response.data.message`) or fetch/Najm error. */
+function serverMessageOf(error: unknown): string | undefined {
+  if (!isRecord(error)) return undefined;
+  const response = error.response;
+  if (isRecord(response) && isRecord(response.data)) {
+    const message = response.data.message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+  const message = error.message;
+  return typeof message === "string" && message.trim() ? message : undefined;
+}
+
+function statusOf(error: unknown): number | undefined {
+  if (!isRecord(error)) return undefined;
+  if (typeof error.status === "number") return error.status;
+  const response = error.response;
+  return isRecord(response) && typeof response.status === "number"
+    ? response.status
+    : undefined;
+}
+
 /**
  * Compatibility bridge for applications with endpoint-map CRUD hooks.
  * New feature code may prefer `useEntityQuery` and `useEntityCommand` directly.
@@ -43,6 +69,7 @@ export function useEntityCRUD(
   endpoints: EntityCrudEndpoints,
 ) {
   const { t } = useTranslation();
+  const feedback = useResolvedFeedbackLabels();
   const entityArray = namesOf(entities);
   const primaryEntity = entityArray[0];
   const invalidate = [
@@ -61,21 +88,22 @@ export function useEntityCRUD(
     return fallbackKey ? t(fallbackKey) : fallbackText;
   };
 
+  // A catalog key is translated. Any other message is shown only when a 4xx
+  // carries it: that is the server refusing this request for a reason it
+  // states, often already in the viewer's language. A guard's bare
+  // "Forbidden" states none, so it reads as the feedback "Access denied". A 5xx
+  // or a status-less error can carry internals (a driver or SQL message), so
+  // it gets the feedback error title.
   const errorMessage = (error: unknown) => {
-    if (typeof error === "object" && error !== null) {
-      const response = "response" in error ? error.response : undefined;
-      if (typeof response === "object" && response !== null && "data" in response) {
-        const data = response.data;
-        if (typeof data === "object" && data !== null && "message" in data) {
-          const message = data.message;
-          if (typeof message === "string") return translateMessage(message);
-        }
-      }
-      if ("message" in error && typeof error.message === "string") {
-        return translateMessage(error.message);
-      }
+    const message = serverMessageOf(error);
+    if (message) {
+      const translated = t(message);
+      if (translated !== message) return translated;
+      const status = statusOf(error);
+      if (status === 403 && message === "Forbidden") return feedback.forbiddenTitle;
+      if (status !== undefined && status >= 400 && status < 500) return message;
     }
-    return translateMessage();
+    return feedback.errorTitle;
   };
 
   const endpoint = (name: string): Endpoint => {

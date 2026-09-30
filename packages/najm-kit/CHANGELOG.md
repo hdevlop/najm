@@ -1,5 +1,16 @@
 # Changelog
 
+## 2.16.13 - 2026-09-30
+
+- `useEntityCRUD` failure toasts now show the reason a 4xx response states
+  instead of "Something went wrong" when that reason is not a catalog key; a
+  guard's bare "Forbidden" reads as the feedback "Access denied". A 5xx or
+  status-less error still shows the generic title, now translated through the
+  feedback labels, because its message can carry server internals.
+- `NPageHeader` sizes its controls column to its content below the mobile
+  breakpoint, so wide actions no longer cover the centered title; the title
+  truncates instead.
+
 ## 2.16.12 - 2026-09-23
 
 - Collapsed `NSidebar` items now show their label on hover or focus. Groups show

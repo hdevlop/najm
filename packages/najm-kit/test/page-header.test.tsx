@@ -38,6 +38,19 @@ describe("NPageHeader responsive layout", () => {
     }
   );
 
+  test("sizes the controls column to its content so actions never cover the title", () => {
+    const { container } = render(
+      <NPageHeader icon={TestIcon} title="Students" actions={<button type="button">2025-2026</button>} />
+    );
+    const main = container.querySelector("[data-slot='page-header-main']") as HTMLElement;
+
+    // A fixed minimum let a phone-width year selector spill over the title;
+    // happy-dom has no layout, so this pins the rule the browser check proved.
+    expect(main.className).toContain(
+      "grid-cols-[minmax(2.75rem,1fr)_minmax(0,auto)_minmax(min-content,1fr)]"
+    );
+  });
+
   test("uses the full actions at every size when compactActions is omitted", () => {
     const { container } = render(
       <NPageHeader

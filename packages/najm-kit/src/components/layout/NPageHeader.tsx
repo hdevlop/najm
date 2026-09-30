@@ -206,7 +206,11 @@ export function NPageHeader({
         data-slot="page-header-main"
         className={cn(
           // min-h-14 matches NSidebarHeader so the two bottom rules line up.
-          "relative grid min-h-14 grid-cols-[minmax(2.75rem,1fr)_minmax(0,auto)_minmax(2.75rem,1fr)] items-center gap-2 px-2 lg:px-3 2xl:px-4",
+          // The controls column is at least as wide as its content: with a
+          // fixed minimum, actions wider than their share of a phone-width
+          // row spilled over the centered title. The title column gives way
+          // and truncates instead.
+          "relative grid min-h-14 grid-cols-[minmax(2.75rem,1fr)_minmax(0,auto)_minmax(min-content,1fr)] items-center gap-2 px-2 lg:px-3 2xl:px-4",
           breakpointClasses.main,
           breakpointClasses.minH,
           headerClassName
