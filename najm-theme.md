@@ -825,7 +825,10 @@ Current status:
 - [x] Move 0 is closed. School is reviewed, the five cross-consumer decisions
   plus actor attribution and missing-asset resolution are frozen, and the
   frozen names are recorded in `najm-theme-api-freeze.md`.
-- [ ] Moves 8-10 remain open; neither consumer adoption is complete.
+- [ ] Move 8 is implemented and passes Kafil's full source, database, and
+  production-build gate. It stays open on browser acceptance, the production
+  asset audit, and the retired-name search — see the adoption record below.
+- [ ] Moves 9-10 remain open; School has not started.
 
 ### Move 0 - freeze the shared contract from two consumers
 
@@ -1057,31 +1060,35 @@ this move.
 
 Repo: `C:\Users\hdevlop\Desktop\kafil`.
 
-- [ ] Schedule the adoption in Kafil's authoritative root `PLAN.md` before its
+- [x] Schedule the adoption in Kafil's authoritative root `PLAN.md` before its
   final branding acceptance gate closes.
-- [ ] Install the exact published `najm-theme` and compatible `najm-kit`
+- [x] Install the exact published `najm-theme` and compatible `najm-kit`
   versions through Bun overrides, manifests, and lockfile.
-- [ ] Add the PostgreSQL package schema to Kafil's composition-only schema.
-- [ ] Generate a new Kafil migration; never edit deployed appearance,
+- [x] Add the PostgreSQL package schema to Kafil's composition-only schema.
+- [x] Generate a new Kafil migration; never edit deployed appearance,
   branding, or preset migrations.
-- [ ] Migrate Kafil design config, appearance revision, branding custom paths,
+- [x] Migrate Kafil design config, appearance revision, branding custom paths,
   branding revision, theme presets, built-in markers, creator attribution, and
   timestamps into package tables without changing Kafil-only settings.
-- [ ] Configure Kafil factory `theme.json`, factory assets, four standard slots,
+- [x] Configure Kafil factory `theme.json`, factory assets, four standard slots,
   admin guards, storage namespace, diagnostics, audit sink, and MCP support.
-- [ ] Add temporary compatibility routes only if required for a staged rollout;
+- [x] Add temporary compatibility routes only if required for a staged rollout;
   record their removal and keep one authoritative write path.
-- [ ] Replace Kafil local controllers, services, repositories, DTOs, validators,
+- [x] Replace Kafil local controllers, services, repositories, DTOs, validators,
   API clients, query keys, hooks, branding context, and preset orchestration
   with package registration and components.
-- [ ] Reduce `uiResources.ts` to genuine Kafil configuration or delete it.
-- [ ] Keep one small module-level `serverLoader.ts` facade for request identity.
-- [ ] Compose package components inside Kafil's existing global settings sheet
+- [x] Reduce `uiResources.ts` to genuine Kafil configuration or delete it.
+- [x] Keep one small module-level `serverLoader.ts` facade for request identity.
+- [x] Compose package components inside Kafil's existing global settings sheet
   and `/operator/settings` surface without changing Kafil app-setting tabs.
 - [ ] Preserve immediate runtime preview/commit behavior in sidebar, auth,
-  first-login, charts, and every branding consumer.
+  first-login, charts, and every branding consumer. Source-level wiring is in
+  place — `NThemeSettingsProvider` nests inside `NajmAppProvider` and writes
+  through `useNajmDesignEditor` / `useNBrandingEditor` — but "immediate" is a
+  browser claim and belongs to the browser pass below.
 - [ ] After data verification and rollback-window approval, remove obsolete
   Kafil columns/tables only in a later migration, never in the initial cutover.
+  Scheduled in Kafil `PLAN.md` Phase 5 together with the two redirects.
 
 Kafil gate:
 
@@ -1098,8 +1105,206 @@ bun run --cwd apps/web test:e2e
 - [ ] Browser-test desktop, tablet, phone, keyboard, light/dark, all four
   locales, Arabic RTL, save, preview, reload, reset, preset lifecycle, upload,
   replace, clear, restart, conflict, missing asset, and transient failure.
-- [ ] Verify the old local feature files are gone and no second source of truth
+- [x] Verify the old local feature files are gone and no second source of truth
   remains.
+
+#### Kafil adoption record
+
+Executed at Kafil `12b00e6f` on `main`, worktree clean at start, against
+published `najm-theme@0.1.1`, `najm-storage@2.2.0`, `najm-mcp@2.1.0`, and the
+`najm-kit@2.10.0` Kafil already resolved.
+
+What Kafil now owns, and nothing more:
+
+```text
+packages/server/src/config/themeConfig.ts      plugin configuration and guards
+packages/server/src/config/themeFactory.ts     factory design and marks
+packages/server/src/config/storageConfig.ts    najm-storage registration
+packages/server/src/brandingPaths.ts           two built-asset paths (leaf)
+packages/server/src/database/schema.ts         spread najm-theme/pg
+packages/server/src/database/themeBackfill.ts  one-time legacy data transfer
+packages/server/src/modules/settings/themeCompatController.ts  two redirects
+apps/web/src/lib/serverLoader.ts               one RSC module singleton
+apps/web/src/lib/themeResources.ts             factory values and diagnostics
+apps/web/src/features/Settings/…               composition only
+```
+
+Deleted, 48 files: 20 backend sources under `modules/settings` and 5 of their
+tests; 17 web sources — the API clients, query keys, hooks, branding editor
+context, the three panels, the two type modules and `uiResources.ts` — and 6 of
+their tests. Roughly 4 400 lines of application code. The
+branding halves of `managedImages` and `images:backfill` went with them —
+`najm-theme` owns branding normalization and its own reconciliation, and a
+second normalizer would rewrite bytes the package's slot records describe.
+
+Configuration decisions, all frozen in `najm-theme-api-freeze.md`:
+
+- `basePath: ""`, so `/api/appearance` and `/api/branding` are unchanged.
+  `/api/theme-presets` → `/api/presets` and `/api/branding/assets/serve/:f` →
+  `/api/branding/assets/:f`, each with a redirect for the rollback window.
+- Factory values for `sidebarLogoExpanded` and `authHeroImage` **only**. A
+  factory path on the other two would beat their `inheritFrom` and defeat the
+  slot graph. Verified live: all four resolve to the expected marks.
+- Kafil's 2 MB / 5 MB ceilings declared explicitly; AVIF dropped.
+- `publicRead: true`; `isAdmin()` on every mutation; `allowBuiltInPresetDeletion`
+  left at the package default `false`, correcting Kafil's own contradiction.
+- `najm-storage`'s generic REST surface guarded with `isAdmin()`. It is new API
+  on a product that had none, and branding never travels through it — the
+  package reads bytes from the storage *service* and serves them itself.
+
+Evidence at this commit:
+
+```text
+bun run lint            pass
+bun run typecheck       pass
+bun run test            675 pass, 52 skip, 0 fail (267 web / 325 server / 83 seed)
+bun run build           pass, 33 routes
+bun run db:generate     one additive migration, then "no schema changes"
+bun run test:db         34 pass, 0 fail (includes 3 new backfill tests)
+```
+
+The migration `0043_salty_mephistopheles.sql` is three `CREATE TABLE`s and two
+indexes. It contains no `ALTER` and no `DROP`: the seven legacy
+`platform_settings` columns and `theme_presets` are still there, un-read, so
+rollback is a code revert rather than a reverse migration.
+
+What that buys is precise, and it is not "rollback is free". Reverting the code
+restores the legacy tables exactly as the cutover left them — the pre-cutover
+state, intact. It does **not** restore anything an administrator changed after
+the cutover: those writes went to the package tables, and nothing mirrors them
+back. So the rollback window is real but one-way, and its cost is whatever
+theming happened inside it. That is the argument for keeping the window short
+rather than for treating it as an indefinite safety net.
+
+Browser evidence, and its limits. `bun run --cwd apps/web test:e2e` was run
+against the fixed package (installed as a local tarball, then reverted — Kafil's
+manifests stay on a published version):
+
+- **Zero "Maximum update depth" warnings** across a full 27-test run. Against
+  `0.1.1` the same suite emitted them continuously from the moment the admin
+  dashboard mounted.
+- The admin dashboard, `/settings`, and `/operator/settings` render;
+  `GET /api/appearance/config`, `/api/branding/config`, and `/api/presets` all
+  answer `200` for an admin and `401` unauthenticated, so Kafil's bearer-token
+  header adapter reaches the package client correctly.
+- On a quiet scoped re-run of `funding-cap-and-catalog-delete.e2e.ts`, "operator
+  settings renders the global pending expiry rule" **passes**. Its failure in
+  the first, contended run was environmental.
+- One test still fails on the scoped re-run — "isolated admin sees catalog
+  permanent-delete confirmations" — with `waitForURL` / `waitForResponse`
+  timeouts. It exercises catalog deletion, which this move does not touch. **No
+  pre-change baseline was established**: a `git worktree` at `12b00e6f` fails to
+  boot under Turbopack with an unrelated `reflect-metadata` module-resolution
+  error. So this failure is *unattributed*, not cleared.
+
+The suite is therefore **not green**, and this move does not claim it is. What
+the run does establish is that the blocking defect is gone and the theme
+surfaces work; what it does not establish is the state of the rest of Kafil's
+browser gate, which `PLAN.md` Phases 1-4 already track as open.
+
+Live route check through the real server with the development database:
+
+```text
+GET /api/appearance                     200  factory design, revision 1
+GET /api/branding                       200  four slots resolved, revision 1
+GET /api/presets                        401  guarded
+GET /api/appearance/config              401  guarded
+GET /api/theme-presets                  308 → /api/presets
+GET /api/branding/assets/serve/:f       308 → /api/branding/assets/:f
+GET /api/branding/assets/<absent>       404  as documented
+MCP tools                               the five frozen theme_* names
+```
+
+#### Defect found by the adoption — `najm-theme@0.1.2`
+
+Kafil's browser gate found a blocking bug in `0.1.1` that no package test could
+see. It is fixed in the Najm worktree and **prepared but not published**;
+publication needs explicit authorization.
+
+`NThemeSettingsProvider`'s runtime-preview effect listed `useNajmDesignEditor()`
+in its dependency array. The kit's editor value is a `useMemo` over its own
+state, so `setCommitted` gives it a new identity — the effect re-ran because of
+the write it had just performed, wrote again, and never settled. Every
+application that mounts `NajmAppProvider` hits "Maximum update depth exceeded"
+on the first page that mounts this provider. In Kafil that is the admin
+dashboard, because `DashboardShell` renders the settings sheet closed.
+
+Why the package suite passed: every other React test mounts the provider
+*without* the kit's design editor above it, so `useNajmDesignEditor()` answered
+`null` and the effect returned on its first line. The path was untested rather
+than tested-and-wrong. `test/react/runtime-handoff.test.tsx` now mounts the real
+arrangement — `NajmDesignEditorProvider` with the settings provider nested
+inside it — and asserts the render count settles. Against `0.1.1` it fails with
+unbounded growth (387 → 731 renders in 60 ms); against the fix it settles.
+
+This is the second time in this package that a defect survived the unit suite
+and appeared only when a real application rendered `dist`. Both were module- or
+identity-level integration bugs invisible to a test that stubs the collaborator.
+
+**A second defect, introduced by that fix and caught in review.** Stopping the
+loop meant making the `setCommitted` call conditional on the stored design
+having changed. But the two ways of reaching that branch are not alike: a
+preset preview writes to the editor's *draft* and never touches `committed`, so
+on cancel the condition was false, nothing was written, and the editor kept
+rendering `draft ?? committed` — the dismissed preview stayed on screen, and so
+did a preset the user had just deleted. The effect now cancels the draft
+explicitly; `cancelDraft` is inert when there is no draft, so the ordinary path
+still costs nothing. The regression test drives a real preview and cancel
+through the real editor: with the cancel removed it fails on a non-null draft
+while the loop test still passes, so the two failures are covered separately.
+
+The lesson is narrower than the first one and worth stating on its own: an
+identity guard added to stop a redundant write is a *behavioural* change
+wherever that write was also doing a second job. Here `setCommitted`'s second
+job was discarding the draft.
+
+#### A third blocker, found by verifying the release from a clean checkout
+
+`bun run pub:theme:dry` was run from a **fresh worktree of the release commit**
+rather than from the development machine's tree, because the release script
+asserts a clean worktree and unrelated work was in flight. It failed — not on
+anything in this package, but on `najm-kit`, whose dts build could not resolve
+its seven `.webp` imports.
+
+The cause: `.gitignore` carried `packages/*/src/**/*.d.ts`, aimed at compiler
+output that leaks next to sources. It also matched
+`packages/najm-kit/src/person-images/assets.d.ts`, which is hand-written — it
+declares `*.webp` so `tsc` accepts what esbuild's dataurl loader resolves at
+build time. So the file had never been committed, and `najm-kit` could be built
+only on a machine that already happened to have it. A clean clone, a fresh
+worktree, or CI could not build it at all, and `najm-theme`'s release builds
+`najm-kit` first. Fixed with a narrow negation and the file committed; a sweep
+found no other source declaration in the same position.
+
+Worth stating because it is the same failure mode as the two defects above, one
+level out: the development machine's state was standing in for a contract
+nobody had verified. Release verification belongs in a checkout that has only
+what is committed.
+
+Consequences for this plan:
+
+- `najm-theme` is at `0.1.2` in the worktree with the fix, the regression test,
+  and a changelog entry. `bun run api:check` reports the public API unchanged,
+  which is correct for a bug fix.
+- The release is verified but **not published**: from a clean isolated checkout
+  of the release commit, `bun run pub:theme:dry` completes — build, tests,
+  `api:check`, clean-worktree assertions on both sides, `npm pack`, and
+  `npm publish --dry-run` — producing `najm-theme-0.1.2.tgz`, 23 files, 107.4 kB.
+- Kafil cannot ship against `0.1.1`. Its manifests stay pinned there until
+  `0.1.2` is published, and then must be re-pinned.
+- Move 7's "publish only after explicit user authorization" applies again.
+
+Open, and honestly open:
+
+- **`najm-theme@0.1.2` is not published.** Kafil's adoption is complete in
+  source but blocked on that release.
+- Browser acceptance is not done. It is Kafil `PLAN.md` Phase 2, and this move
+  does not close without it.
+- The §1.5 asset-format audit has not been re-run against **production**. The
+  development audit in the freeze is not evidence about production bytes.
+- Retired names have not been searched for in email templates, cached
+  documents, automation, saved prompts, and bookmarks.
+- The legacy column drop is deferred by design.
 
 ### Move 9 - migrate School as the second consumer
 
