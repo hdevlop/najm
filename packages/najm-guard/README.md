@@ -146,6 +146,20 @@ class MyGuard {
 - For PBAC, combine with `najm-auth`'s `Can`, `canRead`, `canCreate`, etc.
 - Guards that need to share data with downstream handlers should return the data via the result object, not via direct ALS manipulation
 
+## Refusal status
+
+A guard that returns `false` (or nothing) refuses the request. The status
+depends on whether the request carries a user, the `USER` token that an auth
+resolver (najm-auth's) or an earlier guard's `{ user }` result sets:
+
+- **A user, refused:** `403 Forbidden`. Signing in again would not help.
+- **No user:** `401 Unauthorized`. The client should authenticate, or refresh
+  its session and retry.
+
+A guard that throws keeps its own error and status. Since 2.2.0; earlier
+releases answered every refusal with 401, which made a signed-in browser
+client refresh its session and retry before seeing the refusal.
+
 ## Default guards and public routes
 
 `guards({ default: [isAuth()] })` protects controller methods without an

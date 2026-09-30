@@ -5,7 +5,7 @@ import { RequestParser } from 'najm-core';
 import { Context, MiddlewareHandler, Next } from 'hono';
 import type { GuardMetadata, GuardPluginConfig } from './types';
 import { getEffectiveGuards } from './decorator';
-import { GUARD_CONFIG } from './tokens';
+import { GUARD_CONFIG, USER } from './tokens';
 import { ParamResolver } from 'najm-core';
 import { runGuards } from './guardRunner';
 
@@ -82,19 +82,27 @@ export class GuardService {
             const request = parser.createRequest();
             const store = (this.container as any).all?.() ?? {};
 
-            const allowed = await this.container.run({
+            const { allowed, signedIn } = await this.container.run({
                ...store,
                context,
                request,
                parser,
-            }, async () => runGuards(guards, this.container, this.resolver, {
-               context,
-               request,
-               parser,
+            }, async () => ({
+               allowed: await runGuards(guards, this.container, this.resolver, {
+                  context,
+                  request,
+                  parser,
+               }),
+               // Read inside the scope: an auth resolver or an earlier guard
+               // may have published the user for this request only.
+               signedIn: this.container.get(USER) != null,
             }));
 
+            // 401 asks the client to authenticate, and a client holding a
+            // session answers it by refreshing and retrying. A request that
+            // already carries a user was understood and refused: 403.
             if (!allowed) {
-               throw Err.unauthorized();
+               throw signedIn ? Err.forbidden() : Err.unauthorized();
             }
             await next();
          } catch (error) {

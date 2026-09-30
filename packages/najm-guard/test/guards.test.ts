@@ -719,6 +719,65 @@ describe("Guard Plugin Tests", () => {
    });
 
    // ==========================================
+   // 401 VERSUS 403
+   // ==========================================
+
+   describe("Refusal status", () => {
+      test("a refused request with a user answers 403, one without answers 401", async () => {
+         @Service()
+         class IdentityGuard {
+            canActivate(@Headers("x-user") name: string) {
+               return name ? { user: { id: name } } : false;
+            }
+         }
+
+         @Service()
+         class AdminGuard {
+            canActivate(@Headers("x-role") role: string): boolean {
+               return role === "admin";
+            }
+         }
+
+         const Identity = createGuard(IdentityGuard);
+         const Admin = createGuard(AdminGuard);
+         // Identity runs first, as najm-auth's resolver does before any guard.
+         const SignedInAdmin = composeGuards(Identity(), Admin());
+
+         @Controller("/api")
+         class TestController {
+            @Get("/admin")
+            @SignedInAdmin()
+            admin() {
+               return { admin: true };
+            }
+         }
+
+         server = await new Server()
+            .use(guards())
+            .load(IdentityGuard, AdminGuard, TestController)
+            .listen(8075);
+         baseURL = "http://localhost:8075";
+
+         const allowed = await fetch(`${baseURL}/api/admin`, {
+            headers: { "X-User": "amal", "X-Role": "admin" },
+         });
+         expect(allowed.status).toBe(200);
+
+         // Signed in, not allowed: signing in again would not help.
+         const forbidden = await fetch(`${baseURL}/api/admin`, {
+            headers: { "X-User": "amal", "X-Role": "teacher" },
+         });
+         expect(forbidden.status).toBe(403);
+
+         // Nobody signed in: the client should authenticate or refresh.
+         const anonymous = await fetch(`${baseURL}/api/admin`, {
+            headers: { "X-Role": "admin" },
+         });
+         expect(anonymous.status).toBe(401);
+      });
+   });
+
+   // ==========================================
    // EDGE CASES
    // ==========================================
 
