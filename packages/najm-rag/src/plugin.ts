@@ -128,6 +128,9 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
       enabled: ragEnabled,
       embedding: {
         ...defaultRag.embedding,
+        ...(effective.embedding?.provider === 'openai-compatible'
+          ? { baseUrl: 'http://localhost:8080/v1' }
+          : {}),
         ...effective.embedding,
       },
       queryEmbeddingCacheSize: effective.queryEmbeddingCacheSize ?? defaultRag.queryEmbeddingCacheSize,

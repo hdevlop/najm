@@ -91,7 +91,7 @@ export class SemanticPhraseService {
     let embedding: number[] | null = null;
     let embeddingError: string | null = null;
     try {
-      embedding = await this.embedding.embed(dto.phrase);
+      embedding = await this.embedding.embed(dto.phrase, 'document');
     } catch (err) {
       embeddingError = err instanceof Error ? err.message : String(err);
       this.log?.warn?.(`[semantic-phrase] createSemantic: embedding failed for phrase "${dto.phrase}" → saved as PENDING. Reason: ${embeddingError}`);
@@ -120,7 +120,7 @@ export class SemanticPhraseService {
 
     if (phraseChanged) {
       try {
-        newEmbedding = await this.embedding.embed(dto.phrase!);
+        newEmbedding = await this.embedding.embed(dto.phrase!, 'document');
       } catch {
         // keep existing embedding if re-embed fails
       }

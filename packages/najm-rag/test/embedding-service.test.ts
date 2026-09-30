@@ -156,6 +156,7 @@ describe('EmbeddingService', () => {
         ok: true,
         status: 200,
         statusText: 'OK',
+        json: () => Promise.resolve({ embeddings: [new Array(768).fill(0.1)] }),
       } as any);
     }) as any;
 
