@@ -26,6 +26,27 @@ describe('OpenAI-compatible embeddings', () => {
     expect(result.map((row) => row[0])).toEqual([1, 2]);
   });
 
+  test('can shorten and renormalize longer MRL vectors when explicitly enabled', async () => {
+    globalThis.fetch = (async () => response({ data: [
+      { index: 0, embedding: [...vector(0, 767), 3, 4, ...vector(0, 255)] },
+    ] })) as typeof fetch;
+    const result = await service({ truncateDimensions: true }).embed('teacher request');
+    expect(result).toHaveLength(768);
+    expect(result[767]).toBe(1);
+    expect(Math.hypot(...result)).toBeCloseTo(1);
+  });
+
+  test('rejects longer vectors by default and invalid shortened vectors even when enabled', async () => {
+    globalThis.fetch = (async () => response({ data: [
+      { index: 0, embedding: vector(1, 1024) },
+    ] })) as typeof fetch;
+    await expect(service().embed('teacher request')).rejects.toThrow('dimensions');
+    globalThis.fetch = (async () => response({ data: [
+      { index: 0, embedding: [...vector(0, 768), ...vector(1, 256)] },
+    ] })) as typeof fetch;
+    await expect(service({ truncateDimensions: true }).embed('teacher request')).rejects.toThrow('normalize');
+  });
+
   test('splits indexing into sequential bounded batches without losing order', async () => {
     const batches: string[][] = [];
     let running = 0;
@@ -146,9 +167,11 @@ describe('OpenAI-compatible embeddings', () => {
 
   test('routing JSON accepts provider options and strips secret keys', () => {
     const parsed = chatbotEmbeddingSchema.parse({ provider: 'openai-compatible', batchSize: 4, dimensions: 768,
+      truncateDimensions: true,
       queryPrefix: 'q: ', documentPrefix: 'd: ', apiKey: 'not-a-file-setting' });
     expect(parsed.provider).toBe('openai-compatible');
     expect(parsed.batchSize).toBe(4);
+    expect(parsed.truncateDimensions).toBe(true);
     expect(parsed).not.toHaveProperty('apiKey');
   });
 });

@@ -27,7 +27,7 @@ export class EmbeddingValidator {
     });
   }
 
-  assertOpenAiResponse(data: OpenAiEmbeddingResponse, expectedCount: number, dimensions = 768): number[][] {
+  assertOpenAiResponse(data: OpenAiEmbeddingResponse, expectedCount: number, dimensions = 768, truncateDimensions = false): number[][] {
     if (!Array.isArray(data?.data) || data.data.length !== expectedCount) {
       throw new Error('Embedding count mismatch in OpenAI-compatible response');
     }
@@ -37,7 +37,20 @@ export class EmbeddingValidator {
         || Object.hasOwn(ordered, row.index)) {
         throw new Error('Invalid or duplicate embedding response index');
       }
-      ordered[row.index] = row.embedding;
+      const embedding = row.embedding;
+      if (truncateDimensions && Array.isArray(embedding) && embedding.length > dimensions) {
+        if (embedding.some((value) => typeof value !== 'number' || !Number.isFinite(value))) {
+          throw new Error(`Invalid embedding values at index ${row.index}: expected finite numbers`);
+        }
+        const shortened = embedding.slice(0, dimensions);
+        const norm = Math.hypot(...shortened);
+        if (!Number.isFinite(norm) || norm === 0) {
+          throw new Error(`Cannot normalize shortened embedding at index ${row.index}`);
+        }
+        ordered[row.index] = shortened.map((value) => value / norm);
+      } else {
+        ordered[row.index] = embedding;
+      }
     }
     return this.assertResponse({ embeddings: ordered }, expectedCount, dimensions);
   }

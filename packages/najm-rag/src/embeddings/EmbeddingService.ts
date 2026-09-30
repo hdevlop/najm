@@ -43,6 +43,7 @@ export class EmbeddingService {
       model: emb?.model ?? 'embeddinggemma',
       dimensions,
       batchSize,
+      truncateDimensions: emb?.truncateDimensions ?? false,
       apiKey: emb?.apiKey,
       queryPrefix: emb?.queryPrefix ?? '',
       documentPrefix: emb?.documentPrefix ?? '',
@@ -73,7 +74,7 @@ export class EmbeddingService {
   }
 
   private async requestEmbeddings(texts: string[], purpose: 'query' | 'document', timeoutMs: number): Promise<number[][]> {
-    const { provider, baseUrl, model, apiKey, dimensions, queryPrefix, documentPrefix } = this.embeddingConfig;
+    const { provider, baseUrl, model, apiKey, dimensions, truncateDimensions, queryPrefix, documentPrefix } = this.embeddingConfig;
     const prefix = purpose === 'query' ? queryPrefix : documentPrefix;
     const input = texts.map((text) => `${prefix}${text}`);
     const openAi = provider === 'openai-compatible';
@@ -97,7 +98,7 @@ export class EmbeddingService {
 
       const data = await response.json();
       return openAi
-        ? this.validator.assertOpenAiResponse(data, texts.length, dimensions)
+        ? this.validator.assertOpenAiResponse(data, texts.length, dimensions, truncateDimensions)
         : this.validator.assertResponse(data, texts.length, dimensions);
     } catch (err) {
       const aborted = (err as any)?.name === 'AbortError';

@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.1
+
+- Add opt-in shortening and normalization for longer OpenAI-compatible embedding
+  vectors from models with Matryoshka dimension support. Strict size validation
+  remains the default; storage is still fixed at 768 dimensions.
+- Validate finite values before shortening and reject an all-zero shortened
+  vector. Verified against local llama.cpp with Qwen3 Embedding 0.6B Q8.
+
 ## 2.1.0
 
 - Support OpenAI-compatible embedding servers, including local llama.cpp, with

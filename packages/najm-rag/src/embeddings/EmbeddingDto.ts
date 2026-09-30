@@ -5,6 +5,7 @@ export interface EmbeddingConfig {
   dimensions?: number;
   apiKey?: string;
   batchSize?: number;
+  truncateDimensions?: boolean;
   queryPrefix?: string;
   documentPrefix?: string;
 }

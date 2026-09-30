@@ -109,6 +109,14 @@ vectors. Health probes use the same authenticated request and validation. API ke
 belong in server environment/configuration, never a routing JSON file. Redirects
 are refused. Local services do not require an API key.
 
+Some local servers ignore the request's `dimensions` field. For a model that
+supports Matryoshka dimensions, set `truncateDimensions: true` to shorten a
+longer returned vector to the configured dimension and normalize it. This is
+opt-in; shorter vectors, zero-length shortened vectors, and nonfinite values
+still fail validation. Qwen3 Embedding 0.6B returns 1024 values through
+llama.cpp even when asked for 768, and supports shortening to 768. Model-specific
+query instructions still belong in `queryPrefix`.
+
 Bundled vector schemas remain fixed at 768 dimensions; setting `dimensions` does
 not migrate storage. Use a compatible model/output dimension. When changing model,
 quantization or prefixes, rebuild all affected indexes before serving queries;

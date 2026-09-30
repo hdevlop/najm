@@ -11,6 +11,8 @@ export interface RagEmbeddingConfig {
   apiKey?: string;
   /** Maximum inputs per HTTP request; batches are sent sequentially. Default: 16. */
   batchSize?: number;
+  /** Opt in to shortening a longer MRL vector and normalizing the result. */
+  truncateDimensions?: boolean;
   /** Model-specific retrieval prefixes. Empty by default for compatibility. */
   queryPrefix?: string;
   documentPrefix?: string;
@@ -79,6 +81,7 @@ export interface RagMergedConfig {
       dimensions: number;
       apiKey?: string;
       batchSize?: number;
+      truncateDimensions?: boolean;
       queryPrefix?: string;
       documentPrefix?: string;
       timeoutMs: number;
