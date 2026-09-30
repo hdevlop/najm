@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.16.14 - 2026-09-30
+
+- Row actions are translatable: `NTableToolbarLabels` gains `rowActions`,
+  `rowView`, `rowEdit`, `rowDelete` and `actionsColumn`, read from
+  `common.table.*` by the provider like the other toolbar labels. They cover
+  the row menu, the row and card menu buttons' names, the action buttons and
+  the actions column header. A catalog without these keys keeps the English
+  instead of rendering the key. `NDataCardShell` still renders outside an
+  `NTable`.
+
 ## 2.16.13 - 2026-09-30
 
 - `useEntityCRUD` failure toasts now show the reason a 4xx response states

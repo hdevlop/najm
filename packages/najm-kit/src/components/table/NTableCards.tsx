@@ -2,6 +2,7 @@ import React, { useCallback } from "react";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import { NDataCardShell } from "./NDataCardShell";
+import { useRowActionCopy } from "./rowActionLabels";
 import { NTableCardSkeleton } from "./NTableLoadingSkeleton";
 import { NajmScroll } from "../ui/scroll";
 import { Button } from "../Button";
@@ -22,6 +23,7 @@ function isRowContextHandled(e: React.MouseEvent): boolean {
 export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const table = useTableStore.use.table();
   const onRowClick = useTableStore.use.onRowClick();
+  const rowActionsLabel = useRowActionCopy().rowActions;
   const onRowContextMenu = useTableStore.use.onRowContextMenu();
   const onBackgroundContextMenu = useTableStore.use.onBackgroundContextMenu();
   const getRowClassName = useTableStore.use.getRowClassName();
@@ -129,7 +131,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
               {menuButton && openRowMenu && (
                 <button
                   type="button"
-                  aria-label="Row actions"
+                  aria-label={rowActionsLabel}
                   onClick={(e) => {
                     e.stopPropagation();
                     openRowMenu(e, row.original);

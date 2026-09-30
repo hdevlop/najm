@@ -4,6 +4,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Eye, Edit, Trash2, MoreVertical, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useTableSurfaceAppearance } from "./tableSurface";
+import { useRowActionCopy } from "./rowActionLabels";
 import type { Row } from "@tanstack/react-table";
 
 export interface NDataCardShellActions {
@@ -35,6 +36,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
   const isHighlighted = selectedRowId != null && (row.original as any)?.id === selectedRowId;
   const isActive = isSelected || isHighlighted;
   const useMenuButton = menuButton && openRowMenu;
+  const copy = useRowActionCopy();
 
   return (
     <div
@@ -69,7 +71,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
         <div data-ntable-card-action className="ntable-card-action absolute end-2 top-2 z-10 h-auto transition-opacity duration-200">
           <button
             type="button"
-            aria-label="Row actions"
+            aria-label={copy.rowActions}
             onClick={(e) => {
               e.stopPropagation();
               openRowMenu!(e, row.original);
@@ -86,7 +88,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
               <div
                 onClick={(e) => e.stopPropagation()}
                 className="flex h-7 w-7 p-0 rounded-md cursor-pointer justify-center items-center text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
-                aria-label="Card actions"
+                aria-label={copy.rowActions}
               >
                 <MoreVertical className="h-4 w-4" />
               </div>
@@ -97,7 +99,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
                   onClick={(e) => { e.stopPropagation(); actions.onView!(row.original); }}
                   className="cursor-pointer"
                 >
-                  <Eye className="h-4 w-4 me-2" />View
+                  <Eye className="h-4 w-4 me-2" />{copy.rowView}
                 </DropdownMenuItem>
               )}
               {actions.onEdit && (
@@ -105,7 +107,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
                   onClick={(e) => { e.stopPropagation(); actions.onEdit!(row.original); }}
                   className="cursor-pointer"
                 >
-                  <Edit className="h-4 w-4 me-2" />Edit
+                  <Edit className="h-4 w-4 me-2" />{copy.rowEdit}
                 </DropdownMenuItem>
               )}
               {actions.onDelete && (
@@ -113,7 +115,7 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
                   onClick={(e) => { e.stopPropagation(); actions.onDelete!(row.original); }}
                   className="cursor-pointer text-red-500"
                 >
-                  <Trash2 className="h-4 w-4 me-2 text-red-500" />Delete
+                  <Trash2 className="h-4 w-4 me-2 text-red-500" />{copy.rowDelete}
                 </DropdownMenuItem>
               )}
             </DropdownMenuContent>

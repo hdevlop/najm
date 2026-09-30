@@ -5,6 +5,7 @@ import { Copy } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { NTable, type NTableMenu } from "../../src/components/table/NTable";
+import { NTableDefaultsProvider } from "../../src/components/table/TableDefaults";
 
 interface Row { id: string; name: string; }
 
@@ -109,6 +110,55 @@ describe("menu-unified.test.tsx", () => {
     expect(menuLabels(container)).toEqual(["Copy"]);
     expect(document.activeElement).toBe(container.querySelector('[role="menuitem"]'));
     expect(Array.from(container.querySelectorAll("thead th")).map((th) => th.textContent?.trim())).not.toContain("Actions");
+  });
+
+  // ---- Row-action copy ----
+
+  test("default row actions read their labels from the table defaults", async () => {
+    mockMatchMedia(false);
+    const noop = () => {};
+
+    const { container } = render(
+      <NTableDefaultsProvider
+        value={{
+          toolbarLabels: {
+            rowActions: "Actions de la ligne",
+            rowView: "Voir",
+            rowEdit: "Modifier",
+            rowDelete: "Supprimer",
+          },
+        }}
+      >
+        <div style={{ height: 600 }}>
+          <NTable {...tableProps({ onView: noop, onEdit: noop, onDelete: noop })} />
+        </div>
+      </NTableDefaultsProvider>
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    const btn = container.querySelector('button[aria-label="Actions de la ligne"]');
+    expect(btn).toBeTruthy();
+    fireEvent.click(btn!);
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(menuLabels(container)).toEqual(["Voir", "Modifier", "Supprimer"]);
+  });
+
+  test("row actions keep the packaged English without labels", async () => {
+    mockMatchMedia(false);
+    const noop = () => {};
+
+    const { container } = render(
+      <div style={{ height: 600 }}>
+        <NTable {...tableProps({ onView: noop, onEdit: noop, onDelete: noop })} />
+      </div>
+    );
+    await new Promise((r) => setTimeout(r, 100));
+
+    fireEvent.click(container.querySelector('button[aria-label="Row actions"]')!);
+    await new Promise((r) => setTimeout(r, 20));
+
+    expect(menuLabels(container)).toEqual(["View", "Edit", "Delete"]);
   });
 
   // ---- Function shorthand ----

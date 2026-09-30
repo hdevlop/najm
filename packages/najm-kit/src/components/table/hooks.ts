@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect, useLayoutEffect, useRef, useCallback, type RefObject } from "react";
-import { TableActionCell } from "./TableActionCell";
+import { TableActionCell, TableActionsHeader } from "./TableActionCell";
 import { useReactTable, getCoreRowModel, getFilteredRowModel, getPaginationRowModel, getSortedRowModel, getExpandedRowModel, SortingState, ColumnFiltersState, VisibilityState, RowSelectionState, ExpandedState } from "@tanstack/react-table";
 import { createTableStore, type TableState } from "./store";
 import { useKeyboard } from "../../hooks/useKeyboard";
@@ -389,7 +389,7 @@ export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
           id: "actions",
           header: () => isMenuActions
             ? null
-            : React.createElement("div", { className: "flex w-full justify-start text-left" }, "Actions"),
+            : React.createElement(TableActionsHeader),
           cell: ({ row }: any) => React.createElement(TableActionCell, { row, onView, onEdit, onDelete, openRowMenu, menuButton, bordered }),
           enableSorting: false,
           enableHiding: false,

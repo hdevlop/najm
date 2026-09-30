@@ -1,6 +1,7 @@
 import React from "react";
 import { Eye, Pencil, Trash2, MoreVertical } from "lucide-react";
 import { cn } from "../../lib/cn";
+import { useRowActionCopy } from "./rowActionLabels";
 
 interface TableActionCellProps {
   row: any;
@@ -18,13 +19,20 @@ const actionButtonClass = (bordered?: boolean, danger?: boolean) => cn(
   bordered && "border border-muted-foreground"
 );
 
+/** The actions column's header, translated like the buttons below it. */
+export function TableActionsHeader() {
+  const copy = useRowActionCopy();
+  return <div className="flex w-full justify-start text-left">{copy.actionsColumn}</div>;
+}
+
 export function TableActionCell({ row, onView, onEdit, onDelete, openRowMenu, menuButton, bordered }: TableActionCellProps) {
+  const copy = useRowActionCopy();
   if (menuButton && openRowMenu) {
     return (
       <div className="flex items-center justify-center gap-1" onClick={(e) => e.stopPropagation()}>
         <button
           type="button"
-          aria-label="Row actions"
+          aria-label={copy.rowActions}
           onClick={(e) => {
             e.stopPropagation();
             openRowMenu(e, row.original);
@@ -42,7 +50,7 @@ export function TableActionCell({ row, onView, onEdit, onDelete, openRowMenu, me
       {onView && (
         <button
           type="button"
-          aria-label="View"
+          aria-label={copy.rowView}
           onClick={() => onView(row.original)}
           className={actionButtonClass(bordered, false)}
         >
@@ -52,7 +60,7 @@ export function TableActionCell({ row, onView, onEdit, onDelete, openRowMenu, me
       {onEdit && (
         <button
           type="button"
-          aria-label="Edit"
+          aria-label={copy.rowEdit}
           onClick={() => onEdit(row.original)}
           className={actionButtonClass(bordered, false)}
         >
@@ -62,7 +70,7 @@ export function TableActionCell({ row, onView, onEdit, onDelete, openRowMenu, me
       {onDelete && (
         <button
           type="button"
-          aria-label="Delete"
+          aria-label={copy.rowDelete}
           onClick={() => onDelete(row.original)}
           className={actionButtonClass(bordered, true)}
         >

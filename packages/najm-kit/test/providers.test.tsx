@@ -136,6 +136,20 @@ describe("buildToolbarLabels", () => {
     expect(labels.settings).toBe("table.chrome.settings");
   });
 
+  test("leaves a missing row-action key to the packaged English", () => {
+    // They arrived after catalogs adopted the other keys; a catalog without
+    // them must not start rendering `common.table.rowView`.
+    const labels = buildToolbarLabels(t);
+    expect(labels.rowActions).toBeUndefined();
+    expect(labels.rowView).toBeUndefined();
+    expect(labels.actionsColumn).toBeUndefined();
+
+    const french: Record<string, string> = { "common.table.rowEdit": "Modifier" };
+    const translated = buildToolbarLabels((key: string) => french[key] ?? key);
+    expect(translated.rowEdit).toBe("Modifier");
+    expect(translated.rowDelete).toBeUndefined();
+  });
+
   test("interpolates the visible mode name into its accessible name", () => {
     const labels = buildToolbarLabels(t);
     expect(labels.modeOption?.("Cards")).toBe(

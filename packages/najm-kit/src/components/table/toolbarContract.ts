@@ -38,4 +38,14 @@ export interface NTableToolbarLabels {
   allOption?: string;
   /** Accessible name of the add control when `addButtonText` is empty. Defaults to `"Create"`. */
   create?: string;
+  /** Accessible name of each row's menu button. Defaults to `"Row actions"`. */
+  rowActions?: string;
+  /** The row action that opens a record, in its menu and as its button's name. Defaults to `"View"`. */
+  rowView?: string;
+  /** The row action that edits a record. Defaults to `"Edit"`. */
+  rowEdit?: string;
+  /** The row action that deletes a record. Defaults to `"Delete"`. */
+  rowDelete?: string;
+  /** Header of the actions column when it shows buttons. Defaults to `"Actions"`. */
+  actionsColumn?: string;
 }

@@ -1,4 +1,6 @@
-import React, { useRef, useEffect, useLayoutEffect, useState, useCallback } from "react";
+import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
+import { useResolvedToolbarLabels } from "./TableDefaults";
+import { rowActionCopy } from "./rowActionLabels";
 import { Eye, Inbox, Pencil, Plus, SearchX, Trash2 } from "lucide-react";
 import type { ColumnDef, Row, SortingState, ColumnFiltersState, VisibilityState, RowSelectionState, ExpandedState } from "@tanstack/react-table";
 import { TableStoreContext } from "./TableContext";
@@ -453,17 +455,21 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
   const normalizedMenu = typeof menu === "function" ? { row: menu } : (menu ?? {});
   const hasDefaultActions = Boolean(onView || onEdit || onDelete);
 
+  // NTable renders the store provider, so it reads its labels from props.
+  const resolvedToolbarLabels = useResolvedToolbarLabels(props.toolbarLabels);
+  const rowCopy = useMemo(() => rowActionCopy(resolvedToolbarLabels), [resolvedToolbarLabels]);
+
   const defaultActionRowMenu = useCallback(
     (row: T): ContextMenuItem[] => {
       const items: ContextMenuItem[] = [];
-      if (onView) items.push({ label: "View", icon: Eye, onSelect: () => onView(row) });
-      if (onEdit) items.push({ label: "Edit", icon: Pencil, onSelect: () => onEdit(row) });
+      if (onView) items.push({ label: rowCopy.rowView, icon: Eye, onSelect: () => onView(row) });
+      if (onEdit) items.push({ label: rowCopy.rowEdit, icon: Pencil, onSelect: () => onEdit(row) });
       if (onDelete) {
-        items.push({ label: "Delete", icon: Trash2, danger: true, separatorBefore: items.length > 0, onSelect: () => onDelete(row) });
+        items.push({ label: rowCopy.rowDelete, icon: Trash2, danger: true, separatorBefore: items.length > 0, onSelect: () => onDelete(row) });
       }
       return items;
     },
-    [onView, onEdit, onDelete],
+    [onView, onEdit, onDelete, rowCopy],
   );
 
   const effectiveRowMenu = normalizedMenu.row ?? (hasDefaultActions ? defaultActionRowMenu : undefined);

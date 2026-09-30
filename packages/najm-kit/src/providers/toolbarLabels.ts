@@ -5,7 +5,7 @@ export const DEFAULT_TOOLBAR_KEY_PREFIX = "common.table";
 
 type DefaultToolbarPrefix = typeof DEFAULT_TOOLBAR_KEY_PREFIX;
 
-/** The twelve catalog keys `buildToolbarLabels` reads under `Prefix`. */
+/** The seventeen catalog keys `buildToolbarLabels` reads under `Prefix`. */
 export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
   | `${Prefix}.settings`
   | `${Prefix}.view`
@@ -18,7 +18,12 @@ export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
   | `${Prefix}.filters`
   | `${Prefix}.filterRegion`
   | `${Prefix}.allOption`
-  | `${Prefix}.create`;
+  | `${Prefix}.create`
+  | `${Prefix}.rowActions`
+  | `${Prefix}.rowView`
+  | `${Prefix}.rowEdit`
+  | `${Prefix}.rowDelete`
+  | `${Prefix}.actionsColumn`;
 
 /**
  * Projects a translator onto the toolbar labels, matching
@@ -30,6 +35,10 @@ export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
  * No result is inspected or second-guessed, for the reason given on
  * `buildPaginationLabels`: a translator that echoes a missing key renders that
  * key, which is the signal the entry is missing.
+ *
+ * The row-action keys are the exception. They were added after catalogs had
+ * adopted the other twelve, so a catalog without them keeps the packaged
+ * English instead of starting to render `common.table.rowView`.
  */
 export function buildToolbarLabels<
   Prefix extends string = DefaultToolbarPrefix,
@@ -38,6 +47,10 @@ export function buildToolbarLabels<
   prefix?: Prefix,
 ): NTableToolbarLabels {
   const scope = (prefix ?? DEFAULT_TOOLBAR_KEY_PREFIX) as Prefix;
+  const optional = (key: ToolbarKey<Prefix>) => {
+    const value = t(key);
+    return value === key ? undefined : value;
+  };
 
   return {
     settings: t(`${scope}.settings`),
@@ -52,5 +65,10 @@ export function buildToolbarLabels<
     filterRegion: t(`${scope}.filterRegion`),
     allOption: t(`${scope}.allOption`),
     create: t(`${scope}.create`),
+    rowActions: optional(`${scope}.rowActions`),
+    rowView: optional(`${scope}.rowView`),
+    rowEdit: optional(`${scope}.rowEdit`),
+    rowDelete: optional(`${scope}.rowDelete`),
+    actionsColumn: optional(`${scope}.actionsColumn`),
   };
 }
