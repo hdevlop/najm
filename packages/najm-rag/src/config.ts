@@ -3,10 +3,19 @@ export type RagDialect = 'sqlite' | 'pg' | 'mysql';
 export type ToolRoutingFallback = 'all' | 'none';
 
 export interface RagEmbeddingConfig {
-  provider?: 'ollama';
+  provider?: 'ollama' | 'openai-compatible';
   baseUrl?: string;
   model?: string;
   dimensions?: number;
+  /** Optional bearer key. Server configuration only; never exposed by RAG Studio. */
+  apiKey?: string;
+  /** Maximum inputs per HTTP request; batches are sent sequentially. Default: 16. */
+  batchSize?: number;
+  /** Opt in to shortening a longer MRL vector and normalizing the result. */
+  truncateDimensions?: boolean;
+  /** Model-specific retrieval prefixes. Empty by default for compatibility. */
+  queryPrefix?: string;
+  documentPrefix?: string;
   /**
    * Per-request timeout in milliseconds for embedding calls. Hung or slow
    * upstream models (e.g. Ollama model loading) are aborted after this
@@ -66,10 +75,15 @@ export interface RagMergedConfig {
   rag: {
     enabled: boolean;
     embedding: {
-      provider: 'ollama';
+      provider: 'ollama' | 'openai-compatible';
       baseUrl: string;
       model: string;
       dimensions: number;
+      apiKey?: string;
+      batchSize?: number;
+      truncateDimensions?: boolean;
+      queryPrefix?: string;
+      documentPrefix?: string;
       timeoutMs: number;
       healthTimeoutMs: number;
     };

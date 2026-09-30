@@ -247,7 +247,7 @@ describe('SemanticPhraseService.createSemantic', () => {
       lang: 'en',
     });
 
-    expect(embed).toHaveBeenCalledWith('list all products');
+    expect(embed).toHaveBeenCalledWith('list all products', 'document');
     expect(upsertSemantic).toHaveBeenCalledTimes(1);
     const call = upsertSemantic.mock.calls[0][0];
     expect(call.toolName).toBe('products_get_all');
@@ -321,7 +321,7 @@ describe('SemanticPhraseService.updateSemantic', () => {
 
     const result = await service.updateSemantic('abc123', { phrase: 'updated phrase' });
 
-    expect(embed).toHaveBeenCalledWith('updated phrase');
+    expect(embed).toHaveBeenCalledWith('updated phrase', 'document');
     expect(updateSemanticById).toHaveBeenCalledTimes(1);
     const patch = updateSemanticById.mock.calls[0][1];
     expect(patch.phrase).toBe('updated phrase');

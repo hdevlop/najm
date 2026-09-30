@@ -75,6 +75,65 @@ server
 
 ## Plugin Configuration
 
+### Embedding providers
+
+Ollama remains the default. For llama.cpp, LM Studio, or an authenticated
+OpenAI-compatible service, configure its API base URL (including `/v1`):
+
+```typescript
+rag({
+  embedding: {
+    provider: 'openai-compatible',
+    baseUrl: 'http://127.0.0.1:18080/v1',
+    model: 'embeddinggemma',
+    dimensions: 768,
+    batchSize: 4,
+    timeoutMs: 8000,
+    // apiKey: process.env.RAG_EMBEDDING_API_KEY,
+    queryPrefix: 'task: search result | query: ',
+    documentPrefix: 'title: none | text: ',
+  },
+  toolRouting: { enabled: true },
+});
+```
+
+Prefixes are model-specific and empty by default. The example uses EmbeddingGemma's
+retrieval prompts. `embed(text)` embeds a query; `embed(text, 'document')` and
+`embedBatch(texts)` embed indexed content. `embedBatch(texts, 'query')` is also
+available. Batches are sequential and default to 16 inputs per request. Each batch
+has its own timeout; callers may impose an overall indexing deadline separately.
+
+The compatible provider sends float-encoded embeddings requests, validates and
+reorders response indexes, and rejects missing, nonfinite or incorrectly sized
+vectors. Health probes use the same authenticated request and validation. API keys
+belong in server environment/configuration, never a routing JSON file. Redirects
+are refused. Local services do not require an API key.
+
+Some local servers ignore the request's `dimensions` field. For a model that
+supports Matryoshka dimensions, set `truncateDimensions: true` to shorten a
+longer returned vector to the configured dimension and normalize it. This is
+opt-in; shorter vectors, zero-length shortened vectors, and nonfinite values
+still fail validation. Qwen3 Embedding 0.6B returns 1024 values through
+llama.cpp even when asked for 768, and supports shortening to 768. Model-specific
+query instructions still belong in `queryPrefix`.
+
+Bundled vector schemas remain fixed at 768 dimensions; setting `dimensions` does
+not migrate storage. Use a compatible model/output dimension. When changing model,
+quantization or prefixes, rebuild all affected indexes before serving queries;
+matching dimensions alone do not imply compatible vector spaces. Existing tool
+fingerprints do not automatically trigger rebuilding for embedding configuration
+changes. Start with an empty index or use an explicit reviewed reindex procedure.
+
+Run a local server with a pinned llama.cpp build and a verified model file:
+
+```sh
+llama-server -m embeddinggemma-300M-Q8_0.gguf --embeddings --alias embeddinggemma --host 127.0.0.1 --port 18080 --threads 2 --threads-batch 2 --parallel 1 --ctx-size 2048 --batch-size 2048 --ubatch-size 2048 --n-gpu-layers 0
+```
+
+Test your hardware and indexing batches before increasing concurrency. For
+containers, use a private service address reachable by the application container;
+its `127.0.0.1` refers to that container, not the host or a sibling container.
+
 ### `toolRouting`
 
 ```typescript

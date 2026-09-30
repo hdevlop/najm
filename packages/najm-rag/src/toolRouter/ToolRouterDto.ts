@@ -73,8 +73,14 @@ export interface ChatbotRoutingConfigProvider {
 
 // Legacy schemas kept for backward compatibility
 export const chatbotEmbeddingSchema = z.object({
+  provider: z.enum(['ollama', 'openai-compatible']).optional(),
   baseUrl: z.string().optional(),
   model: z.string().optional(),
+  dimensions: z.number().int().positive().optional(),
+  batchSize: z.number().int().positive().optional(),
+  truncateDimensions: z.boolean().optional(),
+  queryPrefix: z.string().optional(),
+  documentPrefix: z.string().optional(),
 });
 
 export const chatbotRagSchema = z.object({
