@@ -6,6 +6,8 @@ import { Calendar as CalendarIcon } from "lucide-react";
 import { BaseInput } from "./BaseInput";
 import { cn } from "../../lib/cn";
 import { getIconColorProps } from "./utils";
+import { formatCalendarDate } from "../../lib/localeDates";
+import { useNajmFormatContext } from "../../format/provider";
 import type { DateInputProps } from "./types";
 
 export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placeholder = "Pick a date", className = "", icon, showIcon = true, iconColor, variant = "default", status = "default", bordered, borderColor, ariaLabel }) => {
@@ -15,6 +17,10 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
   const toDateString = (date: Date | undefined) => (date ? format(date, "yyyy-MM-dd") : undefined);
   // Parse "yyyy-MM-dd" as a local date; native new Date() would read it as UTC midnight.
   const toDate = (val: Date | string | undefined) => (typeof val === "string" ? parseISO(val) : val);
+  // The label follows the active locale; outside a format provider it keeps
+  // date-fns' English "PPP".
+  const locale = useNajmFormatContext()?.locale;
+  const toLabel = (date: Date) => (locale ? formatCalendarDate(date, locale) : format(date, "PPP"));
 
   return (
     <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={className}>
@@ -28,7 +34,7 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
           */}
           <button type="button" aria-label={ariaLabel} className="w-full flex items-center cursor-pointer gap-2 justify-start text-left font-normal bg-transparent border-0 p-0 outline-none">
             <span className={cn("flex-1 truncate text-sm cursor-pointer", value ? "text-foreground" : "text-muted-foreground")}>
-              {value ? format(toDate(value)!, "PPP") : placeholder}
+              {value ? toLabel(toDate(value)!) : placeholder}
             </span>
           </button>
         </PopoverTrigger>
