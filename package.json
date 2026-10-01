@@ -80,7 +80,7 @@
     "@clack/prompts": "^1.7.0",
     "@hono/node-server": "^2.0.11",
     "bcrypt": "^6.0.0",
-    "diject": "^0.1.9",
+    "diject": "^0.1.11",
     "dotenv-pro": "^0.2.0",
     "forji": "^1.0.5",
     "hono": "^4.12.31",
