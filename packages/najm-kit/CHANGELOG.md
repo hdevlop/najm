@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.16.15 - 2026-10-02
+
+- `DateInput` labels its value in the active locale ("1 octobre 2026")
+  instead of date-fns' English "October 1st, 2026", and `Calendar` names
+  months, weekdays and days in it too. Both read the locale from
+  `NajmFormatProvider` (mounted by `NajmAppProvider`); without one they keep
+  the English output. Formatters passed to `Calendar` still win.
+
 ## 2.16.14 - 2026-09-30
 
 - Row actions are translatable: `NTableToolbarLabels` gains `rowActions`,
