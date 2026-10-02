@@ -3,14 +3,13 @@
  *
  * Phase 8 — Playground Integration
  *
- * Tests the Studio SPA, API endpoints, semantic editing,
+ * Tests the Studio API endpoints, semantic editing,
  * knowledge search, and routing test cases against a real
  * Najm server with all plugins wired.
  *
  * Prerequisites:
  *   - bun install (workspace deps resolved)
  *   - najm-rag dist built (bun run build in packages/najm-rag)
- *   - standalone studio app built (`bun run --cwd ../rag-studio build`) when UI smoke is needed
  *   - playground.db has RAG tables (bun scripts/add-rag-tables.ts)
  *
  * Run:  bun run test:studio
@@ -100,25 +99,11 @@ async function main() {
     console.log(`\n🔍 RAG Studio Smoke Tests (port ${port})\n`);
 
     // ========================================================
-    // 1. Studio SPA + API status
+    // 1. Studio API status (the UI is najm-rag/studio, mounted by the host app)
     // ========================================================
-    console.log('--- Studio SPA & API Status ---');
+    console.log('--- Studio API Status ---');
 
-    let res = await fetch(`${baseUrl}/api/rag-studio`);
-    if (res.status === 200) {
-      const text = await res.text();
-      if (text.includes('<html') || text.includes('<!DOCTYPE')) {
-        pass('GET /api/rag-studio serves HTML SPA');
-      } else {
-        fail('GET /api/rag-studio', `got HTML but content doesn't look like SPA: ${text.substring(0, 80)}`);
-      }
-    } else if (res.status === 503) {
-      skip('GET /api/rag-studio SPA', 'Studio not built (dist/studio missing)');
-    } else {
-      fail('GET /api/rag-studio', `expected 200 or 503, got ${res.status}`);
-    }
-
-    res = await fetch(`${baseUrl}${STUDIO_API}/status`, { headers: authHeaders() });
+    let res = await fetch(`${baseUrl}${STUDIO_API}/status`, { headers: authHeaders() });
     if (res.status === 200) {
       const data: any = await res.json();
       pass(`GET /api/status returns 200 (accessMode=${data.accessMode})`);

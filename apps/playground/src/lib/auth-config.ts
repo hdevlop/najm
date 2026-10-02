@@ -10,8 +10,9 @@ export const authConfig: DefineAuthConfig = {
   // `/change-password` is public on purpose: a user in credential setup holds
   // only the opaque setup cookie, never a session.
   publicRoutes: ['/', '/login', '/register', '/forgot-password', '/reset-password', '/change-password', '/format-pagination', '/auth/oauth/callback'],
-  protectedRoutes: ['/dashboard/:path*', '/account/:path*', '/admin/:path*'],
+  protectedRoutes: ['/dashboard/:path*', '/account/:path*', '/admin/:path*', '/rag-studio/:path*'],
   roleRoutes: {
     '/admin/:path*': ['admin'],
+    '/rag-studio/:path*': ['admin'],
   },
 };
