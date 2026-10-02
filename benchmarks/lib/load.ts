@@ -101,3 +101,31 @@ export function printResult(name: string, r: LoadResult): void {
       `err=${r.errors}`,
    );
 }
+
+/**
+ * Run `runLoad` in a fresh process. A long-lived client keeps keep-alive
+ * sockets pooled to servers that have since exited, and the next target pays
+ * for them: measured on Windows, raw Hono's second route read 23-25k req/s in
+ * a shared client against 40-43k alone. A process per run starts every target
+ * with an empty pool; its own warmup settles the client JIT.
+ */
+export async function runLoadIsolated(opts: Omit<LoadOptions, 'init'>): Promise<LoadResult> {
+   const proc = Bun.spawn(['bun', import.meta.path, JSON.stringify(opts)], {
+      stdout: 'pipe',
+      stderr: 'pipe',
+   });
+   const [stdout, stderr, code] = await Promise.all([
+      new Response(proc.stdout).text(),
+      new Response(proc.stderr).text(),
+      proc.exited,
+   ]);
+   if (code !== 0) {
+      throw new Error(`load process exited with ${code}: ${stderr.trim().split('\n').slice(-3).join(' ')}`);
+   }
+   return JSON.parse(stdout) as LoadResult;
+}
+
+if (import.meta.main) {
+   const result = await runLoad(JSON.parse(process.argv[2]) as LoadOptions);
+   process.stdout.write(JSON.stringify(result));
+}

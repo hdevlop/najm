@@ -4,15 +4,16 @@
 // Runs each framework as its own subprocess on the SAME runtime (Bun), so the
 // comparison isolates framework overhead with the runtime held constant. Each
 // server binds a random port and prints `READY <port>`; the orchestrator then
-// drives it with the shared closed-loop load generator.
+// drives each route with the shared closed-loop load generator, run in a fresh
+// process so no target inherits another's pooled connections.
 //
 //   bun benchmarks/frameworks.bench.ts
-//   bun benchmarks/frameworks.bench.ts --duration 10000 --connections 100
+//   bun benchmarks/frameworks.bench.ts --duration 10000 --connections 100 --warmup 1000
 //
 // A framework that fails to boot is reported as "n/a" and never aborts the run.
 // ============================================================================
 
-import { runLoad, type LoadResult } from './lib/load';
+import { runLoadIsolated, type LoadResult } from './lib/load';
 
 function arg(name: string, fallback: number): number {
    const i = process.argv.indexOf(`--${name}`);
@@ -21,6 +22,9 @@ function arg(name: string, fallback: number): number {
 
 const DURATION = arg('duration', 5000);
 const CONNECTIONS = arg('connections', 50);
+// Each route is driven by a fresh client process, so its warmup also has to
+// settle that process's fetch/JSON JIT.
+const WARMUP = arg('warmup', 1000);
 const HERE = import.meta.dir;
 
 interface Target {
@@ -114,38 +118,13 @@ async function benchTarget(target: Target): Promise<Row> {
 
    try {
       const base = `http://localhost:${handle.port}`;
-      const json = await runLoad({ url: `${base}/json`, connections: CONNECTIONS, duration: DURATION });
-      const param = await runLoad({ url: `${base}/users/123`, connections: CONNECTIONS, duration: DURATION });
+      const json = await runLoadIsolated({ url: `${base}/json`, connections: CONNECTIONS, duration: DURATION, warmup: WARMUP });
+      const param = await runLoadIsolated({ url: `${base}/users/123`, connections: CONNECTIONS, duration: DURATION, warmup: WARMUP });
       const rssMb = await fetchRss(handle.port);
       return { name: target.name, ok: true, coldStartMs: handle.coldStartMs, rssMb, json, param };
    } finally {
       await stopServer(handle.proc);
    }
-}
-
-/**
- * Warm the load generator (this process) before measuring anything, so the
- * first framework in the list isn't penalised by the parent's cold fetch/JSON
- * JIT. Hammers a throwaway in-process server and discards the result.
- */
-async function primeGenerator() {
-   const server = Bun.serve({
-      port: 0,
-      fetch: () =>
-         new Response(JSON.stringify({ ok: true }), {
-            headers: { 'content-type': 'application/json' },
-         }),
-   });
-   await runLoad({
-      url: `http://localhost:${server.port}/`,
-      connections: CONNECTIONS,
-      duration: 1000,
-      warmup: 200,
-   });
-   // Force-close: a graceful stop leaves the client's keep-alive sockets to
-   // this server pooled, and the next target then pays a fresh connection per
-   // request (Windows: ~12k TIME_WAIT sockets, raw Hono read at ~8k req/s).
-   server.stop(true);
 }
 
 function fmt(n: number | undefined, digits = 0): string {
@@ -215,10 +194,6 @@ async function main() {
       `runtime held constant at bun ${Bun.version}\n` +
       `(raw Hono = floor; ratios are framework overhead with runtime fixed)`,
    );
-
-   process.stdout.write('\nwarming load generator … ');
-   await primeGenerator();
-   process.stdout.write('done');
 
    const rows: Row[] = [];
    for (const target of TARGETS) {
