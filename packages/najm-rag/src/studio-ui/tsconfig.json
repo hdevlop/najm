@@ -1,0 +1,11 @@
+{
+  // The Studio UI is checked on its own: TanStack Router's types require
+  // strictNullChecks, which the backend sources do not enable.
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "strictNullChecks": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"]
+  },
+  "include": ["./**/*.ts", "./**/*.tsx"],
+  "exclude": []
+}

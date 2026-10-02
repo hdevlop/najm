@@ -13,7 +13,7 @@
 - Plugins: `najm-guard`, `najm-validation`, `najm-cache`, `najm-rate`, `najm-cors`, `najm-cookies`, `najm-i18n`, `najm-mcp`, `najm-event`, `najm-database`, `najm-storage`, `najm-email`, `najm-auth`, `najm-rag`, `najm-chatbot`, `najm-whatsapp`.
 - Tooling/UI: `najm-cli`, `najm-kit`, `najm-next`.
 - Apps: `apps/playground` is the real integration harness; `apps/website` is docs; `apps/theme-studio` is the theme studio.
-- RAG Studio is API-only: `ragStudio()` in `packages/najm-rag/src/studio` registers admin controllers and its `ui` option is a no-op. The former `apps/rag-studio` UI was removed in `42537c0` and has no replacement yet.
+- RAG Studio: `ragStudio()` (`packages/najm-rag/src/studio`) serves the admin API; the React UI lives in `packages/najm-rag/src/studio-ui` and ships as `najm-rag/studio` + `najm-rag/studio/styles.css`, mirroring `najm-storage/studio`. The playground mounts it at `/rag-studio`. The studio UI has its own `src/studio-ui/tsconfig.json` (strictNullChecks, required by TanStack Router).
 - Package source entrypoints are `packages/*/src/index.ts`; update these plus `package.json` `exports`, `tsup.config.ts`, and root `tsconfig.json` paths/references when changing public surfaces.
 
 ## Commands
@@ -22,7 +22,7 @@
 - Build all packages: `bun run build` (`turbo run build`, with dependency builds from `turbo.json`).
 - Build one package with root shortcuts when present, for example `bun run build:core`, `bun run build:auth`, `bun run build:mcp`, `bun run build:ui`.
 - If no shortcut exists, use `turbo run build --filter=<package-name>` or `bun run --cwd <workspace> build`.
-- `najm-rag` builds with `tsup`; `bun run build:rag` wraps it.
+- `najm-rag` builds with `scripts/build.ts` (backend then studio tsup targets, plus `scripts/build-css.mjs`); `bun run build:rag` wraps it.
 - `najm-kit` build runs `tsup` and `scripts/build-css.mjs`; use `bun run build:ui` for package output.
 - Clean all package build output: `bun run clean`.
 
@@ -50,7 +50,7 @@
 
 - Packages are ESM-only (`"type": "module"`) and publish only `dist`.
 - Most framework packages build with `tsup`, bundle ESM, emit `.mjs`, and use a custom `preserve-metadata` esbuild plugin so decorators keep `experimentalDecorators` and `emitDecoratorMetadata`; do not remove it casually.
-- `najm-kit` has React/Tailwind/CSS outputs; verify CSS output when touching UI build config.
+- `najm-kit`, `najm-storage/studio` and `najm-rag/studio` have React/Tailwind/CSS outputs; verify CSS output when touching UI build config.
 - `najm-api` intentionally re-exports common plugin factories, decorators, auth helpers, tokens, and types; package-level exports may also need aggregate exports here.
 
 ## Najm Conventions

@@ -12,6 +12,7 @@ import {
   UserCircle,
   Activity,
   MessageSquare,
+  Database,
   Settings,
   LogOut,
   Menu,
@@ -37,6 +38,7 @@ const navigation = [
 
 const studios = [
   { href: '/wa-studio', label: 'WA Studio', icon: MessageSquareText },
+  { href: '/rag-studio', label: 'RAG Studio', icon: Database },
   { href: '/storage-studio', label: 'Storage Studio', icon: HardDrive },
 ];
 

@@ -10,8 +10,8 @@ import { StudioAssistantController } from './StudioAssistantController';
 
 export interface RagStudioOptions {
   /**
-   * Deprecated no-op. The Studio UI is distributed as the standalone
-   * RAG Studio app; this plugin exposes the API only.
+   * Deprecated no-op. This plugin serves the API only; mount the UI from
+   * `najm-rag/studio` in the host app.
    */
   ui?: boolean;
   /**
@@ -23,23 +23,23 @@ export interface RagStudioOptions {
   /**
    * Register the Studio Assistant controller. Requires najm-chatbot's
    * `studioAssistant()` plugin to be registered (it provides the assistant
-   * provider). Default: `true`.
+   * provider). Default: `false`, so the studio needs no chatbot plugin.
    */
   assistant?: boolean;
 }
 
 /**
  * Registers the RAG Studio admin API on top of a `rag()` engine. All controllers
- * are `@isAdmin()` gated. The UI is the standalone RAG Studio app.
+ * are `@isAdmin()` gated. The UI is `<RagStudio />` from `najm-rag/studio`.
  *
  * Requires `rag`, `auth`, and `database` plugins to already be registered.
- * When the assistant is enabled (default), `chatbot-studio-assistant` from
- * `najm-chatbot`'s `studioAssistant()` must also be registered.
+ * With `assistant: true`, `chatbot-studio-assistant` from `najm-chatbot`'s
+ * `studioAssistant()` must also be registered.
  *
  * ```ts
  * new Server()
  *   .use(rag({ ... }))
- *   .use(ragStudio())   // API only — the standalone app targets it
+ *   .use(ragStudio())   // admin API at /rag-studio
  * ```
  */
 export const ragStudio = (opts?: RagStudioOptions) => {
@@ -52,7 +52,7 @@ export const ragStudio = (opts?: RagStudioOptions) => {
     StudioAuditService,
   ];
 
-  const assistantEnabled = opts?.assistant !== false;
+  const assistantEnabled = opts?.assistant === true;
   if (assistantEnabled) services.push(StudioAssistantController);
 
   const required = ['rag', 'auth', 'database'];

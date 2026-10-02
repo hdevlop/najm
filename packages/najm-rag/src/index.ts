@@ -14,7 +14,7 @@ export * from './routingSettings';
 export * from './routingTests';
 export * from './knowledge';
 export * from './unmatched';
-// Studio API + assistant contract. The UI is distributed as the standalone RAG Studio app.
+// Studio API + assistant contract. The UI ships separately as `najm-rag/studio`.
 export * from './studioContract/StudioAssistantDto';
 export * from './studioContract/StudioAssistantProvider';
 export * from './studioContract/viewToolMap';

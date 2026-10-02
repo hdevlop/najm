@@ -122,9 +122,10 @@ export const ragConfig = () => rag({
   allowedLangs: ['en', 'fr', 'ar', 'darija'],
 });
 
-// RAG Studio admin API only (formerly rag({ studioApi: true })). There is no
-// Studio UI in this repo; `ui` is a no-op in najm-rag.
-export const ragStudioConfig = () => ragStudio({ ui: false });
+// RAG Studio admin API at /api/rag-studio. The UI is <RagStudio /> from
+// najm-rag/studio, mounted at app/rag-studio. The assistant is opt-in and
+// served by studioAssistant() below.
+export const ragStudioConfig = () => ragStudio({ assistant: true });
 
 export const chatbotConfig = () => chatbot({
   dialect: process.env.PLAYGROUND_DB === 'pg' ? 'pg' : 'sqlite',

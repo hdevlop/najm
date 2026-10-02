@@ -35,17 +35,30 @@
       "import": "./dist/schema/mysql.mjs",
       "default": "./dist/schema/mysql.mjs"
     },
+    "./studio": {
+      "types": "./dist/studio/index.d.ts",
+      "import": "./dist/studio/index.mjs",
+      "default": "./dist/studio/index.mjs"
+    },
+    "./studio/styles.css": {
+      "import": "./dist/studio/styles.css",
+      "default": "./dist/studio/styles.css"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {
-    "build": "tsup",
+    "build": "bun scripts/build.ts",
     "dev": "tsup --watch",
     "test": "bun test",
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "prepack": "bun run clean && bun run build"
   },
   "dependencies": {
+    "@tanstack/react-query": "^5",
+    "@tanstack/react-router": "^1.170.8",
+    "lucide-react": "^0.474.0",
     "najm-core": "workspace:*",
+    "najm-kit": "workspace:*",
     "pdf-parse": "^1.1.1"
   },
   "peerDependencies": {
@@ -57,6 +70,8 @@
     "najm-mcp": "workspace:*",
     "najm-storage": "workspace:*",
     "najm-validation": "workspace:*",
+    "react": ">=18",
+    "react-dom": ">=18",
     "reflect-metadata": "^0.2.0",
     "sqlite-vec": "^0.1.9",
     "zod": "^4.0.0"
@@ -65,21 +80,33 @@
     "najm-storage": {
       "optional": true
     },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
     "sqlite-vec": {
       "optional": true
     }
   },
   "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@tanstack/react-table": "^8",
     "@types/node": "^22.10.0",
     "@types/pdf-parse": "^1.1.5",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
     "najm-auth": "workspace:*",
     "najm-database": "workspace:*",
     "najm-guard": "workspace:*",
     "najm-mcp": "workspace:*",
     "najm-storage": "workspace:*",
     "najm-validation": "workspace:*",
+    "postcss": "^8.5.22",
     "rimraf": "^6.0.1",
     "sqlite-vec": "^0.1.9",
+    "tailwindcss": "^4",
     "tsup": "^8.5.1",
     "typescript": "^5.7.3"
   }
