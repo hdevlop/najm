@@ -128,10 +128,6 @@ export class MiddlewareService {
          const requestId = context.req.header(headerName)
             || this.createRequestId(context, requestIdGenerator);
 
-         // Echo the id back so clients and downstream proxies can correlate the
-         // request with server logs (the logger already tags entries via ALS).
-         context.header(headerName, requestId);
-
          return this.container.run(
             {
                requestId,
@@ -139,7 +135,23 @@ export class MiddlewareService {
             },
             async () => {
                try {
-                  return await next();
+                  await next();
+
+                  // Echo the id back so clients and downstream proxies can
+                  // correlate the request with server logs (the logger already
+                  // tags entries via ALS). Set on the final response, so it also
+                  // reaches a raw Response such as an error from Err.handle; a
+                  // value a handler set itself is kept.
+                  const headers = context.res.headers;
+                  if (!headers.has(headerName)) {
+                     try {
+                        headers.set(headerName, requestId);
+                     } catch {
+                        // Immutable headers (Response.redirect, a proxied
+                        // fetch): Hono clones the response before setting.
+                        context.header(headerName, requestId);
+                     }
+                  }
                } finally {
                   try {
                      if (this.container.hasRequestScope(requestId)) {
