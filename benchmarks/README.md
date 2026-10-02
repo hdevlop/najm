@@ -105,6 +105,43 @@ not the absolutes.
 Cross-repo verification also green: 6 najm suites (najm-core/rate/validation/
 guard/cookies/auth) = 179 tests, 0 failures against the published 0.1.6.
 
+#### Route invocation and request-id pass (2026-10-02)
+
+`layers.bench.ts` was rewritten to mirror the current pipeline: the earlier
+version modelled `contextStorage`, `randomUUID`, and an eager `RequestParser`,
+none of which najm still runs, and reported a negative dispatch cost. Layer E
+now matches `najm /plain` within noise, and the script prints that check.
+
+Bun 1.3.14, Windows x64. Layers for `GET /users/:id`:
+
+| Layer | Cost |
+| --- | ---: |
+| Hono compose (one async global middleware) | ~1.1 us |
+| Request id read and echo | ~0.8-1.1 us |
+| ALS `container.run` | ~0.9-1.1 us |
+| Request-scope cleanup in `finally` | ~0.1-0.3 us |
+| najm dispatch, params, formatting | ~0-0.4 us |
+
+Almost all of najm's ~3.5 us over raw Hono is the request-context middleware;
+dispatch itself is near zero.
+
+Changes, measured as interleaved or in-process A/B against the previous build:
+
+| Route | Before | After | Change |
+| --- | ---: | ---: | ---: |
+| `POST @Body` | 12.8 us/op | 11.9 us/op | 7% faster |
+| `POST` body + query + param | 14.8 us/op | 14.0 us/op | 5% faster |
+| `GET` routes | — | — | +0.2-0.3 us |
+
+- Route invocation state is built once per route. The async path allocated two
+  closures per request, and under the build's `keepNames` each was an
+  `Object.defineProperty` call (8.9% of CPU on a `@Body` route).
+- `x-request-id` is now set on the final response, so it also reaches error
+  and raw `Response` results, which used to drop it. That costs ~0.25 us on
+  success responses.
+
+A `POST` body route remains ~6.3 us over raw Hono, against ~3.5 us for `GET`.
+
 ### Framework Comparison
 
 `bun run bench:frameworks` (50 connections, 5000ms per route)

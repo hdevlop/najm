@@ -47,7 +47,6 @@ const defaultRag = {
     provider: 'ollama' as const,
     baseUrl: 'http://localhost:11434',
     model: 'embeddinggemma',
-    dimensions: 768,
     timeoutMs: 8000,
     healthTimeoutMs: 15000,
   },
@@ -64,6 +63,9 @@ const defaultToolRouting = {
   fallbackOnNoMatch: 'none' as const,
   dependencies: {},
 };
+
+/** Matches `vector('embedding', { dimensions: 768 })` in schema/pg.ts. */
+const PG_VECTOR_DIMENSIONS = 768;
 
 const CHATBOT_CONTEXT_PROVIDER = Symbol.for('najm:chatbot:context-provider');
 
@@ -103,18 +105,30 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
 
   const dialect = effective.dialect ?? 'pg';
   const jsonMode = (jsonConfig as any).mode;
-  const ragEnabled =
-    effective.embedding !== undefined ||
-    effective.toolRouting?.enabled === true ||
-    effective.indexOnBoot !== undefined ||
-    jsonMode === 'rag' ||
-    jsonMode === 'routing';
   const routingEnabled = effective.toolRouting?.enabled === true || jsonMode === 'routing';
+  const knowledge = resolveKnowledge(effective);
+  // `effective.embedding` is always an object after merging, so test the inputs.
+  // Knowledge ingestion and search need the embedder even without routing.
+  const ragEnabled =
+    config?.embedding !== undefined ||
+    (jsonConfig as any).embedding !== undefined ||
+    routingEnabled ||
+    knowledge.enabled ||
+    effective.indexOnBoot !== undefined ||
+    jsonMode === 'rag';
 
   if (routingEnabled) {
     if (dialect !== 'pg' && dialect !== 'sqlite') {
       throw new Error(`najm-rag tool routing requires dialect "pg" or "sqlite". Received: "${dialect}"`);
     }
+  }
+
+  const dimensions = effective.embedding?.dimensions;
+  if (ragEnabled && dialect === 'pg' && dimensions !== undefined && dimensions !== PG_VECTOR_DIMENSIONS) {
+    throw new Error(
+      `najm-rag pg storage is fixed at vector(${PG_VECTOR_DIMENSIONS}); embedding.dimensions ${dimensions} is not supported. `
+      + 'Use a model or truncateDimensions setting that yields 768 values.',
+    );
   }
 
   return {
@@ -123,7 +137,7 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
     allowedLangs: Array.isArray(effective.allowedLangs) && effective.allowedLangs.length > 0
       ? effective.allowedLangs
       : undefined,
-    knowledge: resolveKnowledge(effective),
+    knowledge,
     rag: {
       enabled: ragEnabled,
       embedding: {

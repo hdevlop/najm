@@ -60,7 +60,7 @@ export class StudioSettingsController {
     const status = await this.semantics.getStatus();
     const settings = await this.settings.getEffectiveSettings();
     return {
-      embeddingProvider: 'ollama',
+      embeddingProvider: status.embeddingProvider ?? 'ollama',
       embeddingModel: status.embeddingModel ?? 'embeddinggemma',
       embeddingDimensions: status.embeddingDimensions ?? 768,
       vectorStoreDriver: status.dialect === 'sqlite' ? 'sqlite-vec' : 'pgvector',

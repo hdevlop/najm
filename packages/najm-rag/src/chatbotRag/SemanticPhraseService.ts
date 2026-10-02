@@ -37,18 +37,17 @@ export class SemanticPhraseService {
     const routing = this.config.toolRouting;
     const indexedCount = await this.repository.countEmbeddings();
     const semanticCount = await this.repository.countSemantics();
-    const embeddingModel =
-      this.config.rag?.embedding?.model ??
-      (this.config.toolRouting as any)?.embedding?.model ??
-      'embeddinggemma';
+    const embedding = this.config.rag?.embedding ?? (this.config.toolRouting as any)?.embedding;
+    const embeddingModel = embedding?.model ?? 'embeddinggemma';
     const effective = this.settings
       ? await this.settings.getEffectiveSettings()
       : null;
     return {
       routingEnabled: routing?.enabled ?? false,
       dialect: this.config.dialect ?? 'pg',
+      embeddingProvider: embedding?.provider ?? 'ollama',
       embeddingModel,
-      embeddingDimensions: 768,
+      embeddingDimensions: embedding?.dimensions ?? 768,
       registeredToolCount: getRoutableTools(this.registry.tools).length,
       indexedToolCount: indexedCount,
       semanticPhraseCount: semanticCount,

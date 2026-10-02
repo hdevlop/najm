@@ -62,8 +62,6 @@ export interface ReindexResult {
   failed: number;
 }
 
-const EMBED_BATCH_SIZE = 20;
-
 @Service()
 export class DocumentIngestionService {
   @Inject() private storage?: StorageService;
@@ -263,8 +261,10 @@ export class DocumentIngestionService {
     let embedded = 0;
     let failed = 0;
 
-    for (let i = 0; i < chunkRows.length; i += EMBED_BATCH_SIZE) {
-      const batch = chunkRows.slice(i, i + EMBED_BATCH_SIZE);
+    // Match the embedder's request size so one failed request only fails its own chunks.
+    const batchSize = this.config.rag?.embedding?.batchSize ?? 16;
+    for (let i = 0; i < chunkRows.length; i += batchSize) {
+      const batch = chunkRows.slice(i, i + batchSize);
       const texts = batch.map((row: any) => row.text);
 
       try {

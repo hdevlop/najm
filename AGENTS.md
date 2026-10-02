@@ -11,8 +11,9 @@
 
 - Core framework: `packages/najm-core`; `packages/najm-api` is the app-facing aggregate re-export surface.
 - Plugins: `najm-guard`, `najm-validation`, `najm-cache`, `najm-rate`, `najm-cors`, `najm-cookies`, `najm-i18n`, `najm-mcp`, `najm-event`, `najm-database`, `najm-storage`, `najm-email`, `najm-auth`, `najm-rag`, `najm-chatbot`, `najm-whatsapp`.
-- Tooling/UI: `najm-cli`, `najm-kit`, `najm-next`; standalone RAG Studio app is `apps/rag-studio`.
-- Apps: `apps/playground` is the real integration harness; `apps/website` is docs; `apps/rag-studio` is a standalone Next static-export studio on port `4100`.
+- Tooling/UI: `najm-cli`, `najm-kit`, `najm-next`.
+- Apps: `apps/playground` is the real integration harness; `apps/website` is docs; `apps/theme-studio` is the theme studio.
+- RAG Studio is API-only: `ragStudio()` in `packages/najm-rag/src/studio` registers admin controllers and its `ui` option is a no-op. The former `apps/rag-studio` UI was removed in `42537c0` and has no replacement yet.
 - Package source entrypoints are `packages/*/src/index.ts`; update these plus `package.json` `exports`, `tsup.config.ts`, and root `tsconfig.json` paths/references when changing public surfaces.
 
 ## Commands
@@ -21,7 +22,7 @@
 - Build all packages: `bun run build` (`turbo run build`, with dependency builds from `turbo.json`).
 - Build one package with root shortcuts when present, for example `bun run build:core`, `bun run build:auth`, `bun run build:mcp`, `bun run build:ui`.
 - If no shortcut exists, use `turbo run build --filter=<package-name>` or `bun run --cwd <workspace> build`.
-- `najm-rag` uses a custom Bun build script; prefer `bun run build:rag`. The standalone RAG Studio app uses `bun run build:rag-studio`.
+- `najm-rag` builds with `tsup`; `bun run build:rag` wraps it.
 - `najm-kit` build runs `tsup` and `scripts/build-css.mjs`; use `bun run build:ui` for package output.
 - Clean all package build output: `bun run clean`.
 
@@ -40,7 +41,6 @@
 - Playground Next frontend: `bun run playground:next`; production path is `bun run playground:next:prod`.
 - Background Next helpers: `bun run playground:next:bg`, `bun run playground:next:status`, `bun run playground:next:stop`.
 - Docs site: `bun run web`; website-local lint exists as `bun run --cwd apps/website lint`.
-- RAG Studio app: `bun run --cwd apps/rag-studio dev`.
 - Playground backend defaults to SQLite `./playground.db`; reset/seed with `bun run --cwd apps/playground db:reset-seed`.
 - Playground MCP endpoint is `/api/mcp` because the server base is `/api` and the MCP plugin path is `/mcp`.
 - Playground uses `.load(modulesModule, listenersModule)`, not `.scan()`; preserve this for bundled/Next-compatible code paths.
@@ -50,7 +50,7 @@
 
 - Packages are ESM-only (`"type": "module"`) and publish only `dist`.
 - Most framework packages build with `tsup`, bundle ESM, emit `.mjs`, and use a custom `preserve-metadata` esbuild plugin so decorators keep `experimentalDecorators` and `emitDecoratorMetadata`; do not remove it casually.
-- `najm-kit` and `apps/rag-studio` have React/Tailwind/CSS outputs; verify CSS/static export when touching UI build config.
+- `najm-kit` has React/Tailwind/CSS outputs; verify CSS output when touching UI build config.
 - `najm-api` intentionally re-exports common plugin factories, decorators, auth helpers, tokens, and types; package-level exports may also need aggregate exports here.
 
 ## Najm Conventions

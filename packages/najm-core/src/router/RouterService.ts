@@ -172,122 +172,74 @@ export class RouterService {
          target,
          methodName
       );
-      const resolveArgs = paramsInjection?.resolve;
       const resolveArgsSync = paramsInjection?.resolveSync ?? (paramsInjection ? undefined : () => NO_ARGS);
       const fastParamKey = hasRouteMiddlewares ? undefined : getSingleFastParamKey(paramsInjection, handler);
-      const canBypassFormatter = !messageOptions && (skipWrapping || !this.responseConfig.autoWrap);
-      const isSingleton = getScope(target) === Scope.SINGLETON;
-      let cachedInstance: unknown;
+      // Built once per route: closures or option objects allocated per request
+      // cost a defineProperty each under the build's keepNames.
+      const invocation: RouteInvocation = {
+         target,
+         handler,
+         resolveArgs: paramsInjection?.resolve,
+         canBypassFormatter: !messageOptions && (skipWrapping || !this.responseConfig.autoWrap),
+         isSingleton: getScope(target) === Scope.SINGLETON,
+         instance: undefined,
+         messageOptions,
+         skipWrapping,
+      };
 
       return ((ctx: Context) => {
          try {
-            if (isSingleton && cachedInstance && resolveArgsSync && canBypassFormatter) {
+            const instance = invocation.instance;
+            if (instance && resolveArgsSync && invocation.canBypassFormatter) {
                const result = fastParamKey === undefined
-                  ? handler.call(cachedInstance, ...resolveArgsSync())
-                  : handler.call(cachedInstance, ctx.req.param(fastParamKey));
+                  ? handler.call(instance, ...resolveArgsSync())
+                  : handler.call(instance, ctx.req.param(fastParamKey));
                if (result instanceof Promise) {
                   return result
-                     .then((value) => this.formatRouteResult(ctx, value, {
-                        canBypassFormatter,
-                        translator: this.translator,
-                        responseConfig: this.responseConfig,
-                        messageOptions,
-                        skipWrapping,
-                     }))
+                     .then((value) => this.formatRouteResult(ctx, value, invocation))
                      .catch((error) => Err.handle(error));
                }
 
-               return this.formatRouteResult(ctx, result, {
-                  canBypassFormatter,
-                  translator: this.translator,
-                  responseConfig: this.responseConfig,
-                  messageOptions,
-                  skipWrapping,
-               });
+               return this.formatRouteResult(ctx, result, invocation);
             }
 
-            return this.invokeRoute(ctx, {
-               target,
-               handler,
-               resolveArgs,
-               canBypassFormatter,
-               isSingleton,
-               getCachedInstance: () => cachedInstance,
-               setCachedInstance: (instance) => {
-                  cachedInstance = instance;
-               },
-               messageOptions,
-               skipWrapping,
-            });
+            return this.invokeRoute(ctx, invocation);
          } catch (error) {
             return Err.handle(error);
          }
       }) as MiddlewareHandler;
    }
 
-   private async invokeRoute(
-      ctx: Context,
-      route: {
-         target: Constructor;
-         handler: Function;
-         resolveArgs?: () => Promise<unknown[]>;
-         canBypassFormatter: boolean;
-         isSingleton: boolean;
-         getCachedInstance: () => unknown;
-         setCachedInstance: (instance: unknown) => void;
-         messageOptions?: ReturnType<typeof getResponseMessage>;
-         skipWrapping: boolean;
-      }
-   ): Promise<Response> {
+   private async invokeRoute(ctx: Context, route: RouteInvocation): Promise<Response> {
       try {
-         let instance = route.getCachedInstance();
+         let instance = route.instance;
 
          if (!instance) {
-            instance = route.isSingleton
-               ? await this.container.resolve(route.target)
-               : await this.container.resolve(route.target);
-            if (route.isSingleton) {
-               route.setCachedInstance(instance);
-            }
-         } else if (!route.isSingleton) {
             instance = await this.container.resolve(route.target);
+            if (route.isSingleton) {
+               route.instance = instance;
+            }
          }
 
-         const args = await route.resolveArgs?.() ?? [];
+         const args = await route.resolveArgs?.() ?? NO_ARGS;
          const result = await route.handler.call(instance, ...args);
 
-         return this.formatRouteResult(ctx, result, {
-            canBypassFormatter: route.canBypassFormatter,
-            translator: this.translator,
-            responseConfig: this.responseConfig,
-            messageOptions: route.messageOptions,
-            skipWrapping: route.skipWrapping,
-         });
+         return this.formatRouteResult(ctx, result, route);
       } catch (error) {
          return Err.handle(error);
       }
    }
 
-   private formatRouteResult(
-      ctx: Context,
-      result: unknown,
-      options: {
-         canBypassFormatter: boolean;
-         translator?: (key: string) => string;
-         responseConfig: ResponseConfig;
-         messageOptions?: ReturnType<typeof getResponseMessage>;
-         skipWrapping: boolean;
-      }
-   ): Response {
-      if (options.canBypassFormatter && canReturnJsonDirectly(result)) {
+   private formatRouteResult(ctx: Context, result: unknown, route: RouteInvocation): Response {
+      if (route.canBypassFormatter && canReturnJsonDirectly(result)) {
          return ctx.json(result);
       }
 
       const formatter = new ResponseFormatter(ctx, {
-         translator: options.translator,
-         config: options.responseConfig,
-         messageOptions: options.messageOptions,
-         skipWrapping: options.skipWrapping,
+         translator: this.translator,
+         config: this.responseConfig,
+         messageOptions: route.messageOptions,
+         skipWrapping: route.skipWrapping,
       });
       return formatter.formatResponse(result);
    }
@@ -328,6 +280,18 @@ export class RouterService {
 // ============================================================================
 // HELPERS
 // ============================================================================
+
+interface RouteInvocation {
+   target: Constructor;
+   handler: Function;
+   resolveArgs?: () => Promise<unknown[]>;
+   canBypassFormatter: boolean;
+   isSingleton: boolean;
+   /** Cached controller instance; only ever set for singleton controllers. */
+   instance: unknown;
+   messageOptions?: ReturnType<typeof getResponseMessage>;
+   skipWrapping: boolean;
+}
 
 function isMiddlewareInjection(inj: unknown): inj is MiddlewareInjection {
    return (
