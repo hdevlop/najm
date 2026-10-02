@@ -4,15 +4,16 @@
 // Runs each framework as its own subprocess on the SAME runtime (Bun), so the
 // comparison isolates framework overhead with the runtime held constant. Each
 // server binds a random port and prints `READY <port>`; the orchestrator then
-// drives it with the shared closed-loop load generator.
+// drives each route with the shared closed-loop load generator, run in a fresh
+// process so no target inherits another's pooled connections.
 //
 //   bun benchmarks/frameworks.bench.ts
-//   bun benchmarks/frameworks.bench.ts --duration 10000 --connections 100
+//   bun benchmarks/frameworks.bench.ts --duration 10000 --connections 100 --warmup 1000
 //
 // A framework that fails to boot is reported as "n/a" and never aborts the run.
 // ============================================================================
 
-import { runLoad, type LoadResult } from './lib/load';
+import { runLoadIsolated, type LoadResult } from './lib/load';
 
 function arg(name: string, fallback: number): number {
    const i = process.argv.indexOf(`--${name}`);
@@ -21,6 +22,9 @@ function arg(name: string, fallback: number): number {
 
 const DURATION = arg('duration', 5000);
 const CONNECTIONS = arg('connections', 50);
+// Each route is driven by a fresh client process, so its warmup also has to
+// settle that process's fetch/JSON JIT.
+const WARMUP = arg('warmup', 1000);
 const HERE = import.meta.dir;
 
 interface Target {
@@ -114,8 +118,8 @@ async function benchTarget(target: Target): Promise<Row> {
 
    try {
       const base = `http://localhost:${handle.port}`;
-      const json = await runLoad({ url: `${base}/json`, connections: CONNECTIONS, duration: DURATION });
-      const param = await runLoad({ url: `${base}/users/123`, connections: CONNECTIONS, duration: DURATION });
+      const json = await runLoadIsolated({ url: `${base}/json`, connections: CONNECTIONS, duration: DURATION, warmup: WARMUP });
+      const param = await runLoadIsolated({ url: `${base}/users/123`, connections: CONNECTIONS, duration: DURATION, warmup: WARMUP });
       const rssMb = await fetchRss(handle.port);
       return { name: target.name, ok: true, coldStartMs: handle.coldStartMs, rssMb, json, param };
    } finally {
@@ -123,40 +127,26 @@ async function benchTarget(target: Target): Promise<Row> {
    }
 }
 
-/**
- * Warm the load generator (this process) before measuring anything, so the
- * first framework in the list isn't penalised by the parent's cold fetch/JSON
- * JIT. Hammers a throwaway in-process server and discards the result.
- */
-async function primeGenerator() {
-   const server = Bun.serve({
-      port: 0,
-      fetch: () =>
-         new Response(JSON.stringify({ ok: true }), {
-            headers: { 'content-type': 'application/json' },
-         }),
-   });
-   await runLoad({
-      url: `http://localhost:${server.port}/`,
-      connections: CONNECTIONS,
-      duration: 1000,
-      warmup: 200,
-   });
-   server.stop();
-}
-
 function fmt(n: number | undefined, digits = 0): string {
    return n === undefined ? '—' : n.toFixed(digits);
 }
 
+function errorCount(r: Row): number {
+   return (r.json?.errors ?? 0) + (r.param?.errors ?? 0);
+}
+
 function printTable(rows: Row[]) {
-   const baseline = rows.find((r) => r.name === 'raw-hono' && r.ok)?.json?.rps;
+   // req/s counts successful responses only, so a row with failed requests
+   // reads as a slow framework. Never compare against one.
+   const hono = rows.find((r) => r.name === 'raw-hono' && r.ok);
+   const baseline = hono && errorCount(hono) === 0 ? hono.json?.rps : undefined;
 
    const header = [
       'framework'.padEnd(10),
       '/json req/s'.padStart(12),
       'p99 ms'.padStart(8),
       '/:id req/s'.padStart(11),
+      'errors'.padStart(7),
       'cold ms'.padStart(9),
       'rss MB'.padStart(8),
       'vs hono'.padStart(9),
@@ -169,17 +159,31 @@ function printTable(rows: Row[]) {
          console.log(`${r.name.padEnd(10)}  ${'FAILED — ' + (r.note ?? 'unknown')}`);
          continue;
       }
-      const vs = baseline && r.json ? `${((r.json.rps / baseline) * 100).toFixed(0)}%` : '—';
+      const errors = errorCount(r);
+      const vs = errors > 0
+         ? 'INVALID'
+         : baseline && r.json ? `${((r.json.rps / baseline) * 100).toFixed(0)}%` : '—';
       console.log(
          [
             r.name.padEnd(10),
             fmt(r.json?.rps).padStart(12),
             fmt(r.json?.latency.p99, 2).padStart(8),
             fmt(r.param?.rps).padStart(11),
+            String(errors).padStart(7),
             fmt(r.coldStartMs).padStart(9),
             fmt(r.rssMb, 1).padStart(8),
             vs.padStart(9),
          ].join('  '),
+      );
+   }
+
+   const invalid = rows.filter((r) => r.ok && errorCount(r) > 0).map((r) => r.name);
+   if (invalid.length) {
+      console.log(
+         `\nINVALID: ${invalid.join(', ')} had failed requests; their req/s counts only ` +
+         `successes and must not be compared.${baseline === undefined && hono?.ok ? ' No raw-hono baseline, so ratios are omitted.' : ''}` +
+         `\nOn Windows this is usually exhausted ephemeral ports (netstat -an | find /c "TIME_WAIT"); ` +
+         `wait for TIME_WAIT sockets to clear and run again.`,
       );
    }
 }
@@ -190,10 +194,6 @@ async function main() {
       `runtime held constant at bun ${Bun.version}\n` +
       `(raw Hono = floor; ratios are framework overhead with runtime fixed)`,
    );
-
-   process.stdout.write('\nwarming load generator … ');
-   await primeGenerator();
-   process.stdout.write('done');
 
    const rows: Row[] = [];
    for (const target of TARGETS) {

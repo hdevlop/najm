@@ -144,26 +144,36 @@ A `POST` body route remains ~6.3 us over raw Hono, against ~3.5 us for `GET`.
 
 ### Framework Comparison
 
-`bun run bench:frameworks` (50 connections, 5000ms per route)
+`bun run bench:frameworks` (50 connections, 5000ms per route, 1000ms warmup).
+Measured 2026-10-02 with Bun 1.3.14 on Windows x64, 0 failed requests:
 
-| Framework | `/json` req/s | `/users/:id` req/s | Cold start | RSS |
-| --- | ---: | ---: | ---: | ---: |
-| Fastify | 23,953 | 22,574 | 312 ms | 156.5 MB |
-| Najm | 24,768 | 23,211 | 122 ms | 85.4 MB |
-| NestJS | 18,325 | 16,009 | 654 ms | 158.1 MB |
+| Framework | `/json` req/s | `/users/:id` req/s | p99 `/json` | Cold start | RSS | vs raw Hono |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| raw Hono | 42,758 | 41,469 | 2.97 ms | 59 ms | 77.8 MB | 100% |
+| Elysia | 66,958 | 67,419 | 1.94 ms | 148 ms | 82.8 MB | 157% |
+| Najm | 33,685 | 32,421 | 3.38 ms | 92 ms | 87.7 MB | 79% |
+| Fastify | 32,482 | 30,940 | 3.57 ms | 268 ms | 165.7 MB | 76% |
+| NestJS (Fastify adapter) | 24,795 | 21,560 | 4.15 ms | 473 ms | 166.5 MB | 58% |
 
-Najm cleared the Tier 1 gate against Fastify in this run while keeping much
-lower cold start and RSS. The raw-Hono row in the same Windows/Bun
-self-contained load-driver run was unstable; keep raw-Hono visible when
-benchmarking, but cross-check with an external client before publishing
-raw-Hono ratios.
+Najm is ahead of Fastify and well ahead of NestJS, with the lowest cold start
+and roughly half their RSS. Elysia is faster than raw Hono on Bun; najm does not
+claim the raw-router crown.
+
+Earlier anchors (before 2026-10-02) are not comparable: the orchestrator drove
+every target from one long-lived client and reported successes only. Its
+load-generator warmup left keep-alive sockets pooled to a stopped server, so
+the next target paid a new connection per request (~12k `TIME_WAIT` sockets on
+Windows), and that is why the raw-Hono row read 750-5,800 req/s. Each route is
+now driven by a fresh client process, and a row with failed requests is marked
+`INVALID` and never used as the baseline.
 
 ### The framework comparison (`frameworks.bench.ts`)
 
 Each framework runs as its **own subprocess on the same runtime (Bun)**, binds a
 random port, and serves the identical route contract (`GET /json`,
 `GET /users/:id`). The orchestrator boots it, waits for `READY <port>`, drives
-it with the shared load generator, records **cold start** (spawn → listening)
+each route with the shared load generator in a fresh client process, records
+**cold start** (spawn → listening)
 and **RSS**, then kills it.
 
 Holding the runtime constant is deliberate: it isolates *framework* overhead. It
@@ -184,10 +194,11 @@ without external-client confirmation.
   back-to-back for `duration` ms; there is a short warmup that is not measured.
 - **Latency percentiles** — p50/p90/p99 computed from per-request wall time.
 - **Warmup** — the micro-benchmark warms the JIT (10% of iterations) before
-  timing. `frameworks.bench.ts` additionally **primes the load generator**
-  against a throwaway server before the first framework, so target ordering
-  doesn't penalise whoever runs first (the parent's `fetch`/JSON JIT is hot for
-  everyone).
+  timing. `frameworks.bench.ts` runs each route's load in a fresh client
+  process with a 1000ms unmeasured warmup (`--warmup`), so no target inherits
+  another's pooled connections and each client's `fetch`/JSON JIT is warm.
+- **Failed requests** — req/s counts successes only. The framework table shows
+  an errors column and marks any row with failures `INVALID`; do not quote it.
 - **Baseline first** — every run prints raw Hono so the overhead ratio is
   visible in the same output.
 - **Isolation** — each framework runs in its own process, so one framework's
