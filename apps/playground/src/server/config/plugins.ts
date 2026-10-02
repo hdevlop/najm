@@ -122,8 +122,8 @@ export const ragConfig = () => rag({
   allowedLangs: ['en', 'fr', 'ar', 'darija'],
 });
 
-// RAG Studio admin API (formerly rag({ studioApi: true })). The studio SPA is
-// served separately (here, embedded via the Next.js route in app/rag-studio).
+// RAG Studio admin API only (formerly rag({ studioApi: true })). There is no
+// Studio UI in this repo; `ui` is a no-op in najm-rag.
 export const ragStudioConfig = () => ragStudio({ ui: false });
 
 export const chatbotConfig = () => chatbot({
