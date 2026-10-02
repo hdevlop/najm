@@ -1,5 +1,18 @@
 # Changelog
 
+## 2.1.2
+
+- Ship the RAG Studio UI as `najm-rag/studio` (`RagStudioProvider`,
+  `RagStudio`) plus `najm-rag/studio/styles.css`. Mount it on one page of the
+  host app; it reuses the signed-in admin session and renders client-side.
+  React and React DOM are optional peers, needed only for the UI.
+- `ragStudio()` no longer requires `najm-chatbot`. The Studio Assistant is now
+  opt-in: apps that use it must pass `ragStudio({ assistant: true })` alongside
+  `studioAssistant()`.
+- The chatbot settings sheet in Chat Debug is enabled by passing
+  `chatSettingsPanel={AiSettingsPanel}` (from `najm-chatbot/react`) to the
+  provider.
+
 ## 2.1.1
 
 - Add opt-in shortening and normalization for longer OpenAI-compatible embedding
