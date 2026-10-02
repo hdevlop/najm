@@ -1,0 +1,91 @@
+/*
+ * RAG Studio — Tailwind v4 source.
+ * This is a Next.js app, so PostCSS picks it up automatically via postcss.config.mjs.
+ * The .rs-studio scope class is applied by the NajmThemeProvider / NPortalScopeProvider
+ * in studio.tsx + standalone.tsx; the studio's accent (violet) is set inline by the
+ * provider, so this stylesheet only declares the studio's custom aliases.
+ */
+@layer theme, base, components, utilities;
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
+@import "tailwindcss/utilities.css" layer(utilities);
+@import "najm-kit/theme.css";
+
+@theme {
+  --color-bg: var(--background);
+  --color-fg: var(--foreground);
+  --color-sidebar: var(--secondary);
+  --color-card: var(--card);
+  --color-card-hover: var(--accent);
+  --color-surface: var(--popover);
+  --color-surface-hover: var(--accent);
+  --color-brand: var(--primary);
+  --color-brand-hover: var(--ring);
+  --color-brand-muted: color-mix(in oklch, var(--primary), transparent 50%);
+  --color-brand-glow: color-mix(in oklch, var(--primary), transparent 82%);
+  --color-txt: var(--foreground);
+  --color-txt-primary: var(--foreground);
+  --color-txt-secondary: var(--muted-foreground);
+  --color-txt-muted: color-mix(in oklch, var(--muted-foreground), transparent 20%);
+  --color-status-green: oklch(0.7235 0.1846 149.234);
+  --color-status-yellow: oklch(0.7956 0.1842 84.616);
+  --color-status-red: oklch(0.6368 0.2078 25.326);
+  --color-ring-offset-bg: var(--background);
+
+  --shadow-brand-glow: 0 0 20px var(--color-brand-glow);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.rs-studio {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.rs-studio ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.rs-studio ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rs-studio ::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 3px;
+}
+
+.rs-studio ::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+.rs-studio ::selection {
+  background: color-mix(in oklch, var(--primary), transparent 70%);
+  color: var(--foreground);
+}
+
+@layer utilities {
+  .focus-ring {
+    @apply focus:outline-none focus:ring-2 focus:ring-brand focus:ring-offset-2 focus:ring-offset-bg;
+  }
+}
+
+/* ========== CodeMirror — Thin Scrollbar ========== */
+
+.cm-scroller::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.cm-scroller::-webkit-scrollbar-track {
+  background: transparent;
+}
+.cm-scroller::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 140, 0.25);
+  border-radius: 10px;
+}
+.cm-scroller::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 140, 0.45);
+}
+.cm-scroller::-webkit-scrollbar-corner {
+  background: transparent;
+}

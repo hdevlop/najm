@@ -1,6 +1,6 @@
 # najm-rag
 
-RAG (Retrieval-Augmented Generation) engine for the Najm framework. Provides semantic tool routing, document ingestion, embeddings, vector search, and a hosted RAG Studio admin UI.
+RAG (Retrieval-Augmented Generation) engine for the Najm framework. Provides semantic tool routing, document ingestion, embeddings, vector search, and the RAG Studio admin UI (`najm-rag/studio`).
 
 ## Installation
 
@@ -14,7 +14,7 @@ bun add najm-rag
 
 **Knowledge RAG:** Upload PDFs, plain text, and markdown documents. Chunks are embedded and stored in a vector database for retrieval-augmented chat.
 
-**RAG Studio:** A hosted admin UI served on the same port (`/rag-studio`) for live tuning of routing settings, semantic phrases, document management, and routing tests — no redeploy needed.
+**RAG Studio:** An admin UI for live tuning of routing settings, semantic phrases, documents, and routing tests — no redeploy needed. `ragStudio()` serves its admin API; you mount `<RagStudio />` from `najm-rag/studio` as a page in your own app, on the same origin, so it reuses the signed-in admin session. It is optional: `rag()` works without it.
 
 ## Quick Start
 
@@ -41,21 +41,50 @@ await server.listen(3000);
 
 ### With RAG Studio
 
-```typescript
-server
-  .use(mcp({ path: '/mcp' }))
-  .use(rag({
-    dialect: 'sqlite',
-    toolRouting: { enabled: true },
-    studio: {
-      enabled: true,
-      access: 'token',   // requires RAG_STUDIO_TOKEN env var (>= 32 chars)
-    },
-  }))
-  .use(chatbot());
+Server: register the admin API. It needs `rag`, `auth`, and `database`; every
+route is `@isAdmin()` gated.
 
-// Open http://localhost:3000/rag-studio
+```typescript
+import { rag, ragStudio } from 'najm-rag';
+
+server
+  .use(auth({ ... }))
+  .use(database({ default: db }))
+  .use(rag({ dialect: 'sqlite', toolRouting: { enabled: true } }))
+  .use(ragStudio());   // admin API at /rag-studio
 ```
+
+Client: mount the UI on one page of your app (React; `'use client'` in Next).
+It renders after hydration, so no `ssr: false` is needed.
+
+```tsx
+// app/rag-studio/[[...slug]]/page.tsx (Next.js) — or any React route
+'use client';
+import { RagStudioProvider, RagStudio } from 'najm-rag/studio';
+import 'najm-rag/studio/styles.css';
+
+export default function RagStudioPage() {
+  return (
+    <RagStudioProvider apiBase="/api/rag-studio" basePath="/rag-studio">
+      <div style={{ height: '100dvh' }}>
+        <RagStudio />
+      </div>
+    </RagStudioProvider>
+  );
+}
+```
+
+Protect the page route for admins in your app as well (the API already is), so
+signed-out visitors are sent to your login page instead of seeing API errors.
+
+Optional extras:
+
+- `ragStudio({ assistant: true })` adds the Studio Assistant. It requires
+  `studioAssistant()` from `najm-chatbot`.
+- `chatSettingsPanel={AiSettingsPanel}` (from `najm-chatbot/react`) on the
+  provider enables the chatbot settings sheet in Chat Debug.
+- `auth="standalone"` on the provider shows the studio's own login screen and
+  uses a Bearer token, for hosts without a session-based login.
 
 ### Knowledge RAG
 
@@ -68,7 +97,6 @@ server
   .use(rag({
     dialect: 'sqlite',
     knowledge: true,    // enable document ingestion + search
-    studio: { enabled: true, access: 'token' },
   }))
   .use(chatbot());
 ```
@@ -151,17 +179,12 @@ rag({
 })
 ```
 
-### `studio`
+### `ragStudio()`
 
 ```typescript
-rag({
-  studio: {
-    enabled: true,       // serve RAG Studio UI (default: false)
-    path: '/rag-studio',   // mount path (default: '/rag-studio')
-    access: 'token',      // 'none' | 'token' | 'admin' | 'custom'
-    tokenEnvVar: 'RAG_STUDIO_TOKEN',  // env var name for token access
-    customGuard: async (req) => true,  // only for access: 'custom'
-  },
+ragStudio({
+  assistant: false,     // register the Studio Assistant (needs najm-chatbot's studioAssistant())
+  auth: 'session',      // 'session' (host cookies) | 'standalone' (Bearer login in the UI)
 })
 ```
 
@@ -197,16 +220,11 @@ rag({
 
 The JSON file format is deprecated — use the TypeScript plugin options above. The JSON loader exists for backward compatibility with existing `routing.json` files.
 
-## Studio Access Modes
+## Studio Access
 
-| Mode | Auth method | Production safe? |
-|------|-------------|-----------------|
-| `'token'` | Bearer token via `Authorization` header or `?token=` query param | Yes — requires `RAG_STUDIO_TOKEN` env var (>= 32 chars) |
-| `'admin'` | Uses `najm-auth` admin guard (`@isAdministrator()` on all routes) | Yes |
-| `'custom'` | Provide your own guard via `studio.customGuard` | Yes |
-| `'none'` | Loopback only (127.0.0.1/localhost) | **No** — only for local development |
-
-The Studio is **disabled by default**. It only runs when `studio.enabled === true`. All write operations are audited in the `chatbot_studio_audit_logs` table.
+RAG Studio is off unless you register `ragStudio()`. Every studio API route
+uses `najm-auth`'s `@isAdmin()` guard (role `admin`). All write operations are
+audited in the `chatbot_studio_audit_logs` table.
 
 ## Schema
 
@@ -301,9 +319,9 @@ Imports `semantics.json` directly into the database (`chatbot_tool_semantics` ta
 | `DELETE` | `/chatbot-rag/knowledge/documents/:id` | Delete document + chunks + embeddings |
 | `POST` | `/chatbot-rag/knowledge/documents/:id/reindex` | Re-chunk and re-embed a document |
 
-### RAG Studio API (`/rag-studio/api`) — access controlled
+### RAG Studio API (`/rag-studio`) — requires `@isAdmin()`
 
-All routes under `/rag-studio/api/*` are protected by the studio access mode. Knowledge operations require `knowledge: true` in the config.
+Registered by `ragStudio()`. Knowledge operations require `knowledge: true` in the `rag()` config.
 
 ## Hot-Reload Behavior
 
@@ -326,8 +344,13 @@ The following settings are **boot-only** (require restart):
 // Plugin
 export { rag } from 'najm-rag';
 export type { RagConfig, RagMergedConfig, RagDialect, RagEmbeddingConfig,
-                RagToolRoutingConfig, RagKnowledgeConfig, RagSchema,
-                RagStudioConfig, StudioAccess } from 'najm-rag';
+                RagToolRoutingConfig, RagKnowledgeConfig, RagSchema } from 'najm-rag';
+export { ragStudio } from 'najm-rag';
+export type { RagStudioOptions } from 'najm-rag';
+
+// Studio UI (React)
+export { RagStudioProvider, RagStudio, useStudioAuth } from 'najm-rag/studio';
+import 'najm-rag/studio/styles.css';
 
 // Token providers (used by najm-chatbot)
 export { RAG_TOOL_PROVIDER } from 'najm-rag';
@@ -339,7 +362,6 @@ export { EmbeddingService, ToolIndexRepository, ToolIndexerService, ToolRouterSe
 export { RoutingSettingsService, RoutingSettingsRepository } from 'najm-rag';
 export { KnowledgeService, KnowledgeRepository, DocumentSourceRepository,
          DocumentIngestionService, PdfExtractor, TextChunker, MarkdownChunker } from 'najm-rag';
-export { StudioService } from 'najm-rag';
 
 // Schema
 export { ragSchema } from 'najm-rag/sqlite';
@@ -381,9 +403,8 @@ najm-rag/
 │   │   ├── TextChunker.ts         # paragraph/token budget split
 │   │   ├── MarkdownChunker.ts
 │   │   └── PdfExtractor.ts         # pdf-parse wrapper
-│   ├── studio/          # RAG Studio service + routes
-│   │   ├── StudioService.ts        # access control + API routing + audit
-│   │   └── StudioController.ts    # decorator-based routes (unused)
+│   ├── studio/          # ragStudio() plugin + admin API controllers
+│   ├── studio-ui/       # RAG Studio React UI → dist/studio (najm-rag/studio)
 │   ├── schema/          # Drizzle table definitions per dialect
 │   │   ├── sqlite.ts    # includes chatbot_studio_audit_logs
 │   │   ├── pg.ts
@@ -392,19 +413,6 @@ najm-rag/
 │   ├── tokens.ts        # DI token symbols
 │   ├── provider.ts       # RAG_TOOL_PROVIDER interface
 │   └── plugin.ts         # rag() factory
-└── studio/               # React SPA (Vite build → dist/studio/)
-    ├── src/
-    │   ├── components/
-    │   │   ├── layout/      # AppShell, Sidebar, InspectorPanel
-    │   │   ├── chat/         # ChatArea, MessageList, CitationBadge
-    │   │   ├── knowledge/    # DocumentList, ChunkTable, UploadDialog
-    │   │   ├── routing/      # ToolList, SemanticsEditor, RoutingLab
-    │   │   ├── settings/    # SettingsPanel, IndexSettings, AccessSettings
-    │   │   └── ui/           # shadcn/ui components
-    │   ├── hooks/      # useApi, useWorkspace
-    │   ├── lib/        # api.ts (token acquisition + fetch wrapper)
-    │   └── types/      # studio.ts (TypeScript interfaces)
-    └── vite.config.ts  # dev proxy → :3000, output → dist/studio
 ```
 
 ## Provider Contract
@@ -421,4 +429,5 @@ najm-rag/
 |------------|----------------|
 | `najm-mcp` | `toolRouting.enabled === true` (tool index uses MCP registry) |
 | `najm-storage` | `knowledge.enabled === true` (document file storage) |
-| `najm-auth` | `studio.access === 'admin'` (admin guard on all studio routes) |
+| `najm-auth` | `ragStudio()` (admin guard on all studio routes) |
+| `react`, `react-dom` | `najm-rag/studio` UI only (optional peers) |
