@@ -61,6 +61,28 @@ export function getModelPricing(provider: string, model: string): ModelPricing |
   return null;
 }
 
+/** Usage as the AI SDK reports it: v5+ names first, legacy v4 names accepted. */
+export interface ReportedUsage {
+  inputTokens?: number;
+  outputTokens?: number;
+  promptTokens?: number;
+  completionTokens?: number;
+}
+
+/**
+ * Prompt/completion counts for `calculateCost`, or null when the provider
+ * reported nothing usable. Pass the aggregate `totalUsage` of a multi-step
+ * answer, not the final step's `usage`, or earlier steps go uncounted.
+ */
+export function normalizeUsage(usage: ReportedUsage | undefined): { promptTokens: number; completionTokens: number } | null {
+  if (!usage) return null;
+  const promptTokens = Number(usage.inputTokens ?? usage.promptTokens ?? 0);
+  const completionTokens = Number(usage.outputTokens ?? usage.completionTokens ?? 0);
+  if (!Number.isFinite(promptTokens) || !Number.isFinite(completionTokens)) return null;
+  if (promptTokens === 0 && completionTokens === 0) return null;
+  return { promptTokens, completionTokens };
+}
+
 export function calculateCost(
   provider: string,
   model: string,

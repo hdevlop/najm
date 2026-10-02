@@ -4,6 +4,7 @@ export type {
   ChatbotRagConfig,
   ChatbotToolRoutingConfig,
   ChatbotLoggingConfig,
+  ChatbotStreamTimeout,
   ToolRoutingFallback,
 } from './ChatbotPlugin';
 export { CHATBOT_CONFIG, CHATBOT_SCHEMA, CHATBOT_ROUTING_PROVIDER, CHATBOT_CONTEXT_PROVIDER } from './tokens';
@@ -33,8 +34,8 @@ export type { LlmProvider, ProviderMeta, LlmSettings } from './agent/LlmProvider
 
 export { buildAiSdkTools, schemaToZod } from './agent/McpToolAdapter';
 
-export { calculateCost, getModelPricing } from './agent/modelPricing';
-export type { ModelPricing, UsageCost } from './agent/modelPricing';
+export { calculateCost, getModelPricing, normalizeUsage } from './agent/modelPricing';
+export type { ModelPricing, ReportedUsage, UsageCost } from './agent/modelPricing';
 
 export { ChatAgent } from './agent/ChatAgent';
 

@@ -1,14 +1,14 @@
 import { Service, Inject, Meta, DI, type Container } from 'najm-core';
 import { convertToModelMessages, generateText, stepCountIs, streamText } from 'ai';
 import type { UIMessage } from 'ai';
-import { calculateCost, type UsageCost } from './modelPricing';
+import { calculateCost, normalizeUsage, type ReportedUsage, type UsageCost } from './modelPricing';
 import { USER } from 'najm-guard';
 import { McpRegistryService, McpBuilderService, TOOL_PROVIDER, type ToolProvider } from 'najm-mcp';
 import { CHATBOT_CONFIG, CHATBOT_CONTEXT_PROVIDER, CHATBOT_ROUTING_PREVIEW_PROVIDER, type ChatbotContextProvider, type ChatbotRoutingPreviewProvider } from '../tokens';
 import type { ChatbotConfig } from '../ChatbotPlugin';
 import { AiSettingsService } from '../ai-settings/AiSettingsService';
 import { buildModel, type LlmSettings, type LlmProvider } from './LlmProviderFactory';
-import { buildAiSdkTools } from './McpToolAdapter';
+import { buildAiSdkTools, DEFAULT_READ_ONLY_MESSAGE } from './McpToolAdapter';
 import { truncatePreview } from './previewTruncate';
 import {
   CacheConversationStore,
@@ -258,6 +258,7 @@ export class ChatAgent {
       messages: await toModelMessages(promptMessages),
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       stopWhen: stepCountIs(this.config.maxSteps ?? 10),
+      timeout: this.config.streamTimeout,
       onFinish: async ({ response, steps, usage }) => {
         const userText = getLatestUserText(input.messages);
 
@@ -614,17 +615,14 @@ export class ChatAgent {
 
   private computeUsageCost(
     settings: { provider: string; model?: string },
-    usage: { promptTokens?: number; completionTokens?: number; totalTokens?: number } | undefined,
+    usage: ReportedUsage | undefined,
   ): (UsageCost & { provider: string; model: string }) | null {
-    if (!usage) return null;
-    const promptTokens = Number(usage.promptTokens ?? 0);
-    const completionTokens = Number(usage.completionTokens ?? 0);
-    if (!Number.isFinite(promptTokens) || !Number.isFinite(completionTokens)) return null;
-    if (promptTokens === 0 && completionTokens === 0) return null;
+    const counts = normalizeUsage(usage);
+    if (!counts) return null;
 
     const provider = settings.provider;
     const model = settings.model ?? 'llama3.1';
-    const cost = calculateCost(provider, model, promptTokens, completionTokens);
+    const cost = calculateCost(provider, model, counts.promptTokens, counts.completionTokens);
     return { ...cost, provider, model };
   }
 
@@ -638,7 +636,8 @@ export class ChatAgent {
   private getReadOnlyToolMessage(tool: { name: string; confirmation?: { message?: string } }): string {
     const baseMessage = this.translate(
       'assistant.security.readOnlyMode',
-      'For safety, this assistant can currently read and search data only. Actions that create, update, delete, checkout, assign, remove, or clear data will be available after confirmation approval is added.',
+      // Model-facing: the appended confirmation prompt is often a question, so say plainly nothing ran.
+      DEFAULT_READ_ONLY_MESSAGE,
     );
     const confirmationMessage = tool.confirmation?.message
       ? this.translate(tool.confirmation.message, tool.confirmation.message)

@@ -10,8 +10,8 @@ export interface BuildAiSdkToolsOptions {
   readOnlyMessage?: (tool: RegisteredTool) => string;
 }
 
-const DEFAULT_READ_ONLY_MESSAGE =
-  'For safety, this assistant can currently read and search data only. Actions that create, update, delete, checkout, assign, remove, or clear data will be available after confirmation approval is added.';
+export const DEFAULT_READ_ONLY_MESSAGE =
+  'Not done. For safety, this assistant can only read and search data; it cannot create, update, delete, checkout, assign, remove, or clear records, and confirming in the chat does not change that. Do not ask the user to confirm. Tell them to make this change in the app.';
 
 const EMPTY_OBJECT_JSON_SCHEMA: JSONSchema7 = {
   type: 'object',

@@ -45,6 +45,17 @@ export interface ChatbotLoggingConfig {
   enabled?: boolean;
 }
 
+/**
+ * Bounds for a streamed answer, passed to the AI SDK's `streamText` timeout.
+ * `chunkMs` ends a stream that goes silent mid-answer; it also runs while a
+ * tool executes, so keep it above the slowest tool call. Defaults to 60 s.
+ */
+export interface ChatbotStreamTimeout {
+  chunkMs?: number;
+  stepMs?: number;
+  totalMs?: number;
+}
+
 export interface ChatbotConfig {
   configPath?: string;
   mode?: 'off' | 'rag' | 'routing';
@@ -52,6 +63,7 @@ export interface ChatbotConfig {
   schema?: ChatbotSchema;
   defaultSystemPrompt?: string;
   maxSteps?: number;
+  streamTimeout?: ChatbotStreamTimeout;
   maxPromptMessages?: number;
   maxStoredMessages?: number;
   routingHistoryMessages?: number;
@@ -195,6 +207,7 @@ const mergeConfig = (config?: ChatbotConfig): ChatbotConfig => {
     dialect,
     defaultSystemPrompt: effective.defaultSystemPrompt ?? '',
     maxSteps: effective.maxSteps ?? 10,
+    streamTimeout: { chunkMs: 60_000, ...effective.streamTimeout },
     maxPromptMessages: effective.maxPromptMessages ?? 10,
     maxStoredMessages: effective.maxStoredMessages ?? 100,
     routingHistoryMessages: effective.routingHistoryMessages ?? 2,
