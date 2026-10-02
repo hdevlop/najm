@@ -125,12 +125,18 @@ export class MiddlewareService {
       const requestIdGenerator = this.parsedConfig.requestId ?? 'fast';
 
       return async (context: Context, next: Next) => {
+         // The DI scope is keyed by `requestId`, so it is always generated
+         // here: a client-chosen header value would let concurrent requests
+         // share request-scoped instances. The header only sets the
+         // correlation id that is logged and echoed back.
+         const scopeId = requestIdGenerator === 'uuid' ? randomUUID() : createFastRequestId();
          const requestId = context.req.header(headerName)
-            || this.createRequestId(context, requestIdGenerator);
+            || (typeof requestIdGenerator === 'function' ? requestIdGenerator(context) : scopeId);
 
          return this.container.run(
             {
-               requestId,
+               requestId: scopeId,
+               correlationId: requestId,
                context
             },
             async () => {
@@ -154,8 +160,8 @@ export class MiddlewareService {
                   }
                } finally {
                   try {
-                     if (this.container.hasRequestScope(requestId)) {
-                        await this.container.cleanupReq(requestId);
+                     if (this.container.hasRequestScope(scopeId)) {
+                        await this.container.cleanupReq(scopeId);
                      }
                   } catch (error) {
                      this.log.error?.('Failed to cleanup request scope', error);
@@ -166,17 +172,6 @@ export class MiddlewareService {
             }
          );
       };
-   }
-
-   private createRequestId(
-      context: Context,
-      generator: NonNullable<MiddlewareConfig['requestId']>
-   ): string {
-      if (typeof generator === 'function') {
-         return generator(context);
-      }
-
-      return generator === 'uuid' ? randomUUID() : createFastRequestId();
    }
 
    private registerConfigMiddleware(): void {

@@ -4,7 +4,7 @@ import { LOGGER } from '../server/tokens';
 import type { LoggerService } from '../logging';
 import type { ParamInjection } from './types';
 import { ParamResolver } from './ParamResolver';
-import { getParameterMetadata } from './metadata';
+import { getParameterMetadata, getParameterCount } from './metadata';
 
 // A custom resolver may return a promise, so it never takes the sync fast path.
 const ASYNC_PARAM_TYPES = new Set(['body', 'file', 'json', 'text', 'formData', 'arrayBuffer', 'blob', 'custom']);
@@ -64,7 +64,7 @@ export class ParamService {
    }
 
    private canResolveSync(handler: Function, metadata: ReturnType<typeof getParameterMetadata>): boolean {
-      return metadata.length === handler.length
+      return metadata.length === getParameterCount(handler, metadata)
          && metadata.every((meta) => !ASYNC_PARAM_TYPES.has(meta.type));
    }
 

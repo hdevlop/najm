@@ -21,7 +21,7 @@ export * from './errors';
 // Boot Module - ALS Tokens
 // ============================================================================
 export { BootService, BootDiagnostics } from './boot';
-export { REQUEST_ID } from './boot/alsTokens';
+export { REQUEST_ID, CORRELATION_ID } from './boot/alsTokens';
 
 // ============================================================================
 // Scanner Module

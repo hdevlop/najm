@@ -1,5 +1,5 @@
 import type { CoreService } from './types';
-import { Container, DI, Meta, Scope, Service } from 'diject';
+import { Container, DI, Meta, Scope, Service, type Token } from 'diject';
 import { LoggerService } from '../logging/LoggerService';
 import { DECLARED_PLUGIN_SERVICES, DECLARED_PLUGIN_BOOT_SERVICES, DECLARED_APP_SERVICES } from '../server/tokens';
 
@@ -17,6 +17,7 @@ export class BootService {
    @DI() container!: Container;
 
    private infrastructure: CoreService[] = [];
+   private appServices: CoreService[] = [];
    private lifecycleTimings: BootTiming[] = [];
    private readonly slowPhaseThresholdMs = 500;
 
@@ -41,11 +42,29 @@ export class BootService {
    // TEARDOWN
    // ============================================================================
 
+   /**
+    * Tears down app services, then infrastructure, each in reverse boot order.
+    * Safe after a partial boot. A failing onDestroy does not stop the rest;
+    * failures are rethrown once everything has been attempted.
+    */
    async destroy(): Promise<void> {
-      for (const service of [...this.infrastructure].reverse()) {
-         if (typeof service.onDestroy === 'function') {
+      const services = [...new Set([...this.infrastructure, ...this.appServices])].reverse();
+      this.infrastructure = [];
+      this.appServices = [];
+
+      const errors: unknown[] = [];
+      for (const service of services) {
+         if (typeof service?.onDestroy !== 'function') continue;
+         try {
             await service.onDestroy();
+         } catch (error) {
+            errors.push(error);
          }
+      }
+
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) {
+         throw new AggregateError(errors, `${errors.length} services failed to tear down`);
       }
    }
 
@@ -65,9 +84,26 @@ export class BootService {
          .filter((token) => (!declaredPlugins || declaredPlugins.has(token as Function)) &&
             (!bootPlugins || bootPlugins.has(token as Function)));
       const infrastructureTokens = [...coreTokens, ...pluginTokens];
-      this.infrastructure = infrastructureTokens.length
-         ? await this.container.boot(infrastructureTokens)
-         : [];
+      this.infrastructure = [];
+      await this.bootTokens(infrastructureTokens, this.infrastructure);
+   }
+
+   /**
+    * Record successful resolutions immediately: transient instances are not
+    * cached in the registry and must remain available after a later failure.
+    */
+   private async bootTokens(
+      tokens: Token[],
+      built: CoreService[],
+   ): Promise<void> {
+      if (!tokens.length) return;
+      for (const token of tokens) {
+         built.push(await this.container.resolve<CoreService>(token));
+      }
+
+      // Preserve diject's onBootComplete notification without resolving the
+      // transient services again. Container resolves to the existing container.
+      await this.container.boot([Container]);
    }
 
    // ============================================================================
@@ -108,7 +144,8 @@ export class BootService {
       const bootableTokens = appTokens.filter(
          (token) => this.container.registry.get(token)?.scope !== Scope.REQUEST,
       );
-      if (bootableTokens.length) await this.container.boot(bootableTokens);
+      this.appServices = [];
+      await this.bootTokens(bootableTokens, this.appServices);
    }
 
    public getTimings(): readonly BootTiming[] {

@@ -14,12 +14,17 @@ export type FetchHandler = (req: Request, env?: unknown) => Response | Promise<R
 
 export type ServerHandle = {
    readonly port: number;
-   stop?: () => void | Promise<void>;
+   /**
+    * Stops accepting connections and closes idle keep-alive connections;
+    * resolves once active requests finish. `force` closes the remaining
+    * connections instead of waiting.
+    */
+   stop?: (force?: boolean) => void | Promise<void>;
 };
 
 export async function createListener(fetch: FetchHandler, port: number): Promise<ServerHandle> {
    if (hasBunServe()) {
-      return Bun.serve({ fetch, port });
+      return createBunListener(fetch, port);
    }
 
    return createNodeListener(fetch, port);
@@ -27,6 +32,28 @@ export async function createListener(fetch: FetchHandler, port: number): Promise
 
 function hasBunServe(): boolean {
    return typeof Bun !== 'undefined' && typeof Bun.serve === 'function';
+}
+
+function createBunListener(fetch: FetchHandler, port: number): ServerHandle {
+   // closeIdleConnections exists at runtime but is missing from older bun-types.
+   const bunServer: ReturnType<typeof Bun.serve> & { closeIdleConnections?: () => void } =
+      Bun.serve({ fetch, port });
+
+   return {
+      get port() {
+         return bunServer.port;
+      },
+      stop: async (force) => {
+         // A graceful stop leaves keep-alive sockets open, so a pooled client
+         // connection keeps reaching this server, even after another server
+         // binds the port. Bun ignores a later forced stop, so idle sockets are
+         // closed now and the busy ones once their requests finish.
+         const stopped = bunServer.stop(force);
+         bunServer.closeIdleConnections?.();
+         await stopped;
+         bunServer.closeIdleConnections?.();
+      },
+   };
 }
 
 async function createNodeListener(fetch: FetchHandler, port: number): Promise<ServerHandle> {
@@ -53,11 +80,15 @@ async function createNodeListener(fetch: FetchHandler, port: number): Promise<Se
          const address = nodeServer.address();
          return typeof address === 'object' && address !== null ? address.port : resolvedPort;
       },
-      stop: () => stopNodeServer(nodeServer),
+      stop: (force) => stopNodeServer(nodeServer, force),
    };
 }
 
-function stopNodeServer(nodeServer: any): Promise<void> {
+function stopNodeServer(nodeServer: any, force = false): Promise<void> {
+   // close() waits for every open connection; dropping them is the only way
+   // to bound a stalled request. Available on http/https servers (Node 18.2+).
+   if (force) nodeServer.closeAllConnections?.();
+
    return new Promise<void>((resolve, reject) => {
       if ('listening' in nodeServer && !nodeServer.listening) {
          resolve();

@@ -7,7 +7,7 @@ import { ParameterMetadata, HRequest, ParamResolveContext } from './types';
 import { CONTEXT } from './tokens';
 import { Context } from 'hono';
 import { Err } from '../errors';
-import { getParameterMetadata } from './metadata';
+import { getParameterMetadata, getParameterCount } from './metadata';
 import { getRequestData, getRequestParser } from './requestContext';
 import { resolveCustomParam } from './customParams';
 
@@ -47,7 +47,7 @@ export class ParamResolver {
 
    async resolveArgs(handler: Function): Promise<any[]> {
       const paramMetadata = this.getCachedParameterMetadata(handler);
-      const paramCount = handler.length;
+      const paramCount = getParameterCount(handler, paramMetadata);
 
       if (paramCount === 0) return [];
 

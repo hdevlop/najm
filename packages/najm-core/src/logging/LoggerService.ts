@@ -1,5 +1,5 @@
 
-import { REQUEST_ID } from '../boot/alsTokens';
+import { REQUEST_ID, CORRELATION_ID } from '../boot/alsTokens';
 import { ServerLog } from './ServerLog';
 import { SERVER_OPTS } from '../server/tokens';
 import type { LogEntry, LoggerConfig } from './types';
@@ -200,7 +200,7 @@ export class LoggerService extends ServerLog {
       }
 
       if (this.includeRequestId && this.container && this.container.isActive()) {
-         const requestId = this.container.get(REQUEST_ID);
+         const requestId = this.container.get(CORRELATION_ID) ?? this.container.get(REQUEST_ID);
          if (requestId) {
             entry.requestId = requestId;
          }

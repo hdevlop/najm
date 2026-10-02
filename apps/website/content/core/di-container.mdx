@@ -420,7 +420,7 @@ container.set(UserService);
 Access request-scoped data via ALS tokens:
 
 ```typescript
-import { REQUEST_ID, CONTEXT } from 'najm-core';
+import { REQUEST_ID, CORRELATION_ID, CONTEXT } from 'najm-core';
 import { USER } from 'najm-guard';
 
 @Service()
@@ -428,8 +428,11 @@ class MyService {
   @DI() container!: Container;
 
   doSomething() {
-    // Get request ID
+    // Server-generated id that keys this request's DI scope
     const requestId = this.container.get(REQUEST_ID);
+
+    // Client-supplied x-request-id (or requestId); use for logs and tracing
+    const correlationId = this.container.get(CORRELATION_ID);
 
     // Get Hono context
     const context = this.container.get(CONTEXT);
@@ -437,7 +440,7 @@ class MyService {
     // Get authenticated user
     const user = this.container.get(USER);
 
-    console.log({ requestId, user });
+    console.log({ requestId, correlationId, user });
   }
 }
 ```

@@ -28,6 +28,16 @@ export { handle } from './handle';
 
 const CORE_SERVICES = [BootService, LoggerService, ScannerService];
 
+/** Resolves true if `promise` settles within `ms`, false on timeout; rejects if it rejects first. */
+function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
+   let timer: ReturnType<typeof setTimeout> | undefined;
+   const timedOut = new Promise<boolean>((resolve) => {
+      timer = setTimeout(() => resolve(false), ms);
+      (timer as { unref?: () => void }).unref?.();
+   });
+   return Promise.race([promise.then(() => true), timedOut]).finally(() => clearTimeout(timer));
+}
+
 type ShutdownSignal = 'SIGINT' | 'SIGTERM';
 
 const enum ServerState {
@@ -35,6 +45,7 @@ const enum ServerState {
    INITIALIZING = 'initializing',
    READY = 'ready',
    FAILED = 'failed',
+   STOPPING = 'stopping',
    STOPPED = 'stopped',
 }
 
@@ -53,6 +64,7 @@ export class Server {
 
    private server?: ServerHandle;
    private initPromise?: Promise<void>;
+   private stopPromise?: Promise<void>;
    private initError?: unknown;
    private _fetchHandler?: (req: Request) => Promise<Response>;
    private shutdownHandlers?: Array<{ signal: ShutdownSignal; handler: () => void }>;
@@ -197,6 +209,7 @@ export class Server {
    private createFetchHandler(): (req: Request, env?: unknown) => Response | Promise<Response> {
       return (req, env) => {
          try {
+            this.assertNotStopped();
             // Forward the runtime binding so `c.env` can yield the socket peer.
             const response = this.app.fetch(req, env as Parameters<typeof this.app.fetch>[1]);
             return response instanceof Promise
@@ -255,46 +268,74 @@ export class Server {
    public get fetch(): (req: Request) => Promise<Response> {
       return (this._fetchHandler ??= async (req) => {
          await this.ensureInitialized();
+         this.assertNotStopped();
          return this.app.fetch(req);
       });
    }
 
    public async stop(): Promise<void> {
+      if (this.stopPromise) return this.stopPromise;
       const shouldDestroy = this.state === ServerState.READY;
       const server = this.server;
 
       if (!shouldDestroy && !server) return;
 
+      this.state = ServerState.STOPPING;
+      return (this.stopPromise = this.shutdown(server, shouldDestroy));
+   }
+
+   private async shutdown(server: ServerHandle | undefined, shouldDestroy: boolean): Promise<void> {
+      const errors: unknown[] = [];
+      this.removeGracefulShutdownHandlers();
+
+      // 1–2. Stop accepting connections and drain in-flight requests. The
+      // runtime's close waits for active requests, so the timeout must bound
+      // the close itself, not start after it.
       try {
-         this.removeGracefulShutdownHandlers();
-
-         // 1. Stop accepting new connections.
-         await server?.stop?.();
-
-         // 2. Drain: let in-flight requests finish (up to the configured timeout).
-         if (this.inFlight > 0) {
-            const timeout = this.resolveShutdownTimeout();
-            const drained = await this.drainInFlight(timeout);
-            if (!drained) {
-               this.logger.warn(
-                  `Shutdown drain timed out after ${timeout}ms with ${this.inFlight} request(s) still in flight`,
-               );
-            }
-         }
-
-         // 3. Run onDestroy lifecycle on all services (reverse boot order).
-         if (shouldDestroy) {
-            const bootService = this.container.get(BootService);
-            if (bootService) await bootService.destroy();
-         }
-
-         this.server = undefined;
-         this.state = ServerState.STOPPED;
-         this.initPromise = undefined;
-         this._fetchHandler = undefined;
-         this.logger.serverStopped();
+         await this.closeListener(server);
       } catch (error) {
-         throw Err.stopFailed(error);
+         errors.push(error);
+      }
+
+      // 3. Run onDestroy lifecycle on all services (reverse boot order).
+      if (shouldDestroy) {
+         try {
+            await this.container.get(BootService)?.destroy();
+         } catch (error) {
+            errors.push(error);
+         }
+      }
+
+      // Stopped even when cleanup failed: the instance must not keep serving.
+      this.server = undefined;
+      this.state = ServerState.STOPPED;
+      this.initPromise = undefined;
+      this.stopPromise = undefined;
+      this._fetchHandler = undefined;
+
+      if (errors.length) {
+         throw Err.stopFailed(errors.length === 1
+            ? errors[0]
+            : new AggregateError(errors, `${errors.length} shutdown steps failed`));
+      }
+
+      this.logger.serverStopped();
+   }
+
+   private async closeListener(server: ServerHandle | undefined): Promise<void> {
+      const timeout = this.resolveShutdownTimeout();
+      const closed = Promise.all([server?.stop?.(), this.waitForInFlight()]);
+      const finished = await settlesWithin(closed, timeout);
+
+      if (!finished) {
+         this.logger.warn(this.inFlight > 0
+            ? `Shutdown drain timed out after ${timeout}ms with ${this.inFlight} request(s) still in flight; closing connections`
+            : `Shutdown drain timed out after ${timeout}ms; closing connections`);
+         // Not awaited: Bun's forced stop still settles only when the stalled
+         // handler does (or its idle timeout fires), which would unbound stop().
+         Promise.resolve(server?.stop?.(true)).catch((error) => {
+            this.logger.error('Forced listener close failed', error);
+         });
       }
    }
 
@@ -311,15 +352,22 @@ export class Server {
    // ============================================================================
 
    private async ensureInitialized(): Promise<void> {
+      this.assertNotStopped();
       if (this.state === ServerState.READY) return;
-      if (this.state === ServerState.STOPPED) {
-         Err.invalidState('Server was stopped; create a new Server instance');
-      }
       if (this.state === ServerState.FAILED) {
          throw Err.startFailed(this.resolvePortForErrors(), this.initError);
       }
 
       return (this.initPromise ??= this.initialize());
+   }
+
+   private assertNotStopped(): void {
+      if (this.state === ServerState.STOPPING) {
+         Err.invalidState('Server is stopping; create a new Server instance');
+      }
+      if (this.state === ServerState.STOPPED) {
+         Err.invalidState('Server was stopped; create a new Server instance');
+      }
    }
 
    private async initialize(): Promise<void> {
@@ -328,6 +376,7 @@ export class Server {
       const startedAt = performance.now();
 
       this.logger.serverInitializing();
+      let bootService: BootService | undefined;
 
       try {
          this.registerDefaultPlugins();
@@ -367,7 +416,7 @@ export class Server {
             }
          }
 
-         const bootService = await this.container.resolve(BootService);
+         bootService = await this.container.resolve(BootService);
          await bootService.boot();
          this.logger = await this.container.resolve(LoggerService);
 
@@ -378,6 +427,15 @@ export class Server {
          this.logger.serverInitialized(performance.now() - startedAt);
       } catch (error) {
          this.logger.serverError(error);
+
+         // Services that booted before the failure may hold open resources,
+         // and a FAILED server's stop() has nothing to tear down later.
+         try {
+            await bootService?.destroy();
+         } catch (cleanupError) {
+            this.logger.error('Teardown after failed startup also failed', cleanupError);
+         }
+
          this.state = ServerState.FAILED;
          this.initPromise = undefined;
          this.initError = error;
@@ -476,21 +534,9 @@ export class Server {
       };
    }
 
-   private drainInFlight(timeoutMs: number): Promise<boolean> {
-      if (this.inFlight === 0) return Promise.resolve(true);
-
-      return new Promise<boolean>((resolve) => {
-         let settled = false;
-         const done = (ok: boolean) => {
-            if (settled) return;
-            settled = true;
-            resolve(ok);
-         };
-
-         this.drainWaiters.push(() => done(true));
-         const timer = setTimeout(() => done(false), timeoutMs);
-         (timer as { unref?: () => void }).unref?.();
-      });
+   private waitForInFlight(): Promise<void> {
+      if (this.inFlight === 0) return Promise.resolve();
+      return new Promise<void>((resolve) => this.drainWaiters.push(resolve));
    }
 
    private removeGracefulShutdownHandlers(): void {
