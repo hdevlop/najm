@@ -1,5 +1,31 @@
 # najm-core
 
+## 3.0.2 - 2026-10-02
+
+### Security
+
+- Request-scoped instances are keyed by a server-generated id. They were keyed
+  by the client's `x-request-id`, so concurrent requests sending the same value
+  shared request-scoped services, including najm-auth's per-request user cache.
+  The header value is now `CORRELATION_ID` (new export): it is logged and echoed
+  in the response header. `REQUEST_ID` always holds the server id, so code that
+  read the client's id from `REQUEST_ID` should read `CORRELATION_ID`.
+
+### Fixed
+
+- `stop()` is bounded by `shutdownTimeout`, including the runtime's own close,
+  which waits for active requests. Requests that arrive while stopping are
+  rejected, and concurrent `stop()` calls share one teardown.
+- Under Bun, `stop()` closes idle keep-alive connections. A pooled client
+  connection kept reaching the stopped server, even after a new server bound
+  the same port.
+- `onDestroy` runs on app services, not only plugins. A failing `onDestroy` no
+  longer skips the rest; the server still stops and the errors are rethrown.
+- A failed startup tears down the services that booted before the failure,
+  transient instances included.
+- A decorated parameter with a default value (`@Query('q') q = 'x'`) reads the
+  request instead of always receiving its default.
+
 ## 3.0.1 - 2026-10-02
 
 ### Fixed
