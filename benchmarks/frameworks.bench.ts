@@ -142,21 +142,32 @@ async function primeGenerator() {
       duration: 1000,
       warmup: 200,
    });
-   server.stop();
+   // Force-close: a graceful stop leaves the client's keep-alive sockets to
+   // this server pooled, and the next target then pays a fresh connection per
+   // request (Windows: ~12k TIME_WAIT sockets, raw Hono read at ~8k req/s).
+   server.stop(true);
 }
 
 function fmt(n: number | undefined, digits = 0): string {
    return n === undefined ? '—' : n.toFixed(digits);
 }
 
+function errorCount(r: Row): number {
+   return (r.json?.errors ?? 0) + (r.param?.errors ?? 0);
+}
+
 function printTable(rows: Row[]) {
-   const baseline = rows.find((r) => r.name === 'raw-hono' && r.ok)?.json?.rps;
+   // req/s counts successful responses only, so a row with failed requests
+   // reads as a slow framework. Never compare against one.
+   const hono = rows.find((r) => r.name === 'raw-hono' && r.ok);
+   const baseline = hono && errorCount(hono) === 0 ? hono.json?.rps : undefined;
 
    const header = [
       'framework'.padEnd(10),
       '/json req/s'.padStart(12),
       'p99 ms'.padStart(8),
       '/:id req/s'.padStart(11),
+      'errors'.padStart(7),
       'cold ms'.padStart(9),
       'rss MB'.padStart(8),
       'vs hono'.padStart(9),
@@ -169,17 +180,31 @@ function printTable(rows: Row[]) {
          console.log(`${r.name.padEnd(10)}  ${'FAILED — ' + (r.note ?? 'unknown')}`);
          continue;
       }
-      const vs = baseline && r.json ? `${((r.json.rps / baseline) * 100).toFixed(0)}%` : '—';
+      const errors = errorCount(r);
+      const vs = errors > 0
+         ? 'INVALID'
+         : baseline && r.json ? `${((r.json.rps / baseline) * 100).toFixed(0)}%` : '—';
       console.log(
          [
             r.name.padEnd(10),
             fmt(r.json?.rps).padStart(12),
             fmt(r.json?.latency.p99, 2).padStart(8),
             fmt(r.param?.rps).padStart(11),
+            String(errors).padStart(7),
             fmt(r.coldStartMs).padStart(9),
             fmt(r.rssMb, 1).padStart(8),
             vs.padStart(9),
          ].join('  '),
+      );
+   }
+
+   const invalid = rows.filter((r) => r.ok && errorCount(r) > 0).map((r) => r.name);
+   if (invalid.length) {
+      console.log(
+         `\nINVALID: ${invalid.join(', ')} had failed requests; their req/s counts only ` +
+         `successes and must not be compared.${baseline === undefined && hono?.ok ? ' No raw-hono baseline, so ratios are omitted.' : ''}` +
+         `\nOn Windows this is usually exhausted ephemeral ports (netstat -an | find /c "TIME_WAIT"); ` +
+         `wait for TIME_WAIT sockets to clear and run again.`,
       );
    }
 }
