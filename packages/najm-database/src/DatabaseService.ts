@@ -1,22 +1,38 @@
 import { isRepository, DI, Service, Container, Inject, Meta, getPropertyInjections, getDatabase } from 'najm-core';
 import { Err, LoggerService, Scan, ScannerService, ScanType } from 'najm-core';
-import type { Database, DatabaseInjection, DatabaseConfig } from './types';
-import { DATABASE_CONFIG, TRANSACTIONS } from './tokens';
+import type { Database, DatabaseInjection, DatabaseConfig, DatabasePluginOptions } from './types';
+import { DATABASE_CONFIG, DATABASE_OPTIONS, TRANSACTIONS } from './tokens';
 
 @Service()
-@Meta({ layer: 'plugin', order: 0 })
+// Boot before database consumers, then close after their teardown hooks.
+@Meta({ layer: 'plugin', order: -100 })
 export class DatabaseService {
    @DI() private container!: Container;
    @Scan() private scanner!: ScannerService;
    @Inject(DATABASE_CONFIG) private config!: DatabaseConfig;
+   @Inject(DATABASE_OPTIONS) private options?: DatabasePluginOptions;
    @Inject(LoggerService) private log!: LoggerService;
 
    private injections: DatabaseInjection[] = [];
    private databasesReady = false;
    private injectorRegistered = false;
+   private readonly closedClients = new Set<unknown>();
+   private readonly registeredDatabases = new Map<any, string>();
+   private closePromise?: Promise<void>;
 
    async onInit(): Promise<void> {
-      await this.setupDatabases();
+      try {
+         await this.setupDatabases();
+      } catch (error) {
+         // A failed onInit is not a successfully resolved core service, so it
+         // must release its own partially connected clients before rethrowing.
+         try {
+            await this.onDestroy();
+         } catch (cleanupError) {
+            throw new AggregateError([error, cleanupError], 'Database initialization and cleanup failed');
+         }
+         throw error;
+      }
       this.registerInjector();
    }
 
@@ -109,9 +125,12 @@ export class DatabaseService {
          return;
       }
 
-      await Promise.all(
+      const registrations = await Promise.allSettled(
          Object.entries(this.config).map(([name, instance]) => this.register(name, instance))
       );
+      const errors = registrations.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw new AggregateError(errors, 'Database registration failed');
       this.databasesReady = true;
    }
 
@@ -219,6 +238,10 @@ export class DatabaseService {
 
    public async register(name: string, instance: any): Promise<void> {
       this.validateName(name);
+      if (this.options?.close !== false) {
+         const firstName = this.registeredDatabases.get(instance);
+         if (firstName === undefined || name < firstName) this.registeredDatabases.set(instance, name);
+      }
 
       if (typeof instance.connect === 'function') {
          try {
@@ -287,6 +310,69 @@ export class DatabaseService {
    // CLEANUP
    // ============================================================================
 
+   /**
+    * Closes clients once unless the configuration explicitly opts out.
+    * Attempt every close before reporting any failures to the caller.
+    */
+   async onDestroy(): Promise<void> {
+      if (this.closePromise) return this.closePromise;
+      this.closePromise = this.closeConnections();
+      return this.closePromise;
+   }
+
+   private async closeConnections(): Promise<void> {
+      const close = this.options?.close ?? true;
+      if (close === false) return;
+
+      const closers = new Map<unknown, { name: string; run: () => unknown }>();
+      const databases = [...this.registeredDatabases.entries()].sort(([, a], [, b]) => a < b ? -1 : a > b ? 1 : 0);
+      for (const [db, name] of databases) {
+         const closer = typeof close === 'function'
+            ? { handle: this.getClient(db), run: () => close(db, name) }
+            : this.resolveCloser(db);
+         if (!closer) continue;
+         // Several names can share one client; it is closed once.
+         if (!this.closedClients.has(closer.handle) && !closers.has(closer.handle)) {
+            closers.set(closer.handle, { name, run: closer.run });
+         }
+      }
+
+      const results = await Promise.allSettled(
+         [...closers.entries()].map(async ([client, { name, run }]) => {
+            this.closedClients.add(client);
+            try {
+               await run();
+               this.log.databaseDisconnected(name);
+            } catch (error) {
+               this.log.databaseDisconnectFailed(name, error);
+               throw error;
+            }
+         })
+      );
+      const errors = results.flatMap(result => result.status === 'rejected' ? [result.reason] : []);
+      if (errors.length === 1) throw errors[0];
+      if (errors.length > 1) throw new AggregateError(errors, 'Database connections failed to close');
+   }
+
+   private getClient(db: any): unknown {
+      return db?.$client ?? db?.session?.client ?? db;
+   }
+
+   private resolveCloser(db: any): { handle: unknown; run: () => unknown } | undefined {
+      const client = this.getClient(db) as any;
+      if (typeof db?.disconnect === 'function') {
+         return { handle: client, run: () => db.disconnect() };
+      }
+
+      if (typeof client?.end === 'function') {
+         return { handle: client, run: () => client.end() };
+      }
+      if (typeof client?.close === 'function') {
+         return { handle: client, run: () => client.close() };
+      }
+      return undefined;
+   }
+
    public async clear(): Promise<void> {
       const names = this.getNames();
 
@@ -294,7 +380,9 @@ export class DatabaseService {
          names.map(async (name) => {
             try {
                const db = this.get(name);
-               if (typeof db.disconnect === 'function') {
+               const client = this.getClient(db);
+               if (typeof db.disconnect === 'function' && (this.options?.close === false || !this.closedClients.has(client))) {
+                  if (this.options?.close !== false) this.closedClients.add(client);
                   await db.disconnect();
                   this.log.databaseDisconnected(name);
                }

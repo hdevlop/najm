@@ -6,6 +6,7 @@ import type { SeedAuthDataConfig, SeedAuthDataResult } from './seed.types';
 /**
  * Standalone function to seed authentication data.
  * Handles Server setup, seeding, and cleanup automatically.
+ * The caller retains ownership of db; stopping the temporary server leaves it open.
  *
  * @example
  * ```typescript
@@ -49,8 +50,9 @@ export async function seedAuthData(
   } as const;
 
   try {
-    // Create isolated server with database plugin
-    server = new Server({ isolated: true }).use(database({ default: config.db }));
+    // The caller owns this database and may keep using it after seeding.
+    // The second argument also works with older database plugin versions.
+    server = new Server({ isolated: true }).use(database({ default: config.db }, { close: false }));
 
     // Initialize services without starting an HTTP listener
     await server.init();
