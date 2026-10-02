@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.2.4 - 2026-10-03
+
+- Keep caller-owned databases open after `seedAuthData()` stops its temporary
+  server. This preserves seed scripts with najm-database 2.1.0, which closes
+  owned connections on shutdown by default. The explicit opt-out remains
+  compatible with older database releases.
+
 ## 4.2.3 - 2026-09-29
 
 - Serve every refresh that presents the same cookie at once without revoking

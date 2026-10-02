@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 - 2026-10-03
 
 - Close supported clients automatically on server shutdown: `database(db)`.
   Shared pools must opt out with `database({ default: db, close: false })`.
