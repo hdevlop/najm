@@ -78,7 +78,8 @@ export interface RagMergedConfig {
       provider: 'ollama' | 'openai-compatible';
       baseUrl: string;
       model: string;
-      dimensions: number;
+      /** Unset means 768 for validation, and no `dimensions` field is sent to the provider. */
+      dimensions?: number;
       apiKey?: string;
       batchSize?: number;
       truncateDimensions?: boolean;

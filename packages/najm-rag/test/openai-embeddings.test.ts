@@ -22,8 +22,18 @@ describe('OpenAI-compatible embeddings', () => {
     expect(url).toBe('http://localhost:18080/v1/embeddings');
     expect(init.headers.Authorization).toBe('Bearer test-only-key');
     expect(init.redirect).toBe('error');
-    expect(JSON.parse(init.body)).toEqual({ model: 'embeddinggemma', input: ['one', 'two'], encoding_format: 'float', dimensions: 768 });
+    expect(JSON.parse(init.body)).toEqual({ model: 'embeddinggemma', input: ['one', 'two'], encoding_format: 'float' });
     expect(result.map((row) => row[0])).toEqual([1, 2]);
+  });
+
+  test('forwards dimensions only when explicitly configured', async () => {
+    let body: any;
+    globalThis.fetch = (async (_u, init) => {
+      body = JSON.parse(init!.body as string);
+      return response({ data: [{ index: 0, embedding: vector(1, 512) }] });
+    }) as typeof fetch;
+    expect(await service({ dimensions: 512 }).embed('test')).toHaveLength(512);
+    expect(body.dimensions).toBe(512);
   });
 
   test('can shorten and renormalize longer MRL vectors when explicitly enabled', async () => {
@@ -156,6 +166,26 @@ describe('OpenAI-compatible embeddings', () => {
       .rejects.toThrow('without credentials');
   });
 
+  test('health reports invalid configuration instead of rejecting', async () => {
+    for (const embedding of [{ baseUrl: 'localhost:8080/v1' }, { baseUrl: 'http://user:secret@localhost/v1' }, { batchSize: 0 }]) {
+      const result = await service(embedding).health();
+      expect(result.ok).toBe(false);
+      expect(result.error).toBeString();
+      expect(JSON.stringify(result)).not.toContain('secret');
+    }
+  });
+
+  test('names the transport failure code', async () => {
+    globalThis.fetch = (async () => {
+      throw Object.assign(new Error('Unable to connect'), { code: 'ConnectionRefused' });
+    }) as unknown as typeof fetch;
+    await expect(service().embed('test')).rejects.toThrow('(ConnectionRefused)');
+    globalThis.fetch = (async () => {
+      throw new TypeError('fetch failed', { cause: Object.assign(new Error('getaddrinfo'), { code: 'ENOTFOUND' }) });
+    }) as unknown as typeof fetch;
+    await expect(service().embed('test')).rejects.toThrow('(ENOTFOUND)');
+  });
+
   test('Ollama retains its native request and response contract', async () => {
     globalThis.fetch = (async (url, init) => {
       expect(String(url)).toBe('http://localhost:11434/api/embed');
@@ -163,6 +193,15 @@ describe('OpenAI-compatible embeddings', () => {
       return response({ embeddings: [vector()] });
     }) as typeof fetch;
     expect((await service({ provider: 'ollama', baseUrl: 'http://localhost:11434' }).embed('test')).length).toBe(768);
+  });
+
+  test('Ollama honors truncateDimensions', async () => {
+    globalThis.fetch = (async () => response({ embeddings: [[...vector(0, 767), 3, 4, ...vector(0, 255)]] })) as typeof fetch;
+    const ollama = (embedding = {}) => service({ provider: 'ollama', baseUrl: 'http://localhost:11434', ...embedding });
+    await expect(ollama().embed('test')).rejects.toThrow('dimensions');
+    const result = await ollama({ truncateDimensions: true }).embed('test');
+    expect(result).toHaveLength(768);
+    expect(Math.hypot(...result)).toBeCloseTo(1);
   });
 
   test('routing JSON accepts provider options and strips secret keys', () => {

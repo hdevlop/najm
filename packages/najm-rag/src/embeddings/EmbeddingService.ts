@@ -20,8 +20,27 @@ export class EmbeddingService {
     this.queryCache = new EmbeddingLru(Math.max(0, cacheSize));
   }
 
-  private get embeddingConfig(): EmbeddingConfig & { timeoutMs: number; healthTimeoutMs: number } {
-    const emb = this.config.rag?.embedding ?? (this.config as any).toolRouting?.embedding;
+  private resolved?: ResolvedEmbeddingConfig | Error;
+
+  /** Resolved and validated once; an invalid config is remembered and rethrown on use. */
+  private get embeddingConfig(): ResolvedEmbeddingConfig {
+    if (!this.resolved) {
+      try {
+        this.resolved = this.resolveConfig();
+      } catch (err) {
+        this.resolved = err instanceof Error ? err : new Error(String(err));
+      }
+    }
+    if (this.resolved instanceof Error) throw this.resolved;
+    return this.resolved;
+  }
+
+  private get rawEmbedding() {
+    return this.config.rag?.embedding ?? (this.config as any).toolRouting?.embedding;
+  }
+
+  private resolveConfig(): ResolvedEmbeddingConfig {
+    const emb = this.rawEmbedding;
     const provider = emb?.provider ?? 'ollama';
     if (provider !== 'ollama' && provider !== 'openai-compatible') {
       throw new Error('Unsupported embedding provider');
@@ -33,7 +52,8 @@ export class EmbeddingService {
       throw new Error('Embedding base URL must be HTTP(S) without credentials, query or fragment');
     }
     const batchSize = emb?.batchSize ?? 16;
-    const dimensions = emb?.dimensions ?? 768;
+    const requestDimensions = emb?.dimensions;
+    const dimensions = requestDimensions ?? 768;
     if (!Number.isInteger(batchSize) || batchSize < 1 || !Number.isInteger(dimensions) || dimensions < 1) {
       throw new Error('Embedding batch size and dimensions must be positive integers');
     }
@@ -42,6 +62,7 @@ export class EmbeddingService {
       baseUrl: baseUrl.replace(/\/+$/, ''),
       model: emb?.model ?? 'embeddinggemma',
       dimensions,
+      requestDimensions,
       batchSize,
       truncateDimensions: emb?.truncateDimensions ?? false,
       apiKey: emb?.apiKey,
@@ -65,16 +86,21 @@ export class EmbeddingService {
   }
 
   async embedBatch(texts: string[], purpose: 'query' | 'document' = 'document'): Promise<number[][]> {
-    const { batchSize, timeoutMs } = this.embeddingConfig;
+    const config = this.embeddingConfig;
     const results: number[][] = [];
-    for (let offset = 0; offset < texts.length; offset += batchSize!) {
-      results.push(...await this.requestEmbeddings(texts.slice(offset, offset + batchSize!), purpose, timeoutMs));
+    for (let offset = 0; offset < texts.length; offset += config.batchSize) {
+      results.push(...await this.requestEmbeddings(config, texts.slice(offset, offset + config.batchSize), purpose, config.timeoutMs));
     }
     return results;
   }
 
-  private async requestEmbeddings(texts: string[], purpose: 'query' | 'document', timeoutMs: number): Promise<number[][]> {
-    const { provider, baseUrl, model, apiKey, dimensions, truncateDimensions, queryPrefix, documentPrefix } = this.embeddingConfig;
+  private async requestEmbeddings(
+    config: ResolvedEmbeddingConfig,
+    texts: string[],
+    purpose: 'query' | 'document',
+    timeoutMs: number,
+  ): Promise<number[][]> {
+    const { provider, baseUrl, model, apiKey, dimensions, requestDimensions, truncateDimensions, queryPrefix, documentPrefix } = config;
     const prefix = purpose === 'query' ? queryPrefix : documentPrefix;
     const input = texts.map((text) => `${prefix}${text}`);
     const openAi = provider === 'openai-compatible';
@@ -87,7 +113,12 @@ export class EmbeddingService {
           'Content-Type': 'application/json',
           ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}),
         },
-        body: JSON.stringify({ model, input, ...(openAi ? { encoding_format: 'float', dimensions } : {}) }),
+        body: JSON.stringify({
+          model,
+          input,
+          // Only forward `dimensions` when configured: many servers and models reject the field.
+          ...(openAi ? { encoding_format: 'float', ...(requestDimensions !== undefined ? { dimensions: requestDimensions } : {}) } : {}),
+        }),
         redirect: 'error',
         signal: controller.signal,
       });
@@ -99,14 +130,18 @@ export class EmbeddingService {
       const data = await response.json();
       return openAi
         ? this.validator.assertOpenAiResponse(data, texts.length, dimensions, truncateDimensions)
-        : this.validator.assertResponse(data, texts.length, dimensions);
+        : this.validator.assertResponse(data, texts.length, dimensions, truncateDimensions);
     } catch (err) {
       const aborted = (err as any)?.name === 'AbortError';
       if (aborted) {
         throw new Error(`Embedding request timed out after ${timeoutMs}ms — is ${provider} running at ${baseUrl}?`);
       }
-      if (err instanceof TypeError) {
-        throw new Error(`Embedding request could not reach ${provider} at ${baseUrl} — check the endpoint and authentication`);
+      // Node reports transport failures as TypeError with a `cause.code`; Bun throws an Error with `code`.
+      const code = [(err as any)?.cause?.code, (err as any)?.code].find((c) => typeof c === 'string' && /^\w+$/.test(c));
+      if (err instanceof TypeError || code) {
+        throw new Error(
+          `Embedding request could not reach ${provider} at ${baseUrl}${code ? ` (${code})` : ''} — check the endpoint, redirects and authentication`,
+        );
       }
       if (err instanceof SyntaxError) {
         throw new Error('Embedding response is not valid JSON');
@@ -122,13 +157,27 @@ export class EmbeddingService {
   }
 
   async health(timeoutMs?: number, options: EmbeddingHealthOptions = {}): Promise<EmbeddingHealth> {
-    const { healthTimeoutMs } = this.embeddingConfig;
-    const effectiveTimeoutMs = timeoutMs ?? healthTimeoutMs;
+    let config: ResolvedEmbeddingConfig;
+    try {
+      config = this.embeddingConfig;
+    } catch (err) {
+      // The raw base URL may be the invalid (possibly credential-bearing) value, so it is not echoed.
+      const emb = this.rawEmbedding;
+      return {
+        ok: false,
+        provider: String(emb?.provider ?? 'ollama'),
+        baseUrl: '',
+        model: emb?.model ?? 'embeddinggemma',
+        error: err instanceof Error ? err.message : String(err),
+        latencyMs: 0,
+      };
+    }
+    const effectiveTimeoutMs = timeoutMs ?? config.healthTimeoutMs;
     const retries = Math.max(0, options.retries ?? 0);
     let last: EmbeddingHealth | null = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      const result = await this.probeHealth(effectiveTimeoutMs);
+      const result = await this.probeHealth(config, effectiveTimeoutMs);
       last = result;
       if (result.ok || !result.timedOut) {
         return this.toPublicHealth(result);
@@ -138,12 +187,12 @@ export class EmbeddingService {
     return this.toPublicHealth(last!);
   }
 
-  private async probeHealth(timeoutMs: number): Promise<EmbeddingHealthProbe> {
-    const { provider, baseUrl, model } = this.embeddingConfig;
+  private async probeHealth(config: ResolvedEmbeddingConfig, timeoutMs: number): Promise<EmbeddingHealthProbe> {
+    const { provider, baseUrl, model } = config;
     const started = Date.now();
     try {
       // Validate the same authenticated request and vector contract used by reads/indexing.
-      await this.requestEmbeddings(['ok'], 'query', timeoutMs);
+      await this.requestEmbeddings(config, ['ok'], 'query', timeoutMs);
       return { ok: true, provider, baseUrl, model, latencyMs: Date.now() - started };
     } catch (err) {
       const aborted = err instanceof Error && err.message.startsWith('Embedding request timed out');
@@ -172,6 +221,16 @@ export interface EmbeddingHealth {
   error?: string;
   latencyMs: number;
 }
+
+type ResolvedEmbeddingConfig = Required<Omit<EmbeddingConfig, 'apiKey' | 'dimensions'>> & {
+  apiKey?: string;
+  /** Effective vector size used for validation. */
+  dimensions: number;
+  /** Explicitly configured size, the only value forwarded to the provider. */
+  requestDimensions?: number;
+  timeoutMs: number;
+  healthTimeoutMs: number;
+};
 
 interface EmbeddingHealthProbe extends EmbeddingHealth {
   timedOut?: boolean;
