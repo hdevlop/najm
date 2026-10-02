@@ -1,5 +1,21 @@
 # najm-core
 
+## 3.0.1 - 2026-10-02
+
+### Fixed
+
+- The `x-request-id` response header now reaches every response. It was set
+  before the route ran, which only applies to responses Hono builds itself
+  (`c.json`, `c.body`), so error responses from `Err.handle` (404, 401, 500),
+  file downloads and handlers returning a `Response` lost it. A request id a
+  handler sets itself is kept.
+
+### Performance
+
+- Routes that resolve parameters asynchronously (`@Body`, `@File`, custom
+  parameters) no longer allocate closures and an options object per request.
+  `@Body` dispatch is about 7% faster (12.8 to 11.9 us in-process on Bun).
+
 ## 3.0.0
 
 ### Breaking change
