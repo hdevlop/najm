@@ -186,7 +186,8 @@ export function buildAiSdkTools(
 
     aiSdkTools[mcpTool.name] = t({
       description: mcpTool.description ?? mcpTool.name,
-      parameters: schema,
+      // AI SDK 6 reads `inputSchema`; under `parameters` every tool reached the model with no arguments.
+      inputSchema: schema,
       execute: async (args: any, callOptions?: { toolCallId?: string }) => {
         const start = performance.now();
         const settle = (outcome: ToolSettledEvent['outcome'], text: string) => {

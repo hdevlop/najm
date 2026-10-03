@@ -5,6 +5,8 @@ import { USER } from 'najm-guard';
 import { Validate } from 'najm-validation';
 import { z } from 'zod';
 import { mcp, McpTool, McpBuilderService, McpRegistryService, resolveRegisteredToolInputSchema } from 'najm-mcp';
+import { simulateReadableStream, streamText } from 'ai';
+import { MockLanguageModelV3 } from 'ai/test';
 import { buildAiSdkTools, schemaToZod, toolParametersSchema } from '../src/agent/McpToolAdapter';
 
 let server: Server | undefined;
@@ -287,6 +289,30 @@ describe('McpToolAdapter', () => {
 
     const tools = buildAiSdkTools(builder, registry.tools);
     expect(tools.touch).toBeDefined();
+
+    // The model must receive the arguments: AI SDK 6 sends `inputSchema` and
+    // ignores `parameters`, which had left every tool argument-less.
+    let sentTools: any[] = [];
+    const model = new MockLanguageModelV3({
+      doStream: async (options: any) => {
+        sentTools = options.tools ?? [];
+        return {
+          stream: simulateReadableStream({
+            chunks: [
+              { type: 'text-start', id: 't' },
+              { type: 'text-delta', id: 't', delta: 'ok' },
+              { type: 'text-end', id: 't' },
+              { type: 'finish', finishReason: { unified: 'stop', raw: 'stop' }, usage: { inputTokens: { total: 1 }, outputTokens: { total: 1 } } },
+            ],
+          }),
+        } as any;
+      },
+    });
+    await streamText({ model, prompt: 'touch item 1', tools }).consumeStream();
+    expect(sentTools.find((t) => t.name === 'touch')?.inputSchema).toMatchObject({
+      properties: { id: { type: 'string' }, note: { type: 'string' } },
+      required: ['id', 'note'],
+    });
 
     // Verify the tool can be executed with valid args (schema is built from validation metadata)
     const result = await tools.touch.execute({ id: '1', note: 'hello' });
