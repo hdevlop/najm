@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.4
+
+- Changing the embedding model re-indexes every tool. The tool fingerprint now
+  covers the embedder (provider, model, dimensions, truncation and document
+  prefix); before, a model change kept the old vectors, which were then
+  searched with the new model's queries. `createFingerprint` takes the
+  embedder as an optional second argument (`ToolIndexEmbedder`). Upgrading
+  re-indexes all tools once.
+
 ## 2.1.3
 
 - Add `rewriteRoutingQuery` to the rag config: a function that rewrites a

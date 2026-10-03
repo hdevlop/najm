@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.2.3
+
+- A tool annotated with the MCP specification's `destructiveHint: true` now gets
+  the same automatic `danger` confirmation as `destructive: true`. Tools
+  registered directly with `registerTool` (rather than through `@McpTool`) use
+  the specification's names, so their destructive flag was ignored and a chat
+  that refuses confirmed tools could run them. `destructive: false` still opts
+  a tool out. `McpAnnotations` gains `destructiveHint` and `idempotentHint`.
+
 ## 2.2.0 - 2026-09-27
 
 - Requires najm-core 2.1.0 or later (peer range `^2.1.0`).
