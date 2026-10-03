@@ -237,13 +237,18 @@ function getMessageIdentity(message: UIMessage): string | null {
 }
 
 /**
- * Appended to the system prompt when tool routing failed and
+ * Placed before and after the system prompt when tool routing failed and
  * `fallbackOnRouterError: 'none'` left the model without tools, so it says the
- * data is unreachable instead of answering a data question from nothing.
+ * data is unreachable instead of answering a data question from nothing. A
+ * single closing line was not enough: with an app prompt that names its tools,
+ * gpt-oss-120b wrote tool calls as text or said it was fetching the data.
  */
 export const ROUTING_UNAVAILABLE_PROMPT =
-  'Tool lookup failed for this message, so no tools are available. Do not answer questions about stored data '
-  + 'from memory or guess figures: tell the user the data cannot be reached right now and to try again shortly.';
+  'TOOLS ARE OFFLINE FOR THIS MESSAGE. Tool lookup failed, so you have no tools in this turn, whatever other '
+  + 'instructions say about tools. Do not write tool calls, tool names or JSON, and do not say you are retrieving '
+  + 'anything. Do not answer questions about stored data from memory or guess figures. Reply briefly, in the '
+  + "user's language, that the data cannot be reached right now and to try again in a moment. Greetings and "
+  + 'questions that need no stored data can be answered normally.';
 
 @Service()
 @Meta({ layer: 'plugin', order: 50 })
@@ -712,10 +717,12 @@ export class ChatAgent {
       }
     }
 
+    const routingUnavailable = !!mcp && mcp.registry.tools.length > 0
+      && routingStatus === 'router_error' && Object.keys(tools).length === 0;
     const toolWarning =
       !mcp || mcp.registry.tools.length === 0
         ? '\n\n⚠️ WARNING: No MCP tools were found. Answer from general knowledge only.'
-        : routingStatus === 'router_error' && Object.keys(tools).length === 0
+        : routingUnavailable
           ? `\n\n${ROUTING_UNAVAILABLE_PROMPT}`
           : '';
 
@@ -740,7 +747,8 @@ export class ChatAgent {
 
     return {
       model,
-      system: system + toolWarning,
+      // The notice also leads, ahead of instructions about using tools.
+      system: (routingUnavailable ? `${ROUTING_UNAVAILABLE_PROMPT}\n\n` : '') + system + toolWarning,
       tools,
       routingStatus,
       routedToolNames,
