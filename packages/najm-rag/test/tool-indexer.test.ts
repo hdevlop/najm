@@ -38,6 +38,28 @@ describe('ToolIndexerService', () => {
     expect(embedding.embedBatch).not.toHaveBeenCalled();
   });
 
+  test('re-indexes every tool when the embedding model changes', async () => {
+    const registry = { tools: [{ name: 'a', description: 'A' }, { name: 'b', description: 'B' }] } as any;
+    const indexWith = async (model: string, existing: Array<{ toolName: string; fingerprint: string }>) => {
+      const embedding = { embedBatch: mock((texts: string[]) => Promise.resolve(texts.map(() => new Array(768).fill(0.1)))) } as any;
+      const repository = {
+        listEmbeddings: mock(() => Promise.resolve(existing)),
+        upsertEmbedding: mock(() => Promise.resolve()),
+      } as any;
+      const service = new ToolIndexerService(
+        { toolRouting: { enabled: true }, rag: { embedding: { provider: 'openai-compatible', model, dimensions: 768 } } } as any,
+        registry, embedding, repository, { info: mock(() => {}), error: mock(() => {}) } as any,
+      );
+      const result = await service.indexTools();
+      return { result, rows: repository.upsertEmbedding.mock.calls.map((call: any[]) => ({ toolName: call[0].toolName, fingerprint: call[0].fingerprint })) };
+    };
+
+    const qwen = await indexWith('qwen3-embedding', []);
+    expect(qwen.result.indexed).toBe(2);
+    expect((await indexWith('qwen3-embedding', qwen.rows)).result).toEqual({ indexed: 0, skipped: 2 });
+    expect((await indexWith('embeddinggemma', qwen.rows)).result).toEqual({ indexed: 2, skipped: 0 });
+  });
+
   test('indexes changed tools', async () => {
     const registry = {
       tools: [{ name: 'a', description: 'Changed' }],
