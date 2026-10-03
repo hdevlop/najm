@@ -100,6 +100,12 @@ server
   .use(chatbot());                  // Uses the registered tool provider automatically
 ```
 
+If routing fails (for example, the embedding server is down) and
+`toolRouting.fallbackOnRouterError` is `'none'`, the chat continues without
+tools and `ROUTING_UNAVAILABLE_PROMPT` is appended to the system prompt, so the
+model tells the user the data cannot be reached instead of guessing. With
+`'all'` (the default) it receives every routable tool instead.
+
 For schema setup with `najm-rag`:
 
 ```typescript
