@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.16.16 - 2026-10-03
 
 - `NTable` supports `onExport`, `onImport`, and `onPrint` actions as icon
   buttons, a header menu, or both through `toolbarActionDisplay`. Right-click
