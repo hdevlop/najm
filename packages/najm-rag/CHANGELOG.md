@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.1.3
+
+- Add `rewriteRoutingQuery` to the rag config: a function that rewrites a
+  normalized message before tool routing embeds it, for wording the embedding
+  model handles poorly, such as a dialect. The result is normalized again; an
+  empty result keeps the original message, and a rewrite that throws is a
+  router error. The routing preview applies the same rewrite and reports the
+  embedded text as `rewritten`. Knowledge search is unchanged.
+
 ## 2.1.2
 
 - Ship the RAG Studio UI as `najm-rag/studio` (`RagStudioProvider`,
