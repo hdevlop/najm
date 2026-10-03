@@ -24,6 +24,20 @@ export interface RagEmbeddingConfig {
    */
   timeoutMs?: number;
   /**
+   * Timeout in milliseconds for query embeddings: the live calls that route a
+   * chat message and search the knowledge base. Indexing batches keep
+   * `timeoutMs`, so a slow CPU model can index without giving every chat
+   * question the same long wait. Defaults to `timeoutMs`.
+   */
+  queryTimeoutMs?: number;
+  /**
+   * After a query embedding times out or cannot reach the provider, further
+   * query embeddings fail immediately for this many milliseconds instead of
+   * each waiting out `queryTimeoutMs`. A success or a healthy health check
+   * ends the window early. Indexing is not affected. Defaults to 0 (off).
+   */
+  queryFailureCooldownMs?: number;
+  /**
    * Timeout in milliseconds for lightweight health checks. Health checks still
    * issue a real embedding request, so cold local models often need more than
    * a ping-sized timeout during app boot. Defaults to 15000ms.
@@ -97,6 +111,8 @@ export interface RagMergedConfig {
       queryPrefix?: string;
       documentPrefix?: string;
       timeoutMs: number;
+      queryTimeoutMs?: number;
+      queryFailureCooldownMs?: number;
       healthTimeoutMs: number;
     };
     queryEmbeddingCacheSize: number;

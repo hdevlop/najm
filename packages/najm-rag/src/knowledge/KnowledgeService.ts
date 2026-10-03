@@ -21,6 +21,9 @@ export class KnowledgeService {
     // key, allowing the shared `EmbeddingService` LRU to dedupe a single
     // chat message's router + knowledge embed into one provider call.
     const normalized = normalizeQuery(query);
+    if (!(await this.repository.hasEmbeddings())) {
+      return { query, citations: [] };
+    }
     const queryEmbedding = await this.embedding.embed(normalized);
     const matches = await this.repository.searchChunks(queryEmbedding, limit, resolvedThreshold);
 

@@ -22,6 +22,13 @@ export class KnowledgeRepository {
     return matches.map((m) => ({ chunkId: m.key, similarity: m.similarity }));
   }
 
+  /** Whether any chunk has been embedded, so an empty knowledge base costs no embedding call. */
+  async hasEmbeddings(): Promise<boolean> {
+    const table = this.validator.embeddingsTable();
+    const rows = await this.db.select({ chunkId: table.chunkId }).from(table).limit(1);
+    return (rows ?? []).length > 0;
+  }
+
   async findChunksWithSource(chunkIds: string[]): Promise<ChunkWithSource[]> {
     if (chunkIds.length === 0) return [];
     const chunks = this.validator.chunksTable();

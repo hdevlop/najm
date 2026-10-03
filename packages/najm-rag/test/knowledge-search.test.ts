@@ -1,6 +1,6 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { KnowledgeService } from '../src/knowledge/KnowledgeService';
-import { KnowledgeContextProvider } from '../src/knowledge/KnowledgeContextProvider';
+import { KnowledgeContextProvider, KNOWLEDGE_UNAVAILABLE_CONTEXT } from '../src/knowledge/KnowledgeContextProvider';
 import { ChatbotRagController } from '../src/chatbotRag/ChatbotRagController';
 import { ChatbotRagValidator } from '../src/chatbotRag/ChatbotRagValidator';
 import { NoopOcrProvider, NoopCaptionProvider } from '../src/knowledge/OcrProvider';
@@ -79,6 +79,7 @@ function makeKnowledgeService(overrides: Partial<Record<string, unknown>> = {}) 
   const repository = {
     searchChunks: mock(() => Promise.resolve([{ chunkId: 'chunk-1', similarity: 0.91 }])),
     findChunksWithSource: mock(() => Promise.resolve([makeChunk()])),
+    hasEmbeddings: mock(() => Promise.resolve(true)),
     ...(overrides.repository as any),
   };
   const embedding = {
@@ -119,6 +120,16 @@ describe('KnowledgeService.search', () => {
     const { service, embedding } = makeKnowledgeService();
     await service.search('my query');
     expect(embedding.embed).toHaveBeenCalledWith('my query');
+  });
+
+  test('skips the embedding call when no document is indexed', async () => {
+    const { service, embedding, repository } = makeKnowledgeService({
+      repository: { hasEmbeddings: mock(() => Promise.resolve(false)) },
+    });
+    const result = await service.search('school rules');
+    expect(result).toEqual({ query: 'school rules', citations: [] });
+    expect(embedding.embed).not.toHaveBeenCalled();
+    expect(repository.searchChunks).not.toHaveBeenCalled();
   });
 
   test('forwards limit to repository', async () => {
@@ -272,6 +283,19 @@ describe('KnowledgeContextProvider', () => {
 
     expect(result).toBeNull();
     expect(knowledge.search).not.toHaveBeenCalled();
+  });
+
+  test('tells the model the knowledge base is unavailable instead of failing the chat', async () => {
+    const knowledge = { search: mock((): Promise<{ query: string; citations: unknown[] }> => Promise.reject(new Error('Embedding request timed out after 5000ms'))) };
+    const settings = { getEffectiveSettings: mock(() => Promise.resolve({ enableKnowledge: true })) };
+    const log = { warn: mock(() => {}) };
+    const provider = new KnowledgeContextProvider(knowledge as any, settings as any, log as any);
+
+    expect(await provider.getContext('q')).toBe(KNOWLEDGE_UNAVAILABLE_CONTEXT);
+    expect(log.warn).toHaveBeenCalledTimes(1);
+    // A failure is not cached: the next message searches again.
+    knowledge.search.mockImplementation(() => Promise.resolve({ query: 'q', citations: [] }));
+    expect(await provider.getContext('q')).toBeNull();
   });
 
   test('formats citations when enableKnowledge is true', async () => {

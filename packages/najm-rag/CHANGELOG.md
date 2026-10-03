@@ -1,5 +1,22 @@
 # Changelog
 
+## Unreleased
+
+- Add `embedding.queryTimeoutMs`: a timeout for query embeddings (tool routing,
+  its preview and knowledge search) separate from indexing, which keeps
+  `timeoutMs`. Defaults to `timeoutMs`, so nothing changes until it is set.
+- Add `embedding.queryFailureCooldownMs` (default 0, off): after a query
+  embedding times out or cannot reach the provider, further query embeddings
+  fail immediately for that window instead of each waiting out the timeout.
+  A success or a healthy health check closes it; indexing is never skipped.
+  Timeouts and connection failures throw `EmbeddingUnavailableError`, with
+  the same messages as before.
+- Knowledge search no longer embeds the query while no document is indexed
+  (`KnowledgeRepository.hasEmbeddings`).
+- A failed knowledge search no longer fails the chat: the context provider
+  logs a warning and returns `KNOWLEDGE_UNAVAILABLE_CONTEXT`, which tells the
+  model the knowledge base could not be searched. Failures are not cached.
+
 ## 2.1.4
 
 - Changing the embedding model re-indexes every tool. The tool fingerprint now
