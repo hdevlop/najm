@@ -1,6 +1,6 @@
 {
   "name": "najm-rag",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "license": "MIT",
   "description": "RAG engine for Najm framework — embeddings, vector search, and semantic tool routing",
   "type": "module",
@@ -64,7 +64,7 @@
   "peerDependencies": {
     "drizzle-orm": "^0.45.1",
     "hono": "^4.0.0",
-    "najm-auth": "workspace:*",
+    "najm-auth": "^4.2.3 || ^5.0.0",
     "najm-database": "workspace:*",
     "najm-guard": "workspace:*",
     "najm-mcp": "workspace:*",

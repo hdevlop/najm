@@ -1,6 +1,6 @@
 {
   "name": "najm-chatbot",
-  "version": "2.1.1",
+  "version": "2.1.3",
   "description": "Chatbot plugin for najm framework — AI settings, LLM provider factory, MCP tool adapter, chat agent, and React UI",
   "type": "module",
   "files": [
@@ -97,7 +97,7 @@
   },
   "peerDependencies": {
     "drizzle-orm": "^0.45.2",
-    "najm-auth": "workspace:*",
+    "najm-auth": "^4.2.3 || ^5.0.0",
     "najm-database": "workspace:*",
     "najm-guard": "workspace:*",
     "najm-mcp": "workspace:*",

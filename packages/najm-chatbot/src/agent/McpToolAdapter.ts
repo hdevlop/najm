@@ -186,7 +186,8 @@ export function buildAiSdkTools(
 
     aiSdkTools[mcpTool.name] = t({
       description: mcpTool.description ?? mcpTool.name,
-      parameters: schema,
+      // AI SDK 6 reads inputSchema; preserve the published 2.1.2 contract.
+      inputSchema: schema,
       execute: async (args: any, callOptions?: { toolCallId?: string }) => {
         const start = performance.now();
         const settle = (outcome: ToolSettledEvent['outcome'], text: string) => {

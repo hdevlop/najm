@@ -148,4 +148,33 @@ Candidate versions: `najm-database@2.2.0` (additive completion hooks) and
 `najm-auth@5.0.0` (credential-setup constructor and consumed recovery-token
 contract changes, plus refusal of older unbound proofs). Publish database first;
 the auth manifest must resolve its database dependency to `^2.2.0`.
-Package publication and consumer validation are pending at this source checkpoint.
+The exact database and auth tarballs were published from clean source commit
+`463705d0869f48d18c1e18fd3266d38f24767df2`. Registry downloads match the packed
+SHA-256 values:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `najm-database@2.2.0` | `dce835b7b3fc5ab46fbdf5b3e6892cc703aeaa08448e66c53ecdd41417e9baa4` |
+| `najm-auth@5.0.0` | `e94c5b58c3a91a5de0c5baa30846f5658bc63650ecbf650f0c4c1afd6ba63e7e` |
+
+Consumer installation exposed declared peer ranges excluding Auth 5. The
+compatibility candidates are `najm-mcp@2.2.4`, `najm-next@0.8.1`,
+`najm-rag@2.2.1`, and `najm-chatbot@2.1.3`. Their Auth peers retain the previous
+supported majors and add 5. `najm-api@4.0.0` resolves its aggregate dependency
+to Auth 5; its major version reflects the re-exported contract changes.
+No new API export names were added.
+
+The local chatbot source was behind published `2.1.2` in its MCP-to-AI-SDK
+adapter. The candidate preserves the published `inputSchema` fix rather than
+reintroducing `parameters`. Rebuilt runtime differences from published 2.1.2
+are limited to that comment. Compatibility validation passes: MCP 56, API 3,
+RAG 247, chatbot 186 tests; Next's main and React-server suites pass as well.
+The package-local chatbot test command loads its existing memory-email preload;
+a root-relative raw Bun invocation does not load that package's `bunfig.toml`.
+
+Kafil and School initially installed Auth 5 and Database 2.2 successfully. Their
+lint/typecheck/test gates pass; Kafil's first broad run hit a filesystem-scan
+timeout under concurrent validation, then passed with less contention.
+Related compatibility publication, final consumer pins/builds, and connected
+acceptance remain pending at this checkpoint. Kafil's pre-existing changes
+remain preserved and must not be folded into an auth-only commit.
