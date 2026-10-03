@@ -215,8 +215,9 @@ describe('najm-chatbot ai-settings', () => {
     const getRes = await fetch(`http://localhost:${port}/ai-settings`, {
       headers: { Authorization: `Bearer ${token}` },
     });
-    const body = await getRes.json();
-    expect(body).toBeNull();
+    // No settings yet: najm-core answers a null result with 204 and no body.
+    expect(getRes.status).toBe(204);
+    expect(await getRes.text()).toBe('');
 
     await fetch(`http://localhost:${port}/ai-settings`, {
       method: 'POST',
