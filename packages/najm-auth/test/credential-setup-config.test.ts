@@ -97,6 +97,7 @@ describe('provisioned phones match login lookup', () => {
         checkEmailUnique: async () => { },
         checkUserIdIsUnique: async () => { },
         checkPhoneUnique: async () => { },
+        writeUnique: async (write: () => Promise<unknown>) => write(),
       } as never,
       { hashPassword: async (value: string) => `hash(${value})` } as never,
       {} as never,

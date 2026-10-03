@@ -84,7 +84,7 @@ export const loginDto = z.union([
 ]);
 
 export const changePasswordDto = z.object({
-  currentPassword: passwordField,
+  currentPassword: loginCredentialField,
   newPassword: passwordField,
 });
 

@@ -15,12 +15,14 @@ import { CredentialSetupRequirementRepository } from '../credentialSetup/Credent
 import { PASSWORD_SETUP_PURPOSE } from '../credentialSetup/types';
 import { storedTimeMs } from '../shared/storedTime';
 import { Err } from 'najm-core';
+import { credentialFingerprint } from '../auth/credentialState';
 
 export type SetPasswordTokenType = 'reset' | 'invite';
 
 export interface ConsumedSetPasswordToken {
   userId: string;
   type: SetPasswordTokenType;
+  credentialState: string;
 }
 
 /**
@@ -124,8 +126,21 @@ export class TokenService {
     let payload: JwtPayload;
 
     try {
-      payload = jwt.verify(token, this.config.jwt.accessSecret) as JwtPayload;
+      payload = jwt.verify(token, this.config.jwt.accessSecret, { algorithms: ['HS256'] }) as JwtPayload;
     } catch {
+      Err(this.t('errors.tokenVerificationFailed'), 401);
+    }
+
+    // A refresh/reset JWT can share the signing key with access JWTs. Its
+    // valid signature must never grant the access-token purpose. Access JWTs
+    // issued by earlier releases have no type claim, so keep that shape.
+    if (!payload || typeof payload !== 'object'
+      || ('type' in payload && payload.type !== 'access')
+      || typeof payload.userId !== 'string' || !payload.userId
+      || typeof payload.tokenFamily !== 'string' || !payload.tokenFamily
+      || !Number.isFinite(payload.exp)
+      || (payload.sessionVersion !== undefined
+        && (!Number.isSafeInteger(payload.sessionVersion) || payload.sessionVersion < 0))) {
       Err(this.t('errors.tokenVerificationFailed'), 401);
     }
 
@@ -178,17 +193,19 @@ export class TokenService {
   verifyRefreshToken(token: string): { userId: string; tokenFamily: string } {
     let decoded: JwtPayload & { type?: string };
     try {
-      decoded = jwt.verify(token, this.config.jwt.refreshSecret) as JwtPayload & { type?: string };
+      decoded = jwt.verify(token, this.config.jwt.refreshSecret, { algorithms: ['HS256'] }) as JwtPayload & { type?: string };
     } catch {
       Err(this.t('errors.tokenVerificationFailed'), 401);
     }
-    if (decoded.type && decoded.type !== 'refresh') {
+    if (!decoded || typeof decoded !== 'object' || decoded.type !== 'refresh'
+      || typeof decoded.userId !== 'string' || !decoded.userId
+      || !Number.isFinite(decoded.exp)) {
       Err(this.t('errors.tokenVerificationFailed'), 401);
     }
     // Pre-multi-session refresh tokens carry no family — reject so the user
     // re-authenticates into the family-aware model (see MULTI_SESSION_PLAN.md
     // migration notes).
-    if (!decoded.tokenFamily) {
+    if (typeof decoded.tokenFamily !== 'string' || !decoded.tokenFamily) {
       Err(this.t('errors.tokenVerificationFailed'), 401);
     }
     return { userId: decoded.userId, tokenFamily: decoded.tokenFamily };
@@ -280,8 +297,9 @@ export class TokenService {
    */
   async recoverSessionFromCookie() {
     const { userId, tokenFamily } = await this.resolveRefreshSessionFromCookie();
-    const user = await this.requireActiveRefreshUser(userId, tokenFamily);
     const sessionVersion = await this.getUserSessionVersion(userId);
+    const user = await this.requireActiveRefreshUser(userId, tokenFamily);
+    await this.assertSessionVersion(userId, sessionVersion);
 
     return {
       user,
@@ -326,15 +344,20 @@ export class TokenService {
   }
 
   async getUserById(userId: string) {
-    const cacheKey = `auth:user:${userId}`;
+    const version = await this.getUserSessionVersion(userId);
+    // An in-flight cache fill can finish after invalidation deletes the old
+    // key. Version the key so it cannot overwrite the current principal.
+    const cacheKey = `auth:user:${userId}:${version}`;
     if (typeof (this.cache as any).getOrSet === 'function') {
-      return this.cache.getOrSet(cacheKey, () => this.tokenRepository.getUser(userId), 30_000);
+      const user = await this.cache.getOrSet(cacheKey, () => this.tokenRepository.getUser(userId), 30_000);
+      await this.assertSessionVersion(userId, version);
+      return user;
     }
 
     const cached = await this.cache.get(cacheKey);
-    if (cached) return JSON.parse(cached);
-    const user = await this.tokenRepository.getUser(userId);
-    if (user) await this.cache.set(cacheKey, JSON.stringify(user), 30_000);
+    const user = cached ? JSON.parse(cached) : await this.tokenRepository.getUser(userId);
+    if (!cached && user) await this.cache.set(cacheKey, JSON.stringify(user), 30_000);
+    await this.assertSessionVersion(userId, version);
     return user;
   }
 
@@ -357,9 +380,9 @@ export class TokenService {
     roles?: string[];
     permissions?: string[];
     tokenFamily?: string;
-  }): Promise<{ token: string; expiresAt: number; sessionVersion: number }> {
+  }, capturedVersion?: number): Promise<{ token: string; expiresAt: number; sessionVersion: number }> {
     const jti = nanoid(16);
-    const sessionVersion = await this.getUserSessionVersion(data.userId);
+    const sessionVersion = capturedVersion ?? await this.getUserSessionVersion(data.userId);
     const expiresAt = this.expiresAt(this.config.jwt.accessExpiresIn);
     if (sessionVersion > 0) {
       // Extend the marker's life, never rewrite its value: an invalidation
@@ -447,7 +470,8 @@ export class TokenService {
     return this.signRefreshToken({ userId: data.userId, tokenFamily: data.tokenFamily ?? nanoid(16) }).token;
   }
 
-  private async createTokenPair(userId: string, family: string, replaced?: string) {
+  private async createTokenPair(userId: string, family: string, replaced?: string, capturedVersion?: number) {
+    const sessionVersion = capturedVersion ?? await this.getUserSessionVersion(userId);
     const { roleName, permissions } = await this.tokenRepository.getRoleAndPermissions(userId);
 
     const accessTokenData = {
@@ -456,7 +480,8 @@ export class TokenService {
       permissions: permissions ?? [],
       tokenFamily: family,
     };
-    const access = await this.signAccessToken(accessTokenData);
+    await this.assertSessionVersion(userId, sessionVersion);
+    const access = await this.signAccessToken(accessTokenData, sessionVersion);
     const refresh = replaced
       ? this.successorRefreshToken(
         replaced,
@@ -478,11 +503,22 @@ export class TokenService {
     };
   }
 
-  async generateTokens(userId: string, tokenFamily?: string) {
+  async generateTokens(userId: string, tokenFamily?: string, capturedVersion?: number) {
     const family = tokenFamily ?? nanoid(16);
-    const generated = await this.createTokenPair(userId, family);
+    const generated = await this.createTokenPair(userId, family, undefined, capturedVersion);
     await this.storeRefreshToken(userId, generated.refreshToken, family);
+    await this.assertSessionVersion(userId, generated.sessionVersion, family);
     return generated;
+  }
+
+  private async assertSessionVersion(userId: string, expected: number, issuedFamily?: string): Promise<void> {
+    if (await this.getUserSessionVersion(userId) !== expected) {
+      // A fresh family may have been inserted after revokeAllForUser finished.
+      // Withdraw it too; retaining only an invalid bearer would leave refresh
+      // recovery able to mint a new credential for the failed login.
+      if (issuedFamily) await this.revokeFamily(issuedFamily);
+      Err(this.t('errors.tokenRevoked'), 401);
+    }
   }
 
   // ============ TOKEN BLACKLIST (Cache) ============
@@ -602,6 +638,7 @@ export class TokenService {
     if (!await this.invalidation.markFamilyIssued(tokenFamily, userId)) {
       this.rejectRefreshSession();
     }
+    await this.assertSessionVersion(userId, generated.sessionVersion);
     return generated;
   }
 
@@ -683,12 +720,15 @@ export class TokenService {
       Math.floor(storedTimeMs(stored.expiresAt) / 1000),
     );
     const refresh = this.hashToken(successor.token) === stored.token ? successor : undefined;
+    const sessionVersion = await this.getUserSessionVersion(userId);
     const { roleName, permissions } = await this.tokenRepository.getRoleAndPermissions(userId);
     const roles = roleName ? [roleName] : [];
-    const access = await this.signAccessToken({ userId, roles, permissions: permissions ?? [], tokenFamily });
+    await this.assertSessionVersion(userId, sessionVersion);
+    const access = await this.signAccessToken({ userId, roles, permissions: permissions ?? [], tokenFamily }, sessionVersion);
     if (!await this.invalidation.markFamilyIssued(tokenFamily, userId)) {
       this.rejectRefreshSession();
     }
+    await this.assertSessionVersion(userId, sessionVersion);
     return {
       userId,
       tokenFamily,
@@ -723,14 +763,7 @@ export class TokenService {
 
   /** Revoke every refresh session for a user (password change/reset, logout-all). */
   async revokeAllForUser(userId: string) {
-    const revoked = await this.tokenRepository.revokeAllForUser(userId);
-    if (Array.isArray(revoked)) {
-      await Promise.all(revoked
-        .map((row: { tokenFamily?: unknown }) => row?.tokenFamily)
-        .filter((family): family is string => typeof family === 'string' && !!family)
-        .map((family) => this.invalidation.markFamilyRevoked(family)));
-    }
-    return revoked;
+    return this.invalidation.revokeAllForUser(userId);
   }
 
   /** Revoke a single refresh session (one family). */
@@ -874,13 +907,21 @@ export class TokenService {
     userId: string,
     type: SetPasswordTokenType,
     expiresIn: string,
+    expectedEmail?: string,
   ): Promise<SetPasswordToken> {
+    const user = await this.tokenRepository.getCredentialState(userId);
+    if (!user || (expectedEmail !== undefined
+      && user.email.trim().toLowerCase() !== expectedEmail.trim().toLowerCase())) {
+      Err(this.t('errors.invalidResetToken'), 401);
+    }
+    const credentialState = credentialFingerprint(this.config.jwt.refreshSecret, user);
     const jti = nanoid(16);
     const data = {
       userId,
       type,
       jti,
       timestamp: Date.now(),
+      credentialState,
     };
 
     const token = jwt.sign(data, this.config.jwt.refreshSecret, {
@@ -890,6 +931,12 @@ export class TokenService {
     // Cache TTL mirrors the token expiry so a consumed/expired token can't be reused.
     await this.cache.set(`${this.resetTokenPrefix}${userId}`, jti, timestring(expiresIn, 'ms'));
 
+    const current = await this.tokenRepository.getCredentialState(userId);
+    if (!current || credentialFingerprint(this.config.jwt.refreshSecret, current) !== credentialState) {
+      await this.discardSetPasswordToken(userId, jti);
+      Err(this.t('errors.invalidResetToken'), 401);
+    }
+
     return { token, userId, jti };
   }
 
@@ -897,9 +944,9 @@ export class TokenService {
    * Generate secure password reset token
    * Returns both the plain token (to send via email) and userId for identification
    */
-  async generateResetToken(userId: string): Promise<SetPasswordToken> {
+  async generateResetToken(userId: string, expectedEmail?: string): Promise<SetPasswordToken> {
     // Short expiry (1h): the user is actively waiting for the email.
-    return this.generateSetPasswordToken(userId, 'reset', '1h');
+    return this.generateSetPasswordToken(userId, 'reset', '1h', expectedEmail);
   }
 
   /**
@@ -907,8 +954,8 @@ export class TokenService {
    * Longer expiry (3d) than reset because an invited user may not check
    * their email immediately. Consumed via the same reset-password endpoint.
    */
-  async generateInviteToken(userId: string): Promise<SetPasswordToken> {
-    return this.generateSetPasswordToken(userId, 'invite', '3d');
+  async generateInviteToken(userId: string, expectedEmail?: string): Promise<SetPasswordToken> {
+    return this.generateSetPasswordToken(userId, 'invite', '3d', expectedEmail);
   }
 
   /**
@@ -948,16 +995,21 @@ export class TokenService {
    * nothing.
    */
   async consumeSetPasswordToken(token: string): Promise<ConsumedSetPasswordToken> {
-    let decoded: JwtPayload & { type?: string; jti?: string };
+    let decoded: JwtPayload & { type?: string; jti?: string; credentialState?: string };
 
     try {
-      decoded = jwt.verify(token, this.config.jwt.refreshSecret) as JwtPayload & { type?: string; jti?: string };
+      decoded = jwt.verify(token, this.config.jwt.refreshSecret, { algorithms: ['HS256'] }) as JwtPayload & { type?: string; jti?: string };
     } catch {
       Err(this.t('errors.resetTokenExpired'));
     }
 
     // Accept both reset and invite tokens — both grant a one-time password set.
-    if ((decoded.type !== 'reset' && decoded.type !== 'invite') || !decoded.jti) {
+    if (!decoded || typeof decoded !== 'object'
+      || (decoded.type !== 'reset' && decoded.type !== 'invite')
+      || typeof decoded.userId !== 'string' || !decoded.userId
+      || typeof decoded.jti !== 'string' || !decoded.jti
+      || typeof decoded.credentialState !== 'string' || !decoded.credentialState
+      || !Number.isFinite(decoded.exp)) {
       Err(this.t('errors.invalidResetToken'));
     }
 
@@ -972,13 +1024,20 @@ export class TokenService {
     }
 
     const key = `${this.resetTokenPrefix}${decoded.userId}`;
+    const matches = async () => {
+      const current = await this.tokenRepository.getCredentialState(decoded.userId);
+      return current && credentialFingerprint(this.config.jwt.refreshSecret, current) === decoded.credentialState;
+    };
+    if (!(await matches())) Err(this.t('errors.invalidResetToken'));
     if (!(await consume.call(this.cache, key, decoded.jti))) {
       Err(this.t('errors.invalidResetToken'));
     }
+    if (!(await matches())) Err(this.t('errors.invalidResetToken'));
 
     return {
       userId: decoded.userId,
       type: decoded.type as SetPasswordTokenType,
+      credentialState: decoded.credentialState,
     };
   }
 

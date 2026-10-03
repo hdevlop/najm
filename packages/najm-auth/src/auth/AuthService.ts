@@ -14,6 +14,8 @@ import type { RegisterDto, LoginDto } from '../users/UserDto';
 import { AUTH_CONFIG } from '../auth.tokens';
 import timestring from 'timestring';
 import { AuthSessionService } from './AuthSessionService';
+import { verifiedCredentials } from './verifiedCredential';
+import { credentialFingerprint } from './credentialState';
 import { isEmailIdentifier, normalizeAuthIdentifier } from './authIdentity';
 import { storedTimeMs } from '../shared/storedTime';
 import {
@@ -207,7 +209,7 @@ export class AuthService {
     userName: string | null | undefined,
     role: string | null | undefined,
   ): Promise<{ emailSent: boolean; jti: string }> {
-    const { token, jti } = await this.tokenService.generateInviteToken(userId);
+    const { token, jti } = await this.tokenService.generateInviteToken(userId, email);
     const inviteLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
     const accountType = role?.trim().toLowerCase() || undefined;
     const accountLabel = accountType ? `${accountType} account` : 'account';
@@ -450,6 +452,7 @@ export class AuthService {
     }
 
     const { password: _, failedLoginAttempts: __, lockoutUntil: ___, ...sanitized } = user;
+    verifiedCredentials.set(sanitized, storedHash);
     return { user: sanitized, requirement };
   }
 
@@ -632,15 +635,14 @@ export class AuthService {
   }
 
   async forgotPassword(email: string) {
-    const user = await this.userService.findByEmail(email);
+    const user = await this.userService.findByEmailInsensitive(email);
 
     if (user) {
-      const { token } = await this.tokenService.generateResetToken(user.id);
-      const resetLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
-
       try {
+        const { token } = await this.tokenService.generateResetToken(user.id, user.email);
+        const resetLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
         await this.emailService.sendHtml(
-          email,
+          user.email,
           this.t('emails.passwordReset.subject'),
           passwordResetTemplate({
             resetLink,
@@ -670,7 +672,7 @@ export class AuthService {
     }
 
     this.userValidator.validatePasswordStrength(newPassword);
-    await this.userService.update(userId, { password: newPassword });
+    await this.userService.update(userId, { password: newPassword }, { expectedCredential: user });
     await this.tokenService.invalidateUserAccessTokens(userId);
     await this.tokenService.revokeAllForUser(userId);
     this.cookieManager.clearRefreshToken();
@@ -688,7 +690,10 @@ export class AuthService {
     // mutation below fails; that user requests a new link.
     this.userValidator.validatePasswordStrength(newPassword);
     const consumed = await this.tokenService.consumeSetPasswordToken(token);
-    const user = await this.userService.getById(consumed.userId);
+    const user = await this.userService.getAuthRecordById(consumed.userId);
+    if (!user || credentialFingerprint(this.config.jwt.refreshSecret, user) !== consumed.credentialState) {
+      Err(this.t('errors.invalidResetToken'), 401);
+    }
     const acceptsInvitation = consumed.type === 'invite';
     await this.userService.update(consumed.userId, {
       password: newPassword,
@@ -698,7 +703,7 @@ export class AuthService {
             ...(user.status === 'pending' ? { status: 'active' as const } : {}),
           }
         : {}),
-    });
+    }, { expectedCredential: user });
     await this.tokenService.invalidateUserAccessTokens(consumed.userId);
     await this.tokenService.revokeAllForUser(consumed.userId);
     this.cookieManager.clearRefreshToken();
@@ -789,7 +794,7 @@ export class AuthService {
       Err('This account has no email address to send a password reset to', 409);
     }
 
-    const { token, jti } = await this.tokenService.generateResetToken(user.id);
+    const { token, jti } = await this.tokenService.generateResetToken(user.id, user.email);
     const resetLink = `${this.config.frontendUrl}/reset-password?token=${token}`;
 
     let emailSent = false;

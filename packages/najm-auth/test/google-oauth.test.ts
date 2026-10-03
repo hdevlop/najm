@@ -220,6 +220,13 @@ describe('Google OAuth state and PKCE', () => {
     expect(() => service.create({ provider: 'google', intent: 'login', returnTo: '/\\evil.example' })).toThrow();
     expect(() => service.create({ provider: 'google', intent: 'login', returnTo: 'https://evil.example' })).toThrow();
   });
+
+  test('rejects local paths that normalize into protocol-relative paths', () => {
+    const { service } = makeStateService();
+    for (const returnTo of ['/orders/..//evil.test', '/orders/%2e%2e///evil.test']) {
+      expect(() => service.create({ provider: 'google', intent: 'login', returnTo })).toThrow();
+    }
+  });
 });
 
 describe('Google provider protocol', () => {
@@ -568,6 +575,7 @@ describe('shared session issuance', () => {
   test('issues standard tokens and refresh/session cookies for OAuth users', async () => {
     const calls: string[] = [];
     const service = new AuthSessionService({
+      getSessionVersion: async () => 3,
       deleteExpiredSessions: async () => { calls.push('prune'); },
       generateTokens: async () => ({
         accessToken: 'access',
@@ -579,6 +587,7 @@ describe('shared session issuance', () => {
         sessionVersion: 3,
       }),
     } as any, {
+      getAuthRecordById: async () => ({ id: 'user-1', email: 'user@example.com', status: 'active' }),
       updateLastLogin: async () => { calls.push('last-login'); },
     } as any, {
       setRefreshToken: (token: string) => { calls.push(`refresh:${token}`); },
@@ -592,7 +601,7 @@ describe('shared session issuance', () => {
     } as any);
     expect(result).toMatchObject({ accessToken: 'access', refreshToken: 'refresh' });
     expect(result).not.toHaveProperty('tokenFamily');
-    expect(calls).toEqual(['prune', 'refresh:refresh', 'last-login', 'session:3']);
+    expect(calls).toEqual(['prune', 'last-login', 'refresh:refresh', 'session:3']);
   });
 });
 
@@ -645,6 +654,14 @@ describe('OAuth callback orchestration', () => {
 });
 
 describe('OAuth client URLs', () => {
+  test('rejects paths that normalize into protocol-relative return destinations', () => {
+    const client = new NajmAuthClient({ baseURL: '/api' });
+    try {
+      expect(() => client.getOAuthLoginUrl('google', { returnTo: '/orders/..//evil.test' })).toThrow();
+    } finally {
+      client.destroy();
+    }
+  });
   test('supports relative baseURL and authPrefix', () => {
     const client = new NajmAuthClient({ baseURL: '/api', authPrefix: '/auth' });
     expect(client.getOAuthLoginUrl('google', { returnTo: '/dashboard' }))

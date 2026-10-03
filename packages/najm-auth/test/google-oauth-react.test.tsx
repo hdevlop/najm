@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { Window } from 'happy-dom';
 
 const testWindow = new Window({ url: 'http://localhost/auth/oauth/callback?returnTo=/dashboard' });
@@ -34,6 +34,25 @@ const withClient = (client: Record<string, unknown>, child: React.ReactNode) => 
 );
 
 describe('Google OAuth React bindings', () => {
+  test.each([
+    ['/orders/..//evil.test', '/account'],
+    [null, '/orders/..//evil.test'],
+    [null, '/\t/evil.test'],
+  ])('OAuthCallback keeps returnTo %s and fallback %s on the local origin', async (returnTo, fallback) => {
+    const originalUrl = window.location.href;
+    const query = returnTo === null ? '' : `?${new URLSearchParams({ returnTo })}`;
+    window.location.href = `http://localhost/auth/oauth/callback${query}`;
+    const replace = spyOn(window.location, 'replace').mockImplementation(() => {});
+    try {
+      render(withClient({ completeOAuthLogin: async () => user }, <OAuthCallback defaultRedirect={fallback} />));
+      const expected = returnTo === null ? '/' : '/account';
+      await waitFor(() => expect(replace).toHaveBeenCalledWith(expected));
+    } finally {
+      replace.mockRestore();
+      window.location.href = originalUrl;
+    }
+  });
+
   test('GoogleLoginButton preserves the child click handler and starts a Google redirect', () => {
     const calls: string[] = [];
     const client = {

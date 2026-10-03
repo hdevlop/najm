@@ -1,4 +1,4 @@
-import { Err, Scan, ScannerService, ScanType } from 'najm-core';
+import { createAlsToken, Err, Scan, ScannerService, ScanType } from 'najm-core';
 import { LoggerService } from 'najm-core';
 import { Container, DI, Inject, Meta, Service } from 'najm-core';
 import { DatabaseService } from './DatabaseService';
@@ -7,6 +7,10 @@ import { TRANSACTION_DEPTH, TRANSACTIONS } from './tokens';
 import { getTransactionalMethods } from './decorator';
 
 const TRANSACTION_WRAPPER = Symbol('najm:transaction-wrapper');
+type CommitCallback = () => unknown | Promise<unknown>;
+const COMMIT_CALLBACKS = createAlsToken<Map<string, CommitCallback[]>>('transactionCommitCallbacks');
+const ROLLBACK_CALLBACKS = createAlsToken<Map<string, CommitCallback[]>>('transactionRollbackCallbacks');
+const SQLITE_TRANSACTIONS = new WeakMap<object, Promise<void>>();
 
 type WrappedTransactionMethod = Function & {
    [TRANSACTION_WRAPPER]?: {
@@ -218,6 +222,28 @@ export class TransactionService {
       return this.container.get(TRANSACTION_DEPTH) ?? 0;
    }
 
+   /** Run after the outermost commit, or immediately outside a transaction. */
+   public async afterCommit(callback: CommitCallback, database = 'default'): Promise<void> {
+      const callbacks = this.container.get(COMMIT_CALLBACKS)?.get(database);
+      if (callbacks) callbacks.push(callback);
+      else await callback();
+   }
+
+   /** Run after an active transaction attempt rolls back; otherwise do nothing. */
+   public async afterRollback(callback: CommitCallback, database = 'default'): Promise<void> {
+      this.container.get(ROLLBACK_CALLBACKS)?.get(database)?.push(callback);
+   }
+
+   private async flushCallbacks(callbacks: CommitCallback[]): Promise<void> {
+      let failure: unknown;
+      let failed = false;
+      for (const callback of callbacks) {
+         try { await callback(); }
+         catch (error) { if (!failed) { failure = error; failed = true; } }
+      }
+      if (failed) throw failure;
+   }
+
    // ============================================================================
    // RUN TRANSACTION
    // ============================================================================
@@ -240,7 +266,13 @@ export class TransactionService {
       }
 
       const db = this.databaseService.get(dbName);
-      return this.executeWithRetries(db, dbName, fn, options);
+      const callbacks: CommitCallback[] = [];
+      const rollbackCallbacks: CommitCallback[] = [];
+      const result = await this.executeWithRetries(db, dbName, fn, options, callbacks, rollbackCallbacks);
+      // The database has committed. A callback failure must never enter the
+      // database retry loop and repeat an already committed mutation.
+      await this.flushCallbacks(callbacks);
+      return result;
    }
 
    // ============================================================================
@@ -266,16 +298,22 @@ export class TransactionService {
       db: any,
       dbName: string,
       fn: (trx: any) => Promise<T>,
-      options: TransactionalOptions
+      options: TransactionalOptions,
+      callbacks: CommitCallback[],
+      rollbackCallbacks: CommitCallback[]
    ): Promise<T> {
       const maxAttempts = (options.retries ?? 0) + 1;
       let lastError: Error | null = null;
 
       for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+         callbacks.length = 0;
+         rollbackCallbacks.length = 0;
          try {
-            return await this.executeTransaction(db, dbName, fn, options);
+            return await this.executeTransaction(db, dbName, fn, options, callbacks, rollbackCallbacks);
          } catch (error) {
             lastError = error as Error;
+            // Clear external state observed from this attempt before retrying.
+            await this.flushCallbacks(rollbackCallbacks);
 
             if (attempt < maxAttempts && this.isRetriable(lastError)) {
                const delay = this.calculateBackoff(attempt);
@@ -296,10 +334,16 @@ export class TransactionService {
       db: any,
       dbName: string,
       fn: (trx: any) => Promise<T>,
-      options: TransactionalOptions
+      options: TransactionalOptions,
+      callbacks: CommitCallback[],
+      rollbackCallbacks: CommitCallback[]
    ): Promise<T> {
       const prevTransactions = this.getAllActive();
       const prevDepth = this.getDepth();
+      const commitCallbacks = new Map(this.container.get(COMMIT_CALLBACKS) ?? []);
+      commitCallbacks.set(dbName, callbacks);
+      const rollbackHooks = new Map(this.container.get(ROLLBACK_CALLBACKS) ?? []);
+      rollbackHooks.set(dbName, rollbackCallbacks);
 
       const transactionFn = async (trx: any) => {
          const transactions = new Map(prevTransactions);
@@ -309,13 +353,15 @@ export class TransactionService {
             {
                transactions,
                transactionDepth: prevDepth + 1,
+               transactionCommitCallbacks: commitCallbacks,
+               transactionRollbackCallbacks: rollbackHooks,
             },
             async () => await fn(trx)
          );
       };
 
-      if (this.isBetterSqliteDriver(db)) {
-         return this.executeAsyncSqliteTransaction(db, dbName, fn, prevTransactions, prevDepth);
+      if (this.isSyncSqliteDriver(db)) {
+         return this.executeAsyncSqliteTransaction(db, dbName, fn, prevTransactions, prevDepth, commitCallbacks, rollbackHooks);
       }
 
       const transactionOptions = this.buildOptions(options);
@@ -340,7 +386,9 @@ export class TransactionService {
       dbName: string,
       fn: (trx: any) => Promise<T>,
       prevTransactions: Map<string, any>,
-      prevDepth: number
+      prevDepth: number,
+      commitCallbacks: Map<string, CommitCallback[]>,
+      rollbackCallbacks: Map<string, CommitCallback[]>
    ): Promise<T> {
       const client = this.getSqliteClient(db);
 
@@ -348,35 +396,49 @@ export class TransactionService {
          throw Err.invalidConfig('database', 'SQLite client does not support exec()');
       }
 
-      client.exec('BEGIN');
-
+      // Synchronous SQLite drivers have one connection. Keep independent async
+      // callbacks from opening overlapping transactions on that connection.
+      const previous = SQLITE_TRANSACTIONS.get(client) ?? Promise.resolve();
+      let release!: () => void;
+      const pending = new Promise<void>(resolve => { release = resolve; });
+      SQLITE_TRANSACTIONS.set(client, pending);
+      await previous;
       try {
-         const transactions = new Map(prevTransactions);
-         transactions.set(dbName, db);
-
-         const result = await this.container.run(
-            {
-               transactions,
-               transactionDepth: prevDepth + 1,
-            },
-            async () => await fn(db)
-         );
-
-         client.exec('COMMIT');
-         return result;
-      } catch (error) {
+         client.exec('BEGIN');
          try {
-            client.exec('ROLLBACK');
-         } catch {
-            // Ignore rollback errors and rethrow original failure
+            const transactions = new Map(prevTransactions);
+            transactions.set(dbName, db);
+
+            const result = await this.container.run(
+               {
+                  transactions,
+                  transactionDepth: prevDepth + 1,
+                  transactionCommitCallbacks: commitCallbacks,
+                  transactionRollbackCallbacks: rollbackCallbacks,
+               },
+               async () => await fn(db)
+            );
+
+            client.exec('COMMIT');
+            return result;
+         } catch (error) {
+            try {
+               client.exec('ROLLBACK');
+            } catch {
+               // Ignore rollback errors and rethrow original failure
+            }
+            throw error;
          }
-         throw error;
+      } finally {
+         release();
+         if (SQLITE_TRANSACTIONS.get(client) === pending) SQLITE_TRANSACTIONS.delete(client);
       }
    }
 
-   private isBetterSqliteDriver(db: any): boolean {
+   private isSyncSqliteDriver(db: any): boolean {
       const client = this.getSqliteClient(db);
-      return !!client && typeof client.exec === 'function' && typeof client.pragma === 'function';
+      return !!client && typeof client.exec === 'function'
+         && (db.resultKind === 'sync' || typeof client.pragma === 'function');
    }
 
    private getSqliteClient(db: any): any {

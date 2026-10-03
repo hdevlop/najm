@@ -2,6 +2,8 @@
 // safeRedirect — open-redirect guard for `?next=` parameters
 // ============================================================================
 
+import { normalizeLocalRedirectPath } from '../redirectPath';
+
 const DEFAULT_BLOCKED_PREFIXES = ['/api', '/login', '/_next'];
 
 const ASSET_EXTENSIONS =
@@ -45,21 +47,9 @@ export function getSafeRedirectPath(
     blockedPrefixes = DEFAULT_BLOCKED_PREFIXES,
   } = typeof options === 'string' ? { fallback: options } : options;
 
-  const path = Array.isArray(value) ? value[0] : value;
-
-  if (
-    !path ||
-    !path.startsWith('/') ||
-    // Protocol-relative: the browser treats `//host/x` as off-site.
-    path.startsWith('//') ||
-    // A backslash is normalized to a forward slash by some browsers, so
-    // `/\evil.test` is another way to spell the case above.
-    path.startsWith('/\\') ||
-    blockedPrefixes.some((prefix) => path.startsWith(prefix)) ||
-    ASSET_EXTENSIONS.test(path.split('?')[0] ?? path)
-  ) {
-    return fallback;
-  }
-
+  const path = normalizeLocalRedirectPath(Array.isArray(value) ? value[0] : value);
+  const pathname = path?.split(/[?#]/)[0] ?? '';
+  if (!path || blockedPrefixes.some((prefix) => pathname.startsWith(prefix))
+    || ASSET_EXTENSIONS.test(pathname)) return fallback;
   return path;
 }

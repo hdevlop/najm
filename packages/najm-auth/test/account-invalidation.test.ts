@@ -115,7 +115,8 @@ function harness() {
     { checkRoleExists: async () => undefined } as any,
     { getByName: async () => ({ id: 'role-x' }) } as any,
     userRepository as any,
-    { checkEmailUnique: async () => undefined, validatePasswordStrength: () => undefined } as any,
+    { checkEmailUnique: async () => undefined, validatePasswordStrength: () => undefined,
+      writeUnique: async (write: () => Promise<unknown>) => write() } as any,
     { hashPassword: async (p: string) => `hashed:${p}` } as any,
     {} as any,
     authConfig as any,
@@ -233,11 +234,12 @@ describe('an account change ends the access it revoked', () => {
   test('a token minted while a deactivation lands does not survive it', async () => {
     // Issuance reads the session version, the deactivation bumps it, then
     // issuance completes. The completing write must not restore the old version.
-    const issuing = h.tokens.generateTokens('user-1');
+    const issuing = h.tokens.generateTokens('user-1')
+      .then(session => ({ session }), error => ({ error }));
     await h.userService.update('user-1', { status: 'inactive' });
-    const session = await issuing;
-
-    expect(await authorizes(h.tokens, session.accessToken)).toBe(false);
+    const outcome = await issuing;
+    if ('error' in outcome) expect(outcome.error).toMatchObject({ status: 401 });
+    else expect(await authorizes(h.tokens, outcome.session.accessToken)).toBe(false);
   });
 
   test('an inactive account is denied even when its record is still cached', async () => {
@@ -247,7 +249,7 @@ describe('an account change ends the access it revoked', () => {
     // Change the row without going through invalidation at all: a truthy
     // cached record must still not be enough to authorize.
     h.users.get('user-1')!.status = 'inactive';
-    await h.cache.del('auth:user:user-1');
+    await h.cache.del('auth:user:user-1:0');
 
     expect(await authorizes(h.tokens, session.accessToken)).toBe(false);
   });

@@ -3,6 +3,8 @@ import { I18n, type TFn } from 'najm-i18n';
 import { RoleRepository } from './RoleRepository';
 import { RoleValidator } from './RoleValidator';
 import { ROLES } from './constants';
+import { UserRepository } from '../users/UserRepository';
+import { SessionInvalidationService } from '../tokens/SessionInvalidationService';
 
 @Injectable()
 export class RoleService {
@@ -10,7 +12,9 @@ export class RoleService {
 
   constructor(
     private roleRepository: RoleRepository,
-    private roleValidator: RoleValidator
+    private roleValidator: RoleValidator,
+    private userRepository?: UserRepository,
+    private sessionInvalidation?: SessionInvalidationService,
   ) { }
 
   async getAll() {
@@ -39,7 +43,14 @@ export class RoleService {
       Err(this.t('errors.cannotRenameSystem'), 403);
     }
     await this.roleValidator.checkNameUnique(data.name, id);
-    return await this.onDuplicateName(() => this.roleRepository.update(id, data));
+    const updated = await this.onDuplicateName(() => this.roleRepository.update(id, data));
+    if (data.name !== undefined
+      && this.userRepository && this.sessionInvalidation) {
+      for (const userId of await this.userRepository.getIdsByRole(id)) {
+        await this.sessionInvalidation.invalidateAccessTokens(userId);
+      }
+    }
+    return updated;
   }
 
   async delete(id: string) {

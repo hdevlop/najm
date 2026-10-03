@@ -1,5 +1,6 @@
 import { useEffect, type ReactNode } from 'react';
 import { useOAuthCallback } from './useOAuthCallback';
+import { normalizeLocalRedirectPath } from '../redirectPath';
 
 interface OAuthCallbackProps {
   fallback?: ReactNode;
@@ -8,18 +9,7 @@ interface OAuthCallbackProps {
 }
 
 const safeReturnTo = (value: string | null, fallback: string): string => {
-  const safeFallback = fallback.startsWith('/') && !fallback.startsWith('//') && !fallback.includes('\\')
-    ? fallback
-    : '/';
-  if (!value || !value.startsWith('/') || value.startsWith('//') || value.includes('\\')) return safeFallback;
-  try {
-    const base = new URL('https://najm.invalid');
-    const parsed = new URL(value, base);
-    if (parsed.origin !== base.origin) return safeFallback;
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return safeFallback;
-  }
+  return normalizeLocalRedirectPath(value) ?? normalizeLocalRedirectPath(fallback) ?? '/';
 };
 
 export function OAuthCallback({

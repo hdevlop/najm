@@ -3,6 +3,7 @@ import { Err } from 'najm-core';
 import { I18n, type TFn } from 'najm-i18n';
 import { UserRepository } from './UserRepository';
 import { EncryptionService } from '../auth/EncryptionService';
+import { isUniqueViolation } from '../shared/uniqueViolation';
 
 /**
  * UserValidator - Business validation for user operations
@@ -23,7 +24,7 @@ export class UserValidator {
     */
    async checkEmailUnique(email: string, excludeId?: string) {
       if (!email) return;
-      const existingUser = await this.userRepository.getByEmail(email);
+      const existingUser = await this.userRepository.getByEmailInsensitive(email);
       if (existingUser && existingUser.id !== excludeId) {
          Err(this.t('errors.emailExists'), 409);
       }
@@ -38,6 +39,20 @@ export class UserValidator {
       if (existingUser && existingUser.id !== excludeId) {
          Err(this.t('errors.phoneExists'), 409);
       }
+   }
+
+   /** The database remains authoritative when two validation reads both pass. */
+   async writeUnique<T>(write: () => Promise<T>): Promise<T> {
+      try {
+         return await write();
+      } catch (error) {
+         if (isUniqueViolation(error)) Err('User identity already exists', 409);
+         throw error;
+      }
+   }
+
+   checkCredentialUnchanged(updated: unknown): void {
+      if (!updated) Err('Account credentials changed. Please sign in again or request a new link.', 409);
    }
 
    /**

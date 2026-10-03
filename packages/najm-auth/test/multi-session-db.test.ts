@@ -79,6 +79,9 @@ function makeService() {
     role: null,
     permissions: [],
   });
+  repo.getCredentialState = async (id: string) => ({
+    id, email: `${id}@example.com`, password: 'fixture-hash', status: 'active', emailVerified: true,
+  });
 
   const cookie = {
     value: undefined as string | undefined,
@@ -275,6 +278,7 @@ describe('multi-session refresh tokens (real bun:sqlite)', () => {
     const auth = new AuthService(
       h.service,                                                  // real TokenService
       {
+        getAuthRecordById: h.repo.getCredentialState,
         getById: async () => ({
           id: 'user-1',
           status: 'active',

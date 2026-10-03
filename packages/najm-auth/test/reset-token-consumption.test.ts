@@ -95,8 +95,13 @@ function harness() {
   const userUpdates: Array<{ userId: string; data: Record<string, unknown> }> = [];
   let userStatus: 'active' | 'inactive' | 'pending' = 'active';
   let updateFails = false;
+  repo.getCredentialState = async (id: string) => ({
+    id, email: `${id}@example.com`, password: 'fixture-hash',
+    status: userStatus, emailVerified: false,
+  });
 
   const userService = {
+    getAuthRecordById: repo.getCredentialState,
     getById: async (userId: string) => ({
       id: userId,
       email: `${userId}@example.com`,

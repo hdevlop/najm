@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { describe, expect, test } from 'bun:test';
+import { z } from 'zod';
 import { AuthService } from '../src/auth/AuthService';
 import { AuthSessionService } from '../src/auth/AuthSessionService';
 import { OAuthService } from '../src/oauth/OAuthService';
@@ -482,6 +483,7 @@ describe('session establishment refuses a required user', () => {
     const minted: string[] = [];
     const service = new AuthSessionService(
       {
+        getSessionVersion: async () => 1,
         deleteExpiredSessions: async () => { minted.push('prune'); },
         generateTokens: async () => {
           minted.push('tokens');
@@ -497,7 +499,8 @@ describe('session establishment refuses a required user', () => {
           };
         },
       } as never,
-      { updateLastLogin: async () => undefined } as never,
+      { updateLastLogin: async () => undefined,
+        getAuthRecordById: async () => ({ id: 'user-1', email: 'fatima@example.ma', status: 'active' }) } as never,
       { setRefreshToken: () => { }, setSessionCookie: () => { } } as never,
       { isRequired: async () => required } as never,
     );
@@ -636,9 +639,13 @@ describe('password replacement', () => {
           return { userId, purpose: 'password', required: false };
         },
       } as never,
-      { getAuthRecordById: async () => ({ id: consumedFor, password: storedHash }) } as never,
-      { update: async (id: string, data: any) => { updates.push({ id, ...data }); } } as never,
+      { getAuthRecordById: async () => ({ ...FAMILY, id: consumedFor, password: storedHash }) } as never,
+      { updateWithCredential: async (id: string, data: any) => {
+        updates.push({ id, ...data });
+        return { ...FAMILY, id, ...data };
+      } } as never,
       {
+        checkCredentialUnchanged: (updated: unknown) => { if (!updated) throw new Error('credentials changed'); },
         comparePassword: async (candidate: string, hash: string) =>
           hash === `hash(${candidate})`,
       } as never,
@@ -686,6 +693,18 @@ describe('password replacement', () => {
     ] as const) {
       const { service, consumptions, updates } = passwordSetup({ storedHash });
       await expect(service.change(candidate)).rejects.toBeDefined();
+      expect(consumptions).toHaveLength(0);
+      expect(updates).toHaveLength(0);
+    }
+  });
+
+  test('a custom policy cannot admit passwords past the bcrypt byte limit', async () => {
+    for (const candidate of ['a1'.repeat(37), 'é'.repeat(37)]) {
+      const { service, consumptions, updates } = passwordSetup();
+      (service as any).config.credentialSetup.password.passwordSchema = z.string();
+      await expect(service.change(candidate)).rejects.toMatchObject({
+        code: 'AUTH_CREDENTIAL_SETUP_PASSWORD_REJECTED', status: 422,
+      });
       expect(consumptions).toHaveLength(0);
       expect(updates).toHaveLength(0);
     }

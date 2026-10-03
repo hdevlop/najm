@@ -1,4 +1,4 @@
-import { eq, ne, sql } from 'drizzle-orm';
+import { and, eq, isNull, ne, sql } from 'drizzle-orm';
 import { Repository, Inject } from 'najm-core';
 import { DB, type TDb } from 'najm-database';
 import { AUTH_SCHEMA } from '../auth.tokens';
@@ -6,6 +6,7 @@ import type { AuthSchema } from '../types';
 import { AuthQueries } from '../shared/queries';
 import { ROLES } from '../roles/constants';
 import type { User, NewUser } from '../schema/pg';
+import type { CredentialState } from '../auth/credentialState';
 
 export interface UserWithPermissions extends Omit<User, 'password'> {
   role?: string | null;
@@ -121,6 +122,18 @@ export class UserRepository {
   async update(id: string, data: Partial<NewUser>): Promise<User | undefined> {
     const [updatedUser] = await this.db.update(this.users).set(data).where(eq(this.users.id, id)).returning();
     return updatedUser;
+  }
+
+  /** The credential that authorized a delayed write must still own the account. */
+  async updateWithCredential(id: string, data: Partial<NewUser>, expected: CredentialState): Promise<User | undefined> {
+    const [updated] = await this.db.update(this.users).set(data).where(and(
+      eq(this.users.id, id),
+      eq(this.users.password, expected.password),
+      eq(this.users.email, expected.email),
+      expected.status == null ? isNull(this.users.status) : eq(this.users.status, expected.status),
+      expected.emailVerified == null ? isNull(this.users.emailVerified) : eq(this.users.emailVerified, expected.emailVerified),
+    )).returning();
+    return updated;
   }
 
   async updateLastLogin(id: string): Promise<User> {

@@ -415,7 +415,9 @@ describe('re-inviting an account that is still pending', () => {
 
 describe('one-time set-password tokens', () => {
   function tokenService(cache: Record<string, unknown>) {
-    const service = new TokenService({} as never, {} as never, cache as never);
+    const service = new TokenService({ getCredentialState: async (id: string) => ({
+      ...ACCOUNT, id, password: 'fixture-hash',
+    }) } as never, {} as never, cache as never);
     (service as any).config = {
       jwt: { refreshSecret: 'refresh-secret-value-at-least-32-characters' },
     };

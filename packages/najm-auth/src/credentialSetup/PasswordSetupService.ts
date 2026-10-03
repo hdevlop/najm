@@ -3,6 +3,7 @@ import { I18n, type TFn } from 'najm-i18n';
 import { EncryptionService } from '../auth/EncryptionService';
 import { resolveTemporaryCredentialKind } from '../identity/temporaryCredential';
 import { AUTH_CONFIG } from '../auth.tokens';
+import type { CredentialState } from '../auth/credentialState';
 import type { AuthConfig } from '../types';
 import { UserRepository } from '../users/UserRepository';
 import { UserService } from '../users/UserService';
@@ -75,10 +76,10 @@ export class PasswordSetupService {
    */
   async change(newPassword: string): Promise<{ changed: true; signInAgain: true }> {
     const { userId } = await this.setup.require(this.options);
-    const password = await this.validateReplacement(userId, newPassword);
+    const { password, credential } = await this.validateReplacement(userId, newPassword);
     const hashed = await this.encryption.hashPassword(password);
 
-    await this.setup.consume(this.options, (session) => this.persist(session.userId, hashed));
+    await this.setup.consume(this.options, (session) => this.persist(session.userId, hashed, credential));
     return { changed: true, signInAgain: true };
   }
 
@@ -86,7 +87,7 @@ export class PasswordSetupService {
     return this.setup.cancel(this.options);
   }
 
-  private async validateReplacement(userId: string, submitted: string): Promise<string> {
+  private async validateReplacement(userId: string, submitted: string): Promise<{ password: string; credential: CredentialState }> {
     const requirement = await this.requirements.find(userId, PASSWORD_SETUP_PURPOSE);
     if (!requirement) {
       credentialSetupError(
@@ -125,7 +126,7 @@ export class PasswordSetupService {
       );
     }
 
-    return newPassword;
+    return { password: newPassword, credential: user };
   }
 
   /**
@@ -133,8 +134,10 @@ export class PasswordSetupService {
    * update, the requirement completion, and the one-time session all commit or
    * roll back together.
    */
-  private async persist(userId: string, password: string): Promise<string> {
-    await this.userRecords.update(userId, { password });
+  private async persist(userId: string, password: string, credential: CredentialState): Promise<string> {
+    if (userId !== credential.id) this.validator.checkCredentialUnchanged(undefined);
+    const updated = await this.userRecords.updateWithCredential(userId, { password }, credential);
+    this.validator.checkCredentialUnchanged(updated);
 
     const completed = await this.requirements.completeRequirement(userId, PASSWORD_SETUP_PURPOSE);
     if (!completed) {
@@ -155,6 +158,15 @@ export class PasswordSetupService {
       credentialSetupError(
         CREDENTIAL_SETUP_CODES.PASSWORD_REJECTED,
         parsed.error.issues[0]?.message ?? this.message('errors.credentialSetupPasswordRejected', 'Choose a different password.'),
+        422,
+      );
+    }
+    // Custom application policies may relax complexity, but cannot relax
+    // bcrypt's byte boundary or create a password the login DTO rejects.
+    if (!parsed.data || new TextEncoder().encode(parsed.data).length > 72) {
+      credentialSetupError(
+        CREDENTIAL_SETUP_CODES.PASSWORD_REJECTED,
+        'Password must be between 1 and 72 bytes',
         422,
       );
     }

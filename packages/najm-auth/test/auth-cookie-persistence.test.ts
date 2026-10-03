@@ -356,6 +356,21 @@ describe('getSafeRedirectPath', () => {
     expect(getSafeRedirectPath('javascript:alert(1)')).toBe('/dashboard');
   });
 
+  test('rejects controls that URL parsing would turn into an external destination', () => {
+    for (const value of ['/\t/evil.test', '/\n/evil.test', '/\r/evil.test']) {
+      expect(new URL(value, 'https://app.test').origin).toBe('https://evil.test');
+      expect(getSafeRedirectPath(value)).toBe('/dashboard');
+    }
+  });
+
+  test('checks blocked paths after URL normalization', () => {
+    for (const value of ['/orders/../login', '/orders/%2e%2e/api/auth/logout', '/orders/..\\login',
+      '/orders/..//evil.test', '/orders/%2e%2e///evil.test']) {
+      expect(getSafeRedirectPath(value)).toBe('/dashboard');
+    }
+    expect(getSafeRedirectPath('/orders/../account?tab=profile#name')).toBe('/account?tab=profile#name');
+  });
+
   test('rejects blocked prefixes and assets', () => {
     expect(getSafeRedirectPath('/api/auth/login')).toBe('/dashboard');
     expect(getSafeRedirectPath('/login')).toBe('/dashboard');

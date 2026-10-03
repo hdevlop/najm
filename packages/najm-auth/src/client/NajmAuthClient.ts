@@ -24,6 +24,7 @@ import type {
   LoginResult,
 } from './types';
 import { AuthError } from './types';
+import { normalizeLocalRedirectPath } from './redirectPath';
 
 /**
  * Najm answers a pending setup either at the top level or inside the standard
@@ -630,16 +631,9 @@ export class NajmAuthClient {
   }
 
   private validateReturnTo(value: string): string {
-    const candidate = value.trim();
-    if (!candidate.startsWith('/') || candidate.startsWith('//') || candidate.includes('\\')) {
-      throw new Error('returnTo must be a same-origin path');
-    }
-    const base = new URL('https://najm.invalid');
-    const parsed = new URL(candidate, base);
-    if (parsed.origin !== base.origin || parsed.username || parsed.password) {
-      throw new Error('returnTo must be a same-origin path');
-    }
-    return `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    const path = normalizeLocalRedirectPath(value.trim());
+    if (!path) throw new Error('returnTo must be a same-origin path');
+    return path;
   }
 }
 

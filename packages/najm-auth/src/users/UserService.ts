@@ -15,6 +15,7 @@ import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig } from '../types';
 import type { User } from '../schema/pg';
 import { SessionInvalidationService } from '../tokens/SessionInvalidationService';
+import type { CredentialState } from '../auth/credentialState';
 
 const E164_PHONE = /^\+[1-9]\d{7,14}$/;
 
@@ -183,7 +184,7 @@ export class UserService {
     const userDetails = {
       id: userId,
       name: name || null,
-      email,
+      email: email.trim().toLowerCase(),
       image,
       password: hashedPassword,
       roleId: resolvedRoleId,
@@ -192,7 +193,7 @@ export class UserService {
       status: (data.status as 'active' | 'inactive' | 'pending') ?? this.authConfig.registrationMode ?? 'active',
     };
 
-    const newUser = await this.userRepository.create(userDetails);
+    const newUser = await this.userValidator.writeUnique(() => this.userRepository.create(userDetails));
 
     return this.sanitizeUser(newUser);
 
@@ -208,7 +209,7 @@ export class UserService {
   async update(
     id: string,
     data: Record<string, any>,
-    options: { validatePasswordStrength?: boolean } = {},
+    options: { validatePasswordStrength?: boolean; expectedCredential?: CredentialState } = {},
   ): Promise<SanitizedUser> {
     const { password, image } = data;
 
@@ -228,14 +229,25 @@ export class UserService {
       hashedPassword = await this.encryptionService.hashPassword(password);
     }
 
-    const updateData = {
+    const updateData: Record<string, any> = {
       ...data,
       image,
       ...(hashedPassword && { password: hashedPassword })
     };
 
+    if (typeof data.email === 'string') updateData.email = data.email.trim().toLowerCase();
+    if (data.phone !== undefined && data.phone !== null) {
+      const phone = this.authConfig.identity?.resolve(data.phone) ?? normalizeAuthIdentifier(data.phone);
+      if (!phone || !E164_PHONE.test(phone)) Err('A valid phone number is required', 400);
+      await this.userValidator.checkPhoneUnique(phone, id);
+      updateData.phone = phone;
+    }
+
     const cleanedUpdateData = clean(updateData);
-    const updatedUser = await this.userRepository.update(id, cleanedUpdateData);
+    const updatedUser = await this.userValidator.writeUnique(() => options.expectedCredential
+      ? this.userRepository.updateWithCredential(id, cleanedUpdateData, options.expectedCredential)
+      : this.userRepository.update(id, cleanedUpdateData));
+    if (options.expectedCredential) this.userValidator.checkCredentialUnchanged(updatedUser);
     const result = this.sanitizeUser(this.requireUser(updatedUser)) as SanitizedUser;
 
     // Only security state ends sessions. A renamed or re-avatared user stays

@@ -232,6 +232,7 @@
         "drizzle-orm": "^0.45.2",
         "happy-dom": "^20.11.1",
         "next": "16.2.11",
+        "postgres": "3.4.8",
         "tsup": "^8.5.1",
         "typescript": "^5.9.3",
       },
@@ -477,7 +478,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "2.16.15",
+      "version": "2.16.16",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",

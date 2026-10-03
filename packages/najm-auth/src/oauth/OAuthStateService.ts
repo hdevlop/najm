@@ -5,6 +5,7 @@ import { EncryptionService } from '../auth/EncryptionService';
 import type { OAuthProvider } from '../types';
 import type { OAuthAttempt, OAuthIntent } from './types';
 import { OAuthFlowError } from './types';
+import { normalizeLocalRedirectPath } from '../client/redirectPath';
 
 const ATTEMPT_TTL_MS = 10 * 60 * 1000;
 const COOKIE_PREFIX = 'najm.oauth.';
@@ -77,22 +78,9 @@ export class OAuthStateService {
   }
 
   validateReturnTo(value?: string): string {
-    const candidate = value?.trim() || '/';
-    if (!candidate.startsWith('/') || candidate.startsWith('//') || candidate.includes('\\')) {
-      throw new OAuthFlowError('oauth_redirect_invalid');
-    }
-
-    try {
-      const base = new URL('https://najm.invalid');
-      const parsed = new URL(candidate, base);
-      if (parsed.origin !== base.origin || parsed.username || parsed.password) {
-        throw new OAuthFlowError('oauth_redirect_invalid');
-      }
-      return `${parsed.pathname}${parsed.search}${parsed.hash}`;
-    } catch (error) {
-      if (error instanceof OAuthFlowError) throw error;
-      throw new OAuthFlowError('oauth_redirect_invalid');
-    }
+    const path = normalizeLocalRedirectPath(value?.trim() || '/');
+    if (!path) throw new OAuthFlowError('oauth_redirect_invalid');
+    return path;
   }
 
   private cookieName(provider: OAuthProvider, state: string): string {

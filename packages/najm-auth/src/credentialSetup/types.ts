@@ -50,6 +50,7 @@ export interface CredentialSetupPasswordOptions {
    * Replacement-password schema. Default: 8–72 bytes with at least one letter
    * and one digit — deliberately case-agnostic, because a first-login
    * replacement is typed by someone who just proved they own the account.
+   * Every policy is still subject to the 1-72 UTF-8 byte limit for bcrypt.
    */
   passwordSchema?: ZodType<string>;
   /** Setup-session lifetime in milliseconds (default: 10 minutes). */

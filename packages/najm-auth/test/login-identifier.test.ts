@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { AuthService } from '../src/auth/AuthService';
+import { changePasswordDto } from '../src/users/UserDto';
 import { inTimeZone, postgresTimestamp } from './timeZone';
 
 const activeUser = {
@@ -12,6 +13,17 @@ const activeUser = {
   failedLoginAttempts: 0,
   lockoutUntil: null,
 };
+
+test('password change accepts an existing credential without applying new-password complexity', () => {
+  expect(changePasswordDto.safeParse({ currentPassword: 'legacy-pass', newPassword: 'NewPassword123' }).success)
+    .toBe(true);
+  expect(changePasswordDto.safeParse({ currentPassword: '', newPassword: 'NewPassword123' }).success)
+    .toBe(false);
+  expect(changePasswordDto.safeParse({ currentPassword: 'x'.repeat(73), newPassword: 'NewPassword123' }).success)
+    .toBe(false);
+  expect(changePasswordDto.safeParse({ currentPassword: 'legacy-pass', newPassword: 'weak' }).success)
+    .toBe(false);
+});
 
 describe('login identifier resolution', () => {
   test('locked and unknown identities return the same safe response after a hash comparison', async () => {

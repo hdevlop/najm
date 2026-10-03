@@ -23,9 +23,12 @@ export class PermissionService {
    * sessions that captured it end. This is an infrequent administrative
    * action, and the work is proportional to the role's membership.
    */
-  private async invalidateRoleHolders(roleId: string): Promise<void> {
+  private async invalidateRoleHolders(roleIds: string | readonly string[]): Promise<void> {
     if (!this.userRepository || !this.sessionInvalidation) return;
-    const userIds = await this.userRepository.getIdsByRole(roleId);
+    const userIds = new Set<string>();
+    for (const roleId of new Set(typeof roleIds === 'string' ? [roleIds] : roleIds)) {
+      for (const userId of await this.userRepository.getIdsByRole(roleId)) userIds.add(userId);
+    }
     for (const userId of userIds) {
       await this.sessionInvalidation.invalidateAccessTokens(userId);
     }
@@ -56,12 +59,19 @@ export class PermissionService {
   async update(id: string, data) {
     await this.permissionValidator.checkPermissionExists(id);
     await this.permissionValidator.checkPermissionNameUnique(data.name, id);
-    return await this.permissionRepository.update(id, data);
+    const changesClaims = (['name', 'resource', 'action'] as const)
+      .some((field) => data[field] !== undefined);
+    if (!changesClaims) return this.permissionRepository.update(id, data);
+    const { permission: updated, roleIds } = await this.permissionRepository.updateWithRoles(id, data);
+    await this.invalidateRoleHolders(roleIds);
+    return updated;
   }
 
   async delete(id: string) {
     await this.permissionValidator.checkPermissionExists(id);
-    return await this.permissionRepository.delete(id);
+    const { permission: deleted, roleIds } = await this.permissionRepository.deleteWithRoles(id);
+    await this.invalidateRoleHolders(roleIds);
+    return deleted;
   }
 
   async getPermissionsByRole(roleId: string) {
@@ -144,7 +154,9 @@ export class PermissionService {
   }
 
   async deleteAll() {
-    return await this.permissionRepository.deleteAll();
+    const { rows: deleted, roleIds } = await this.permissionRepository.deleteAllWithRoles();
+    await this.invalidateRoleHolders(roleIds);
+    return deleted;
   }
 
 }

@@ -1,5 +1,6 @@
 import { Inject, Injectable } from 'najm-core';
 import { CacheService } from 'najm-cache';
+import { TransactionService } from 'najm-database';
 import timestring from 'timestring';
 import { AUTH_CONFIG } from '../auth.tokens';
 import type { AuthConfig } from '../types';
@@ -23,6 +24,7 @@ export class SessionInvalidationService {
   constructor(
     private cache: CacheService,
     private tokens: TokenRepository,
+    private transactions?: TransactionService,
   ) { }
 
   /**
@@ -49,7 +51,12 @@ export class SessionInvalidationService {
   }
 
   private get accessTokenTtlMs(): number {
-    return timestring(this.config.jwt.accessExpiresIn, 'ms');
+    // A signed snapshot can outlive a bearer token. Keep its invalidation
+    // marker until both credential lifetimes have elapsed.
+    return Math.max(
+      timestring(this.config.jwt.accessExpiresIn, 'ms'),
+      (this.config.session?.maxAge ?? 300) * 1000,
+    );
   }
 
   private get refreshTokenTtlMs(): number {
@@ -111,11 +118,18 @@ export class SessionInvalidationService {
    * the same version and write the same successor back.
    */
   async invalidateAccessTokens(userId: string): Promise<number> {
+    const version = await this.invalidateAccessTokensNow(userId);
+    await this.afterTransaction(() => this.invalidateAccessTokens(userId));
+    return version;
+  }
+
+  private async invalidateAccessTokensNow(userId: string): Promise<number> {
     const key = this.sessionVersionKey(userId);
     const { count } = await this.cache.incr(key, this.accessTokenTtlMs);
     // incr only attaches a TTL when it creates the key; extend it so a series
     // of invalidations cannot leave the marker expiring on the first one's clock.
     await this.cache.expire(key, this.accessTokenTtlMs);
+    await this.cache.del(`${this.userCacheKey(userId)}:${count - 1}`);
     await this.dropUserCache(userId);
     return count;
   }
@@ -128,19 +142,36 @@ export class SessionInvalidationService {
    * End every session a user holds: access tokens by version, refresh sessions
    * by row, and each family's liveness marker.
    *
-   * Callers run this AFTER their database mutation has committed. Running it
-   * before would leave a window in which a concurrent login re-established a
-   * session against the state the mutation was about to remove; running it
-   * after a rollback merely signs the user out again, which is safe.
+   * Repeat invalidation when a caller-owned transaction completes. Readers can
+   * recover from the previous committed state before commit, or from transient
+   * state on a shared connection before rollback. Neither snapshot may survive.
    */
   async invalidateUser(userId: string): Promise<void> {
-    await this.invalidateAccessTokens(userId);
+    await this.invalidateAccessTokensNow(userId);
+    await this.revokeAllForUserNow(userId);
+    await this.afterTransaction(() => this.invalidateUser(userId));
+  }
+
+  async revokeAllForUser(userId: string) {
+    const revoked = await this.revokeAllForUserNow(userId);
+    await this.afterTransaction(() => this.revokeAllForUser(userId));
+    return revoked;
+  }
+
+  private async afterTransaction(callback: () => Promise<unknown>): Promise<void> {
+    if (!this.transactions?.isActive()) return;
+    await this.transactions.afterCommit(callback);
+    await this.transactions.afterRollback(callback);
+  }
+
+  private async revokeAllForUserNow(userId: string) {
     // The durable update reports the rows it revoked, so the families come
     // from the operation itself rather than a second read that could race.
     const revoked = await this.tokens.revokeAllForUser(userId);
     await Promise.all(
       familiesOf(revoked).map((family) => this.markFamilyRevoked(family)),
     );
+    return revoked;
   }
 
   /**

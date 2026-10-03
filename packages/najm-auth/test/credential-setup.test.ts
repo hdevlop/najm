@@ -146,7 +146,11 @@ describe('credential setup browser contract', () => {
       tokens as any,
       authCookies as any,
       cookies as any,
+      { getRawById: async () => ({
+        id: 'user-1', password: 'fixture-hash', email: 'one@example.test', status: 'active', emailVerified: true,
+      }) } as never,
     );
+    Object.assign(service, { config: { jwt: { refreshSecret: 'setup-test-secret-at-least-32-bytes' } } });
   });
 
   test('issues only a Strict browser-session cookie and revokes normal sessions', async () => {

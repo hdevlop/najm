@@ -1,10 +1,14 @@
 import { createHash, randomBytes } from 'node:crypto';
 import { CookieService } from 'najm-cookies';
-import { Err, Injectable } from 'najm-core';
+import { Err, Inject, Injectable } from 'najm-core';
 import { Transaction } from 'najm-database';
 import { I18n, type TFn } from 'najm-i18n';
 import { CookieManager } from '../auth/CookieManager';
 import { TokenService } from '../tokens/TokenService';
+import { AUTH_CONFIG } from '../auth.tokens';
+import type { AuthConfig } from '../types';
+import { UserRepository } from '../users/UserRepository';
+import { credentialFingerprint } from '../auth/credentialState';
 import { CredentialSetupRepository } from './CredentialSetupRepository';
 import { CREDENTIAL_SETUP_CODES, credentialSetupError } from './errors';
 import { normalizeSetupPurpose } from './purpose';
@@ -25,12 +29,14 @@ type ResolvedCredentialSetupOptions = Required<CredentialSetupOptions>;
 @Injectable()
 export class CredentialSetupService {
   @I18n('auth') private t?: TFn;
+  @Inject(AUTH_CONFIG) private config!: AuthConfig;
 
   constructor(
     private readonly repository: CredentialSetupRepository,
     private readonly tokens: TokenService,
     private readonly authCookies: CookieManager,
     private readonly cookies: CookieService,
+    private readonly users: UserRepository,
   ) { }
 
   /**
@@ -40,7 +46,9 @@ export class CredentialSetupService {
   @Transaction({ retries: 2 })
   async begin(userId: string, options: CredentialSetupOptions): Promise<CredentialSetupStarted> {
     const resolved = this.resolveOptions(options);
-    const token = randomBytes(32).toString('base64url');
+    const user = await this.users.getRawById(userId);
+    if (!user) this.sessionInvalid();
+    const token = `${randomBytes(32).toString('base64url')}.${credentialFingerprint(this.config.jwt.refreshSecret, user)}`;
     const expiresAt = new Date(Date.now() + resolved.ttlMs).toISOString();
 
     await this.repository.deleteExpired();
@@ -53,6 +61,7 @@ export class CredentialSetupService {
 
     await this.tokens.invalidateUserAccessTokens(userId);
     await this.tokens.revokeAllForUser(userId);
+    await this.requireCurrentCredential(userId, token, resolved);
     this.authCookies.clearRefreshToken();
     this.authCookies.clearSessionCookie();
     this.setCookie(token, resolved);
@@ -74,6 +83,7 @@ export class CredentialSetupService {
       this.clearCookie(resolved);
       this.sessionInvalid();
     }
+    await this.requireCurrentCredential(session.userId, token, resolved);
     return session;
   }
 
@@ -100,9 +110,20 @@ export class CredentialSetupService {
       this.sessionInvalid();
     }
 
+    await this.requireCurrentCredential(session.userId, token, resolved);
+
     const result = await complete(session);
     this.clearCookie(resolved);
     return result;
+  }
+
+  private async requireCurrentCredential(userId: string, token: string, options: ResolvedCredentialSetupOptions): Promise<void> {
+    const fingerprint = token.split('.')[1];
+    const user = await this.users.getRawById(userId);
+    if (!fingerprint || !user || credentialFingerprint(this.config.jwt.refreshSecret, user) !== fingerprint) {
+      this.clearCookie(options);
+      this.sessionInvalid();
+    }
   }
 
   @Transaction({ retries: 2 })

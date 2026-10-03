@@ -13,6 +13,17 @@ export class TokenRepository {
   private get tokens() { return this.schema.tokens; }
   private get users() { return this.schema.users; }
 
+  async getCredentialState(userId: string) {
+    const [user] = await this.db.select({
+      id: this.users.id,
+      password: this.users.password,
+      email: this.users.email,
+      status: this.users.status,
+      emailVerified: this.users.emailVerified,
+    }).from(this.users).where(eq(this.users.id, userId)).limit(1);
+    return user;
+  }
+
   /** Shared query helper, scoped to the current database/transaction identity. */
   private queryHelper?: { db: TDb; queries: AuthQueries };
   private get q() {
