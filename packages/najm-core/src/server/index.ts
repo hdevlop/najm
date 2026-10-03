@@ -21,6 +21,7 @@ import { collectInjectables, loadInjectablesFromRoots } from './moduleLoader';
 import { StartupLogBuffer, stringifyLogEntry } from './startupLog';
 import { normalizeBasePath, normalizePort, DEFAULT_PORT } from './utils';
 import { generateOpenAPI, type OpenAPIDocument, type OpenAPIGenerateOptions } from '../router/openapi';
+import { afterResponse } from '../middleware/responseLifecycle';
 
 // Re-export plugin builder
 export { plugin, type ContributionToken, type PluginContribution } from './plugin';
@@ -64,7 +65,9 @@ export class Server {
 
    private server?: ServerHandle;
    private initPromise?: Promise<void>;
+   private listenPromise?: Promise<this>;
    private stopPromise?: Promise<void>;
+   private bootService?: BootService;
    private initError?: unknown;
    private _fetchHandler?: (req: Request) => Promise<Response>;
    private shutdownHandlers?: Array<{ signal: ShutdownSignal; handler: () => void }>;
@@ -175,8 +178,12 @@ export class Server {
    // ============================================================================
 
    public async listen(portOrCb?: number | string | (() => void), cb?: () => void): Promise<this> {
+      this.assertNotStopped();
       if (this.server) {
          Err.alreadyRunning(this.server.port);
+      }
+      if (this.listenPromise) {
+         Err.invalidState('Server listener is already starting');
       }
 
       const rawPort = typeof portOrCb === 'function' || portOrCb === undefined
@@ -186,7 +193,18 @@ export class Server {
       const callback = typeof portOrCb === 'function' ? portOrCb : cb;
 
       this.opts.port = port;
+      const listening = this.startListener(port, callback);
+      this.listenPromise = listening;
+      try {
+         return await listening;
+      } finally {
+         if (this.listenPromise === listening) this.listenPromise = undefined;
+      }
+   }
+
+   private async startListener(port: number, callback?: () => void): Promise<this> {
       await this.ensureInitialized();
+      this.assertNotStopped();
 
       try {
          this.server = await createListener(this.createFetchHandler(), port);
@@ -197,6 +215,9 @@ export class Server {
          throw Err.startFailed(port, error);
       }
 
+      // stop() waits for this startup attempt before taking the listener handle.
+      // If it raced with binding, publish the handle so shutdown can close it.
+      this.assertNotStopped();
       this.logger.serverStarted(this.createStartedInfo(this.server.port));
       this.logDevModeStartup(this.server.port);
       this.flushStartupLogs();
@@ -275,32 +296,34 @@ export class Server {
 
    public async stop(): Promise<void> {
       if (this.stopPromise) return this.stopPromise;
-      const shouldDestroy = this.state === ServerState.READY;
-      const server = this.server;
-
-      if (!shouldDestroy && !server) return;
+      if (this.state === ServerState.STOPPED) return;
+      if (this.state !== ServerState.READY && !this.initPromise && !this.listenPromise && !this.server) return;
 
       this.state = ServerState.STOPPING;
-      return (this.stopPromise = this.shutdown(server, shouldDestroy));
+      return (this.stopPromise = this.shutdown());
    }
 
-   private async shutdown(server: ServerHandle | undefined, shouldDestroy: boolean): Promise<void> {
+   private async shutdown(): Promise<void> {
       const errors: unknown[] = [];
       this.removeGracefulShutdownHandlers();
+
+      // Startup may still be resolving resources or binding a listener. Its
+      // failures already trigger rollback; either way, wait before teardown.
+      await Promise.allSettled([this.initPromise, this.listenPromise]);
 
       // 1–2. Stop accepting connections and drain in-flight requests. The
       // runtime's close waits for active requests, so the timeout must bound
       // the close itself, not start after it.
       try {
-         await this.closeListener(server);
+         await this.closeListener(this.server);
       } catch (error) {
          errors.push(error);
       }
 
-      // 3. Run onDestroy lifecycle on all services (reverse boot order).
-      if (shouldDestroy) {
+      // 3. Run onDestroy lifecycle on owned services (reverse resolution order).
+      if (this.bootService) {
          try {
-            await this.container.get(BootService)?.destroy();
+            await this.bootService.destroy();
          } catch (error) {
             errors.push(error);
          }
@@ -308,6 +331,7 @@ export class Server {
 
       // Stopped even when cleanup failed: the instance must not keep serving.
       this.server = undefined;
+      this.bootService = undefined;
       this.state = ServerState.STOPPED;
       this.initPromise = undefined;
       this.stopPromise = undefined;
@@ -358,7 +382,8 @@ export class Server {
          throw Err.startFailed(this.resolvePortForErrors(), this.initError);
       }
 
-      return (this.initPromise ??= this.initialize());
+      await (this.initPromise ??= this.initialize());
+      this.assertNotStopped();
    }
 
    private assertNotStopped(): void {
@@ -417,12 +442,14 @@ export class Server {
          }
 
          bootService = await this.container.resolve(BootService);
+         this.bootService = bootService;
          await bootService.boot();
          this.logger = await this.container.resolve(LoggerService);
 
          await this.materializeAliasTargets();
 
-         this.state = ServerState.READY;
+         // stop() can change the state while the awaited boot phases run.
+         if ((this.state as ServerState) !== ServerState.STOPPING) this.state = ServerState.READY;
          this.initError = undefined;
          this.logger.serverInitialized(performance.now() - startedAt);
       } catch (error) {
@@ -436,7 +463,7 @@ export class Server {
             this.logger.error('Teardown after failed startup also failed', cleanupError);
          }
 
-         this.state = ServerState.FAILED;
+         if ((this.state as ServerState) !== ServerState.STOPPING) this.state = ServerState.FAILED;
          this.initPromise = undefined;
          this.initError = error;
          throw Err.startFailed(this.resolvePortForErrors(), error);
@@ -519,17 +546,19 @@ export class Server {
    }
 
    private createInFlightMiddleware(): MiddlewareHandler {
-      return async (_context, next) => {
+      return async (context, next) => {
          this.inFlight++;
          try {
             await next();
          } finally {
-            this.inFlight--;
-            if (this.inFlight === 0 && this.drainWaiters.length) {
-               const waiters = this.drainWaiters;
-               this.drainWaiters = [];
-               for (const resolve of waiters) resolve();
-            }
+            await afterResponse(context, () => {
+               this.inFlight--;
+               if (this.inFlight === 0 && this.drainWaiters.length) {
+                  const waiters = this.drainWaiters;
+                  this.drainWaiters = [];
+                  for (const resolve of waiters) resolve();
+               }
+            });
          }
       };
    }

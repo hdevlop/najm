@@ -17,6 +17,7 @@ import type {
    Interceptor,
 } from './types';
 import { clearRequestContextCache } from '../params/requestContext';
+import { afterResponse } from './responseLifecycle';
 
 let requestIdSeq = 0;
 
@@ -159,15 +160,18 @@ export class MiddlewareService {
                      }
                   }
                } finally {
-                  try {
-                     if (this.container.hasRequestScope(scopeId)) {
-                        await this.container.cleanupReq(scopeId);
+                  const store = this.container.all()!;
+                  await afterResponse(context, async () => {
+                     try {
+                        if (this.container.hasRequestScope(scopeId)) {
+                           await this.container.cleanupReq(scopeId);
+                        }
+                     } catch (error) {
+                        this.log.error?.('Failed to cleanup request scope', error);
+                     } finally {
+                        clearRequestContextCache(context);
                      }
-                  } catch (error) {
-                     this.log.error?.('Failed to cleanup request scope', error);
-                  } finally {
-                     clearRequestContextCache(context);
-                  }
+                  }, (fn) => this.container.run(store, fn));
                }
             }
          );

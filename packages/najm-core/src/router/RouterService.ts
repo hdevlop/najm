@@ -9,6 +9,7 @@ import { getRoutes } from './decorator';
 import { ROUTER_CONFIG } from './tokens';
 import { ResponseFormatter } from './ResponseFormatter';
 import { getResponseMessage, shouldSkipWrapping, type ResponseConfig } from './response';
+import { bufferedResponse } from '../middleware/responseLifecycle';
 
 // Optional i18n integration
 const I18N_SERVICE = Symbol.for('I18nService');
@@ -232,7 +233,7 @@ export class RouterService {
 
    private formatRouteResult(ctx: Context, result: unknown, route: RouteInvocation): Response {
       if (route.canBypassFormatter && canReturnJsonDirectly(result)) {
-         return ctx.json(result);
+         return bufferedResponse(ctx.json(result));
       }
 
       const formatter = new ResponseFormatter(ctx, {

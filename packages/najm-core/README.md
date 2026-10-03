@@ -199,7 +199,15 @@ new Server({ gracefulShutdown: true, shutdownTimeout: 15_000 })
 - `gracefulShutdown: true` installs `SIGINT`/`SIGTERM` handlers that call
   `stop()` then `process.exit(0)`.
 - `stop()` **stops accepting** new connections, then **drains** in-flight
-  requests before running `onDestroy` lifecycle hooks.
+  requests before running `onDestroy` lifecycle hooks. Pending initialization
+  and listener creation settle first; a concurrent `listen()` call is rejected.
+- Owned providers receive `onDestroy` once in reverse resolution order,
+  including lazy services, alias targets and successfully resolved dependencies
+  of a service whose initialization fails.
+- Raw `Response` and `ReadableStream` bodies retain their request-scoped
+  resources and request context until consumption, cancellation or an error.
+  Drain tracking includes these bodies and their request cleanup. Framework
+  JSON/text results continue to clean up when their handler finishes.
 - `shutdownTimeout` (ms, default **10000**) bounds the drain: if requests are
   still in flight when it elapses, najm logs a warning and proceeds with
   teardown. Setting `shutdownTimeout` alone enables drain tracking even without

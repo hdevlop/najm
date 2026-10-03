@@ -6,6 +6,7 @@ import { CoreError, CORE_CODES } from "./AppError";
 import { RouterError, ROUTER_CODES } from "./RouterError";
 import { HTTPException } from "hono/http-exception";
 import { VALIDATION_CODES, ValidationError } from "./ValidationError";
+import { bufferedResponse } from '../middleware/responseLifecycle';
 
 // ============================================================================
 // MERGED CODES
@@ -69,15 +70,15 @@ export const Err = Object.assign(
     // ========== RESPONSE HANDLER ==========
     handle(error: unknown): Response {
       if (BaseError.is(error)) {
-        return error.toResponse();
+        return bufferedResponse(error.toResponse());
       }
 
       if (error instanceof HTTPException) {
-        return new BaseError(`HTTP_${error.status}`, error.message, error.status).toResponse();
+        return bufferedResponse(new BaseError(`HTTP_${error.status}`, error.message, error.status).toResponse());
       }
 
       const message = error instanceof Error ? error.message : String(error);
-      return new BaseError("HTTP_500", message, 500).toResponse();
+      return bufferedResponse(new BaseError("HTTP_500", message, 500).toResponse());
     },
 
     // ========== WRAP (without throwing) ==========

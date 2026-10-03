@@ -1,5 +1,18 @@
 # najm-core
 
+## Unreleased
+
+### Fixed
+
+- Shutdown waits for pending initialization and listener creation. Concurrent
+  `listen()` calls cannot create an untracked listener.
+- Teardown includes lazy providers, alias targets, factory providers and
+  dependencies created before a consumer fails to initialize. Each owned
+  instance is destroyed once, with consumers before their dependencies.
+- Streamed responses retain request-scoped services and request context until
+  their body completes, errors or is cancelled. Shutdown drains the body and
+  request cleanup before destroying shared services.
+
 ## 3.0.2 - 2026-10-02
 
 ### Security

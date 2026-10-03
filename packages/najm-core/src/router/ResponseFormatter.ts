@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { Context } from 'hono';
+import { bufferedResponse } from '../middleware/responseLifecycle';
 import { 
   getResponseMessage, 
   resolveMessage,
@@ -56,18 +57,18 @@ export class ResponseFormatter {
 
     // Handle strings (HTML or text)
     if (typeof response === 'string') {
-      return this.isHtmlContent(response)
+      return bufferedResponse(this.isHtmlContent(response)
         ? this.context.html(response)
-        : this.context.text(response);
+        : this.context.text(response));
     }
 
     // Handle objects
     if (typeof response === 'object') {
-      return this.formatObjectResponse(response);
+      return bufferedResponse(this.formatObjectResponse(response));
     }
 
     // Default: wrap primitives
-    return this.wrapResponse(response);
+    return bufferedResponse(this.wrapResponse(response));
   }
 
   /**
