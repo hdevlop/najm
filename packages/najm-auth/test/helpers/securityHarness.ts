@@ -1,4 +1,4 @@
-﻿import 'reflect-metadata';
+import 'reflect-metadata';
 import { afterEach, expect } from 'bun:test';
 import { Database } from 'bun:sqlite';
 import { drizzle } from 'drizzle-orm/bun-sqlite';
@@ -139,5 +139,3 @@ export async function harness(options: { sharedSecret?: boolean; shortAccess?: b
   return { config, cache, db, roles, permissions, users, tokens, resolver, jar, signIn,
     expectInvalidated, userRecords, validator, tokenRecords, permissionRecords, invalidation, encryption, cookies, sqlite };
 }
-
-

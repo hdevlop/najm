@@ -1,4 +1,4 @@
-﻿import 'reflect-metadata';
+import 'reflect-metadata';
 import { describe, expect, spyOn, test } from 'bun:test';
 import { Server } from 'najm-core';
 import { database, TransactionService } from 'najm-database';
@@ -181,4 +181,3 @@ describe('identity writes match login resolution', () => {
     expect(recipients).toEqual(['One@Example.Test']);
   });
 });
-
