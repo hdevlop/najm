@@ -147,7 +147,11 @@ export interface McpValidationConfig {
 export interface McpAnnotations {
   readOnlyHint?: boolean;
   destructive?: boolean;
+  /** The MCP specification's name for `destructive`; either one asks for confirmation. */
+  destructiveHint?: boolean;
   idempotent?: boolean;
+  /** The MCP specification's name for `idempotent`. */
+  idempotentHint?: boolean;
   openWorldHint?: boolean;
 }
 

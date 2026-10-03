@@ -131,6 +131,22 @@ retrieval prompts. `embed(text)` embeds a query; `embed(text, 'document')` and
 available. Batches are sequential and default to 16 inputs per request. Each batch
 has its own timeout; callers may impose an overall indexing deadline separately.
 
+Queries and indexing can wait differently. A CPU embedding model may need many
+seconds for a batch of long documents but a fraction of a second for a chat
+message, so give queries a shorter `queryTimeoutMs` (default: `timeoutMs`). With
+`queryFailureCooldownMs`, a query that times out or cannot connect makes the
+following queries fail at once for that long, so one message's routing and
+knowledge search do not each wait out the timeout during an outage; a success
+or a healthy health check ends the window. Indexing is never skipped.
+
+```typescript
+embedding: { timeoutMs: 60_000, queryTimeoutMs: 5_000, queryFailureCooldownMs: 30_000 }
+```
+
+Knowledge search skips the embedding call while no document is indexed. When it
+fails, the chat context carries `KNOWLEDGE_UNAVAILABLE_CONTEXT`, which tells the
+model the knowledge base could not be searched, and the chat continues.
+
 The compatible provider sends float-encoded embeddings requests, validates and
 reorders response indexes, and rejects missing, nonfinite or incorrectly sized
 vectors. Health probes use the same authenticated request and validation. API keys

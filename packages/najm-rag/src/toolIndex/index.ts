@@ -2,6 +2,7 @@ export { ToolIndexerService } from './ToolIndexerService';
 export { ToolIndexRepository } from './ToolIndexRepository';
 export { ToolIndexValidator } from './ToolIndexValidator';
 export { createFingerprint, buildIndexText } from './ToolIndexUtils';
+export type { ToolIndexEmbedder } from './ToolIndexUtils';
 export type {
   SemanticMatch,
   ToolEmbeddingRow,

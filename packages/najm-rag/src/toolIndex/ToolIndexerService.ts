@@ -99,7 +99,7 @@ export class ToolIndexerService {
         annotations: tool.annotations as Record<string, unknown> | null,
       };
 
-      const fingerprint = createFingerprint(input);
+      const fingerprint = createFingerprint(input, this.config.rag?.embedding);
 
       if (fingerprintMap.get(tool.name) === fingerprint) {
         continue;

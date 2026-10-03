@@ -236,6 +236,15 @@ function getMessageIdentity(message: UIMessage): string | null {
   return `${message.role}:${text.slice(0, 200)}`;
 }
 
+/**
+ * Appended to the system prompt when tool routing failed and
+ * `fallbackOnRouterError: 'none'` left the model without tools, so it says the
+ * data is unreachable instead of answering a data question from nothing.
+ */
+export const ROUTING_UNAVAILABLE_PROMPT =
+  'Tool lookup failed for this message, so no tools are available. Do not answer questions about stored data '
+  + 'from memory or guess figures: tell the user the data cannot be reached right now and to try again shortly.';
+
 @Service()
 @Meta({ layer: 'plugin', order: 50 })
 export class ChatAgent {
@@ -706,7 +715,9 @@ export class ChatAgent {
     const toolWarning =
       !mcp || mcp.registry.tools.length === 0
         ? '\n\n⚠️ WARNING: No MCP tools were found. Answer from general knowledge only.'
-        : '';
+        : routingStatus === 'router_error' && Object.keys(tools).length === 0
+          ? `\n\n${ROUTING_UNAVAILABLE_PROMPT}`
+          : '';
 
     const channelPrompt = this.config.systemPromptByChannel?.[channel as 'web' | 'whatsapp'];
     let system =

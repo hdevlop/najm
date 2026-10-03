@@ -49,7 +49,7 @@ export type {
 export { calculateCost, getModelPricing, normalizeUsage } from './agent/modelPricing';
 export type { ModelPricing, ReportedUsage, UsageCost } from './agent/modelPricing';
 
-export { ChatAgent } from './agent/ChatAgent';
+export { ChatAgent, ROUTING_UNAVAILABLE_PROMPT } from './agent/ChatAgent';
 
 export { ChatLogRepository } from './chatLogs';
 export type { InsertChatLogInput, RoutingStatus } from './chatLogs';

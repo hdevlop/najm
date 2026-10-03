@@ -1,5 +1,5 @@
 export { KnowledgeService } from './KnowledgeService';
-export { KnowledgeContextProvider } from './KnowledgeContextProvider';
+export { KnowledgeContextProvider, KNOWLEDGE_UNAVAILABLE_CONTEXT } from './KnowledgeContextProvider';
 export { KnowledgeRepository } from './KnowledgeRepository';
 export { KnowledgeValidator } from './KnowledgeValidator';
 export { NoopOcrProvider, NoopCaptionProvider } from './OcrProvider';

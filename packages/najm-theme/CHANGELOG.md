@@ -1,5 +1,12 @@
 # najm-theme
 
+## 0.2.3
+
+- The `theme_preset_apply` MCP tool is annotated `destructiveHint: true`:
+  applying a preset replaces the current design. With najm-mcp 2.2.3 or later,
+  it and `theme_appearance_reset` ask for confirmation, so a chat that refuses
+  confirmed tools no longer changes the platform design.
+
 ## 0.2.1
 
 The settings-surface cleanup release.

@@ -21,6 +21,9 @@ export class EmbeddingService {
   }
 
   private resolved?: ResolvedEmbeddingConfig | Error;
+  /** End of the `queryFailureCooldownMs` window, and the failure that opened it. */
+  private queryUnavailableUntil = 0;
+  private queryFailure = '';
 
   /** Resolved and validated once; an invalid config is remembered and rethrown on use. */
   private get embeddingConfig(): ResolvedEmbeddingConfig {
@@ -57,6 +60,13 @@ export class EmbeddingService {
     if (!Number.isInteger(batchSize) || batchSize < 1 || !Number.isInteger(dimensions) || dimensions < 1) {
       throw new Error('Embedding batch size and dimensions must be positive integers');
     }
+    const timeoutMs = (emb as any)?.timeoutMs ?? 8000;
+    const queryTimeoutMs = (emb as any)?.queryTimeoutMs ?? timeoutMs;
+    const queryFailureCooldownMs = (emb as any)?.queryFailureCooldownMs ?? 0;
+    if (!(queryTimeoutMs > 0) || !Number.isFinite(queryTimeoutMs)
+      || !(queryFailureCooldownMs >= 0) || !Number.isFinite(queryFailureCooldownMs)) {
+      throw new Error('Embedding query timeout must be positive and the failure cooldown zero or more');
+    }
     return {
       provider,
       baseUrl: baseUrl.replace(/\/+$/, ''),
@@ -68,7 +78,9 @@ export class EmbeddingService {
       apiKey: emb?.apiKey,
       queryPrefix: emb?.queryPrefix ?? '',
       documentPrefix: emb?.documentPrefix ?? '',
-      timeoutMs: (emb as any)?.timeoutMs ?? 8000,
+      timeoutMs,
+      queryTimeoutMs,
+      queryFailureCooldownMs,
       healthTimeoutMs: (emb as any)?.healthTimeoutMs ?? 15000,
     };
   }
@@ -87,10 +99,24 @@ export class EmbeddingService {
 
   async embedBatch(texts: string[], purpose: 'query' | 'document' = 'document'): Promise<number[][]> {
     const config = this.embeddingConfig;
-    const results: number[][] = [];
-    for (let offset = 0; offset < texts.length; offset += config.batchSize) {
-      results.push(...await this.requestEmbeddings(config, texts.slice(offset, offset + config.batchSize), purpose, config.timeoutMs));
+    const query = purpose === 'query';
+    if (query && Date.now() < this.queryUnavailableUntil) {
+      throw new EmbeddingUnavailableError(`Embedding provider skipped after a recent failure: ${this.queryFailure}`);
     }
+    const timeoutMs = query ? config.queryTimeoutMs : config.timeoutMs;
+    const results: number[][] = [];
+    try {
+      for (let offset = 0; offset < texts.length; offset += config.batchSize) {
+        results.push(...await this.requestEmbeddings(config, texts.slice(offset, offset + config.batchSize), purpose, timeoutMs));
+      }
+    } catch (err) {
+      if (query && err instanceof EmbeddingUnavailableError && config.queryFailureCooldownMs > 0) {
+        this.queryUnavailableUntil = Date.now() + config.queryFailureCooldownMs;
+        this.queryFailure = err.message;
+      }
+      throw err;
+    }
+    if (query) this.queryUnavailableUntil = 0;
     return results;
   }
 
@@ -134,12 +160,12 @@ export class EmbeddingService {
     } catch (err) {
       const aborted = (err as any)?.name === 'AbortError';
       if (aborted) {
-        throw new Error(`Embedding request timed out after ${timeoutMs}ms — is ${provider} running at ${baseUrl}?`);
+        throw new EmbeddingUnavailableError(`Embedding request timed out after ${timeoutMs}ms — is ${provider} running at ${baseUrl}?`);
       }
       // Node reports transport failures as TypeError with a `cause.code`; Bun throws an Error with `code`.
       const code = [(err as any)?.cause?.code, (err as any)?.code].find((c) => typeof c === 'string' && /^\w+$/.test(c));
       if (err instanceof TypeError || code) {
-        throw new Error(
+        throw new EmbeddingUnavailableError(
           `Embedding request could not reach ${provider} at ${baseUrl}${code ? ` (${code})` : ''} — check the endpoint, redirects and authentication`,
         );
       }
@@ -193,6 +219,7 @@ export class EmbeddingService {
     try {
       // Validate the same authenticated request and vector contract used by reads/indexing.
       await this.requestEmbeddings(config, ['ok'], 'query', timeoutMs);
+      this.queryUnavailableUntil = 0;
       return { ok: true, provider, baseUrl, model, latencyMs: Date.now() - started };
     } catch (err) {
       const aborted = err instanceof Error && err.message.startsWith('Embedding request timed out');
@@ -207,6 +234,11 @@ export class EmbeddingService {
     const { timedOut: _timedOut, ...publicHealth } = health;
     return publicHealth;
   }
+}
+
+/** The provider timed out or could not be reached, as opposed to answering badly. */
+export class EmbeddingUnavailableError extends Error {
+  override name = 'EmbeddingUnavailableError';
 }
 
 export interface EmbeddingHealthOptions {
@@ -229,6 +261,8 @@ type ResolvedEmbeddingConfig = Required<Omit<EmbeddingConfig, 'apiKey' | 'dimens
   /** Explicitly configured size, the only value forwarded to the provider. */
   requestDimensions?: number;
   timeoutMs: number;
+  queryTimeoutMs: number;
+  queryFailureCooldownMs: number;
   healthTimeoutMs: number;
 };
 

@@ -1,6 +1,6 @@
 import { describe, test, expect, mock } from 'bun:test';
 import { TOOL_PROVIDER } from 'najm-mcp';
-import { ChatAgent } from '../../src/agent/ChatAgent';
+import { ChatAgent, ROUTING_UNAVAILABLE_PROMPT } from '../../src/agent/ChatAgent';
 
 describe('ChatAgent routing integration', () => {
   function makeAgent(overrides: {
@@ -84,6 +84,41 @@ describe('ChatAgent routing integration', () => {
     expect(prepared.routingStatus).toBe('fallback_none');
     expect(prepared.routedToolNames).toEqual([]);
     expect(router.findRelevantTools).toHaveBeenCalledTimes(1);
+  });
+
+  test('prepare tells the model data is unreachable when routing failed and left no tools', async () => {
+    const { agent } = makeAgent({
+      routerResult: { status: 'router_error', tools: [], error: 'Embedding request timed out after 5000ms' },
+      registryTools: [{ name: 'tool_a' }],
+    });
+
+    const prepared = await (agent as any).prepare('web', 'how many students?', {
+      isEnabled: true,
+      provider: 'openai',
+      apiKey: 'sk-test',
+      model: 'gpt-test',
+      systemPrompt: 'You are a test assistant.',
+    });
+
+    expect(prepared.tools).toEqual({});
+    expect(prepared.system).toBe(`You are a test assistant.\n\n${ROUTING_UNAVAILABLE_PROMPT}`);
+  });
+
+  test('prepare adds no notice when routing found nothing or fell back to all tools', async () => {
+    for (const routerResult of [
+      { status: 'fallback_none', tools: [] },
+      { status: 'router_error', tools: [{ name: 'tool_a' }], error: 'down' },
+    ]) {
+      const { agent } = makeAgent({ routerResult, registryTools: [{ name: 'tool_a' }] });
+      const prepared = await (agent as any).prepare('web', 'hello', {
+        isEnabled: true,
+        provider: 'openai',
+        apiKey: 'sk-test',
+        model: 'gpt-test',
+        systemPrompt: 'You are a test assistant.',
+      });
+      expect(prepared.system).toBe('You are a test assistant.');
+    }
   });
 
   test('prepare passes all registry tools when router returns fallback_all', async () => {

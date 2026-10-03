@@ -533,7 +533,7 @@ describe('ToolRouterService', () => {
         { error: undefined } as any,
       );
       const knowledge = new KnowledgeService(
-        { searchChunks: mock(() => Promise.resolve([])) } as any,
+        { searchChunks: mock(() => Promise.resolve([])), hasEmbeddings: mock(() => Promise.resolve(true)) } as any,
         embedService,
         { toolRouting: { similarityThreshold: 0.45 } } as any,
       );
@@ -571,7 +571,7 @@ describe('ToolRouterService', () => {
         { error: undefined } as any,
       );
       const knowledge = new KnowledgeService(
-        { searchChunks: mock(() => Promise.resolve([])) } as any,
+        { searchChunks: mock(() => Promise.resolve([])), hasEmbeddings: mock(() => Promise.resolve(true)) } as any,
         embedService,
         { toolRouting: { similarityThreshold: 0.45 } } as any,
       );
