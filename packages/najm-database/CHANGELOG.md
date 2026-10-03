@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1 - 2026-10-03
+
+- Restore caller-managed connections as the default (`close: false`).
+  `database(db)` and `database({ default: db })` leave clients open on stop
+  and failed initialization, so existing apps and shared-pool test servers
+  do not need an explicit opt-out.
+- Automatic cleanup now requires `database({ default: db, close: true })`
+  or a custom close callback. Ordering, client deduplication, error reporting,
+  and Core 2/3 support remain available when cleanup is enabled.
+
 ## 2.1.0 - 2026-10-03
 
 - Close supported clients automatically on server shutdown: `database(db)`.

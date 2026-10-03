@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.1.1 - 2026-10-03
+
+- Adopt najm-database 2.1.1, restoring `close: false` as the default.
+  Existing `database(db)` configurations preserve caller ownership;
+  use `database({ default: db, close: true })` to enable automatic cleanup.
+
 ## 3.1.0 - 2026-10-03
 
 - Export `DatabasePluginOptions` from the root entry.

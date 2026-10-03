@@ -11,7 +11,7 @@ import { database } from '../dist/index.mjs';
 test('closes an owned postgres-js client and prevents subsequent queries', async () => {
   const client = postgres('postgres://localhost:1/lifecycle_test');
   const db = postgresJs(client);
-  const server = new Server({ isolated: true, silent: true }).use(database(db));
+  const server = new Server({ isolated: true, silent: true }).use(database({ default: db, close: true }));
   try {
     await server.init();
     await server.stop();
@@ -25,7 +25,7 @@ test('closes an owned postgres-js client and prevents subsequent queries', async
 test('awaits shutdown of an owned node-postgres pool', async () => {
   const pool = new Pool({ connectionString: 'postgres://localhost:1/lifecycle_test' });
   const db = nodePostgres(pool);
-  const server = new Server({ isolated: true, silent: true }).use(database(db));
+  const server = new Server({ isolated: true, silent: true }).use(database({ default: db, close: true }));
   try {
     await server.init();
     await server.stop();
@@ -37,11 +37,11 @@ test('awaits shutdown of an owned node-postgres pool', async () => {
   }
 });
 
-test('keeps a shared node-postgres pool open with inline close: false', async () => {
+test('keeps a shared node-postgres pool open by default', async () => {
   const pool = new Pool({ connectionString: 'postgres://localhost:1/lifecycle_test' });
   const db = nodePostgres(pool);
-  const first = new Server({ isolated: true, silent: true }).use(database({ default: db, close: false }));
-  const second = new Server({ isolated: true, silent: true }).use(database({ default: db, close: false }));
+  const first = new Server({ isolated: true, silent: true }).use(database(db));
+  const second = new Server({ isolated: true, silent: true }).use(database({ default: db }));
   try {
     await first.init();
     await second.init();

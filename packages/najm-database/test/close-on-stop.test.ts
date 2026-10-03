@@ -22,7 +22,7 @@ describe("closing databases on stop", () => {
     const sqlite = new Database(":memory:");
     const db = drizzle(sqlite);
 
-    const server = new Server({ isolated: true, silent: true }).use(database(db));
+    const server = new Server({ isolated: true, silent: true }).use(database({ default: db, close: true }));
     await server.init();
     expect(db.all(sql`select 1 as one`)).toEqual([{ one: 1 }]);
     await server.stop();
@@ -70,6 +70,34 @@ describe("closing databases on stop", () => {
     expect(service.getNames()).toEqual(['default']);
     await server.stop();
 
+    expect(db.$client.ended).toBe(0);
+  });
+
+  test("omitting close keeps a real shared database usable after either server stops", async () => {
+    const sqlite = new Database(":memory:");
+    const db = drizzle(sqlite);
+    const first = new Server({ isolated: true, silent: true }).use(database(db));
+    const second = new Server({ isolated: true, silent: true }).use(database({ default: db }));
+    try {
+      await first.init();
+      await second.init();
+      await first.stop();
+      expect(db.all(sql`select 1 as one`)).toEqual([{ one: 1 }]);
+      await second.stop();
+      expect(db.all(sql`select 2 as two`)).toEqual([{ two: 2 }]);
+    } finally {
+      await first.stop();
+      await second.stop();
+      sqlite.close();
+    }
+  });
+
+  test("failed initialization leaves caller-owned clients open by default", async () => {
+    const db = { ...pooledDatabase(), connect: async () => { throw new Error('connect failed'); } };
+    const server = new Server({ isolated: true, silent: true }).use(database(db));
+    await expect(server.init()).rejects.toThrow('connect');
+    expect(db.$client.ended).toBe(0);
+    await server.stop();
     expect(db.$client.ended).toBe(0);
   });
 
@@ -149,7 +177,7 @@ describe("closing databases on stop", () => {
 
   test("a database named close stays a connection, not an option", async () => {
     const db = pooledDatabase();
-    const server = new Server({ isolated: true, silent: true }).use(database({ close: db }));
+    const server = new Server({ isolated: true, silent: true }).use(database({ close: db }, { close: true }));
     await server.init();
     expect(server.container.get<DatabaseServiceType>(DatabaseService).get("close")).toBe(db);
     await server.stop();
@@ -297,7 +325,7 @@ describe("closing databases on stop", () => {
   test("a raw client's close method is not interpreted as a configuration callback", async () => {
     let closed = false;
     const db = { query: () => ({}), close() { expect(this).toBe(db); closed = true; } };
-    const server = new Server({ isolated: true, silent: true }).use(database(db));
+    const server = new Server({ isolated: true, silent: true }).use(database(db, { close: true }));
     await server.init();
     await server.stop();
     expect(closed).toBe(true);
@@ -314,7 +342,7 @@ describe("closing databases on stop", () => {
   test("a driver wrapper's close method is not extracted as a plugin option", async () => {
     const primary = pooledDatabase();
     const db = { $client: primary.$client, close() { throw new Error('wrapper mistaken for options'); } };
-    const server = new Server({ isolated: true, silent: true }).use(database(db));
+    const server = new Server({ isolated: true, silent: true }).use(database(db, { close: true }));
     await server.init();
     expect(server.container.get<DatabaseServiceType>(DatabaseService).get()).toBe(db);
     await server.stop();

@@ -238,7 +238,7 @@ export class DatabaseService {
 
    public async register(name: string, instance: any): Promise<void> {
       this.validateName(name);
-      if (this.options?.close !== false) {
+      if (this.options?.close) {
          const firstName = this.registeredDatabases.get(instance);
          if (firstName === undefined || name < firstName) this.registeredDatabases.set(instance, name);
       }
@@ -311,7 +311,7 @@ export class DatabaseService {
    // ============================================================================
 
    /**
-    * Closes clients once unless the configuration explicitly opts out.
+    * Closes clients once when the configuration explicitly opts in.
     * Attempt every close before reporting any failures to the caller.
     */
    async onDestroy(): Promise<void> {
@@ -321,7 +321,7 @@ export class DatabaseService {
    }
 
    private async closeConnections(): Promise<void> {
-      const close = this.options?.close ?? true;
+      const close = this.options?.close ?? false;
       if (close === false) return;
 
       const closers = new Map<unknown, { name: string; run: () => unknown }>();
@@ -375,14 +375,15 @@ export class DatabaseService {
 
    public async clear(): Promise<void> {
       const names = this.getNames();
+      const close = this.options?.close ?? false;
 
       await Promise.allSettled(
          names.map(async (name) => {
             try {
                const db = this.get(name);
                const client = this.getClient(db);
-               if (typeof db.disconnect === 'function' && (this.options?.close === false || !this.closedClients.has(client))) {
-                  if (this.options?.close !== false) this.closedClients.add(client);
+               if (typeof db.disconnect === 'function' && (close === false || !this.closedClients.has(client))) {
+                  if (close !== false) this.closedClients.add(client);
                   await db.disconnect();
                   this.log.databaseDisconnected(name);
                }

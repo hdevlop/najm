@@ -93,29 +93,32 @@ class SetupService {
 
 ### Closing Connections
 
-`server.stop()` closes supported database clients automatically. For one
-database, pass it directly; shared pools explicitly opt out:
+`server.stop()` leaves database connections open by default (`close: false`),
+so existing apps and shared pools keep their caller-managed lifecycle. Opt in
+when this server owns the connection:
 
 ```typescript
-// Let this server close its connections on stop()
+// Default: the caller manages the connection
 database(db)
 
-// Shared pool: keep it open for other servers or tests
-database({ default: db, close: false })
+// Let this server close its connections on stop()
+database({ default: db, close: true })
 
 // Driver-specific cleanup, e.g. a postgres-js shutdown timeout
 database({ default: db, close: (db) => db.$client.end({ timeout: 5 }) })
 ```
 
-The plugin calls the database's `disconnect()`, or its
+With `close: true`, the plugin calls the database's `disconnect()`, or its
 driver client's `end()` (postgres-js/node-postgres) or `close()` (SQLite).
 Clients without a recognized close method remain open; provide a callback for
 those drivers. Inline `close` is an option when it is a boolean or callback;
 a database object named `close` remains a connection. The existing second
-argument also works: `database(db, { close: false })`.
+argument also works: `database(db, { close: true })`. Explicit `close: false`
+is still supported, but shared pools do not need it.
 
-The database service boots at plugin order -100 and closes after app services
-and plugins with higher orders; their `onDestroy` hooks can still query.
+The database service boots at plugin order -100. When cleanup is enabled, it
+closes after app services and plugins with higher orders; their `onDestroy`
+hooks can still query.
 Aliases sharing one client are closed once, including with a custom callback.
 All clients are attempted before `stop()` rejects for any closure failures.
 For a custom callback, the database and name come from the first alias in

@@ -14,7 +14,7 @@ test('built database plugin preserves shared pools and closes owned pools on Cor
     const { database, DB } = await import('./database.mjs');
     const sqlite = new Database(':memory:');
     const db = { $client: sqlite, query: () => sqlite.query('select 1 as one').all() };
-    const shared = new Server({ isolated: true, silent: true }).use(database({ default: db, close: false }));
+    const shared = new Server({ isolated: true, silent: true }).use(database({ default: db }));
     await shared.init();
     await shared.stop();
     if (db.query()[0].one !== 1) throw new Error('Shared client closed');
@@ -26,7 +26,7 @@ test('built database plugin preserves shared pools and closes owned pools on Cor
     Meta({ layer: 'plugin', order: -10 })(Flush);
     DB()(Flush.prototype, 'db');
     const owner = new Server({ isolated: true, silent: true })
-      .use(database({ default: db, alias: db }))
+      .use(database({ default: db, alias: db, close: true }))
       .use(plugin('flush').services(Flush).build());
     await owner.init();
     await owner.stop();

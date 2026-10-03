@@ -47,14 +47,22 @@ const server = new Server()
 
 ## Closing Connections
 
-`server.stop()` closes supported clients automatically:
+`server.stop()` leaves connections open by default (`close: false`), preserving
+existing app behavior and shared pools without extra options:
 
 ```typescript
 database(db)
 ```
 
-The database service boots at plugin order -100 and closes after app services
-and plugins with higher orders, so their `onDestroy` hooks can still query.
+Opt in when the server owns the connection:
+
+```typescript
+database({ default: db, close: true })
+```
+
+The database service boots at plugin order -100. When cleanup is enabled, it
+closes after app services and plugins with higher orders, so their `onDestroy`
+hooks can still query.
 Each client is closed once, even when several names point to it:
 
 - its own `disconnect()` when it has one
@@ -67,8 +75,7 @@ Drivers without a recognized close method remain open and need a callback.
 Shared pools and custom cleanup use an inline option:
 
 ```typescript
-// Keep the pool open: it is shared with code that outlives this server,
-// such as other test servers in the same process.
+// Explicitly keep the pool open (the default, so this option is optional).
 database({ default: db, close: false })
 
 // Custom cleanup, once per distinct client (with a postgres-js timeout).
@@ -77,7 +84,7 @@ database({ default: db, close: (db) => db.$client.end({ timeout: 5 }) })
 
 An inline boolean or callback `close` is an option; a database object named
 `close` remains a connection. The second argument still works for existing
-callers: `database(db, { close: false })`. Custom callbacks receive the
+callers: `database(db, { close: true })`. Custom callbacks receive the
 database and name of the first alias in alphabetical order. Automatic cleanup
 uses the driver's shutdown timing; supply a callback for specific timeouts.
 App-service `onDestroy` hooks require Core 3; Core 2 retains its existing

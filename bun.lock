@@ -179,7 +179,7 @@
     },
     "packages/najm-api": {
       "name": "najm-api",
-      "version": "3.1.0",
+      "version": "3.1.1",
       "dependencies": {
         "najm-auth": "workspace:*",
         "najm-cache": "workspace:*",
@@ -389,7 +389,7 @@
     },
     "packages/najm-database": {
       "name": "najm-database",
-      "version": "2.1.0",
+      "version": "2.1.1",
       "devDependencies": {
         "najm-core": "workspace:*",
         "najm-core-v2": "npm:najm-core@2.1.1",

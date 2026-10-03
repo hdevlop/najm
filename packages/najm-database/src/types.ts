@@ -50,10 +50,10 @@ export interface DatabasePluginOptions {
    /**
     * What happens to the connections when the server stops.
     *
-    * - `true` (default): each supported client is closed once, through its database's
+    * - `false` (default): leave connections open for their caller to manage.
+    * - `true`: each supported client is closed once, through its database's
     *   `disconnect()`, or else the driver client behind drizzle's `$client`
     *   (`end()` for postgres-js and node-postgres, `close()` for SQLite).
-    * - `false`: keep pools open when shared with other servers or tests.
     * - a function: called once per distinct client instead of automatic close.
     *   Receives the first registered name in alphabetical order and its database.
     *
@@ -61,7 +61,7 @@ export interface DatabasePluginOptions {
     * driver-specific timeouts or drivers without a recognized close method,
     * supply a callback. Those drivers are left open by automatic cleanup.
     * Named connection maps accept this option inline:
-    * `database({ default: db, close: false })`.
+    * `database({ default: db, close: true })`.
     */
    close?: boolean | ((db: any, name: string) => unknown);
 }
