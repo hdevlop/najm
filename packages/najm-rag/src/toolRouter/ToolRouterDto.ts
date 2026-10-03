@@ -56,6 +56,8 @@ export interface RoutingPreviewConfig {
 export interface RoutingPreviewResult {
   query: string;
   normalized: string;
+  /** What routing embedded, when the app's rewriteRoutingQuery changed it. */
+  rewritten?: string;
   status: 'disabled' | 'routed' | 'fallback_all' | 'fallback_none' | 'router_error';
   matches: RoutingPreviewMatch[];
   finalToolScores?: RoutingPreviewToolScore[];

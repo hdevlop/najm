@@ -5,7 +5,7 @@ import type { RagMergedConfig } from '../config';
 import { EmbeddingService } from '../embeddings';
 import { ToolIndexRepository } from '../toolIndex';
 import type { ToolRouterResult } from './ToolRouterDto';
-import { normalizeQuery } from './ToolRouterUtils';
+import { normalizeQuery, rewriteRoutingQuery } from './ToolRouterUtils';
 import { ToolRoutingLoader } from './ToolRoutingLoader';
 import { UnmatchedQueryService } from '../unmatched';
 import { getRoutableTools } from '../toolVisibility';
@@ -37,7 +37,7 @@ export class ToolRouterService {
     }
 
     try {
-      const embedding = await this.embedding.embed(normalized);
+      const embedding = await this.embedding.embed(rewriteRoutingQuery(normalized, this.config.rewriteRoutingQuery));
 
       const maxTools = routing.maxTools ?? 12;
       const topSemanticHits = routing.topSemanticHits ?? 8;

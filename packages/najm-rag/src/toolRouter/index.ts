@@ -16,6 +16,7 @@ export {
   DEFAULT_DANGEROUS_PATTERNS,
   DEFAULT_INTENT_KEYWORDS,
   normalizeQuery,
+  rewriteRoutingQuery,
   normalizeArabic,
   EmbeddingLru,
   deepEqual,

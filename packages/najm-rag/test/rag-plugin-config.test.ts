@@ -25,6 +25,13 @@ describe('rag() enablement', () => {
     }
   });
 
+  test('passes rewriteRoutingQuery through, and only a function', () => {
+    const rewrite = (text: string) => text;
+    expect(configOf(rag({ dialect: 'sqlite', toolRouting: { enabled: true }, rewriteRoutingQuery: rewrite })).rewriteRoutingQuery).toBe(rewrite);
+    expect(configOf(rag({ dialect: 'sqlite', toolRouting: { enabled: true } })).rewriteRoutingQuery).toBeUndefined();
+    expect(configOf(rag({ dialect: 'sqlite', rewriteRoutingQuery: 'x' as any })).rewriteRoutingQuery).toBeUndefined();
+  });
+
   test('leaves dimensions unset unless configured', () => {
     expect(configOf(rag({ dialect: 'sqlite', knowledge: true })).rag.embedding.dimensions).toBeUndefined();
   });

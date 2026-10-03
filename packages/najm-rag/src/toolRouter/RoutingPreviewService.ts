@@ -12,7 +12,7 @@ import type {
   RoutingPreviewConfirmation,
   RoutingPreviewToolScore,
 } from './ToolRouterDto';
-import { normalizeQuery } from './ToolRouterUtils';
+import { normalizeQuery, rewriteRoutingQuery } from './ToolRouterUtils';
 import { ToolRoutingLoader } from './ToolRoutingLoader';
 import { getRoutableTools } from '../toolVisibility';
 import { selectPrimaryTool, filterAlternativeMutations } from './RoutingLogic';
@@ -62,8 +62,12 @@ export class RoutingPreviewService {
       };
     }
 
+    // Shown only when the app's rewrite changed what was embedded.
+    let shown: { rewritten?: string } = {};
     try {
-      const embedding = await this.embedding.embed(normalized);
+      const rewritten = rewriteRoutingQuery(normalized, this.config.rewriteRoutingQuery);
+      if (rewritten !== normalized) shown = { rewritten };
+      const embedding = await this.embedding.embed(rewritten);
 
       const registeredToolNames = new Set(routableTools.map((tool) => tool.name));
       let rawMatches = this.filterRegisteredMatches(
@@ -82,7 +86,7 @@ export class RoutingPreviewService {
       if (rawMatches.length === 0) {
         const fallback = routing.fallbackOnNoMatch ?? 'none';
         return {
-          query: userText, normalized,
+          query: userText, normalized, ...shown,
           status: fallback === 'all' ? 'fallback_all' : 'fallback_none',
           matches: [], dependencies: [], routingDecisions: [], confirmations: this.getConfirmations(fallback === 'all' ? routableTools.map((t) => t.name) : []),
           finalTools: fallback === 'all' ? routableTools.map((t) => t.name) : [],
@@ -177,7 +181,7 @@ export class RoutingPreviewService {
         .filter((score): score is NonNullable<typeof score> => score != null);
 
       return {
-        query: userText, normalized, status: 'routed',
+        query: userText, normalized, ...shown, status: 'routed',
         matches, finalToolScores, dependencies, routingDecisions,
         confirmations: this.getConfirmations(finalTools),
         finalTools,
@@ -187,7 +191,7 @@ export class RoutingPreviewService {
       const message = error instanceof Error ? error.message : String(error);
       this.log.error?.('[chatbot-rag] Routing preview failed:', error);
       return {
-        query: userText, normalized, status: 'router_error',
+        query: userText, normalized, ...shown, status: 'router_error',
         matches: [], dependencies: [], routingDecisions: [], confirmations: [], finalTools: [],
         error: message, config,
       };

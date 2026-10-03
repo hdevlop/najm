@@ -54,6 +54,14 @@ export interface RagConfig {
   queryEmbeddingCacheSize?: number;
   indexOnBoot?: boolean;
   toolRouting?: RagToolRoutingConfig;
+  /**
+   * Rewrites a message before tool routing embeds it, for wording the
+   * embedding model handles poorly, such as a dialect. Receives the
+   * normalized message; its result is normalized again, and an empty result
+   * keeps the original. Applies to tool routing and its preview, not to
+   * knowledge search. A rewrite that throws is a router error.
+   */
+  rewriteRoutingQuery?: RoutingQueryRewrite;
   knowledge?: boolean | RagKnowledgeConfig;
   /**
    * BCP-47 language codes allowed for semantic phrases. If omitted, all known
@@ -63,10 +71,13 @@ export interface RagConfig {
   allowedLangs?: string[];
 }
 
+export type RoutingQueryRewrite = (normalized: string) => string;
+
 export interface RagMergedConfig {
   dialect: RagDialect;
   configPath?: string;
   allowedLangs?: string[];
+  rewriteRoutingQuery?: RoutingQueryRewrite;
   knowledge?: {
     enabled: boolean;
     namespace: string;

@@ -32,6 +32,13 @@ export function normalizeQuery(query: string): string {
   return normalizeArabic(query.trim().toLowerCase());
 }
 
+/** The text tool routing embeds: the app's rewrite of a normalized query, if any. */
+export function rewriteRoutingQuery(normalized: string, rewrite?: (normalized: string) => string): string {
+  if (!rewrite) return normalized;
+  const rewritten = rewrite(normalized);
+  return (typeof rewritten === 'string' && normalizeQuery(rewritten)) || normalized;
+}
+
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object') return false;

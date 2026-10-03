@@ -137,6 +137,7 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
     allowedLangs: Array.isArray(effective.allowedLangs) && effective.allowedLangs.length > 0
       ? effective.allowedLangs
       : undefined,
+    rewriteRoutingQuery: typeof config?.rewriteRoutingQuery === 'function' ? config.rewriteRoutingQuery : undefined,
     knowledge,
     rag: {
       enabled: ragEnabled,

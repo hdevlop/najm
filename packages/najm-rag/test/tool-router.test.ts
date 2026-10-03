@@ -1,5 +1,5 @@
 import { describe, test, expect, mock } from 'bun:test';
-import { ToolRouterService } from '../src/toolRouter';
+import { ToolRouterService, RoutingPreviewService } from '../src/toolRouter';
 import { EmbeddingService, EmbeddingValidator } from '../src/embeddings';
 import { KnowledgeService } from '../src/knowledge';
 
@@ -582,6 +582,65 @@ describe('ToolRouterService', () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  describe('rewriteRoutingQuery', () => {
+    const routed = { toolRouting: { enabled: true, similarityThreshold: 0.45 } };
+    const tools = [{ name: 'students_get_student_count', description: 'Count students' }];
+    const route = async (rewriteRoutingQuery: any, text = 'شحال من تلميذ؟') => {
+      const embedding = makeEmbedding([0.1]);
+      const service = createToolRouterService(
+        { ...routed, rewriteRoutingQuery } as any,
+        makeRegistry(tools),
+        embedding,
+        makeRepository({ semantics: [{ toolName: 'students_get_student_count', similarity: 0.8 }] }),
+        { error: () => {} } as any,
+      );
+      const result = await service.findRelevantTools(text);
+      return { result, embedded: embedding.embed.mock.calls[0]?.[0] };
+    };
+
+    test('embeds the rewrite of the normalized message, normalized again', async () => {
+      const rewrite = mock((normalized: string) => normalized.replace('شحال', 'كم عدد') + ' الإجمالي');
+      const { result, embedded } = await route(rewrite, '  شحال من تلميذ؟ ');
+      expect(rewrite).toHaveBeenCalledWith('شحال من تلميذ؟');
+      expect(embedded).toBe('كم عدد من تلميذ؟ الاجمالي');
+      expect(result.status).toBe('routed');
+    });
+
+    test('embeds the normalized message without a rewrite, or when it returns nothing', async () => {
+      expect((await route(undefined)).embedded).toBe('شحال من تلميذ؟');
+      expect((await route(() => '   ')).embedded).toBe('شحال من تلميذ؟');
+      expect((await route(() => undefined)).embedded).toBe('شحال من تلميذ؟');
+    });
+
+    test('treats a rewrite that throws as a router error', async () => {
+      const { result, embedded } = await route(() => { throw new Error('bad lexicon'); });
+      expect(embedded).toBeUndefined();
+      expect(result.status).toBe('router_error');
+      expect(result.error).toBe('bad lexicon');
+    });
+
+    test('preview reports what was embedded when the rewrite changed it', async () => {
+      const preview = (rewriteRoutingQuery?: (text: string) => string) => new RoutingPreviewService(
+        { ...routed, rewriteRoutingQuery } as any,
+        makeRegistry(tools),
+        makeEmbedding([0.1]),
+        {
+          ...makeRepository({ semantics: [{ toolName: 'students_get_student_count', similarity: 0.8 }] }),
+          scoreEmbeddingsForTools: mock(() => Promise.resolve([])),
+        },
+        { error: () => {} } as any,
+        makeProvider(routed),
+      ).previewRouting('شحال من تلميذ؟');
+
+      const rewritten = await preview((text) => text.replace('شحال', 'كم'));
+      expect(rewritten.normalized).toBe('شحال من تلميذ؟');
+      expect(rewritten.rewritten).toBe('كم من تلميذ؟');
+      expect(rewritten.finalTools).toEqual(['students_get_student_count']);
+      expect('rewritten' in await preview((text) => text)).toBe(false);
+      expect('rewritten' in await preview()).toBe(false);
+    });
   });
 
 });
