@@ -803,6 +803,97 @@ import { useSelection } from 'najm-kit';
 - Requires Tailwind CSS **v4** in the host application (see Styling above)
 - CodeMirror components are optional peer deps â€” import from `najm-kit/json` only if needed
 
+## NTable export, import, and print actions
+
+Enable `dataActions` for built-in Export, Import, and Print icon buttons beside
+Create, with no action callbacks required. The same actions are available from
+the Table actions button and by right-clicking the toolbar or a column header.
+
+```tsx
+<NTable
+  data={members}
+  columns={columns}
+  dataActions
+  toolbarActionDisplay="both"
+/>
+```
+
+To enable defaults across an app, use
+`<NTableDefaultsProvider value={{ dataActions: true }}>`. An individual table
+can opt out with `dataActions={false}`. Existing tables keep their current
+behavior until enabled.
+
+Control each action with `showExportButton`, `showImportButton`, and
+`showPrintButton`, following `showAddButton`. A `true` flag enables that action's
+default workflow without needing `dataActions` or a callback. A `false` flag
+hides it from both the toolbar and the default header menu, even when
+`dataActions`, an inherited default, or a callback would otherwise enable it.
+Omitted flags keep the existing automatic behavior. Custom `menu.header` items
+remain application-owned.
+
+```tsx
+// Import only, including when the app enables all actions by default.
+<NTable
+  data={members}
+  columns={columns}
+  showImportButton
+  showExportButton={false}
+  showPrintButton={false}
+/>
+
+// Export and Print, with Import hidden.
+<NTable data={members} columns={columns} dataActions showImportButton={false} />
+```
+
+- **Export:** downloads `table.csv`, using visible accessor columns and the
+  loaded rows after filtering and sorting, before client pagination. In server
+  pagination mode this includes only the rows the app has fetched. Headers use
+  accessor keys (or column IDs) so files can be imported again. Text that could
+  run as a spreadsheet formula is prefixed with an apostrophe.
+- **Import:** accepts a JSON array of row objects or comma-separated CSV with a
+  header row, shows a preview, and replaces the displayed rows on confirmation.
+  CSV values stay strings; dotted accessor keys become nested fields. JSON
+  preserves value types. File fields must match what your columns/renderers
+  expect. Import performs structural parsing, not application schema validation.
+- **Print:** opens the browser print dialog for a plain table containing the
+  same rows and columns as export, without the app's navigation and controls.
+
+Default import changes this table's local data without mutating `data` or saving
+to a server. The next new `data` array from the parent replaces that local
+dataset. A locally imported dataset uses local pagination even when the table
+was displaying server-paginated results.
+
+Supply `onDataChange={async (rows) => ...}` to take ownership of imported rows
+instead, validate/save them, and update `data` through your app's normal flow.
+The import dialog waits for this callback and remains open on rejection so the
+user can retry. It does not install local rows when this callback is supplied.
+Import also works on empty tables.
+
+`toolbarActionDisplay` accepts `"buttons"`, `"menu"`, or `"both"` (default).
+Menu mode provides a visible trigger for touch and keyboard users. Right-click
+menus apply to the toolbar and column headers, keeping row and background menus
+independent. Use `menu={{ header: () => [...] }}` to replace the default header
+menu with your own `ContextMenuItem[]`, including format submenus or extra
+actions. `onExport`, `onImport`, and `onPrint` override individual default
+workflows and also enable that action on their own. Use them for custom formats,
+server-wide export, application import workflows, or a custom print layout.
+Controls are disabled during the first load and remain usable during a refresh
+with existing rows.
+
+Localize `export`, `import`, `print`, and `tableActions` through `toolbarLabels`
+or `NTableDefaultsProvider`. `NajmAppProvider` reads the corresponding
+`common.table.*` keys, falling back to English when an action key is missing.
+The import dialog also accepts `importDescription`, `importFile`,
+`importReading`, `importPreview(count)`, `importConfirm`, `importCancel`, and
+`importFailed`. Its parser errors fall back to their English detail.
+
+The playground's **Table > Export, import, and print** example demonstrates the
+defaults, visibility switches, and empty/loading states. Run its desktop/mobile
+browser acceptance with
+`bun run --cwd packages/najm-kit test:acceptance table-data-actions.acceptance.ts`
+from the repository root. [Acceptance evidence](../../docs/evidence/ntable-data-actions/README.md)
+records coverage, screenshots, and the print-dialog boundary.
+
 ## NTable responsive columns
 
 `NTable` accepts an `NTableColumnDef<T>[]`. Each column's `meta` can carry:

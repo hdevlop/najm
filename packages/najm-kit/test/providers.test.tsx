@@ -156,6 +156,18 @@ describe("buildToolbarLabels", () => {
       'common.table.modeOption({"mode":"Cards"})',
     );
   });
+
+  test("table-action keys use translations and fall back when missing", () => {
+    const french: Record<string, string> = { "common.table.export": "Exporter", "common.table.tableActions": "Actions du tableau" };
+    const labels = buildToolbarLabels((key: string) => french[key] ?? key);
+    expect(labels.export).toBe("Exporter");
+    expect(labels.tableActions).toBe("Actions du tableau");
+    expect(labels.import).toBeUndefined();
+    expect(labels.print).toBeUndefined();
+    expect(labels.importPreview?.(2)).toContain("2 rows");
+    const imported = buildToolbarLabels((key: string, params) => key.endsWith("importPreview") ? `${params?.count} lignes` : key);
+    expect(imported.importPreview?.(2)).toBe("2 lignes");
+  });
 });
 
 describe("NajmUIProvider preferences", () => {

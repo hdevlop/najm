@@ -12,10 +12,11 @@ import {
   DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search, Filter } from "lucide-react";
+import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search, Filter, MoreHorizontal, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import type { ViewMode } from "./store";
+import type { ContextMenuItem } from "../data-display/useContextMenu";
 import { useResolvedToolbarLabels } from "./TableDefaults";
 import {
   DEFAULT_TABLE_HEADER_COLOR,
@@ -45,6 +46,7 @@ function useToolbarCopy() {
       filterRegion: labels.filterRegion ?? "Table filters",
       allOption: labels.allOption ?? "All",
       create: labels.create ?? "Create",
+      tableActions: labels.tableActions ?? "Table actions",
     }),
     [labels],
   );
@@ -195,10 +197,21 @@ function TableAddButton({ mobile = false }: { mobile?: boolean }) {
   const showAddButton = useTableStore.use.showAddButton();
   const addButtonText = useTableStore.use.addButtonText();
   const copy = useToolbarCopy();
+  if (!showAddButton) return null;
+  return <TableIconButton mobile={mobile} label={addButtonText || copy.create} icon={Plus} onClick={onAddClick ?? undefined} />;
+}
+
+function TableIconButton({ mobile = false, label, icon: Icon, onClick, disabled = false, menu = false }: {
+  mobile?: boolean;
+  label: string;
+  icon: LucideIcon;
+  onClick?: React.MouseEventHandler<HTMLButtonElement>;
+  disabled?: boolean;
+  menu?: boolean;
+}) {
   const headerColor = useTableStore.use.headerColor();
   const headerTextColor = useTableStore.use.headerTextColor();
   const bordered = useTableStore.use.bordered();
-  if (!showAddButton) return null;
 
   const btnStyle = mobile
     ? { color: resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR) }
@@ -212,21 +225,41 @@ function TableAddButton({ mobile = false }: { mobile?: boolean }) {
   return (
     <button
       type="button"
-      onClick={onAddClick ?? undefined}
+      onClick={onClick}
+      disabled={disabled}
       style={btnStyle}
-      aria-label={addButtonText || copy.create}
-      title={addButtonText || copy.create}
+      aria-label={label}
+      title={label}
+      aria-haspopup={menu ? "menu" : undefined}
       data-bordered={bordered === false ? "false" : "true"}
       className={cn(
-        "h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:opacity-90",
+        "h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-lg transition-colors hover:opacity-90 disabled:cursor-default disabled:opacity-60",
         mobile
           ? cn("flex bg-card md:hidden", bordered === false ? "shadow-sm" : "border border-input hover:border-primary/70")
           : `hidden md:flex ${borderedCls}`,
       )}
     >
-      <Plus className="h-5 w-5" />
+      <Icon aria-hidden="true" className="h-5 w-5" />
     </button>
   );
+}
+
+function TableToolbarActions({ mobile = false }: { mobile?: boolean }) {
+  const actions = useTableStore.use.toolbarActions() as ContextMenuItem[];
+  const display = useTableStore.use.toolbarActionDisplay();
+  const hasHeaderMenu = useTableStore.use.hasHeaderMenu();
+  const openHeaderMenu = useTableStore.use.openHeaderMenu();
+  const isLoading = useTableStore.use.isLoading();
+  const isRefreshing = useTableStore.use.isRefreshing();
+  const copy = useToolbarCopy();
+  const disabled = Boolean(isLoading && !isRefreshing);
+
+  return <>
+    {display !== "menu" && actions.map((action, index) => (
+      <TableIconButton key={index} mobile={mobile} label={action.label} icon={action.icon!} disabled={disabled} onClick={() => action.onSelect?.()} />
+    ))}
+    {hasHeaderMenu && <TableIconButton mobile={mobile} label={copy.tableActions} icon={MoreHorizontal} disabled={disabled} menu onClick={openHeaderMenu ?? undefined} />}
+  </>;
 }
 
 function MobileFiltersMenu({ filters }: { filters: any[] }) {
@@ -268,15 +301,19 @@ function MobileFiltersMenu({ filters }: { filters: any[] }) {
 function TableMobileToolbar() {
   const filters = useTableStore.use.filters();
   const firstFilter = filters?.[0];
+  const toolbarActions = useTableStore.use.toolbarActions();
+  const hasHeaderMenu = useTableStore.use.hasHeaderMenu();
+  const hasDataActions = toolbarActions.length > 0 || hasHeaderMenu;
 
   return (
-    <div data-ntable-mobile-toolbar className="flex w-full min-w-0 items-center gap-2 md:hidden">
+    <div data-ntable-mobile-toolbar className="flex w-full min-w-0 flex-wrap items-center gap-2 md:hidden">
       {firstFilter && (
-        <div data-ntable-mobile-primary-filter className="min-w-0 flex-1">
+        <div data-ntable-mobile-primary-filter className={cn("min-w-0 flex-1", hasDataActions && "basis-full")}>
           <RenderFilter filter={firstFilter} mobilePrimary />
         </div>
       )}
       <MobileFiltersMenu filters={filters?.slice(1) ?? []} />
+      <TableToolbarActions mobile />
       <TableAddButton mobile />
     </div>
   );
@@ -389,6 +426,9 @@ export function NTableHeader() {
   const isCustomMode = useTableStore.use.isCustomMode();
   const showViewToggle = useTableStore.use.showViewToggle();
   const showColumnVisibility = useTableStore.use.showColumnVisibility();
+  const toolbarActions = useTableStore.use.toolbarActions();
+  const hasHeaderMenu = useTableStore.use.hasHeaderMenu();
+  const onHeaderContextMenu = useTableStore.use.onHeaderContextMenu();
 
   // The real toolbar renders during loading too. Swapping it for a placeholder
   // of a different height moves the body underneath it — a two-line filter row
@@ -400,7 +440,7 @@ export function NTableHeader() {
   // yet" rather than "this list is empty" — so it must not hide the toolbar, or
   // the header is short during the skeleton and full once rows land, and the
   // body loses that difference in height the moment they do.
-  const hideDataChrome = error || (hasNoData && !isFilteredEmpty && !isLoading);
+  const hideDataChrome = error || (hasNoData && !isFilteredEmpty && !isLoading && !toolbarActions.length && !hasHeaderMenu);
 
   // Present but not usable during a first load. The toolbar has to hold its
   // height — that is the whole reason it renders here — so it cannot be removed
@@ -416,9 +456,9 @@ export function NTableHeader() {
     if (hideDataChrome) return null;
     const justify = headerSlot ? "justify-between" : "justify-end";
     return (
-      <div data-ntable-header aria-busy={isFirstLoad ? "true" : undefined} className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, firstLoadChromeClass, classNames?.header)}>
+      <div data-ntable-header onContextMenu={onHeaderContextMenu ?? undefined} aria-busy={isFirstLoad ? "true" : undefined} className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, firstLoadChromeClass, classNames?.header)}>
         {headerSlot && <div className="flex min-w-0 flex-1 items-center gap-2">{headerSlot}</div>}
-        {hasControls && <div className="flex gap-2 shrink-0"><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
+        {hasControls && <div className="flex gap-2 shrink-0 flex-wrap"><TableToolbarActions mobile /><TableToolbarActions /><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
       </div>
     );
   }
@@ -431,12 +471,12 @@ export function NTableHeader() {
   const justify = (hasControls || headerSlot || hasToolbar) ? "justify-between" : "justify-start";
 
   return (
-    <div data-ntable-header aria-busy={isFirstLoad ? "true" : undefined} className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, firstLoadChromeClass, classNames?.header)}>
+    <div data-ntable-header onContextMenu={onHeaderContextMenu ?? undefined} aria-busy={isFirstLoad ? "true" : undefined} className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, firstLoadChromeClass, classNames?.header)}>
       <TableFilters />
       <TableMobileToolbar />
       {headerSlot && <div className="ml-auto flex shrink-0 items-center gap-2">{headerSlot}</div>}
       <TableToolbarSlot />
-      {hasControls && <div className="flex gap-2 shrink-0"><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
+      {hasControls && <div className="flex gap-2 shrink-0 flex-wrap"><TableToolbarActions /><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
     </div>
   );
 }

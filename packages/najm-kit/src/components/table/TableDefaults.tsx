@@ -11,6 +11,8 @@ import type { NTableToolbarLabels } from "./toolbarContract";
  * an application with more than one locale should not have to remember to.
  */
 export interface NTableDefaults {
+  /** Enable built-in CSV export, CSV/JSON import, and table printing. */
+  dataActions?: boolean;
   paginationLabels?: NTablePaginationLabels;
   toolbarLabels?: NTableToolbarLabels;
 }

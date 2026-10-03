@@ -38,6 +38,28 @@ export interface NTableToolbarLabels {
   allOption?: string;
   /** Accessible name of the add control when `addButtonText` is empty. Defaults to `"Create"`. */
   create?: string;
+  /** Name and tooltip of the header menu trigger. Defaults to "Table actions". */
+  tableActions?: string;
+  /** Export action label and tooltip. Defaults to "Export". */
+  export?: string;
+  /** Import action label and tooltip. Defaults to "Import". */
+  import?: string;
+  /** Print action label and tooltip. Defaults to "Print". */
+  print?: string;
+  /** Description of the default import workflow and its local data behavior. */
+  importDescription?: string;
+  /** Label of the CSV/JSON file input. */
+  importFile?: string;
+  /** File-reading status. */
+  importReading?: string;
+  /** Imported row count and preview description. */
+  importPreview?: (count: number) => string;
+  /** Confirmation that replaces the displayed rows. */
+  importConfirm?: string;
+  /** Cancel button label. */
+  importCancel?: string;
+  /** Fallback when import fails without an error message. */
+  importFailed?: string;
   /** Accessible name of each row's menu button. Defaults to `"Row actions"`. */
   rowActions?: string;
   /** The row action that opens a record, in its menu and as its button's name. Defaults to `"View"`. */

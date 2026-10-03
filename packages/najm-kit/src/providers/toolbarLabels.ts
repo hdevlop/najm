@@ -5,7 +5,7 @@ export const DEFAULT_TOOLBAR_KEY_PREFIX = "common.table";
 
 type DefaultToolbarPrefix = typeof DEFAULT_TOOLBAR_KEY_PREFIX;
 
-/** The seventeen catalog keys `buildToolbarLabels` reads under `Prefix`. */
+/** The catalog keys `buildToolbarLabels` reads under `Prefix`. */
 export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
   | `${Prefix}.settings`
   | `${Prefix}.view`
@@ -19,6 +19,17 @@ export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
   | `${Prefix}.filterRegion`
   | `${Prefix}.allOption`
   | `${Prefix}.create`
+  | `${Prefix}.tableActions`
+  | `${Prefix}.export`
+  | `${Prefix}.import`
+  | `${Prefix}.print`
+  | `${Prefix}.importDescription`
+  | `${Prefix}.importFile`
+  | `${Prefix}.importReading`
+  | `${Prefix}.importPreview`
+  | `${Prefix}.importConfirm`
+  | `${Prefix}.importCancel`
+  | `${Prefix}.importFailed`
   | `${Prefix}.rowActions`
   | `${Prefix}.rowView`
   | `${Prefix}.rowEdit`
@@ -36,7 +47,7 @@ export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
  * `buildPaginationLabels`: a translator that echoes a missing key renders that
  * key, which is the signal the entry is missing.
  *
- * The row-action keys are the exception. They were added after catalogs had
+ * The row-action and table-action keys are the exception. They were added after catalogs had
  * adopted the other twelve, so a catalog without them keeps the packaged
  * English instead of starting to render `common.table.rowView`.
  */
@@ -65,6 +76,21 @@ export function buildToolbarLabels<
     filterRegion: t(`${scope}.filterRegion`),
     allOption: t(`${scope}.allOption`),
     create: t(`${scope}.create`),
+    tableActions: optional(`${scope}.tableActions`),
+    export: optional(`${scope}.export`),
+    import: optional(`${scope}.import`),
+    print: optional(`${scope}.print`),
+    importDescription: optional(`${scope}.importDescription`),
+    importFile: optional(`${scope}.importFile`),
+    importReading: optional(`${scope}.importReading`),
+    importPreview: (count) => {
+      const key = `${scope}.importPreview` as ToolbarKey<Prefix>;
+      const value = t(key, { count });
+      return value === key ? `${count} ${count === 1 ? 'row' : 'rows'} ready to import. Preview of the first 5 rows:` : value;
+    },
+    importConfirm: optional(`${scope}.importConfirm`),
+    importCancel: optional(`${scope}.importCancel`),
+    importFailed: optional(`${scope}.importFailed`),
     rowActions: optional(`${scope}.rowActions`),
     rowView: optional(`${scope}.rowView`),
     rowEdit: optional(`${scope}.rowEdit`),

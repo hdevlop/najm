@@ -8,6 +8,7 @@ import type {
   NTablePaginationVariant,
 } from "./paginationContract";
 import type { NTableToolbarLabels } from "./toolbarContract";
+import type { ContextMenuItem } from "../data-display/useContextMenu";
 
 export interface NTableClassNames {
   root?: string;
@@ -65,6 +66,11 @@ export interface TableState {
   selectedRowId: string | null;
   headerSlot: ReactNode | null;
   onAddClick: any;
+  toolbarActions: ContextMenuItem[];
+  toolbarActionDisplay: "buttons" | "menu" | "both";
+  hasHeaderMenu: boolean;
+  onHeaderContextMenu: ((e: ReactMouseEvent) => void) | null;
+  openHeaderMenu: ((e: ReactMouseEvent) => void) | null;
   onView: any;
   onEdit: any;
   onDelete: any;
@@ -186,7 +192,7 @@ const computeFlags = (state: Partial<TableState>): Partial<TableState> => {
     (state.menuButton && state.openRowMenu) ||
     state.onView || state.onEdit || state.onDelete
   );
-  const hasControls = Boolean(state.showColumnVisibility || state.showAddButton || state.showViewToggle);
+  const hasControls = Boolean(state.showColumnVisibility || state.showAddButton || state.showViewToggle || state.toolbarActions?.length || state.hasHeaderMenu);
   // A reload that already has rows on screen is a refresh, not a first load.
   // Tearing the rows down for a skeleton makes a background refetch — a page
   // size correction, a filter change, a poll — look like a full navigation.
@@ -225,6 +231,7 @@ export const createTableStore = (seed?: Partial<TableState>) => {
   const store = create<TableState>((set, get) => {
     const defaults = ({
     table: null, data: [], columns: [], filters: [], isLoading: false, error: null, viewMode: "table" as ViewMode,
+    toolbarActions: [], toolbarActionDisplay: "both", hasHeaderMenu: false, onHeaderContextMenu: null, openHeaderMenu: null,
     showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: {}, dynamicHeight: true,
     showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true, isRefreshing: false,
     onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,

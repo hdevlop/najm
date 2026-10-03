@@ -9,6 +9,7 @@ import {
 import { User, Users, Shield, Calendar, Settings2, Palette, SlidersHorizontal, MousePointerClick, Plus } from 'lucide-react';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
+import { TableDataActionsExample } from './TableDataActionsExample';
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
@@ -338,6 +339,7 @@ export function TablePage() {
       description="Feature-rich data table with sorting, pagination, row selection, view modes, and inline actions."
       category="Data Display"
     >
+      <TableDataActionsExample />
       <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger className="inline-flex items-center gap-2 h-9 px-3 rounded-lg border border-border bg-card text-sm hover:bg-accent transition-colors outline-none focus-visible:ring-[3px] focus-visible:ring-ring/50">

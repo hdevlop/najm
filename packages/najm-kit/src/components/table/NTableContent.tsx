@@ -283,6 +283,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   const onCellClick = useTableStore.use.onCellClick();
   const onRowContextMenu = useTableStore.use.onRowContextMenu();
   const onBackgroundContextMenu = useTableStore.use.onBackgroundContextMenu();
+  const onHeaderContextMenu = useTableStore.use.onHeaderContextMenu();
   const getRowClassName = useTableStore.use.getRowClassName();
   const onCellEdit = useTableStore.use.onCellEdit();
   const isLoading = useTableStore.use.isLoading();
@@ -391,7 +392,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
         column definition is honoured; the rest share what is left.
       */}
       <Table className="table-fixed">
-        <TableHeader data-ntable-table-header className={cn("bg-card sticky top-0 z-10", headerClassName, bordered === true && "[&_tr]:border-border", classNames?.tableHeader)}>
+        <TableHeader data-ntable-table-header onContextMenu={onHeaderContextMenu ?? undefined} className={cn("bg-card sticky top-0 z-10", headerClassName, bordered === true && "[&_tr]:border-border", classNames?.tableHeader)}>
           {table.getHeaderGroups().map((hg) => (
             <TableRow key={hg.id} style={rowBorderStyle} className={cn("hover:bg-transparent", bordered === true && "border-border")}>
               {showCheckbox && (

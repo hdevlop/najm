@@ -1,5 +1,23 @@
 # Changelog
 
+## Unreleased
+
+- `NTable` supports `onExport`, `onImport`, and `onPrint` actions as icon
+  buttons, a header menu, or both through `toolbarActionDisplay`. Right-click
+  the toolbar or column headers to open the menu; `menu.header` supplies custom
+  items. Import stays accessible on empty tables. Labels inherit table defaults
+  and `common.table` translations, with English fallbacks for missing keys.
+- Enable `dataActions` per table or in `NTableDefaultsProvider` for default CSV
+  export, previewed CSV/JSON import, and browser printing without handlers.
+  Import replaces local displayed rows after confirmation; `onDataChange` lets
+  the app validate/save rows instead. Existing action callbacks override defaults.
+- `showExportButton`, `showImportButton`, and `showPrintButton` control individual
+  actions in the toolbar and default header menu. True enables a default action;
+  false hides it even when callbacks or shared defaults enable it.
+- The mounted playground Table page now includes a data-actions example and
+  desktop/mobile Playwright acceptance. When data actions are enabled on mobile,
+  the primary filter occupies its own row so the action buttons cannot crowd it.
+
 ## 2.16.15 - 2026-10-02
 
 - `DateInput` labels its value in the active locale ("1 octobre 2026")

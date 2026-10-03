@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
-import { useResolvedToolbarLabels } from "./TableDefaults";
+import { useNTableDefaults, useResolvedToolbarLabels } from "./TableDefaults";
 import { rowActionCopy } from "./rowActionLabels";
-import { Eye, Inbox, Pencil, Plus, SearchX, Trash2 } from "lucide-react";
+import { Download, Eye, Inbox, Pencil, Plus, Printer, SearchX, Trash2, Upload } from "lucide-react";
 import type { ColumnDef, Row, SortingState, ColumnFiltersState, VisibilityState, RowSelectionState, ExpandedState } from "@tanstack/react-table";
 import { TableStoreContext } from "./TableContext";
 import { useContextMenu, type ContextMenuItem } from "../data-display/useContextMenu";
@@ -11,6 +11,9 @@ import { NTableCards } from "./NTableCards";
 import { NTablePagination } from "./NTablePagination";
 import { NTableHeader } from "./NTableHeader";
 import { NTableJson } from "./NTableJson";
+import { NTableImport } from "./NTableImport";
+import { downloadTable, printTable, tableDataSnapshot } from "./dataActions";
+import type { Table } from "@tanstack/react-table";
 import { NTableCardsLoadingSkeleton, NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
 import { cn } from "../../lib/cn";
 import { NErrorState } from "../feedback/NErrorState";
@@ -46,6 +49,8 @@ export interface NTableState {
  * menu AND the built-in ⋮ button; `background` powers right-click on whitespace.
  */
 export interface NTableMenu<T = any> {
+  /** Override the default export/import/print menu on the toolbar and column headers. */
+  header?: () => ContextMenuItem[];
   /** Items for right-clicking a row/card and for the built-in ⋮ button. */
   row?: (row: T) => ContextMenuItem[];
   /** Items for right-clicking empty space (whitespace / between cards). */
@@ -62,6 +67,18 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   error?: any;
   getRowId?: (row: T) => string;
   onCreate?: () => void;
+  /** Enable default CSV export, CSV/JSON import, and printing. Inherits provider defaults; otherwise false. */
+  dataActions?: boolean;
+  /** Receive imported rows instead of replacing the table's local data. Can save them through an API. */
+  onDataChange?: (rows: T[]) => void | Promise<unknown>;
+  /** Override the default CSV export workflow. Also enables Export on its own. */
+  onExport?: () => void;
+  /** Override the default CSV/JSON import workflow. Also enables Import on its own. */
+  onImport?: () => void;
+  /** Override the default table print workflow. Also enables Print on its own. */
+  onPrint?: () => void;
+  /** Presentation of export/import/print actions. Defaults to "both". */
+  toolbarActionDisplay?: "buttons" | "menu" | "both";
   onEdit?: (row: T) => void;
   onView?: (row: T) => void;
   onDelete?: (row: T) => void;
@@ -171,6 +188,12 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   showSorting?: boolean;
   showColumnVisibility?: boolean;
   showAddButton?: boolean;
+  /** Show Export in the toolbar and default header menu. True enables the built-in workflow; false hides it even with a callback or dataActions. */
+  showExportButton?: boolean;
+  /** Show Import in the toolbar and default header menu. True enables the built-in workflow; false hides it even with a callback or dataActions. */
+  showImportButton?: boolean;
+  /** Show Print in the toolbar and default header menu. True enables the built-in workflow; false hides it even with a callback or dataActions. */
+  showPrintButton?: boolean;
   showViewToggle?: boolean;
   /** Accessible names and visible copy for the toolbar and settings menu. */
   toolbarLabels?: NTableToolbarLabels;
@@ -411,6 +434,23 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
   props: NTableProps<T, M> | NTableColumnDefCompatibilityProps<T, M>,
 ) {
   const recipe = useNajmComponentStyle("table");
+  const defaults = useNTableDefaults();
+  const dataActions = props.dataActions ?? defaults.dataActions ?? false;
+  const [importOpen, setImportOpen] = useState(false);
+  const [importedData, setImportedData] = useState<{ source: T[]; rows: T[] } | null>(null);
+  const hasImportedData = importedData?.source === props.data;
+  const data = hasImportedData ? importedData.rows : props.data;
+  // Parent-supplied data remains authoritative after a refetch or other update.
+  useEffect(() => { setImportedData(null); }, [props.data]);
+  const dataTable = useRef<Table<T> | null>(null);
+  const defaultExport = useCallback(() => {
+    if (dataTable.current) downloadTable(tableDataSnapshot(dataTable.current));
+  }, []);
+  const defaultPrint = useCallback(() => {
+    if (dataTable.current) printTable(tableDataSnapshot(dataTable.current));
+  }, []);
+  const defaultImport = useCallback(() => { setImportOpen(true); }, []);
+  const importedRowId = useCallback((_row: T, index: number) => String(index), []);
   const recipeBordered = Boolean(recipe?.borderColor || recipe?.borderWidth);
   const availableModes = props.availableModes ?? (["table", "cards", "json"] as const);
   const lastInvalidModeRef = useRef<M | undefined>(undefined);
@@ -458,6 +498,20 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
   // NTable renders the store provider, so it reads its labels from props.
   const resolvedToolbarLabels = useResolvedToolbarLabels(props.toolbarLabels);
   const rowCopy = useMemo(() => rowActionCopy(resolvedToolbarLabels), [resolvedToolbarLabels]);
+  const showExportButton = props.showExportButton ?? Boolean(dataActions || props.onExport);
+  const showImportButton = props.showImportButton ?? Boolean(dataActions || props.onImport);
+  const showPrintButton = props.showPrintButton ?? Boolean(dataActions || props.onPrint);
+  // An open menu contains a snapshot of its items. Drop it when visibility changes.
+  useEffect(() => { ctx.close(); }, [showExportButton, showImportButton, showPrintButton, ctx.close]);
+  const toolbarActions = useMemo(() => {
+    const items: ContextMenuItem[] = [];
+    if (showExportButton) items.push({ label: resolvedToolbarLabels.export ?? "Export", icon: Download, onSelect: props.onExport ?? defaultExport });
+    if (showImportButton) items.push({ label: resolvedToolbarLabels.import ?? "Import", icon: Upload, onSelect: props.onImport ?? defaultImport });
+    if (showPrintButton) items.push({ label: resolvedToolbarLabels.print ?? "Print", icon: Printer, onSelect: props.onPrint ?? defaultPrint });
+    return items;
+  }, [showExportButton, showImportButton, showPrintButton, props.onExport, props.onImport, props.onPrint, defaultExport, defaultImport, defaultPrint, resolvedToolbarLabels]);
+  const toolbarActionDisplay = props.toolbarActionDisplay ?? "both";
+  const hasHeaderMenu = toolbarActionDisplay !== "buttons" && Boolean(toolbarActions.length || normalizedMenu.header);
 
   const defaultActionRowMenu = useCallback(
     (row: T): ContextMenuItem[] => {
@@ -504,6 +558,21 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     [effectiveRowMenu, openItems],
   );
 
+  const handleHeaderContextMenu = useCallback((e: React.MouseEvent) => {
+    if (!hasHeaderMenu || props.error || (props.loading && !data?.length)) return;
+    if ((e.target as HTMLElement).closest("input, textarea, [contenteditable=true]")) return;
+    const items = normalizedMenu.header?.() ?? toolbarActions;
+    if (!items.length) return;
+    e.stopPropagation();
+    openItems(e, items);
+  }, [hasHeaderMenu, props.error, props.loading, data, normalizedMenu.header, toolbarActions, openItems]);
+
+  const handleOpenHeaderMenu = useCallback((e: React.MouseEvent) => {
+    if (props.error || (props.loading && !data?.length)) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    ctx.open({ clientX: rect.left, clientY: rect.bottom }, normalizedMenu.header?.() ?? toolbarActions);
+  }, [props.error, props.loading, data, normalizedMenu.header, toolbarActions, ctx]);
+
   const handleManualRowMenu = useCallback(
     (e: React.MouseEvent, row: T) => {
       onRowContextMenu?.(e, row);
@@ -515,7 +584,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
   const effectiveMenuButton = Boolean(autoOpenRowMenu) && (menuButtonProp ?? true);
 
   const store = useStoreSync({
-    data: props.data ?? [],
+    data: data ?? [],
     columns: props.columns ?? [],
     filters: props.filters ?? [],
     isLoading: props.loading ?? false,
@@ -536,6 +605,11 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     selectedRowId: props.selectedRowId ?? null,
     headerSlot: props.headerSlot ?? null,
     onAddClick: props.onCreate ?? null,
+    toolbarActions,
+    toolbarActionDisplay,
+    hasHeaderMenu,
+    onHeaderContextMenu: hasHeaderMenu ? handleHeaderContextMenu : null,
+    openHeaderMenu: hasHeaderMenu ? handleOpenHeaderMenu : null,
     onView: props.onView ?? null,
     onEdit: props.onEdit ?? null,
     onDelete: props.onDelete ?? null,
@@ -549,7 +623,8 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     onCellEdit: props.onCellEdit ?? null,
     onBulkDelete: props.onBulkDelete ?? null,
     onStateChange: props.onStateChange ?? null,
-    getRowId: props.getRowId ?? null,
+    // Imported CSV may omit the app's IDs; local row identity uses row indices.
+    getRowId: hasImportedData ? importedRowId : (props.getRowId ?? null),
     renderToolbar: props.renderToolbar ?? null,
     showSorting: props.showSorting ?? true,
     showPagination: props.showPagination ?? true,
@@ -571,14 +646,14 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     // availableModes
     availableModes,
     // Server-side pagination
-    manualPagination: props.manualPagination ?? false,
-    pageCount: props.pageCount,
-    rowCount: props.rowCount,
-    hasNextPage: props.hasNextPage,
-    pagination: props.pagination,
+    manualPagination: hasImportedData ? false : (props.manualPagination ?? false),
+    pageCount: hasImportedData ? undefined : props.pageCount,
+    rowCount: hasImportedData ? undefined : props.rowCount,
+    hasNextPage: hasImportedData ? undefined : props.hasNextPage,
+    pagination: hasImportedData ? undefined : props.pagination,
     defaultPagination: props.defaultPagination,
-    onPaginationChange: props.onPaginationChange ?? null,
-    cardPagination: props.cardPagination ?? { mode: "paged" },
+    onPaginationChange: hasImportedData ? null : (props.onPaginationChange ?? null),
+    cardPagination: hasImportedData ? { mode: "paged" } : (props.cardPagination ?? { mode: "paged" }),
     paginationVariant: props.paginationVariant ?? "numbered",
     paginationLabels: props.paginationLabels ?? {},
     // Row selection
@@ -592,8 +667,8 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     // Responsive cards
     responsiveCards: props.responsiveCards ?? Boolean(props.renderCard),
     // Empty states
-    isEmpty: props.isEmpty,
-    isFilteredEmpty: props.isFilteredEmpty ?? false,
+    isEmpty: hasImportedData ? undefined : props.isEmpty,
+    isFilteredEmpty: hasImportedData ? false : (props.isFilteredEmpty ?? false),
     renderFilteredEmpty: props.renderFilteredEmpty ?? null,
     // Row expansion
     expanded: props.expanded,
@@ -602,6 +677,22 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
     getRowCanExpand: props.getRowCanExpand ?? null,
     renderSubRow: props.renderSubRow ?? null,
   });
+
+  useLayoutEffect(() => {
+    dataTable.current = store.getState().table;
+    return store.subscribe(state => { dataTable.current = state.table; });
+  }, [store]);
+
+  const applyImport = async (rows: Record<string, unknown>[]) => {
+    if (props.onDataChange) await props.onDataChange(rows as T[]);
+    else setImportedData({ source: props.data, rows: rows as T[] });
+    const state = store.getState();
+    state.setRowSelection({});
+    state.setExpanded({});
+    // A local import becomes a local dataset; do not request a remote page.
+    if (props.onDataChange) state.setPagination({ ...state.pagination, pageIndex: 0 });
+    else state.syncWithProps({ pagination: { ...state.pagination, pageIndex: 0 } });
+  };
 
   return (
     <TableStoreContext.Provider value={store}>
@@ -615,6 +706,7 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
         contextMenuOpen={ctx.isOpen}
       />
       {ctx.menu}
+      {importOpen && <NTableImport open onClose={() => setImportOpen(false)} onApply={applyImport} labels={resolvedToolbarLabels} />}
     </TableStoreContext.Provider>
   );
 }

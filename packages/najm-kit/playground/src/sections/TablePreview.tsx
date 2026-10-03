@@ -218,6 +218,7 @@ export default function TablePreview() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [failNextLoad, setFailNextLoad] = useState(false);
   const [loadRequests, setLoadRequests] = useState(0);
+  const [toolbarActionDisplay, setToolbarActionDisplay] = useState<"buttons" | "menu" | "both">("both");
 
   // UI feature toggles
   const [showPagination, setShowPagination] = useState(true);
@@ -225,6 +226,9 @@ export default function TablePreview() {
   const [showColumnVisibility, setShowColumnVisibility] = useState(true);
   const [showCheckbox, setShowCheckbox] = useState(true);
   const [showAddButton, setShowAddButton] = useState(false);
+  const [showExportButton, setShowExportButton] = useState(true);
+  const [showImportButton, setShowImportButton] = useState(true);
+  const [showPrintButton, setShowPrintButton] = useState(true);
   const [showViewToggle, setShowViewToggle] = useState(true);
 
   // Action toggles
@@ -280,6 +284,12 @@ export default function TablePreview() {
 
           {/* Density */}
           <RadioGroup
+            label="Toolbar actions"
+            options={["buttons", "menu", "both"] as ("buttons" | "menu" | "both")[]}
+            value={toolbarActionDisplay}
+            onChange={setToolbarActionDisplay}
+          />
+          <RadioGroup
             label="Density"
             options={["compact", "comfortable", "spacious"] as Density[]}
             value={density}
@@ -314,6 +324,9 @@ export default function TablePreview() {
         <p className="text-xs text-muted-foreground">
           Supplied rows: {data.length} / 125. Load-more requests: {loadRequests}. The 700ms delay makes pending protection visible.
         </p>
+        <p className="text-xs text-muted-foreground" role="status">
+          Export a CSV, import CSV/JSON with a preview, or print the table. Try the icon buttons or right-click a column header.
+        </p>
 
         <div className="h-px bg-border" />
 
@@ -321,6 +334,9 @@ export default function TablePreview() {
           <Toggle label="Edit Action"   value={enableEdit}   onChange={setEnableEdit} />
           <Toggle label="Delete Action" value={enableDelete} onChange={setEnableDelete} />
           <Toggle label="View Action"   value={enableView}   onChange={setEnableView} />
+          <Toggle label="Export Action" value={showExportButton} onChange={setShowExportButton} />
+          <Toggle label="Import Action" value={showImportButton} onChange={setShowImportButton} />
+          <Toggle label="Print Action" value={showPrintButton} onChange={setShowPrintButton} />
         </div>
       </div>
 
@@ -345,6 +361,11 @@ export default function TablePreview() {
           onDelete={enableDelete ? (row) => console.log("delete", row) : undefined}
           onView={enableView ? (row) => console.log("view", row) : undefined}
           onCreate={showAddButton ? () => console.log("create") : undefined}
+          dataActions
+          showExportButton={showExportButton}
+          showImportButton={showImportButton}
+          showPrintButton={showPrintButton}
+          toolbarActionDisplay={toolbarActionDisplay}
           pageSizeOptions={[5, 10, 15]}
           defaultPagination={{ pageIndex: 0, pageSize: 10 }}
           cardPagination={cardPagination}
