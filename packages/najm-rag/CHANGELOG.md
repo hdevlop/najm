@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.2.0
 
 - Add `embedding.queryTimeoutMs`: a timeout for query embeddings (tool routing,
   its preview and knowledge search) separate from indexing, which keeps
