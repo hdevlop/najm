@@ -123,8 +123,8 @@ by these checks. Existing email collisions in a consumer database are not
 repaired by the source changes.
 
 The auth transaction repair depends on the new `TransactionService.afterCommit`
-and `afterRollback` methods. A future release must publish the database package
-first and ensure the auth package's dependency includes that database release.
+and `afterRollback` methods. Database 2.2.0 was published first, and Auth 5.0.0
+declares its database dependency as `^2.2.0`.
 These hooks cover transactions managed through
 `TransactionService` / `@Transaction`; caller-owned raw driver transactions must
 coordinate their own invalidation after completion.
@@ -144,10 +144,9 @@ window; authoritative proxy mode checks refresh state on each protected request.
 
 ## Release and consumer adoption
 
-Candidate versions: `najm-database@2.2.0` (additive completion hooks) and
+Published versions: `najm-database@2.2.0` (additive completion hooks) and
 `najm-auth@5.0.0` (credential-setup constructor and consumed recovery-token
-contract changes, plus refusal of older unbound proofs). Publish database first;
-the auth manifest must resolve its database dependency to `^2.2.0`.
+contract changes, plus refusal of older unbound proofs).
 The exact database and auth tarballs were published from clean source commit
 `463705d0869f48d18c1e18fd3266d38f24767df2`. Registry downloads match the packed
 SHA-256 values:
@@ -158,23 +157,62 @@ SHA-256 values:
 | `najm-auth@5.0.0` | `e94c5b58c3a91a5de0c5baa30846f5658bc63650ecbf650f0c4c1afd6ba63e7e` |
 
 Consumer installation exposed declared peer ranges excluding Auth 5. The
-compatibility candidates are `najm-mcp@2.2.4`, `najm-next@0.8.1`,
+published compatibility releases are `najm-mcp@2.2.4`, `najm-next@0.8.1`,
 `najm-rag@2.2.1`, and `najm-chatbot@2.1.3`. Their Auth peers retain the previous
 supported majors and add 5. `najm-api@4.0.0` resolves its aggregate dependency
 to Auth 5; its major version reflects the re-exported contract changes.
 No new API export names were added.
 
 The local chatbot source was behind published `2.1.2` in its MCP-to-AI-SDK
-adapter. The candidate preserves the published `inputSchema` fix rather than
+adapter. The release preserves the published `inputSchema` fix rather than
 reintroducing `parameters`. Rebuilt runtime differences from published 2.1.2
 are limited to that comment. Compatibility validation passes: MCP 56, API 3,
-RAG 247, chatbot 186 tests; Next's main and React-server suites pass as well.
+RAG 247, chatbot 186 tests; Next's suites pass with 139, 3, and 7 passing tests
+(six skips in its main suite), and no failures.
 The package-local chatbot test command loads its existing memory-email preload;
 a root-relative raw Bun invocation does not load that package's `bunfig.toml`.
 
-Kafil and School initially installed Auth 5 and Database 2.2 successfully. Their
-lint/typecheck/test gates pass; Kafil's first broad run hit a filesystem-scan
-timeout under concurrent validation, then passed with less contention.
-Related compatibility publication, final consumer pins/builds, and connected
-acceptance remain pending at this checkpoint. Kafil's pre-existing changes
-remain preserved and must not be folded into an auth-only commit.
+The five compatibility tarballs were published from clean source commit
+`90bdbcc0d048b248dbe132515807ebd2e93ed952`. Registry downloads match their packed
+SHA-256 values:
+
+| Artifact | SHA-256 |
+| --- | --- |
+| `najm-mcp@2.2.4` | `4bd82264d05d797b7b557b87f4f97dbd43fda2fcf722f94612104fa86d9d6bd2` |
+| `najm-api@4.0.0` | `a900c99401d4c13951c14cf5a58b4db2992fa874c104aa76389daec63b643a55` |
+| `najm-rag@2.2.1` | `cb39c1f5fb9f4143be827d04ef8d11dc14beaa64d4b0111d6cc845a6b7ff1fdd` |
+| `najm-chatbot@2.1.3` | `9937934b1a39073f3d925be2c9ebae22ab2a0cb41a2e7d1e9eb85186657ec784` |
+| `najm-next@0.8.1` | `6cf2bbed100aca02d24bec241199513c8baf392c50cca6cefc0168002cd28725` |
+
+Both consumers now use exact Auth 5.0.0 and Database 2.2.0 pins with their
+applicable compatibility releases. School also uses Kit 2.16.16 to satisfy
+RAG's declared minimum. Root and workspace pins, overrides, and lockfiles agree.
+
+| Consumer check | Result |
+| --- | --- |
+| School `bun run check` | PASS: lint, typecheck, i18n validation, tests, production build, migration-history check. |
+| Kafil `bun run check` | PASS: lint, typecheck, tests, production build. |
+| Kafil `bun run db:generate` | PASS: no schema changes and no migration generated. |
+| Published-package auth acceptance, both consumers | PASS: login, refresh, reset and replay denial, prior bearer revocation, invitation activation, first-login setup and replay denial, and caller-owned pool usability after shutdown. |
+
+The [consumer acceptance runner](../../packages/najm-auth/integration/consumer-acceptance/README.md)
+uses each checkout's installed packages, actual auth factory, and PostgreSQL
+driver (Kafil node-postgres, School postgres-js). It calls real HTTP handlers
+through `server.fetch()` against a disposable database and the isolated Redis
+instance. It never loads application env files or accesses application databases.
+Memory email is used; this does not establish SMTP delivery, browser journeys,
+app-specific admin access-reset commands, or production database state.
+
+Kafil's first broad test run hit a filesystem-scan timeout under concurrent
+validation and passed with less contention. Its initial upgraded installation
+also retained Core 2 peer links for rate/validation while the root resolved Core
+3, causing an actual DI failure. `bun install --force` repaired those links;
+the final complete check and runtime acceptance passed after that reinstall.
+
+School's package and lockfile upgrade is committed locally as
+`480b1b46ba93caab3bcb3c57d90911c42b810e4a`, with a clean worktree. Kafil's
+package/lockfile upgrade and invitation-test migration remain uncommitted:
+its pre-existing overlapping package, UI, and locale edits were preserved.
+No Git push, deployment, browser acceptance, SMTP delivery, or production
+database repair was performed. PostgreSQL/Redis acceptance used temporary
+loopback services, which are stopped after validation.
