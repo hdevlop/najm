@@ -33,6 +33,18 @@ export {
 export type { LlmProvider, ProviderMeta, LlmSettings } from './agent/LlmProviderFactory';
 
 export { buildAiSdkTools, schemaToZod } from './agent/McpToolAdapter';
+export type { BuildAiSdkToolsOptions, ToolSettledEvent } from './agent/McpToolAdapter';
+export { summarizeUsage } from './agent/ChatDiagnostics';
+export type {
+  ChatDiagnostics,
+  ChatDiagnosticsSink,
+  ChatOutcome,
+  ChatPreparationSpans,
+  ChatStepSpan,
+  ChatToolOutcome,
+  ChatToolSpan,
+  ChatUsageSummary,
+} from './agent/ChatDiagnostics';
 
 export { calculateCost, getModelPricing, normalizeUsage } from './agent/modelPricing';
 export type { ModelPricing, ReportedUsage, UsageCost } from './agent/modelPricing';

@@ -13,6 +13,7 @@ import { chatbotCoreSchema as pgSchema } from './schema/internal/pg';
 import { chatbotCoreSchema as mysqlSchema } from './schema/internal/mysql';
 import { loadChatbotRoutingConfig } from './config/loadRoutingConfig';
 import type { ChatbotSchema } from './ai-settings';
+import type { ChatDiagnosticsSink } from './agent/ChatDiagnostics';
 
 export type ChatbotDialect = 'sqlite' | 'pg' | 'mysql';
 
@@ -42,7 +43,14 @@ export interface ChatbotToolRoutingConfig {
 }
 
 export interface ChatbotLoggingConfig {
+  /** Writes one `chatbot_interaction_logs` row per request, with diagnostics under `metadata.diagnostics`. */
   enabled?: boolean;
+  /**
+   * Receives each request's diagnostics (timings, steps, tools, usage, outcome),
+   * whether or not `enabled` is set. Called after the answer is saved; errors
+   * are ignored and never reach the user.
+   */
+  onDiagnostics?: ChatDiagnosticsSink;
 }
 
 /**
@@ -102,7 +110,7 @@ const defaultToolRouting: Required<ChatbotToolRoutingConfig> = {
   dangerousIntentKeywords: {},
 };
 
-const defaultChatLogging: Required<ChatbotLoggingConfig> = {
+const defaultChatLogging: ChatbotLoggingConfig = {
   enabled: true,
 };
 

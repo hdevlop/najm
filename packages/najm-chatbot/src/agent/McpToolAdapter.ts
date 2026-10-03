@@ -5,9 +5,30 @@ import type { McpBuilderService } from 'najm-mcp';
 import { resolveRegisteredToolInputSchema } from 'najm-mcp';
 import type { RegisteredTool } from 'najm-mcp';
 
+export interface ToolSettledEvent {
+  name: string;
+  toolCallId: string | null;
+  outcome: 'executed' | 'blocked' | 'error';
+  /** `performance.now()` readings around the call. */
+  start: number;
+  end: number;
+  inputChars: number;
+  resultChars: number;
+}
+
 export interface BuildAiSdkToolsOptions {
   blockConfirmationTools?: boolean;
   readOnlyMessage?: (tool: RegisteredTool) => string;
+  /** Called once per tool call with its timing and sizes. Errors it throws are ignored. */
+  onToolSettled?: (event: ToolSettledEvent) => void;
+}
+
+function jsonLength(value: unknown): number {
+  try {
+    return JSON.stringify(value ?? {})?.length ?? 0;
+  } catch {
+    return 0;
+  }
 }
 
 export const DEFAULT_READ_ONLY_MESSAGE =
@@ -166,14 +187,32 @@ export function buildAiSdkTools(
     aiSdkTools[mcpTool.name] = t({
       description: mcpTool.description ?? mcpTool.name,
       parameters: schema,
-      execute: async (args: any) => {
+      execute: async (args: any, callOptions?: { toolCallId?: string }) => {
+        const start = performance.now();
+        const settle = (outcome: ToolSettledEvent['outcome'], text: string) => {
+          try {
+            options.onToolSettled?.({
+              name: mcpTool.name,
+              toolCallId: callOptions?.toolCallId ?? null,
+              outcome,
+              start,
+              end: performance.now(),
+              inputChars: jsonLength(args),
+              resultChars: text.length,
+            });
+          } catch {
+            // Diagnostics must not change a tool result.
+          }
+          return text;
+        };
+
         if (options.blockConfirmationTools === true && mcpTool.confirmation) {
-          return options.readOnlyMessage?.(mcpTool) ?? DEFAULT_READ_ONLY_MESSAGE;
+          return settle('blocked', options.readOnlyMessage?.(mcpTool) ?? DEFAULT_READ_ONLY_MESSAGE);
         }
 
         const result = await builder.invokeTool(mcpTool.name, args as Record<string, any>);
         const content = result.content?.[0];
-        return content?.text ?? JSON.stringify(result);
+        return settle(result.isError ? 'error' : 'executed', content?.text ?? JSON.stringify(result));
       },
     });
   }

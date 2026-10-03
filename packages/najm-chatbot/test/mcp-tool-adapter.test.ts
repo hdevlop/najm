@@ -113,6 +113,75 @@ describe('McpToolAdapter', () => {
     expect(result).not.toContain('kaboom');
   });
 
+  test('adapter reports each tool call outcome, duration and sizes', async () => {
+    @Controller('/mixed')
+    class MixedController {
+      @Post('/ok')
+      @McpTool('Works')
+      @Validate({ body: z.object({ q: z.string() }) })
+      ok() {
+        return { rows: [1, 2, 3] };
+      }
+
+      @Post('/boom')
+      @McpTool('Always fails')
+      @Validate({ body: z.object({}).optional() })
+      boom() {
+        throw new Error('kaboom');
+      }
+
+      @Post('/clear')
+      @McpTool({ description: 'Clear', destructive: true, confirm: { level: 'danger', message: 'x' } })
+      clear() {
+        return { cleared: true };
+      }
+    }
+
+    const { builder, registry } = await bootWith(MixedController);
+    const settled: any[] = [];
+    const tools = buildAiSdkTools(builder, registry.tools, {
+      blockConfirmationTools: true,
+      readOnlyMessage: () => 'blocked',
+      onToolSettled: (event) => settled.push(event),
+    });
+
+    const okResult = await tools.ok.execute({ q: 'abc' }, { toolCallId: 'call-1' });
+    await tools.boom.execute({});
+    await tools.clear.execute({});
+
+    expect(settled.map((event) => [event.name, event.outcome])).toEqual([
+      ['ok', 'executed'],
+      ['boom', 'error'],
+      ['clear', 'blocked'],
+    ]);
+    expect(settled[0]).toMatchObject({
+      toolCallId: 'call-1',
+      inputChars: JSON.stringify({ q: 'abc' }).length,
+      resultChars: okResult.length,
+    });
+    expect(settled[1].toolCallId).toBeNull();
+    for (const event of settled) expect(event.end).toBeGreaterThanOrEqual(event.start);
+  });
+
+  test('a throwing onToolSettled does not change the tool result', async () => {
+    @Controller('/plain')
+    class PlainController {
+      @Post('/ok')
+      @McpTool('Works')
+      @Validate({ body: z.object({}).optional() })
+      ok() {
+        return { ok: true };
+      }
+    }
+
+    const { builder, registry } = await bootWith(PlainController);
+    const tools = buildAiSdkTools(builder, registry.tools, {
+      onToolSettled: () => { throw new Error('sink down'); },
+    });
+
+    expect(JSON.parse(await tools.ok.execute({}))).toEqual({ ok: true });
+  });
+
   test('adapter can block confirmation tools in read-only mode', async () => {
     let called = 0;
 

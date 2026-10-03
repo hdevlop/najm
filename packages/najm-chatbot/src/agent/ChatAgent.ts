@@ -1,8 +1,9 @@
-import { Service, Inject, Meta, DI, type Container } from 'najm-core';
+import { Service, Inject, Meta, DI, CORRELATION_ID, type Container } from 'najm-core';
 import { convertToModelMessages, generateText, stepCountIs, streamText } from 'ai';
 import type { UIMessage } from 'ai';
 import { calculateCost, normalizeUsage, type ReportedUsage, type UsageCost } from './modelPricing';
 import { USER } from 'najm-guard';
+import { ChatDiagnosticsRecorder, summarizeUsage, type ChatDiagnostics, type ChatOutcome } from './ChatDiagnostics';
 import { McpRegistryService, McpBuilderService, TOOL_PROVIDER, type ToolProvider } from 'najm-mcp';
 import { CHATBOT_CONFIG, CHATBOT_CONTEXT_PROVIDER, CHATBOT_ROUTING_PREVIEW_PROVIDER, type ChatbotContextProvider, type ChatbotRoutingPreviewProvider } from '../tokens';
 import type { ChatbotConfig } from '../ChatbotPlugin';
@@ -204,6 +205,30 @@ async function toModelMessages(messages: UIMessage[]) {
   return convertToModelMessages(normalizeUIMessages(messages));
 }
 
+/** Passes a response body through unchanged, reporting a read error or a cancel by the client. */
+function observeBody(response: Response, hooks: { error(error: unknown): void; cancel(reason: unknown): void }): Response {
+  const source = response.body;
+  if (!source) return response;
+  const reader = source.getReader();
+  const body = new ReadableStream<Uint8Array>({
+    async pull(controller) {
+      try {
+        const { done, value } = await reader.read();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      } catch (error) {
+        hooks.error(error);
+        controller.error(error);
+      }
+    },
+    async cancel(reason) {
+      hooks.cancel(reason);
+      await reader.cancel(reason);
+    },
+  });
+  return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
+}
+
 function getMessageIdentity(message: UIMessage): string | null {
   if (message.id) return String(message.id);
   const text = getMessageText(message).trim();
@@ -226,105 +251,134 @@ export class ChatAgent {
 
   async stream(input: ChatAgentInput): Promise<Response> {
     const { channel = 'web', sessionKey } = input;
+    const userText = getLatestUserText(input.messages);
+    const diagnostics = this.startDiagnostics(channel);
+    const steps: any[] = [];
+    const settle = (outcome: ChatOutcome, error?: unknown, persistence?: Promise<unknown> | null) =>
+      this.settleChat(diagnostics, outcome, error, persistence, { sessionKey, userText, routedToolNames: turn?.routedToolNames ?? [], steps });
 
-    const settings = await this.settingsService.getInternal();
-    if (!settings || !settings.isEnabled) {
+    let turn: Awaited<ReturnType<ChatAgent['prepareTurn']>>;
+    try {
+      turn = await this.prepareTurn(input, channel, diagnostics);
+    } catch (error) {
+      await settle('setup_error', error);
+      throw error;
+    }
+    if (!turn) {
       return Response.json(
         { error: 'AI assistant is disabled in settings. Enable it in ⚙️ settings.' },
         { status: 503 },
       );
     }
+    const { settings, useStatelessHistory, sessionMessages, promptMessages, model, system, tools } = turn;
 
-    const useStatelessHistory =
-      settings.useMemory === false ||
-      this.shouldUseStatelessHistory(settings);
-
-    const storedHistory = useStatelessHistory ? [] : await this.loadStoredHistory(input);
-    const sessionMessages = this.mergeSessionMessages(storedHistory, input.messages);
-    const routingText = this.buildRoutingQuery(sessionMessages);
-    const promptMessages = useStatelessHistory
-      ? input.messages
-      : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
-
-    const { model, system, tools, routingStatus, routedToolNames } = await this.prepare(
-      channel,
-      routingText,
-      settings,
-    );
+    let messages: Awaited<ReturnType<typeof toModelMessages>>;
+    try {
+      messages = await toModelMessages(promptMessages);
+    } catch (error) {
+      await settle('setup_error', error);
+      throw error;
+    }
 
     const result = streamText({
       model: model!,
       system,
-      messages: await toModelMessages(promptMessages),
+      messages,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       stopWhen: stepCountIs(this.config.maxSteps ?? 10),
       timeout: this.config.streamTimeout,
-      onFinish: async ({ response, steps, usage }) => {
-        const userText = getLatestUserText(input.messages);
+      onChunk: ({ chunk }) => {
+        if (chunk.type === 'text-delta') diagnostics.textDelta(chunk.text);
+      },
+      onStepFinish: (step) => {
+        steps.push(step);
+        diagnostics.step(step);
+      },
+      onError: async ({ error }) => {
+        // Keeps the SDK's default report, which an onError option replaces.
+        console.error(error);
+        await settle('error', error);
+      },
+      onAbort: async () => {
+        await settle('aborted');
+      },
+      onFinish: async ({ response, totalUsage }) => {
+        diagnostics.data.marks.finishMs = diagnostics.now();
+        diagnostics.data.usage = summarizeUsage(totalUsage);
+        diagnostics.data.cost = this.computeUsageCost(settings, totalUsage);
 
-        const writes: Promise<void>[] = [
-          this.logChat(sessionKey, userText, routingStatus, routedToolNames, steps),
-        ];
-        if (!useStatelessHistory) {
-          writes.push(this.saveSession(sessionKey, sessionMessages, response.messages, channel, {
+        const save = useStatelessHistory
+          ? null
+          : diagnostics.span('persistenceMs', () => this.saveSession(sessionKey, sessionMessages, response.messages, channel, {
             skip: false,
             maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages,
           }));
-        }
-
-        await settleWrites(writes);
+        await settleWrites([settle('completed', undefined, save), ...(save ? [save] : [])]);
       },
     });
 
-    return result.toUIMessageStreamResponse({
+    const response = result.toUIMessageStreamResponse({
       messageMetadata: ({ part }) => part.type === 'finish'
         ? this.computeUsageCost(settings, part.totalUsage) ?? undefined
         : undefined,
+    });
+    // A provider stream that throws reaches none of the SDK callbacks, and a
+    // client disconnect reaches onAbort only with an abort signal; the body sees both.
+    return observeBody(response, {
+      error: (error) => { void settle('error', error).catch(() => {}); },
+      cancel: () => { void settle('aborted').catch(() => {}); },
     });
   }
 
   async runOnce(input: ChatAgentInput): Promise<string> {
     const { channel = 'web', sessionKey } = input;
-
-    const settings = await this.settingsService.getInternal();
-    if (!settings || !settings.isEnabled) return 'AI assistant is currently disabled.';
-
-    const useStatelessHistory =
-      settings.useMemory === false ||
-      this.shouldUseStatelessHistory(settings);
-
-    const storedHistory = useStatelessHistory ? [] : await this.loadStoredHistory(input);
-    const sessionMessages = this.mergeSessionMessages(storedHistory, input.messages);
-    const routingText = this.buildRoutingQuery(sessionMessages);
-    const promptMessages = useStatelessHistory
-      ? input.messages
-      : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
-
-    const { model, system, tools, routingStatus, routedToolNames } = await this.prepare(
-      channel,
-      routingText,
-      settings,
-    );
-
-    const result = await generateText({
-      model: model!,
-      system,
-      messages: await toModelMessages(promptMessages),
-      tools: Object.keys(tools).length > 0 ? tools : undefined,
-      stopWhen: stepCountIs(this.config.maxSteps ?? 10),
-    });
-
     const userText = getLatestUserText(input.messages);
-    const writes: Promise<void>[] = [
-      this.logChat(sessionKey, userText, routingStatus, routedToolNames, result.steps),
-    ];
-    if (!useStatelessHistory) {
-      writes.push(this.saveSession(sessionKey, sessionMessages, result.response.messages, channel, {
+    const diagnostics = this.startDiagnostics(channel);
+    const steps: any[] = [];
+    let routedToolNames: string[] = [];
+    const settle = (outcome: ChatOutcome, error?: unknown, persistence?: Promise<unknown> | null) =>
+      this.settleChat(diagnostics, outcome, error, persistence, { sessionKey, userText, routedToolNames, steps });
+
+    let turn: Awaited<ReturnType<ChatAgent['prepareTurn']>>;
+    try {
+      turn = await this.prepareTurn(input, channel, diagnostics);
+    } catch (error) {
+      await settle('setup_error', error);
+      throw error;
+    }
+    if (!turn) return 'AI assistant is currently disabled.';
+    routedToolNames = turn.routedToolNames;
+    const { settings, useStatelessHistory, sessionMessages, promptMessages, model, system, tools } = turn;
+
+    let result: Awaited<ReturnType<typeof generateText>>;
+    try {
+      result = await generateText({
+        model: model!,
+        system,
+        messages: await toModelMessages(promptMessages),
+        tools: Object.keys(tools).length > 0 ? tools : undefined,
+        stopWhen: stepCountIs(this.config.maxSteps ?? 10),
+        onStepFinish: (step) => {
+          steps.push(step);
+          diagnostics.step(step);
+        },
+      });
+    } catch (error) {
+      await settle('error', error);
+      throw error;
+    }
+
+    diagnostics.data.marks.finishMs = diagnostics.now();
+    diagnostics.data.usage = summarizeUsage(result.totalUsage);
+    diagnostics.data.cost = this.computeUsageCost(settings, result.totalUsage);
+
+    const save = useStatelessHistory
+      ? null
+      : diagnostics.span('persistenceMs', () => this.saveSession(sessionKey, sessionMessages, result.response.messages, channel, {
         skip: false,
         maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages,
       }));
-    }
-    await settleWrites(writes);
+    await settleWrites([settle('completed', undefined, save), ...(save ? [save] : [])]);
 
     return result.text;
   }
@@ -542,7 +596,75 @@ export class ChatAgent {
     await this.getConversationStore().clear(sessionKey);
   }
 
-  private async prepare(channel: ChatChannel, userText: string, settings: { provider: LlmProvider; model?: string; systemPrompt?: string; apiKey?: string | null; baseUrl?: string | null; isEnabled?: boolean }) {
+  /** Settings, history and preparation shared by stream() and runOnce(). Null when the assistant is disabled. */
+  private async prepareTurn(input: ChatAgentInput, channel: ChatChannel, diagnostics: ChatDiagnosticsRecorder) {
+    const settings = await diagnostics.span('settingsMs', () => this.settingsService.getInternal());
+    if (!settings || !settings.isEnabled) return null;
+    diagnostics.data.provider = settings.provider;
+    diagnostics.data.model = settings.model ?? 'llama3.1';
+
+    const useStatelessHistory =
+      settings.useMemory === false ||
+      this.shouldUseStatelessHistory(settings);
+
+    const storedHistory = useStatelessHistory
+      ? []
+      : await diagnostics.span('historyMs', () => this.loadStoredHistory(input));
+    const sessionMessages = this.mergeSessionMessages(storedHistory, input.messages);
+    const routingText = this.buildRoutingQuery(sessionMessages);
+    const promptMessages = useStatelessHistory
+      ? input.messages
+      : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
+    diagnostics.data.messages = { stored: storedHistory.length, prompt: promptMessages.length };
+
+    const prepared = await diagnostics.span('prepareMs', () => this.prepare(channel, routingText, settings, diagnostics));
+    diagnostics.data.routingStatus = prepared.routingStatus;
+    diagnostics.data.routedToolCount = prepared.routedToolNames.length;
+
+    return { settings, useStatelessHistory, sessionMessages, promptMessages, ...prepared };
+  }
+
+  private startDiagnostics(channel: ChatChannel): ChatDiagnosticsRecorder {
+    let correlationId: string | null = null;
+    try {
+      correlationId = this.container.get(CORRELATION_ID) ?? null;
+    } catch {
+      // Outside a request scope (scripts, tests).
+    }
+    return new ChatDiagnosticsRecorder({ channel, correlationId });
+  }
+
+  /**
+   * Records the terminal outcome once. The log row is written alongside the
+   * session save, so it carries no persistenceMs; the sink is called after
+   * both and does.
+   */
+  private async settleChat(
+    diagnostics: ChatDiagnosticsRecorder,
+    outcome: ChatOutcome,
+    error: unknown,
+    persistence: Promise<unknown> | null | undefined,
+    entry: { sessionKey?: string; userText: string; routedToolNames: string[]; steps: any[] },
+  ): Promise<void> {
+    if (!diagnostics.settle(outcome, error)) return;
+    const data = diagnostics.data;
+    await this.logChat(entry.sessionKey, entry.userText, data.routingStatus ?? 'disabled', entry.routedToolNames, entry.steps, data);
+    const sink = this.config.chatLogging?.onDiagnostics;
+    if (!sink) return;
+    await persistence?.catch(() => {});
+    try {
+      await sink(data);
+    } catch {
+      // A diagnostics sink must not break chat.
+    }
+  }
+
+  private async prepare(
+    channel: ChatChannel,
+    userText: string,
+    settings: { provider: LlmProvider; model?: string; systemPrompt?: string; apiKey?: string | null; baseUrl?: string | null; isEnabled?: boolean },
+    diagnostics?: ChatDiagnosticsRecorder,
+  ) {
     const llmSettings: LlmSettings = {
       provider: settings.provider,
       apiKey: settings.apiKey ?? null,
@@ -565,18 +687,19 @@ export class ChatAgent {
       if (!mcp) {
         throw new Error('chatbot({ tools: "all" }) requires the najm-mcp plugin.');
       }
-      tools = this.buildChatTools(mcp.builder, mcp.registry.tools);
+      tools = this.buildChatTools(mcp.builder, mcp.registry.tools, diagnostics);
     } else {
       const router = this.tryGetRouter();
       if (router) {
-        const routerResult = await router.findRelevantTools(userText);
+        const findTools = () => router.findRelevantTools(userText);
+        const routerResult = diagnostics ? await diagnostics.span('routingMs', findTools) : await findTools();
         routingStatus = routerResult.status;
         routedToolNames = routerResult.tools.map((t) => t.name);
         if (mcp && routerResult.tools.length > 0) {
-          tools = this.buildChatTools(mcp.builder, routerResult.tools);
+          tools = this.buildChatTools(mcp.builder, routerResult.tools, diagnostics);
         }
       } else if (mcp) {
-        tools = this.buildChatTools(mcp.builder, mcp.registry.tools);
+        tools = this.buildChatTools(mcp.builder, mcp.registry.tools, diagnostics);
       }
     }
 
@@ -591,10 +714,14 @@ export class ChatAgent {
 
     if (this.config.context !== 'none') {
       const contextParts: string[] = [];
-      for (const provider of this.tryGetContextProviders()) {
-        const ctx = await provider.getContext(userText);
-        if (ctx) contextParts.push(ctx);
-      }
+      const collect = async () => {
+        for (const provider of this.tryGetContextProviders()) {
+          const ctx = await provider.getContext(userText);
+          if (ctx) contextParts.push(ctx);
+        }
+      };
+      if (diagnostics) await diagnostics.span('contextMs', collect);
+      else await collect();
       if (contextParts.length > 0) {
         system = contextParts.join('\n\n') + '\n\n' + system;
       }
@@ -626,10 +753,11 @@ export class ChatAgent {
     return { ...cost, provider, model };
   }
 
-  private buildChatTools(builder: McpBuilderService, tools: any[]) {
+  private buildChatTools(builder: McpBuilderService, tools: any[], diagnostics?: ChatDiagnosticsRecorder) {
     return buildAiSdkTools(builder, tools, {
       blockConfirmationTools: true,
       readOnlyMessage: (tool) => this.getReadOnlyToolMessage(tool),
+      onToolSettled: diagnostics ? (event) => diagnostics.tool(event) : undefined,
     });
   }
 
@@ -743,6 +871,7 @@ export class ChatAgent {
     routingStatus: RoutingStatus,
     routedToolNames: string[],
     steps: any[],
+    diagnostics?: ChatDiagnostics,
   ): Promise<void> {
     if (this.config.chatLogging?.enabled !== true) return;
 
@@ -770,7 +899,12 @@ export class ChatAgent {
         routedTools: routedToolNames.length ? routedToolNames : null,
         actualToolNames: actualToolNames.length ? actualToolNames : null,
         modelToolCalls: allToolCalls.length ? allToolCalls : null,
-        metadata: { toolPromptTokenEstimate: tokenEstimate },
+        stepsCount: diagnostics ? steps.length : null,
+        success: diagnostics ? diagnostics.outcome === 'completed' : null,
+        error: diagnostics?.error ?? null,
+        metadata: diagnostics
+          ? { toolPromptTokenEstimate: tokenEstimate, diagnostics }
+          : { toolPromptTokenEstimate: tokenEstimate },
       });
     } catch {
       // Logging failures must not break chat
