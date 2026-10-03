@@ -144,7 +144,9 @@ export class ThemeMcpTools {
         target: ThemeMcpTools as never,
         args: [],
         validation: { body: applyPresetInput },
-        annotations: { idempotentHint: true },
+        // Applying replaces the current design, so a host that asks before
+        // destructive tools (najm-mcp >= 2.2.3) asks before this one too.
+        annotations: { destructiveHint: true, idempotentHint: true },
       });
     }
 
