@@ -45,7 +45,9 @@ export class McpRegistryService {
 export function inferConfirmation(tool: RegisteredTool): McpToolConfirmation | null {
   if (tool.annotations?.destructive === false) return null;
 
-  if (tool.annotations?.destructive === true) {
+  // `destructiveHint` is the MCP specification's name for the same flag, used by
+  // tools registered directly rather than through @McpTool.
+  if (tool.annotations?.destructive === true || tool.annotations?.destructiveHint === true) {
     return {
       level: 'danger',
       message: `mcp.confirm.${tool.name}`,
