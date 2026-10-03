@@ -101,7 +101,10 @@ describe('ChatAgent routing integration', () => {
     });
 
     expect(prepared.tools).toEqual({});
-    expect(prepared.system).toBe(`You are a test assistant.\n\n${ROUTING_UNAVAILABLE_PROMPT}`);
+    // Before the app's own instructions about tools, and again at the end.
+    expect(prepared.system).toBe(
+      `${ROUTING_UNAVAILABLE_PROMPT}\n\nYou are a test assistant.\n\n${ROUTING_UNAVAILABLE_PROMPT}`,
+    );
   });
 
   test('prepare adds no notice when routing found nothing or fell back to all tools', async () => {
