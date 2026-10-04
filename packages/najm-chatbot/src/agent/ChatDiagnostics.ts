@@ -78,6 +78,8 @@ export interface ChatDiagnostics {
    * Offsets (including attempts) are relative to chat request start. Durations
    * overlap preparation/routing/context/tool execution; do not add nested spans. */
   embeddings?: ChatEmbeddingSpan[];
+  /** True if chat ended while a capture scope was still running. Counts are partial. */
+  embeddingsIncomplete?: boolean;
   usage: ChatUsageSummary | null;
   cost: (UsageCost & { provider: string; model: string }) | null;
 }
@@ -129,6 +131,7 @@ export function summarizeUsage(usage: any, source: ChatUsageSummary['source'] = 
 export class ChatDiagnosticsRecorder {
   private readonly startedAt = performance.now();
   private settled = false;
+  private activeRagScopes = 0;
   readonly data: ChatDiagnostics;
 
   constructor(init: { channel: string; correlationId: string | null }) {
@@ -165,17 +168,20 @@ export class ChatDiagnosticsRecorder {
 
   async rag<T>(runner: RagDiagnosticsRunner, work: () => T | Promise<T>): Promise<T> {
     if (this.settled) return work();
-    const offset = this.now();
+    const offset = performance.now() - this.startedAt;
     this.data.embeddings ??= [];
-    return runner.run({
+    this.activeRagScopes++;
+    try { return await runner.run({
       correlationId: this.data.correlationId,
       onEmbedding: (event) => {
+        if (this.settled) return;
         this.data.embeddings!.push({ ...event,
           startMs: round(offset + event.startMs),
           attempts: event.attempts.map(attempt => ({ ...attempt, startMs: round(offset + attempt.startMs) })),
         });
       },
-    }, work);
+    }, work); }
+    finally { this.activeRagScopes--; }
   }
 
   async span<T>(name: keyof ChatPreparationSpans, run: () => Promise<T> | T): Promise<T> {
@@ -234,6 +240,7 @@ export class ChatDiagnosticsRecorder {
   settle(outcome: ChatOutcome, error?: unknown): boolean {
     if (this.settled) return false;
     this.settled = true;
+    if (this.data.embeddings) this.data.embeddingsIncomplete = this.activeRagScopes > 0;
     this.data.outcome = outcome;
     this.data.error = error === undefined ? null : describeError(error);
     if (this.data.marks.finishMs === null && outcome !== 'setup_error') {

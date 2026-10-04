@@ -13,9 +13,11 @@ provider attempts. Offsets are relative to chat request start, including attempt
 offsets. Records omit input text, vectors, endpoints, credentials and raw errors.
 They are included for both streaming and `runOnce`, including setup failures.
 
-An empty array means capture was available but no embedding call was made;
+An empty array means capture was available but no settled embedding call was recorded;
 an absent field means the RAG diagnostics bridge was unavailable. RAG remains
-optional. Version-1 diagnostics are extended additively. Embedding durations
+optional. If chat ends while a capture scope is still running,
+`embeddingsIncomplete` is true: recorded counts are partial and late completions
+cannot mutate the terminal record. Version-1 diagnostics are extended additively. Embedding durations
 overlap routing/context/preparation/tool execution; attempts are nested inside their call, so
 do not add these durations together. The existing sink remains best effort
 and interaction-table logging does not need to be enabled.

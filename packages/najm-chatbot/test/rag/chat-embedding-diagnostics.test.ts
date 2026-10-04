@@ -4,7 +4,7 @@ import { CORRELATION_ID } from 'najm-core';
 import { TOOL_PROVIDER, McpRegistryService, McpBuilderService } from 'najm-mcp';
 import { EmbeddingService, EmbeddingValidator, RagDiagnosticsService } from 'najm-rag';
 import { ChatAgent } from '../../src/agent/ChatAgent';
-import { type ChatDiagnostics } from '../../src/agent/ChatDiagnostics';
+import { ChatDiagnosticsRecorder, type ChatDiagnostics } from '../../src/agent/ChatDiagnostics';
 import { CHATBOT_CONTEXT_PROVIDER } from '../../src/tokens';
 import { MockLanguageModelV1 } from '../../src/testing/MockLanguageModel';
 
@@ -87,7 +87,21 @@ describe('embedding spans in chat diagnostics', () => {
     expect(events[0]!.embeddings).toHaveLength(2);
     expect(events[0]!.embeddings!.every(e => e.correlationId === 'tool-id')).toBe(true);
     expect(events[0]!.tools[0]!.outcome).toBe('executed');
-    expect(events[0]!.embeddings![1]!.startMs).toBeGreaterThanOrEqual(events[0]!.tools[0]!.startMs);
+    // Both scope conversion and tool offsets round to tenths of a millisecond.
+    expect(events[0]!.embeddings![1]!.startMs + 0.2).toBeGreaterThanOrEqual(events[0]!.tools[0]!.startMs);
+  });
+
+  test('abort marks unfinished capture as partial and late completions cannot mutate the terminal record', async () => {
+    let finish!: (response: Response) => void;
+    globalThis.fetch = (() => new Promise<Response>(resolve => { finish = resolve; })) as any;
+    const recorder = new ChatDiagnosticsRecorder({ channel: 'web', correlationId: 'aborted' });
+    const pending = recorder.rag(new RagDiagnosticsService(), () => embedder().embed('pending'));
+    recorder.settle('aborted');
+    const snapshot = JSON.stringify(recorder.data);
+    expect(recorder.data.embeddingsIncomplete).toBe(true);
+    finish(new Response(JSON.stringify({ embeddings: [[0.1, 0.2]] })));
+    await pending;
+    expect(JSON.stringify(recorder.data)).toBe(snapshot);
   });
 
   test('available capture with no calls is an explicit empty array', async () => {

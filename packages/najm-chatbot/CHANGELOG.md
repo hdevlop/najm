@@ -8,6 +8,8 @@
   start. Records retain cache status, actual attempts, timing and error category
   without query text, endpoint, credentials or raw embedding errors.
 - Export `ChatEmbeddingSpan`. An empty array means capture was available with
-  no calls; an absent field means capture was unavailable. The bridge is
+  no settled calls; an absent field means capture was unavailable.
+  `embeddingsIncomplete` marks terminal outcomes with unfinished capture scopes;
+  late completions cannot mutate the terminal diagnostics record. The bridge is
   optional and adds no mandatory RAG runtime import. Existing older RAG and
   applications without the plugin retain their behavior.
