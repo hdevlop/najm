@@ -14,6 +14,18 @@ import {
 } from "./publish-package";
 
 describe("parseNpmPackFilename", () => {
+  test("accepts npm 12 workspace output after lifecycle logs", () => {
+    const stdout = 'CLI Build success\n{"najm-rag":{"filename":"najm-rag-2.3.0.tgz","files":[{"path":"dist/index.mjs"}]}}';
+    expect(parseNpmPackFilename(stdout)).toBe("najm-rag-2.3.0.tgz");
+  });
+
+  test("refuses ambiguous multi-package output", () => {
+    expect(() => parseNpmPackFilename('{"a":{"filename":"a.tgz"},"b":{"filename":"b.tgz"}}'))
+      .toThrow("npm pack --json did not return a tarball name");
+    expect(() => parseNpmPackFilename('[{"filename":"a.tgz"},{"filename":"b.tgz"}]'))
+      .toThrow("npm pack --json did not return a tarball name");
+  });
+
   test("reads plain npm pack JSON", () => {
     expect(parseNpmPackFilename('[{"filename":"najm-kit-2.11.10.tgz"}]'))
       .toBe("najm-kit-2.11.10.tgz");

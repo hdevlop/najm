@@ -384,12 +384,18 @@ export function parseNpmPackFilename(stdout: string): string {
   let searchFrom = trimmed.length;
 
   while (searchFrom > 0) {
-    const start = trimmed.lastIndexOf('[', searchFrom - 1);
+    const start = Math.max(
+      trimmed.lastIndexOf('[', searchFrom - 1),
+      trimmed.lastIndexOf('{', searchFrom - 1),
+    );
     if (start === -1) break;
 
     try {
-      const parsed = JSON.parse(trimmed.slice(start)) as Array<{ filename?: unknown }>;
-      const filename = parsed[0]?.filename;
+      const parsed = JSON.parse(trimmed.slice(start));
+      // npm <=11 returns an array; npm 12 keys workspace results by package name.
+      const entries = Array.isArray(parsed) ? parsed : Object.values(parsed ?? {});
+      if (entries.length !== 1) throw new Error('Expected exactly one packed package');
+      const filename = entries[0]?.filename;
       if (typeof filename === 'string' && filename.length > 0) return filename;
     } catch {
       // Lifecycle scripts may write arbitrary stdout before npm's final JSON payload.
