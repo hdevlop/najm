@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { describe, test, expect, afterEach } from 'bun:test';
-import { Server, Controller, Get, Post } from 'najm-core';
+import { Server, Controller, Get, Post, Service } from 'najm-core';
 import { database } from 'najm-database';
 import { auth } from 'najm-auth';
 import { mcp, McpTool } from 'najm-mcp';
@@ -15,6 +15,8 @@ import { aiSettingsTable } from '../src/schema/sqlite';
 import { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } from 'najm-auth/sqlite';
 import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 import { simulateReadableStream } from 'ai';
+import { createGuard } from 'najm-guard';
+import { detectMoroccanReplyLanguage } from '../src/agent/replyPolicy';
 
 const JWT_SECRET = 'test-access-secret-that-is-at-least-32-chars!';
 const ENCRYPTION_KEY = '0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef';
@@ -39,12 +41,23 @@ function createSchema(sqlite: Database) {
   createCredentialSetupTables(sqlite);
 }
 
+@Service()
+class DenyReads { canActivate() { return false; } }
+const Denied = createGuard(DenyReads);
+
 @Controller('/grades')
 class GradeTools {
   @Get('/count')
-  @McpTool('Count grades')
+  @McpTool({ description: 'Count grades', readOnly: true })
   count() {
     return { count: 3 };
+  }
+
+  @Get('/denied-count')
+  @Denied()
+  @McpTool({ description: 'A forbidden count', readOnly: true })
+  deniedCount() {
+    throw new Error('The guard must prevent this method from running');
   }
 
   @Post('/')
@@ -77,7 +90,7 @@ async function setup(model: MockLanguageModelV1, config: ChatbotConfig = {}) {
     }))
     .use(mcp({ name: 'diagnostics-test', version: '1.0.0', path: '/mcp', transports: ['http'] }))
     .use(chatbot({ dialect: 'sqlite', ...config }))
-    .load(GradeTools);
+    .load(GradeTools, DenyReads);
   await server.listen(p);
 
   const container = (server as any).container;
@@ -349,5 +362,49 @@ describe('summarizeUsage', () => {
     });
     expect(summarizeUsage(undefined)).toBeNull();
     expect(summarizeUsage({})).toBeNull();
+  });
+});
+
+describe('reply templates through real MCP guards and HTTP streaming', () => {
+  test('renders an authorized read without any provider request', async () => {
+    const d = collect();
+    let providerCalls = 0;
+    const model = new MockLanguageModelV1({ doStream: async () => { providerCalls++; throw new Error('Unexpected provider call'); } });
+    const { p, token, container } = await setup(model, {
+      tools: 'all', reply: { detectLanguage: detectMoroccanReplyLanguage, template: () => ({
+        calls: [{ name: 'count', input: {} }], render: ([value]: any[]) => `كاينين ${value.count} نقط.`,
+      }) }, chatLogging: { enabled: false, onDiagnostics: d.onDiagnostics },
+    });
+    // Resolve the exact generated name, rather than assume controller prefixes.
+    const registry = container.get((await import('najm-mcp')).McpRegistryService);
+    const countTool = registry.tools.find((tool: any) => tool.methodKey === 'count');
+    (container.get(ChatAgent) as any).config.reply.template = () => ({
+      calls: [{ name: countTool.name, input: {} }], render: ([value]: any[]) => `كاينين ${value.count} نقط.`,
+    });
+    const reply = await chat(p, token, 'شحال من نقطة؟');
+    expect(reply.status).toBe(200);
+    expect(reply.body).toContain('كاينين 3 نقط');
+    expect(reply.body).toContain('tool-output-available');
+    expect(providerCalls).toBe(0);
+    expect(d.received[0].tools[0].outcome).toBe('executed');
+    expect(d.received[0].cost?.totalCost).toBe(0);
+  });
+
+  test('refuses an MCP read denied by its route guard', async () => {
+    const d = collect();
+    const { p, token, container } = await setup(toolThenAnswer('unused'), {
+      tools: 'all', reply: { detectLanguage: detectMoroccanReplyLanguage },
+      chatLogging: { enabled: false, onDiagnostics: d.onDiagnostics },
+    });
+    const registry = container.get((await import('najm-mcp')).McpRegistryService);
+    const denied = registry.tools.find((tool: any) => tool.methodKey === 'deniedCount');
+    (container.get(ChatAgent) as any).config.reply.template = () => ({
+      calls: [{ name: denied.name, input: {} }], render: () => 'Invented fact',
+    });
+    const reply = await chat(p, token, 'كم عدد النقط؟');
+    expect(reply.body).toContain('لا يمكنني الوصول');
+    expect(reply.body).not.toContain('Invented fact');
+    expect(d.received[0].tools[0].outcome).toBe('error');
+    expect(d.received[0].reply?.error).toBe(true);
   });
 });

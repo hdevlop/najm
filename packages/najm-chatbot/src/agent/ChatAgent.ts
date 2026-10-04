@@ -1,5 +1,5 @@
 import { Service, Inject, Meta, DI, CORRELATION_ID, type Container } from 'najm-core';
-import { convertToModelMessages, generateText, stepCountIs, streamText } from 'ai';
+import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, stepCountIs, streamText } from 'ai';
 import type { UIMessage } from 'ai';
 import { calculateCost, normalizeUsage, type ReportedUsage, type UsageCost } from './modelPricing';
 import { USER } from 'najm-guard';
@@ -18,6 +18,8 @@ import {
 } from '../sessions/ConversationStore';
 import { ChatLogRepository, type RoutingStatus } from '../chatLogs';
 import type { RagDiagnosticsRunner } from 'najm-rag';
+import { replyLanguageInstruction, replyUnavailable } from './replyPolicy';
+import { executeReplyTemplate, type TemplateCallResult } from './replyTemplate';
 
 export type ChatChannel = 'web' | 'whatsapp' | string;
 
@@ -308,6 +310,24 @@ export class ChatAgent {
     }
     const { settings, useStatelessHistory, sessionMessages, promptMessages, model, system, tools } = turn;
 
+    if (turn.templateReply) {
+      await this.finishTemplate(input, turn, diagnostics);
+      const reply = turn.templateReply;
+      return createUIMessageStreamResponse({ stream: createUIMessageStream({
+        execute: ({ writer }) => {
+          writer.write({ type: 'start', messageId: crypto.randomUUID() });
+          for (const call of reply.calls) {
+            writer.write({ type: 'tool-input-available', toolCallId: call.id, toolName: call.name, input: call.input });
+            writer.write({ type: 'tool-output-available', toolCallId: call.id, output: call.output });
+          }
+          writer.write({ type: 'text-start', id: 'reply' });
+          writer.write({ type: 'text-delta', id: 'reply', delta: reply.text });
+          writer.write({ type: 'text-end', id: 'reply' });
+          writer.write({ type: 'finish', finishReason: 'stop', messageMetadata: diagnostics.data.cost ?? undefined });
+        },
+      }) });
+    }
+
     let messages: Awaited<ReturnType<typeof toModelMessages>>;
     try {
       messages = await toModelMessages(promptMessages);
@@ -388,6 +408,11 @@ export class ChatAgent {
     routedToolNames = turn.routedToolNames;
     const { settings, useStatelessHistory, sessionMessages, promptMessages, model, system, tools } = turn;
 
+    if (turn.templateReply) {
+      await this.finishTemplate(input, turn, diagnostics);
+      return turn.templateReply.text;
+    }
+
     let result: Awaited<ReturnType<typeof generateText>>;
     try {
       result = await generateText({
@@ -454,12 +479,24 @@ export class ChatAgent {
     let routedToolNames: string[];
 
     try {
-      const prepared = await this.prepare(channel, routingText, settings);
+      const prepared = await this.prepare(channel, routingText, settings, undefined, getLatestUserText(input.messages));
       model = prepared.model;
       system = prepared.system;
       tools = prepared.tools;
       routingStatus = prepared.routingStatus;
       routedToolNames = prepared.routedToolNames;
+      if (prepared.templateReply) {
+        if (!useStatelessHistory) await this.saveSession(sessionKey, sessionMessages,
+          [{ role: 'assistant', content: prepared.templateReply.text }], channel,
+          { maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages });
+        return { answer: prepared.templateReply.text, sessionKey, provider: settings.provider,
+          model: settings.model, latencyMs: Date.now() - startMs,
+          toolCalls: prepared.templateReply.calls.map(call => ({
+            toolName: call.name, args: truncatePreview(call.input, { redactKeys: traceOptions?.redactKeys }), status: 'success' as const,
+            resultPreview: truncatePreview(call.output, { maxChars: traceOptions?.maxToolResultPreviewChars,
+              maxDepth: traceOptions?.maxDepth, maxArrayItems: traceOptions?.maxArrayItems, redactKeys: traceOptions?.redactKeys }),
+          })) };
+      }
     } catch (err) {
       return {
         error: err instanceof Error ? err.message : 'Provider error',
@@ -657,7 +694,7 @@ export class ChatAgent {
       : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
     diagnostics.data.messages = { stored: storedHistory.length, prompt: promptMessages.length };
 
-    const prepare = () => diagnostics.span('prepareMs', () => this.prepare(channel, routingText, settings, diagnostics));
+    const prepare = () => diagnostics.span('prepareMs', () => this.prepare(channel, routingText, settings, diagnostics, getLatestUserText(input.messages)));
     // Resolve an optional public bridge; chat still works without the RAG package/plugin.
     const ragDiagnostics = this.tryGetRagDiagnostics();
     const prepared = await (ragDiagnostics ? diagnostics.rag(ragDiagnostics, prepare) : prepare());
@@ -707,6 +744,7 @@ export class ChatAgent {
     userText: string,
     settings: { provider: LlmProvider; model?: string; systemPrompt?: string; apiKey?: string | null; baseUrl?: string | null; isEnabled?: boolean },
     diagnostics?: ChatDiagnosticsRecorder,
+    latestUserText = userText,
   ) {
     const llmSettings: LlmSettings = {
       provider: settings.provider,
@@ -763,7 +801,7 @@ export class ChatAgent {
       const contextParts: string[] = [];
       const collect = async () => {
         for (const provider of this.tryGetContextProviders()) {
-          const ctx = await provider.getContext(userText);
+          const ctx = await provider.getContext(userText, { latestUserText, channel });
           if (ctx) contextParts.push(ctx);
         }
       };
@@ -774,6 +812,24 @@ export class ChatAgent {
       }
     }
 
+    const language = this.config.reply?.detectLanguage?.(latestUserText) ?? null;
+    const instruction = replyLanguageInstruction(language);
+    if (instruction) system += `\n\n${instruction}`;
+    let templateReply: { text: string; calls: TemplateCallResult[] } | null = null;
+    const template = this.config.reply?.template?.({ userText: latestUserText, language, channel });
+    if (template) {
+      if (diagnostics) diagnostics.data.reply = { source: 'template', language };
+      try {
+        templateReply = await executeReplyTemplate(template,
+          mcp?.registry.tools.filter(tool => Object.hasOwn(tools, tool.name)) ?? [], mcp?.builder ?? null,
+          event => diagnostics?.tool(event));
+      } catch {
+        // No fallback generation or partial-count guess after a failed read.
+        templateReply = { text: replyUnavailable(language), calls: [] };
+        if (diagnostics) diagnostics.data.reply = { source: 'template', language, error: true };
+      }
+    } else if (this.config.reply && diagnostics) diagnostics.data.reply = { source: 'model', language };
+
     return {
       model,
       // The notice also leads, ahead of instructions about using tools.
@@ -781,7 +837,25 @@ export class ChatAgent {
       tools,
       routingStatus,
       routedToolNames,
+      templateReply,
     };
+  }
+
+  private async finishTemplate(input: ChatAgentInput,
+    turn: NonNullable<Awaited<ReturnType<ChatAgent['prepareTurn']>>>, diagnostics: ChatDiagnosticsRecorder) {
+    const reply = turn.templateReply!;
+    diagnostics.textDelta(reply.text);
+    diagnostics.data.marks.finishMs = diagnostics.now();
+    diagnostics.data.usage = summarizeUsage({ inputTokens: 0, outputTokens: 0, totalTokens: 0 });
+    diagnostics.data.cost = { provider: turn.settings.provider, model: turn.settings.model ?? 'llama3.1',
+      promptTokens: 0, completionTokens: 0, totalTokens: 0, inputCost: 0, outputCost: 0,
+      totalCost: 0, currency: 'USD', pricingFound: true };
+    const save = turn.useStatelessHistory ? null : diagnostics.span('persistenceMs', () => this.saveSession(
+      input.sessionKey, turn.sessionMessages, [{ role: 'assistant', content: reply.text }], input.channel ?? 'web',
+      { maxStoredMessages: turn.settings.maxStoredMessages ?? this.config.maxStoredMessages }));
+    await settleWrites([this.settleChat(diagnostics, 'completed', undefined, save,
+      { sessionKey: input.sessionKey, userText: getLatestUserText(input.messages), routedToolNames: turn.routedToolNames, steps: [] }),
+      ...(save ? [save] : [])]);
   }
 
   protected buildModel(settings: LlmSettings) {

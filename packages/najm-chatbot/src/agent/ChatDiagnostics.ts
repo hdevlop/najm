@@ -82,6 +82,8 @@ export interface ChatDiagnostics {
   embeddingsIncomplete?: boolean;
   usage: ChatUsageSummary | null;
   cost: (UsageCost & { provider: string; model: string }) | null;
+  /** Template replies make no LLM request; model is the selected setting only. */
+  reply?: { source: 'template' | 'model'; language: string | null; error?: true };
 }
 
 export type ChatDiagnosticsSink = (diagnostics: ChatDiagnostics) => void | Promise<void>;

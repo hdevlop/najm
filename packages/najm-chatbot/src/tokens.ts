@@ -5,7 +5,7 @@ export const CHATBOT_ROUTING_PROVIDER = Symbol.for('najm:chatbot:routing-provide
 export const CHATBOT_CONTEXT_PROVIDER = Symbol.for('najm:chatbot:context-provider');
 
 export interface ChatbotContextProvider {
-  getContext(userText: string): Promise<string | null>;
+  getContext(userText: string, request?: { latestUserText: string; channel: string }): Promise<string | null>;
   getContextTrace?: (userText: string) => Promise<{
     used: boolean;
     chunks: Array<{

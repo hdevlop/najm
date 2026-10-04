@@ -51,6 +51,8 @@ export { calculateCost, getModelPricing, normalizeUsage } from './agent/modelPri
 export type { ModelPricing, ReportedUsage, UsageCost } from './agent/modelPricing';
 
 export { ChatAgent, ROUTING_UNAVAILABLE_PROMPT, answerAfterRepeatedToolCall } from './agent/ChatAgent';
+export { detectMoroccanReplyLanguage, normalizeReplyText, replyLanguageInstruction } from './agent/replyPolicy';
+export type { ChatReplyPolicy, ReplyLanguage, ReplyRequest, ReplyTemplate, ReplyToolCall } from './agent/replyPolicy';
 
 export { ChatLogRepository } from './chatLogs';
 export type { InsertChatLogInput, RoutingStatus } from './chatLogs';

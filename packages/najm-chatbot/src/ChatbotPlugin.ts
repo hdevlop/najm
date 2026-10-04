@@ -15,6 +15,7 @@ import { loadChatbotRoutingConfig } from './config/loadRoutingConfig';
 import type { ChatbotSchema } from './ai-settings';
 import type { ChatDiagnosticsSink } from './agent/ChatDiagnostics';
 import type { OpenRouterRequestOptions } from './agent/LlmProviderFactory';
+import type { ChatReplyPolicy } from './agent/replyPolicy';
 
 export type ChatbotDialect = 'sqlite' | 'pg' | 'mysql';
 
@@ -79,6 +80,8 @@ export interface ChatbotConfig {
    * other provider.
    */
   openrouter?: OpenRouterRequestOptions;
+  /** App-owned templates and latest-message language selection, for every provider. */
+  reply?: ChatReplyPolicy;
   maxPromptMessages?: number;
   maxStoredMessages?: number;
   routingHistoryMessages?: number;
@@ -224,6 +227,7 @@ const mergeConfig = (config?: ChatbotConfig): ChatbotConfig => {
     maxSteps: effective.maxSteps ?? 10,
     streamTimeout: { chunkMs: 60_000, ...effective.streamTimeout },
     openrouter: effective.openrouter,
+    reply: effective.reply,
     maxPromptMessages: effective.maxPromptMessages ?? 10,
     maxStoredMessages: effective.maxStoredMessages ?? 100,
     routingHistoryMessages: effective.routingHistoryMessages ?? 2,
