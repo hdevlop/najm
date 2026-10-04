@@ -147,7 +147,8 @@ export class StudioAssistantProviderService implements StudioAssistantProvider {
 
       aiSdkTools[mcpTool.name] = t({
         description: mcpTool.description ?? mcpTool.name,
-        parameters: schema,
+        // AI SDK 6 reads `inputSchema`; under `parameters` every tool reached the model with no arguments.
+        inputSchema: schema,
         execute: async (args: any): Promise<StudioToolResult> => {
           const result = await this.builder.invokeTool(mcpTool.name, args as Record<string, any>);
           const content = result.content?.[0];
