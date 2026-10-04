@@ -42,6 +42,7 @@ const backend = defineConfig({
   tsconfig: 'tsconfig.build.json',
   entry: {
     'index': 'src/index.ts',
+    'query-rewrites': 'src/queryRewrites/index.ts',
     'studio-contract': 'src/studioContract/index.ts',
     'schema/sqlite': 'src/schema/sqlite.ts',
     'schema/pg': 'src/schema/pg.ts',

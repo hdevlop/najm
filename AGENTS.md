@@ -2,7 +2,7 @@
 
 ## Scope
 
-- Work from the repo root unless a command explicitly uses `--cwd`; the root package manager is `bun@1.2.10`.
+- Work from the repo root unless a command explicitly uses `--cwd`; the root package manager is `bun@1.3.14`.
 - Workspaces are `packages/*` and `apps/*`; `diject` is consumed from npm, not a sibling checkout.
 - `CLAUDE.md` exists but is stale in package names and test behavior; prefer `package.json`, `turbo.json`, and `scripts/workspaces.ts`.
 - There is no root README, no root CI workflow, and no root lint/typecheck script as of this file; do not invent those verification steps.

@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.0.0 - 2026-10-04
+
+- Breaking: adopt Najm Kit 3 and the compatible Storage 4 peer contract; accept Auth 6 alongside Auth 4/5.
+- Preserve the published 2.3.0 Darija query rewriter, its root exports, and najm-rag/query-rewrites subpath.
+- Require Hono ^4.13.12.
+
+## 2.3.0
+
+- Published the opt-in Darija query rewriter and query-rewrites subpath. The source for that published API is reconciled in 3.0.0.
+
 ## 2.2.0
 
 - Add `embedding.queryTimeoutMs`: a timeout for query embeddings (tool routing,

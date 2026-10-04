@@ -1,6 +1,6 @@
 {
   "name": "najm-i18n",
-  "version": "2.1.2",
+  "version": "2.1.3",
   "license": "MIT",
   "description": "I18n .",
   "type": "module",
@@ -52,7 +52,7 @@
     "rimraf": "^6.0.1"
   },
   "peerDependencies": {
-    "hono": "^4.0.0",
+    "hono": "^4.13.12",
     "najm-core": "workspace:*",
     "react": ">=18",
     "reflect-metadata": "^0.2.0"

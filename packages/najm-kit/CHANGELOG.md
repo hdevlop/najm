@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.0 - 2026-10-04
+
+- Breaking for optional Next consumers: require patched Next ^15.5.24 || ^16.3.6 instead of older Next releases.
+- Preserve existing React UI exports and Tailwind/CSS contracts.
+
 ## 2.16.16 - 2026-10-03
 
 - `NTable` supports `onExport`, `onImport`, and `onPrint` actions as icon

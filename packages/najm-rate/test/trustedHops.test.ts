@@ -156,7 +156,7 @@ describe('trusted-hop rate limiting through the middleware', () => {
     expect((await get(3464, '203.0.113.7')).status).toBe(429);
   });
 
-  test('zero hops refuses forwarded headers through the real middleware', async () => {
+  test.each([undefined, 0])('socket-peer mode (%p hops) refuses forwarded headers through the real middleware', async (hops) => {
     @Controller('/probe')
     class ProbeController {
       @Get('/')
@@ -167,7 +167,7 @@ describe('trusted-hop rate limiting through the middleware', () => {
     }
 
     server = new Server({ isolated: true })
-      .use(rateLimit({ trustedProxyHops: 0 }))
+      .use(rateLimit({ trustedProxyHops: hops }))
       .load(ProbeController);
     await server.listen(3470);
 

@@ -1,5 +1,10 @@
 # Changelog
 
+## 2.2.5 - 2026-10-04
+
+- Accept Auth 6 alongside the existing Auth 3/4/5 peer ranges.
+- Require Hono ^4.13.12.
+
 ## 2.2.3
 
 - A tool annotated with the MCP specification's `destructiveHint: true` now gets

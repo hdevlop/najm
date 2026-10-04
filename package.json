@@ -3,7 +3,7 @@
   "description": "🚀 Smart DI toolkit, build elegant APIs with decorators, guards, and robust dependency injection. Zero-config, type-safe, and lightning fast.",
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "bun@1.2.10",
+  "packageManager": "bun@1.3.14",
   "workspaces": {
     "packages": [
       "packages/*",
@@ -17,21 +17,24 @@
     "@hono/node-server": "$@hono/node-server",
     "@isaacs/brace-expansion": "5.0.1",
     "browserslist": "4.28.9",
+    "colord": "2.10.0",
+    "postcss-selector-parser": "6.1.3",
+    "@nestjs/platform-fastify": "11.2.7",
     "@types/react": "19.2.18",
     "@types/react-dom": "19.2.3",
-    "axios": "1.18.1",
+    "axios": "1.20.0",
     "body-parser": "2.3.0",
-    "brace-expansion": "5.0.9",
+    "brace-expansion": "5.0.12",
     "diff": "4.0.4",
     "esbuild": "0.25.12",
     "express-rate-limit": "8.2.2",
-    "fast-uri": "3.1.7",
+    "fast-uri": "3.1.8",
     "file-type": "21.3.4",
-    "fastify": "5.12.3",
+    "fastify": "5.12.5",
     "find-my-way": "9.7.0",
     "form-data": "4.0.6",
-    "hono": "4.12.34",
-    "ip-address": "10.7.0",
+    "hono": "4.13.12",
+    "ip-address": "10.7.3",
     "js-yaml": "3.15.2",
     "minimatch": "10.2.5",
     "music-metadata": "11.14.0",
@@ -43,7 +46,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "rollup": "4.62.2",
-    "sharp": "0.35.3",
+    "sharp": "0.35.5",
     "uuid": "11.1.1",
     "vite": "7.3.6",
     "ws": "8.21.1",
@@ -71,7 +74,7 @@
     "sqlite-vec": "^0.1.9",
     "tsup": "^8.5.1",
     "turbo": "^2.10.6",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.11"
   },
   "peerDependencies": {
     "typescript": "^5.9.3"
@@ -83,11 +86,11 @@
     "diject": "^0.1.11",
     "dotenv-pro": "^0.2.0",
     "forji": "^1.0.5",
-    "hono": "^4.12.31",
+    "hono": "^4.13.12",
     "ioredis": "^5.11.1",
     "jsonwebtoken": "^9.0.3",
     "mitt": "^3.0.1",
-    "nodemailer": "^9.0.3",
+    "nodemailer": "^10.0.14",
     "pm-ninja": "^1.1.3",
     "reflect-metadata": "^0.2.2",
     "rimraf": "^6.1.3",
@@ -162,6 +165,7 @@
     "test:theme:e2e": "bun run --cwd apps/playground test:e2e:theme",
     "api:snapshot": "bun scripts/check-public-api.mjs --write",
     "api:check": "bun scripts/check-public-api.mjs",
+    "audit:security": "bun scripts/check-braces-patch.ts && bun audit --ignore GHSA-vfj7-8cjw-p6xm",
     "bench": "bun benchmarks/http.bench.ts",
     "bench:hotpath": "bun benchmarks/hotpath.bench.ts",
     "bench:frameworks": "bun benchmarks/frameworks.bench.ts",
@@ -233,5 +237,8 @@
   "bugs": {
     "url": "https://github.com/hdevlop/najm/issues"
   },
-  "homepage": "https://github.com/hdevlop/najm#readme"
+  "homepage": "https://github.com/hdevlop/najm#readme",
+  "patchedDependencies": {
+    "braces@3.0.3": "patches/braces@3.0.3.patch"
+  }
 }

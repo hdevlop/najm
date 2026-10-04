@@ -1,4 +1,5 @@
 export { rag } from './plugin';
+export * from './queryRewrites';
 export { ragStudio } from './studio/plugin';
 export type { RagStudioOptions } from './studio/plugin';
 export { RAG_STUDIO_OPTS } from './studio/tokens';

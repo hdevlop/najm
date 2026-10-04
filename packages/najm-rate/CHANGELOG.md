@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.0.0 - 2026-10-04
+
+- Breaking: omitted trustedProxyHops now defaults to zero and ignores forwarded headers. Declare the actual trusted hop count behind a reverse proxy.
+- Require Hono ^4.13.12 and the compatible core/guard releases.
+
 ## 2.1.0 - 2026-09-04
 
 - security(rate): add `trustedProxyHops`, which indexes the `X-Forwarded-For`

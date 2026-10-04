@@ -46,6 +46,7 @@
       "najm-next/pwa": ["./packages/najm-next/src/pwa"],
       "najm-next/pwa/react": ["./packages/najm-next/src/pwaReact"],
       "najm-rag": ["./packages/najm-rag/src"],
+      "najm-rag/query-rewrites": ["./packages/najm-rag/src/queryRewrites/index.ts"],
       "najm-rate": ["./packages/najm-rate/src"],
       "najm-storage": ["./packages/najm-storage/src"],
       // Mapped subpath by subpath rather than with a wildcard: the export map

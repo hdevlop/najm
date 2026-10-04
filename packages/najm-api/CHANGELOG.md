@@ -1,5 +1,10 @@
 # Changelog
 
+## 5.0.0 - 2026-10-04
+
+- Breaking: aggregate Auth 6, Rate 3, Email 3, and Storage 4 with the production security fixes.
+- Configure trustedProxyHops explicitly behind a controlled reverse proxy; SMTP uses Nodemailer 10.
+
 ## 3.1.1 - 2026-10-03
 
 - Adopt najm-database 2.1.1, restoring `close: false` as the default.

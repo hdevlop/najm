@@ -52,6 +52,10 @@ export class InstanceManager {
   private metadata = new Map<string, InstanceInfo>();
   private inflightConnects = new Map<string, Promise<void>>();
 
+  private createInstance(id: string, store: SessionStore): BaileysInstance {
+    return new BaileysInstance(id, store);
+  }
+
   /**
    * Build `InstanceInfo` from a persisted row plus a BaileysInstance.
    * Centralized so live and rehydrated instances share one shape.
@@ -84,7 +88,7 @@ export class InstanceManager {
     }
 
     const info = this.buildInfo(row);
-    const instance = new BaileysInstance(row.id, this.sessionStore);
+    const instance = this.createInstance(row.id, this.sessionStore);
 
     instance.onEvent('connection_update', (data: any) => {
       const meta = this.metadata.get(row.id);

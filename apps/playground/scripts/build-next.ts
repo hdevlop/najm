@@ -1,9 +1,11 @@
 import { rmSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { resolve } from 'node:path';
+import { createRequire } from 'node:module';
+import { dirname, resolve } from 'node:path';
 
 const appDir = resolve(import.meta.dir, '..');
-const nextBin = resolve(appDir, 'node_modules', 'next', 'dist', 'bin', 'next');
+const require = createRequire(import.meta.url);
+const nextBin = resolve(dirname(require.resolve('next/package.json')), 'dist', 'bin', 'next');
 
 // Next evaluates the API route while collecting page data. These values exist
 // only in the build subprocess so a clean checkout can produce an artifact;

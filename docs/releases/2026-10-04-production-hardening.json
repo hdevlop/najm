@@ -1,0 +1,213 @@
+{
+  "date": "2026-10-04",
+  "bun": "1.3.14",
+  "packages": [
+    {
+      "name": "najm-core",
+      "workspace": "packages/najm-core",
+      "previousLocalVersion": "3.0.2",
+      "previousPublishedVersion": "3.0.2",
+      "version": "3.0.3",
+      "notes": [
+        "Hide internal details in production 5xx responses while preserving status and logging the original server error.",
+        "Require Hono ^4.13.12."
+      ]
+    },
+    {
+      "name": "najm-guard",
+      "workspace": "packages/najm-guard",
+      "previousLocalVersion": "2.2.0",
+      "previousPublishedVersion": "2.2.0",
+      "version": "2.2.1",
+      "notes": [
+        "Require patched Hono ^4.13.12 and compatible Najm core dependencies."
+      ]
+    },
+    {
+      "name": "najm-validation",
+      "workspace": "packages/najm-validation",
+      "previousLocalVersion": "2.0.2",
+      "previousPublishedVersion": "2.0.2",
+      "version": "2.0.3",
+      "notes": [
+        "Require patched Hono ^4.13.12 and compatible Najm core dependencies."
+      ]
+    },
+    {
+      "name": "najm-rate",
+      "workspace": "packages/najm-rate",
+      "previousLocalVersion": "2.1.1",
+      "previousPublishedVersion": "2.1.1",
+      "version": "3.0.0",
+      "notes": [
+        "Breaking: omitted trustedProxyHops now defaults to zero and ignores forwarded headers. Declare the actual trusted hop count behind a reverse proxy.",
+        "Require Hono ^4.13.12 and the compatible core/guard releases."
+      ]
+    },
+    {
+      "name": "najm-cors",
+      "workspace": "packages/najm-cors",
+      "previousLocalVersion": "2.0.2",
+      "previousPublishedVersion": "2.0.2",
+      "version": "2.0.3",
+      "notes": [
+        "Require patched Hono ^4.13.12 and compatible Najm core dependencies."
+      ]
+    },
+    {
+      "name": "najm-cookies",
+      "workspace": "packages/najm-cookies",
+      "previousLocalVersion": "2.0.2",
+      "previousPublishedVersion": "2.0.2",
+      "version": "2.0.3",
+      "notes": [
+        "Require patched Hono ^4.13.12 and compatible Najm core dependencies."
+      ]
+    },
+    {
+      "name": "najm-i18n",
+      "workspace": "packages/najm-i18n",
+      "previousLocalVersion": "2.1.2",
+      "previousPublishedVersion": "2.1.2",
+      "version": "2.1.3",
+      "notes": [
+        "Require patched Hono ^4.13.12 and compatible Najm core dependencies."
+      ]
+    },
+    {
+      "name": "najm-mcp",
+      "workspace": "packages/najm-mcp",
+      "previousLocalVersion": "2.2.4",
+      "previousPublishedVersion": "2.2.4",
+      "version": "2.2.5",
+      "notes": [
+        "Accept Auth 6 alongside the existing Auth 3/4/5 peer ranges.",
+        "Require Hono ^4.13.12."
+      ]
+    },
+    {
+      "name": "najm-storage",
+      "workspace": "packages/najm-storage",
+      "previousLocalVersion": "3.0.0",
+      "previousPublishedVersion": "3.0.0",
+      "version": "4.0.0",
+      "notes": [
+        "Breaking: require Najm Kit 3 for the studio dependency; backend and storage APIs are unchanged.",
+        "Require Hono ^4.13.12 and Sharp ^0.35.5."
+      ]
+    },
+    {
+      "name": "najm-email",
+      "workspace": "packages/najm-email",
+      "previousLocalVersion": "2.0.4",
+      "previousPublishedVersion": "2.0.4",
+      "version": "3.0.0",
+      "notes": [
+        "Breaking: require Nodemailer ^10.0.14 and use its native transport/message types.",
+        "Verify SMTP envelope, message body, and attachments against a loopback transport fixture."
+      ]
+    },
+    {
+      "name": "najm-auth",
+      "workspace": "packages/najm-auth",
+      "previousLocalVersion": "5.0.0",
+      "previousPublishedVersion": "5.0.0",
+      "version": "6.0.0",
+      "notes": [
+        "Breaking: adopt najm-rate 3 and najm-email 3; unconfigured rate limits use the socket peer and SMTP requires Nodemailer 10.",
+        "Require Hono ^4.13.12 and patched Next ^15.5.24 || ^16.3.6 for optional Next integrations.",
+        "Keep the existing Auth 5 revocation, recovery, and caller-owned database contracts."
+      ]
+    },
+    {
+      "name": "najm-api",
+      "workspace": "packages/najm-api",
+      "previousLocalVersion": "4.0.0",
+      "previousPublishedVersion": "4.0.0",
+      "version": "5.0.0",
+      "notes": [
+        "Breaking: aggregate Auth 6, Rate 3, Email 3, and Storage 4 with the production security fixes.",
+        "Configure trustedProxyHops explicitly behind a controlled reverse proxy; SMTP uses Nodemailer 10."
+      ]
+    },
+    {
+      "name": "najm-rag",
+      "workspace": "packages/najm-rag",
+      "previousLocalVersion": "2.2.1",
+      "previousPublishedVersion": "2.3.0",
+      "version": "3.0.0",
+      "notes": [
+        "Breaking: adopt Najm Kit 3 and the compatible Storage 4 peer contract; accept Auth 6 alongside Auth 4/5.",
+        "Preserve the published 2.3.0 Darija query rewriter, its root exports, and najm-rag/query-rewrites subpath.",
+        "Require Hono ^4.13.12."
+      ]
+    },
+    {
+      "name": "najm-chatbot",
+      "workspace": "packages/najm-chatbot",
+      "previousLocalVersion": "2.1.3",
+      "previousPublishedVersion": "2.1.3",
+      "version": "3.0.0",
+      "notes": [
+        "Breaking: update the optional RAG peer to Najm RAG 3; accept Auth 6 alongside Auth 4/5.",
+        "Preserve the current AI SDK tool inputSchema adapter and chatbot APIs."
+      ]
+    },
+    {
+      "name": "najm-whatsapp",
+      "workspace": "packages/najm-whatsapp",
+      "previousLocalVersion": "2.0.3",
+      "previousPublishedVersion": "2.0.3",
+      "version": "3.0.0",
+      "notes": [
+        "Breaking: adopt Auth 6, Rate 3, and Kit 3; omitted proxy trust uses the socket peer.",
+        "Isolate instance factories and Baileys loader mocks per test to prevent cross-file contamination.",
+        "Require Hono ^4.13.12."
+      ]
+    },
+    {
+      "name": "najm-cli",
+      "workspace": "packages/najm-cli",
+      "previousLocalVersion": "2.3.0",
+      "previousPublishedVersion": "2.3.0",
+      "version": "2.3.1",
+      "notes": [
+        "Generate Next integrations pinned to Auth 6.0.0, Kit 3.0.0, Next 0.9.0, and Theme 0.3.0.",
+        "Use patched Next 16.3.8 in the production scaffold integration fixture."
+      ]
+    },
+    {
+      "name": "najm-kit",
+      "workspace": "packages/najm-kit",
+      "previousLocalVersion": "2.16.16",
+      "previousPublishedVersion": "2.16.16",
+      "version": "3.0.0",
+      "notes": [
+        "Breaking for optional Next consumers: require patched Next ^15.5.24 || ^16.3.6 instead of older Next releases.",
+        "Preserve existing React UI exports and Tailwind/CSS contracts."
+      ]
+    },
+    {
+      "name": "najm-theme",
+      "workspace": "packages/najm-theme",
+      "previousLocalVersion": "0.2.3",
+      "previousPublishedVersion": "0.2.3",
+      "version": "0.3.0",
+      "notes": [
+        "Require patched Next ^15.5.24 || ^16.3.6 for optional Next integration and Sharp ^0.35.5.",
+        "Verify managed theme builds with Najm Kit 3; existing theme APIs are unchanged."
+      ]
+    },
+    {
+      "name": "najm-next",
+      "workspace": "packages/najm-next",
+      "previousLocalVersion": "0.8.1",
+      "previousPublishedVersion": "0.8.1",
+      "version": "0.9.0",
+      "notes": [
+        "Require patched Next ^15.5.24 || ^16.3.6 and reject older versions during configuration.",
+        "Accept Auth 6, Kit 3, and Theme 0.3 while retaining supported prior Najm peer ranges."
+      ]
+    }
+  ]
+}

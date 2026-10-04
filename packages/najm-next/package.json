@@ -1,6 +1,6 @@
 {
   "name": "najm-next",
-  "version": "0.8.1",
+  "version": "0.9.0",
   "license": "MIT",
   "type": "module",
   "description": "Strict, versioned Next.js configuration for Najm applications — monorepo root discovery, build isolation, service-worker headers, and dev-origin policy with no per-app options",
@@ -111,12 +111,12 @@
   "author": "Hicham Jebara",
   "peerDependencies": {
     "@tanstack/react-query": "^5",
-    "next": ">=15.3.0 <17",
+    "next": "^15.5.24 || ^16.3.6",
     "react": ">=18.2.0 <20",
-    "najm-auth": "^4.0.4 || ^5.0.0",
+    "najm-auth": "^4.0.4 || ^5.0.0 || ^6.0.0",
     "najm-i18n": "^2.1.2",
-    "najm-kit": "^2.15.0",
-    "najm-theme": "^0.2.1"
+    "najm-kit": "^2.15.0 || ^3.0.0",
+    "najm-theme": "^0.2.1 || ^0.3.0"
   },
   "devDependencies": {
     "@tanstack/react-query": "^5",
@@ -124,7 +124,7 @@
     "@types/react": "^19.2.14",
     "@types/node": "^25.0.2",
     "happy-dom": "^20.11.1",
-    "next": "16.2.11",
+    "next": "16.3.8",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "rimraf": "^6.0.1",

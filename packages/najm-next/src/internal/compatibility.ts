@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { NajmNextConfigError } from './errors';
 
-export const MINIMUM_NEXT_VERSION = '15.3.0';
+export const MINIMUM_NEXT_VERSION = '15.5.24';
 export const MAXIMUM_TESTED_NEXT_MAJOR = 16;
 
 export function parseVersion(version: string): [number, number, number] {
@@ -40,9 +40,10 @@ export function assertNextCompatible(
   const version = readNextVersion(appDir);
   if (!version) return null;
 
-  if (compareVersions(version, MINIMUM_NEXT_VERSION) < 0) {
+  const minimum = parseVersion(version)[0] === 16 ? '16.3.6' : MINIMUM_NEXT_VERSION;
+  if (compareVersions(version, minimum) < 0) {
     throw new NajmNextConfigError(
-      `next@${version} is not supported; najm-next requires next >= ${MINIMUM_NEXT_VERSION}.`,
+      `next@${version} is not supported; najm-next requires next >= ${minimum} for this major.`,
     );
   }
   if (parseVersion(version)[0] > MAXIMUM_TESTED_NEXT_MAJOR && !warned) {

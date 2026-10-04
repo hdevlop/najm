@@ -69,6 +69,18 @@ export const Err = Object.assign(
 
     // ========== RESPONSE HANDLER ==========
     handle(error: unknown): Response {
+      const status = BaseError.is(error)
+        ? error.status ?? 500
+        : error instanceof HTTPException ? error.status : 500;
+      if (process.env.NODE_ENV === 'production' && status >= 500) {
+        console.error('[najm/core] Internal server error', error);
+        return bufferedResponse(new BaseError(
+          `HTTP_${status}`,
+          status === 503 ? 'Service Unavailable' : 'Internal Server Error',
+          status,
+        ).toResponse());
+      }
+
       if (BaseError.is(error)) {
         return bufferedResponse(error.toResponse());
       }

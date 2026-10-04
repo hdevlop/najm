@@ -1,6 +1,7 @@
 import { rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { computeCacheBustingSearchParam } from 'next/dist/shared/lib/router/utils/cache-busting-search-param.js';
 
 const fixture = join(import.meta.dir, 'fixture');
 const nextBin = join(
@@ -385,7 +386,7 @@ async function runSpeculativePrefetchSuite() {
       const response = await navigate(origin, '/protected', cookies, flightPrefetch.headers);
       assert(
         response.status === 200,
-        `speculative recoverable navigation (${flightPrefetch.name}) returned ${response.status}, expected 200 flight response`,
+        `speculative recoverable navigation (${flightPrefetch.name}) returned ${response.status}, location ${response.headers.get('location')}, expected 200 flight response`,
       );
       assertSessionOnlyRecovery(response, originalRefresh!);
       const spent = await recoveryCount(origin) - before;
@@ -566,17 +567,31 @@ async function login(
   return { response, cookies: responseCookies(response) };
 }
 
-function navigate(
+async function navigate(
   origin: string,
   pathname: string,
   cookies: Map<string, string>,
   extraHeaders: Record<string, string> = {},
 ) {
-  return fetch(`${origin}${pathname}`, {
-    headers: {
-      Cookie: [...cookies].map(([name, value]) => `${name}=${value}`).join('; '),
-      ...extraHeaders,
-    },
+  const headers = new Headers({
+    Cookie: [...cookies].map(([name, value]) => `${name}=${value}`).join('; '),
+    ...extraHeaders,
+  });
+  const url = new URL(pathname, origin);
+  if (headers.get('rsc') === '1') {
+    // Next validates flight headers against the client router's cache key.
+    // Reproduce that wire protocol so a redirect cannot hide an auth failure.
+    const prefetch = headers.get('next-router-prefetch');
+    assert(prefetch === null || ['0', '1', '2', '3'].includes(prefetch), 'Invalid fixture prefetch header');
+    url.searchParams.set('_rsc', await computeCacheBustingSearchParam(
+      (prefetch ?? undefined) as '0' | '1' | '2' | '3' | undefined,
+      headers.get('next-router-segment-prefetch') ?? undefined,
+      headers.get('next-router-state-tree') ?? undefined,
+      headers.get('next-url') ?? undefined,
+    ));
+  }
+  return fetch(url, {
+    headers,
     redirect: 'manual',
   });
 }

@@ -98,9 +98,8 @@ export interface RateLimitPluginConfig {
    * - A positive value indexes the `X-Forwarded-For` chain from the right, so
    *   entries an attacker prepends fall outside the boundary and cannot rotate
    *   buckets. A direct-to-single-reverse-proxy topology is exactly `1`.
-   * - Omitting it selects the deprecated legacy behavior of trusting the
-   *   leftmost forwarded value. That path is spoofable and is scheduled for
-   *   removal in the next major release; declare your topology instead.
+   * - Omitting it defaults to `0`. Forwarded headers are never trusted without
+   *   an explicit topology; declare the hop count behind a reverse proxy.
    *
    * Chains shorter than the boundary, malformed literals, ports, and empty
    * elements all fail closed into one fixed bucket rather than becoming

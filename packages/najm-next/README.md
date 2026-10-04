@@ -476,6 +476,6 @@ server-side.
 
 ## Notes
 
-- Requires `next >= 15.3.0 < 17`; tested through Next 16.
+- Requires patched Next releases: `^15.5.24 || ^16.3.6`; tested through Next 16.
 - The app directory is `process.cwd()`, so run `next` from the app workspace
   (`bun run --cwd apps/web build`), not with a directory argument from the root.

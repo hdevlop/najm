@@ -1,6 +1,7 @@
 import 'reflect-metadata';
 import { describe, test, expect, beforeEach, afterEach } from 'bun:test';
 import { SessionStore } from '../../src/engine/SessionStore';
+import { resetBaileysLoaderForTest } from '../../src/engine/BaileysRuntime';
 
 function createMockDb() {
   const tables: Record<string, any[]> = {};
@@ -66,6 +67,7 @@ describe('SessionStore DB Driver', () => {
   let tables: Record<string, any[]>;
 
   beforeEach(() => {
+    resetBaileysLoaderForTest();
     mock = createMockDb();
     mockDb = mock.db;
     schema = mock.schema;

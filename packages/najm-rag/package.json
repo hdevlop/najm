@@ -1,6 +1,6 @@
 {
   "name": "najm-rag",
-  "version": "2.2.1",
+  "version": "3.0.0",
   "license": "MIT",
   "description": "RAG engine for Najm framework — embeddings, vector search, and semantic tool routing",
   "type": "module",
@@ -44,7 +44,12 @@
       "import": "./dist/studio/styles.css",
       "default": "./dist/studio/styles.css"
     },
-    "./package.json": "./package.json"
+    "./package.json": "./package.json",
+    "./query-rewrites": {
+      "types": "./dist/query-rewrites.d.ts",
+      "import": "./dist/query-rewrites.mjs",
+      "default": "./dist/query-rewrites.mjs"
+    }
   },
   "scripts": {
     "build": "bun scripts/build.ts",
@@ -63,8 +68,8 @@
   },
   "peerDependencies": {
     "drizzle-orm": "^0.45.1",
-    "hono": "^4.0.0",
-    "najm-auth": "^4.2.3 || ^5.0.0",
+    "hono": "^4.13.12",
+    "najm-auth": "^4.2.3 || ^5.0.0 || ^6.0.0",
     "najm-database": "workspace:*",
     "najm-guard": "workspace:*",
     "najm-mcp": "workspace:*",
