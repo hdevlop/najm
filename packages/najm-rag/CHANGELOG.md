@@ -1,5 +1,17 @@
 # Changelog
 
+## 2.3.0
+
+- Export `createDarijaQueryRewriter`, `DarijaQueryRewriteOptions` and
+  `DarijaRewriteRule` from the root and the standalone `najm-rag/query-rewrites`
+  entrypoint. The opt-in Moroccan Darija vocabulary helper works with the
+  existing `rewriteRoutingQuery` hook in tool routing and preview.
+- Accept app-specific word overrides (null disables a preset word) and literal
+  `rewriteRules`. Preserve marking shadda, handle vowelled phrases/attached
+  conjunctions and keep unrelated words and non-Arabic text unchanged. Apps
+  own domain vocabulary. Existing semantic phrases and default routing behavior
+  are unchanged; knowledge search and the original chat message are not rewritten.
+
 ## 2.2.0
 
 - Add `embedding.queryTimeoutMs`: a timeout for query embeddings (tool routing,

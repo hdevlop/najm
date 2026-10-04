@@ -1,6 +1,6 @@
 {
   "name": "najm-rag",
-  "version": "2.2.1",
+  "version": "2.3.0",
   "license": "MIT",
   "description": "RAG engine for Najm framework — embeddings, vector search, and semantic tool routing",
   "type": "module",
@@ -14,6 +14,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
+    },
+    "./query-rewrites": {
+      "types": "./dist/query-rewrites.d.ts",
+      "import": "./dist/query-rewrites.mjs",
+      "default": "./dist/query-rewrites.mjs"
     },
     "./studio-contract": {
       "types": "./dist/studio-contract.d.ts",

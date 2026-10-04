@@ -8,6 +8,8 @@ export type { RagToolProvider } from './provider';
 export * from './chatbotRag';
 export * from './toolIndex';
 export * from './toolRouter';
+export { createDarijaQueryRewriter } from './queryRewrites';
+export type { DarijaQueryRewriteOptions, DarijaRewriteRule } from './queryRewrites';
 export * from './embeddings';
 export * from './vectorStore';
 export * from './routingSettings';

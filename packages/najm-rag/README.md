@@ -18,6 +18,42 @@ bun add najm-rag
 
 ## Quick Start
 
+### Optional Darija wording support
+
+Use the exported vocabulary helper with the existing routing rewrite hook:
+
+```typescript
+import { rag, createDarijaQueryRewriter } from 'najm-rag';
+
+rag({
+  toolRouting: { enabled: true },
+  rewriteRoutingQuery: createDarijaQueryRewriter({
+    words: { ماخلصوش: 'لم يدفعوا' }, // this app's payment vocabulary
+    rewriteRules: [{ from: 'الرقم ديال', to: 'معرف الطلب' }],
+  }),
+});
+```
+
+The pure helper and its types also ship at `najm-rag/query-rewrites`.
+It converts common Moroccan Darija wording to MSA before tool routing and its
+preview embed a question. It is opt-in and leaves the original chat message,
+knowledge search and tool permissions unchanged. It is a vocabulary preset,
+not a complete translator or a promise that every embedding model routes better.
+
+`words` extends/overrides the preset; `null` disables a preset entry. Keys are
+normalized Arabic words and meaningful shadda is preserved. `rewriteRules` are
+literal Arabic word sequences, applied in order before the built-in count rule
+and word substitutions; vowel marks and attached conjunctions are supported.
+Apps own domain meanings such as attendance, grades, payments and what “the
+number” refers to. Unknown words and names remain unchanged unless they match
+a configured rule; keep ambiguous/name-like terms out of the shared preset.
+
+Existing **semantic phrases** remain example questions attached to tools.
+`rewriteRules` transform query text before that semantic matching. When enabling
+or changing the preset, re-run held-out routing cases and check both phrase and
+description matches. Rewritten queries may match previously indexed Darija
+examples differently; tune those examples separately. No LLM request is added.
+
 ### Tool Routing
 
 ```typescript
