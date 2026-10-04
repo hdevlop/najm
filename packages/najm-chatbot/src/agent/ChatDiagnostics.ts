@@ -166,6 +166,8 @@ export class ChatDiagnosticsRecorder {
     return round(performance.now() - this.startedAt);
   }
 
+  get isSettled(): boolean { return this.settled; }
+
   async rag<T>(runner: RagDiagnosticsRunner, work: () => T | Promise<T>): Promise<T> {
     if (this.settled) return work();
     const offset = performance.now() - this.startedAt;
@@ -194,12 +196,14 @@ export class ChatDiagnosticsRecorder {
   }
 
   textDelta(text: string | undefined): void {
+    if (this.settled) return;
     if (this.data.marks.firstTextMs === null && text && text.trim()) {
       this.data.marks.firstTextMs = this.now();
     }
   }
 
   step(step: any): void {
+    if (this.settled) return;
     this.data.steps.push({
       endMs: this.now(),
       finishReason: step?.finishReason ?? null,
@@ -212,6 +216,7 @@ export class ChatDiagnosticsRecorder {
   }
 
   tool(span: Omit<ChatToolSpan, 'startMs' | 'durationMs'> & { start: number; end: number }): void {
+    if (this.settled) return;
     const { start, end, ...rest } = span;
     this.data.tools.push({
       ...rest,

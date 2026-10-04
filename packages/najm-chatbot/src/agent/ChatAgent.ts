@@ -318,6 +318,7 @@ export class ChatAgent {
         await settle('aborted');
       },
       onFinish: async ({ response, totalUsage }) => {
+        if (diagnostics.isSettled) return;
         diagnostics.data.marks.finishMs = diagnostics.now();
         diagnostics.data.usage = summarizeUsage(totalUsage);
         diagnostics.data.cost = this.computeUsageCost(settings, totalUsage);

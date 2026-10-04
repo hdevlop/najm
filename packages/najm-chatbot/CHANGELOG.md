@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.2.1
+
+- Keep terminal diagnostics stable after cancellation: ignore late text, step,
+  tool and finish callbacks once settled, extending the embedding capture guard.
+  Aborted requests retain their original outcome and partial-capture marker.
+
 ## 2.2.0
 
 - Include optional `embeddings` in version-1 chat diagnostics using RAG's

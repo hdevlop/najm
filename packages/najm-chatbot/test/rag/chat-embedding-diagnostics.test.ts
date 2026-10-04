@@ -101,6 +101,10 @@ describe('embedding spans in chat diagnostics', () => {
     expect(recorder.data.embeddingsIncomplete).toBe(true);
     finish(new Response(JSON.stringify({ embeddings: [[0.1, 0.2]] })));
     await pending;
+    recorder.textDelta('late text');
+    recorder.step({ finishReason: 'stop', toolCalls: [{ toolName: 'late' }] });
+    recorder.tool({ name: 'late', toolCallId: null, outcome: 'executed', inputChars: 0,
+      resultChars: 0, start: performance.now(), end: performance.now() });
     expect(JSON.stringify(recorder.data)).toBe(snapshot);
   });
 
