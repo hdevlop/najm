@@ -116,8 +116,8 @@ build passed on Next 15.5.27.
 Playground declares zero trusted proxy hops explicitly. Its build helper
 resolves its installed Next package, including when it is hoisted.
 
-Remote CI, publication, and consumer acceptance results will be recorded
-separately. Deployment remains outside this release verification.
+Completed publication and consumer acceptance are recorded below.
+Deployment remains outside this release verification.
 
 The pre-publication tarball inspection caught a missing CLI declaration entry.
 CLI clean now removes `tsconfig.tsbuildinfo`, so two consecutive builds emit
@@ -166,7 +166,61 @@ forwarded-header rate limiting, and logout. Embeddings use a loopback stub;
 external AI, WhatsApp device pairing, external mail delivery, and deployment
 remain separate checks.
 
-The first four packages (Core, Guard, Validation, Rate) were published and their
-registry bytes matched the reviewed archives. Publication stopped at the clean
-worktree gate while the consumer-discovered UI fixes were prepared. Remaining
-packages must use the corrected commit, fresh CI, and inspected archives.
+## Completed release and registry consumer acceptance
+
+All 19 versions are published. The final source commit is
+`ea52aceff4484a2843161c26c27d06cc5b084634`; all eight jobs passed in
+[release CI 37202425012](https://github.com/hdevlop/najm/actions/runs/37202425012).
+The corrected commit also passed the full local suite (23/23 workspace targets),
+Theme source/test typechecks, public API validation, and the security gate.
+All 19 repacked archives passed public runtime/type-entry and CSS checks.
+The four versions published before the consumer fixes had identical bytes
+when repacked from the corrected source.
+
+Every registry version's integrity and SHA-1 matched its archive, and the
+downloaded tarball's SHA-256 matched the tested candidate. Versions, hashes,
+registry URLs, and consumer results are recorded in
+[`2026-10-04-published-artifacts.json`](../releases/2026-10-04-published-artifacts.json).
+
+Both the local-archive fixture and a separate npm-registry fixture passed:
+
+| Consumer check | Result |
+| --- | --- |
+| Fresh migrations and seed | PASS: auth uniqueness, RAG, storage, theme, and app schemas |
+| Public-package tests | PASS: 28 tests, including SMTP attachment delivery and query rewrites |
+| Production Next build/start | PASS: Next 15.5.27, Bun 1.3.14, Windows |
+| Health, login, protected navigation | PASS |
+| MCP initialize, list, health invocation | PASS |
+| Refresh and recovery after removing the signed-session cookie | PASS |
+| File upload, byte-exact download, delete | PASS |
+| Chromium browser acceptance | PASS: 10 desktop and 3 mobile checks; 13 opposite-viewport cases intentionally skipped |
+| Rotating forged forwarding headers | PASS: login allowance exhausted and remains blocked |
+| Logout | PASS |
+
+The registry fixture has no local archives or framework source aliases.
+Its 18 required release packages resolved inside the fixture, at their exact
+versions, with registry integrity hashes in its lockfile. CLI is not a
+Playground runtime dependency; its published archive, declarations, repeated
+builds, and 24 package regressions were checked separately.
+
+The browser run verifies factory assets and cache headers, managed uploads,
+persistence/reload, image fallback/reset, appearance reset, keyboard navigation,
+confirmation containment and focus restoration, visible focus, contrast,
+desktop/mobile layout, and unexpected browser errors. Selected screenshots:
+[desktop login](production-2026-10-04/playground/01-factory-login-desktop.png),
+[settings](production-2026-10-04/playground/04-settings.png), and
+[mobile login](production-2026-10-04/playground/09-login-mobile.png).
+
+This is source, publication, and isolated production-consumer evidence.
+Deployment, existing production database migration, external SMTP delivery,
+real AI models, and WhatsApp device/message acceptance were not performed.
+The verified `braces` exception still expires on 2026-11-04; the passing governed
+security gate does not mean a zero-finding raw version audit.
+
+To repeat the registry consumer check from the root:
+
+```powershell
+bun scripts/prepare-release-playground.ts --registry
+# Use the isolated directory printed by the preparation script:
+bun scripts/check-release-playground.ts --consumer "<printed-directory>" --registry
+```

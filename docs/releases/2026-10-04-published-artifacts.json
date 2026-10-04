@@ -1,0 +1,352 @@
+{
+  "verifiedAt": "2026-10-04T12:58:48.535Z",
+  "sourceCommit": "ea52aceff4484a2843161c26c27d06cc5b084634",
+  "sourceCI": "https://github.com/hdevlop/najm/actions/runs/37202425012",
+  "packages": [
+    {
+      "name": "najm-core",
+      "version": "3.0.3",
+      "archive": "najm-core-3.0.3.tgz",
+      "sha256": "3c99597b3691781fdfcad66292aca7ec8969438ccd2429434e322c60f2c43b39",
+      "integrity": "sha512-7WJ0FBx0l0rgQpNJiPlrz8BbWWgPv5IY9SefEkkHYT/Jof2gOln1H/6CvGPOjfB+HzqlTckA/uA1hPScsDXIzA==",
+      "shasum": "4555759f1b2fe8e1ac36733d8642d836130b7a3e",
+      "registryTarball": "https://registry.npmjs.org/najm-core/-/najm-core-3.0.3.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-guard",
+      "version": "2.2.1",
+      "archive": "najm-guard-2.2.1.tgz",
+      "sha256": "3f1a3f282f8d5db2f7d2a3d5848efc58d93d90c86f7c09607556bb40e2c95646",
+      "integrity": "sha512-d3Q0EUG6inMqIyY6HvekUfKO//4/7//migY+bImsB5txEiwNMYfc2w/KAfqYKf/22BW/1Z2SlmVabODXC+H9jA==",
+      "shasum": "84e8f5142736eb8e785914c7276fae051c76cd2f",
+      "registryTarball": "https://registry.npmjs.org/najm-guard/-/najm-guard-2.2.1.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-validation",
+      "version": "2.0.3",
+      "archive": "najm-validation-2.0.3.tgz",
+      "sha256": "1c0df4e8fb03a31dd5384e4613564d2ff842a502a1ae0ac0b9810e8ccbb6a9c2",
+      "integrity": "sha512-ySgssGsuA7m8f6DsRpMwqe/k1ddJesO6fCrRQHpG9HV3+btiCH/7RZnyo7Ns4StLwg29uw/icPSm3WkXZZGbwA==",
+      "shasum": "b4a01db6d8734b05a269103ea5dd20d5a110d682",
+      "registryTarball": "https://registry.npmjs.org/najm-validation/-/najm-validation-2.0.3.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-rate",
+      "version": "3.0.0",
+      "archive": "najm-rate-3.0.0.tgz",
+      "sha256": "59879d8d6d03fe9d297215064ad57154241c89f7317cabdf220bda580541ab79",
+      "integrity": "sha512-4CdTX4YyzGNCqas0sMrfs0t+XanQ+psmx7tBWoRgn5wX6XvMzIJA3w7M0ZaxVhRiUCnY8YhqwLug+5os6YIDiA==",
+      "shasum": "316ba08c2e93ad806da648908ffac9f92bf5ede7",
+      "registryTarball": "https://registry.npmjs.org/najm-rate/-/najm-rate-3.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-cors",
+      "version": "2.0.3",
+      "archive": "najm-cors-2.0.3.tgz",
+      "sha256": "d32056c1cc08ca2910bab9891a79ca9d85070cd2c58b3985f87489b51022f0be",
+      "integrity": "sha512-bRspMTfN6BlRVn6PfA3UDWAanuoOpzjTmpF1OuMBv3XCysDkw0ZCylxbxL1caSvH2tR60tWR0JcZRsqLSsk/9Q==",
+      "shasum": "0fb49772a3233c799c5a1f72c9ce27327bc630e3",
+      "registryTarball": "https://registry.npmjs.org/najm-cors/-/najm-cors-2.0.3.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-cookies",
+      "version": "2.0.3",
+      "archive": "najm-cookies-2.0.3.tgz",
+      "sha256": "3d8785cddb345c7961e32dd13eb67c4ec96cabc8dad3e4095404cb7cac544c71",
+      "integrity": "sha512-FVOXJJE2UXpCxLKB/wlMlYYxQvBGSwDL+052C/3QbudA6niJRhp1H3+q3Uf2ElPcSGU+E4FYclx42Ewy0zBl8A==",
+      "shasum": "1c5a440a5b77e26e67704cad4dc79730c975ec70",
+      "registryTarball": "https://registry.npmjs.org/najm-cookies/-/najm-cookies-2.0.3.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-i18n",
+      "version": "2.1.3",
+      "archive": "najm-i18n-2.1.3.tgz",
+      "sha256": "d9ed272a48b753a93e702357cbeb7a73859fb333bd7d102d0a14f0dd226b3ca1",
+      "integrity": "sha512-lWPE/v9iQIfcdExY6+3IwpWQgjpL2nfQS2yMp15y/hn0JLOcF8X/vfaJjhAAX7Zu/Q7pZ2htx678hfeRKtqrAA==",
+      "shasum": "be37fde5b57c692a7ecf5ee0ca5383b16a42299f",
+      "registryTarball": "https://registry.npmjs.org/najm-i18n/-/najm-i18n-2.1.3.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-mcp",
+      "version": "2.2.5",
+      "archive": "najm-mcp-2.2.5.tgz",
+      "sha256": "e1843d99e209765076f03b63bd1831dd4cdf3b6499a219f80732a95b341afe1f",
+      "integrity": "sha512-tSBsQ66qN/fU74//7g3c7VBVVEYSwwfKXViSz6AL5MKOsWIb3q0Q8iutQDHwRw0HP5auppZTFSGm0XhBtdo1Nw==",
+      "shasum": "d0d433f98eeb822d93490c38c8b405f5aa9bace3",
+      "registryTarball": "https://registry.npmjs.org/najm-mcp/-/najm-mcp-2.2.5.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-storage",
+      "version": "4.0.0",
+      "archive": "najm-storage-4.0.0.tgz",
+      "sha256": "ce296fe802a165d061e0282516acf1ce572a27f841d5e3770731cbe75957538b",
+      "integrity": "sha512-PDvmeZHr7j7Fj2F4Dw3mVMpehpkUlwZsvmCEi63nh7MZO6moD7ewuJN6Cpj+NVWvvEzgNCWzsnask6tZg+Brkw==",
+      "shasum": "2b5863c3afadfc0e51459740fff0b99c424e1ed8",
+      "registryTarball": "https://registry.npmjs.org/najm-storage/-/najm-storage-4.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-email",
+      "version": "3.0.0",
+      "archive": "najm-email-3.0.0.tgz",
+      "sha256": "6d174533553a54561cedde32e93eb7caae417bb3881b8c61e178d1b9211db430",
+      "integrity": "sha512-Dls8c2jcxeeGoVqFyw3qo8lUShu6yah7TNgw3urUuaoxBxvRb7zvrlaTpMThJFQY9XLwbGXwYLj6gx+SadKlRQ==",
+      "shasum": "c6fc8b7eaf751f23bcd29b96be9f4dc05084725d",
+      "registryTarball": "https://registry.npmjs.org/najm-email/-/najm-email-3.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-auth",
+      "version": "6.0.0",
+      "archive": "najm-auth-6.0.0.tgz",
+      "sha256": "c06d1467c2b724a3d0628f6696d9c459a277ee32973f3a3ff5ac346340a37eeb",
+      "integrity": "sha512-Su653luD3cGMspMuhywF1kiiMoZ5eiphf0tNJ2cr/PhnBzczCCZFBJPPGDaddM/VD0h7H9MH+atNqdbaMpOF8Q==",
+      "shasum": "4990aae0197cc1d3180c3af916db85ed81a8e5ac",
+      "registryTarball": "https://registry.npmjs.org/najm-auth/-/najm-auth-6.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-api",
+      "version": "5.0.0",
+      "archive": "najm-api-5.0.0.tgz",
+      "sha256": "8509b15e02f5f91e7474dbd442b1b9256806203c2f5e43cb3e2a5ed36d80468c",
+      "integrity": "sha512-rIXfUq14Zsy/nOk++n19aL334NVJbJaMn537n5hYvnx9GA812E6vmclCYUCVVPRUZ6bewi+k+Yf++/KPtzSUGw==",
+      "shasum": "7577493e963bc40ecadb88766d4ed1964ba4d1b2",
+      "registryTarball": "https://registry.npmjs.org/najm-api/-/najm-api-5.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-rag",
+      "version": "3.0.0",
+      "archive": "najm-rag-3.0.0.tgz",
+      "sha256": "a44e79093406c317c247ef8edd5f3a535bc079198d2075a2a05c732864136f83",
+      "integrity": "sha512-naNAA/4Zqrb+pNDYK2f8iAx7sAZ3yVTuc4anc0vUSVYcw9hNSX45RlbMsRd6Xw51fSv2takna9immcF8bXNs1Q==",
+      "shasum": "90b565cad3abe4996877a7ccfb327a217284dfb9",
+      "registryTarball": "https://registry.npmjs.org/najm-rag/-/najm-rag-3.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-chatbot",
+      "version": "3.0.0",
+      "archive": "najm-chatbot-3.0.0.tgz",
+      "sha256": "b6b18413b98ed5577f241893dd728fd63e07db681923da42c6167e01a56d34c1",
+      "integrity": "sha512-bnf3eswV2c7mGTRoa3vWoiG6Ckr5jjSPd2ejXtSjupKd/Qf+iHwEhxQN+7bgVAQq4+NtsesCZiJMSrCDuzAyrw==",
+      "shasum": "9d4a6550dfe1487bb5f962c053a7758c0652387f",
+      "registryTarball": "https://registry.npmjs.org/najm-chatbot/-/najm-chatbot-3.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-whatsapp",
+      "version": "3.0.0",
+      "archive": "najm-whatsapp-3.0.0.tgz",
+      "sha256": "c40596db378580b9e5d7ad8b205b17ed877d6e6f1333ca00823be21c4dae117e",
+      "integrity": "sha512-XqCYu1wPiQv41lf89bFVrXEMyu8muHZsCc8QCNEa6QxS/9jCwdxEP1EP/Y/t72HYrovDi6P+aP4D9a0XvkDZew==",
+      "shasum": "b6a7f24dd37653c6382db74d1f9d8c6c92260c88",
+      "registryTarball": "https://registry.npmjs.org/najm-whatsapp/-/najm-whatsapp-3.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-cli",
+      "version": "2.3.1",
+      "archive": "najm-cli-2.3.1.tgz",
+      "sha256": "59a0b2b4ba6837f85dde7e52fb51131751bac2a10be8375bfce606d30eef3071",
+      "integrity": "sha512-Y9rGlGqyQxcWQqxLVInejoIlwcBoPnw0Mk/c2G7rOYhgZ9/xCr2zdmcAMw6IRzm2mUUJaZBjUFKI/2k9kjNo9A==",
+      "shasum": "2c0a1dcdc4f55671d2c6f63ab3a9e5c8000a33b6",
+      "registryTarball": "https://registry.npmjs.org/najm-cli/-/najm-cli-2.3.1.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-kit",
+      "version": "3.0.0",
+      "archive": "najm-kit-3.0.0.tgz",
+      "sha256": "ebc8b10500da19545fc920a1ccc7a814d79e863836af0ef148e7c15d574e9188",
+      "integrity": "sha512-ggJ9bSctaaY+Psm4nBSRPpGwTZljdVVxXYiRYwqUYws6xj+lPUtMQpBRwcqjAWP/FRiTPuZUBCmVXsniXoxbcg==",
+      "shasum": "f4808ae478c7cac1791d6e82d9aa673b98770fb8",
+      "registryTarball": "https://registry.npmjs.org/najm-kit/-/najm-kit-3.0.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-theme",
+      "version": "0.3.0",
+      "archive": "najm-theme-0.3.0.tgz",
+      "sha256": "54e985b7adaa48336517c7bd73255fa41274fb365f837c4e19e72bf837ef437b",
+      "integrity": "sha512-0/EOKI8nBzK3znxSuYbmxkeQv3oq1Ac1WQFAX/Iju8KNIH+TGR00dfR3dK69y46f0V7Zwv7cfeMHKyaE/n+znQ==",
+      "shasum": "dc829244bf2e423f3b074857e93d2a19d7236b20",
+      "registryTarball": "https://registry.npmjs.org/najm-theme/-/najm-theme-0.3.0.tgz",
+      "status": "published-and-byte-verified"
+    },
+    {
+      "name": "najm-next",
+      "version": "0.9.0",
+      "archive": "najm-next-0.9.0.tgz",
+      "sha256": "b226b86e45fd7ac4cb7fa43909a694c18b4774e47599c18cb7be03f278e60458",
+      "integrity": "sha512-Sh2aPlGzL96GPEr3Zic0utduwo+uuy9L+DfdOPrSL7AU93mYjd2cdWvso4fzOQGPGjdGioiOpVA7SEcljJoVxQ==",
+      "shasum": "fd6f48f7066382d4875d2a18f26b7377cefa22fa",
+      "registryTarball": "https://registry.npmjs.org/najm-next/-/najm-next-0.9.0.tgz",
+      "status": "published-and-byte-verified"
+    }
+  ],
+  "playground": {
+    "mode": "registry",
+    "platform": "win32",
+    "bun": "1.3.14",
+    "next": "15.5.27",
+    "packageInstallation": [
+      {
+        "name": "najm-core",
+        "version": "3.0.3",
+        "integrity": "sha512-7WJ0FBx0l0rgQpNJiPlrz8BbWWgPv5IY9SefEkkHYT/Jof2gOln1H/6CvGPOjfB+HzqlTckA/uA1hPScsDXIzA==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-guard",
+        "version": "2.2.1",
+        "integrity": "sha512-d3Q0EUG6inMqIyY6HvekUfKO//4/7//migY+bImsB5txEiwNMYfc2w/KAfqYKf/22BW/1Z2SlmVabODXC+H9jA==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-validation",
+        "version": "2.0.3",
+        "integrity": "sha512-ySgssGsuA7m8f6DsRpMwqe/k1ddJesO6fCrRQHpG9HV3+btiCH/7RZnyo7Ns4StLwg29uw/icPSm3WkXZZGbwA==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-rate",
+        "version": "3.0.0",
+        "integrity": "sha512-4CdTX4YyzGNCqas0sMrfs0t+XanQ+psmx7tBWoRgn5wX6XvMzIJA3w7M0ZaxVhRiUCnY8YhqwLug+5os6YIDiA==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-cors",
+        "version": "2.0.3",
+        "integrity": "sha512-bRspMTfN6BlRVn6PfA3UDWAanuoOpzjTmpF1OuMBv3XCysDkw0ZCylxbxL1caSvH2tR60tWR0JcZRsqLSsk/9Q==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-cookies",
+        "version": "2.0.3",
+        "integrity": "sha512-FVOXJJE2UXpCxLKB/wlMlYYxQvBGSwDL+052C/3QbudA6niJRhp1H3+q3Uf2ElPcSGU+E4FYclx42Ewy0zBl8A==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-i18n",
+        "version": "2.1.3",
+        "integrity": "sha512-lWPE/v9iQIfcdExY6+3IwpWQgjpL2nfQS2yMp15y/hn0JLOcF8X/vfaJjhAAX7Zu/Q7pZ2htx678hfeRKtqrAA==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-mcp",
+        "version": "2.2.5",
+        "integrity": "sha512-tSBsQ66qN/fU74//7g3c7VBVVEYSwwfKXViSz6AL5MKOsWIb3q0Q8iutQDHwRw0HP5auppZTFSGm0XhBtdo1Nw==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-storage",
+        "version": "4.0.0",
+        "integrity": "sha512-PDvmeZHr7j7Fj2F4Dw3mVMpehpkUlwZsvmCEi63nh7MZO6moD7ewuJN6Cpj+NVWvvEzgNCWzsnask6tZg+Brkw==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-email",
+        "version": "3.0.0",
+        "integrity": "sha512-Dls8c2jcxeeGoVqFyw3qo8lUShu6yah7TNgw3urUuaoxBxvRb7zvrlaTpMThJFQY9XLwbGXwYLj6gx+SadKlRQ==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-auth",
+        "version": "6.0.0",
+        "integrity": "sha512-Su653luD3cGMspMuhywF1kiiMoZ5eiphf0tNJ2cr/PhnBzczCCZFBJPPGDaddM/VD0h7H9MH+atNqdbaMpOF8Q==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-api",
+        "version": "5.0.0",
+        "integrity": "sha512-rIXfUq14Zsy/nOk++n19aL334NVJbJaMn537n5hYvnx9GA812E6vmclCYUCVVPRUZ6bewi+k+Yf++/KPtzSUGw==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-rag",
+        "version": "3.0.0",
+        "integrity": "sha512-naNAA/4Zqrb+pNDYK2f8iAx7sAZ3yVTuc4anc0vUSVYcw9hNSX45RlbMsRd6Xw51fSv2takna9immcF8bXNs1Q==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-chatbot",
+        "version": "3.0.0",
+        "integrity": "sha512-bnf3eswV2c7mGTRoa3vWoiG6Ckr5jjSPd2ejXtSjupKd/Qf+iHwEhxQN+7bgVAQq4+NtsesCZiJMSrCDuzAyrw==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-whatsapp",
+        "version": "3.0.0",
+        "integrity": "sha512-XqCYu1wPiQv41lf89bFVrXEMyu8muHZsCc8QCNEa6QxS/9jCwdxEP1EP/Y/t72HYrovDi6P+aP4D9a0XvkDZew==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-cli",
+        "version": "2.3.1",
+        "integrity": "sha512-Y9rGlGqyQxcWQqxLVInejoIlwcBoPnw0Mk/c2G7rOYhgZ9/xCr2zdmcAMw6IRzm2mUUJaZBjUFKI/2k9kjNo9A==",
+        "status": "registry-byte-verified-cli-not-consumed-by-playground"
+      },
+      {
+        "name": "najm-kit",
+        "version": "3.0.0",
+        "integrity": "sha512-ggJ9bSctaaY+Psm4nBSRPpGwTZljdVVxXYiRYwqUYws6xj+lPUtMQpBRwcqjAWP/FRiTPuZUBCmVXsniXoxbcg==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-theme",
+        "version": "0.3.0",
+        "integrity": "sha512-0/EOKI8nBzK3znxSuYbmxkeQv3oq1Ac1WQFAX/Iju8KNIH+TGR00dfR3dK69y46f0V7Zwv7cfeMHKyaE/n+znQ==",
+        "status": "registry-installed-and-integrity-verified"
+      },
+      {
+        "name": "najm-next",
+        "version": "0.9.0",
+        "integrity": "sha512-Sh2aPlGzL96GPEr3Zic0utduwo+uuy9L+DfdOPrSL7AU93mYjd2cdWvso4fzOQGPGjdGioiOpVA7SEcljJoVxQ==",
+        "status": "registry-installed-and-integrity-verified"
+      }
+    ],
+    "publicPackageTests": {
+      "passed": 28,
+      "failed": 0
+    },
+    "browser": {
+      "engine": "Chromium",
+      "desktopPassed": 10,
+      "mobilePassed": 3,
+      "viewportExcluded": 13,
+      "failed": 0
+    },
+    "checks": {
+      "database-migrate": "PASS",
+      "database-seed": "PASS",
+      "published-package-tests": "PASS",
+      "production-build": "PASS",
+      "health": "PASS",
+      "login": "PASS",
+      "mcpInitializeListInvoke": "PASS",
+      "refreshAndRecovery": "PASS",
+      "uploadDownloadDelete": "PASS",
+      "production-browser": "PASS",
+      "spoofedHeaderRateLimit": "PASS",
+      "logout": "PASS"
+    }
+  },
+  "boundaries": {
+    "database": "Fresh disposable SQLite database; existing application data unchanged",
+    "ai": "Loopback embedding stub; external model acceptance not run",
+    "smtp": "Loopback transport with message and attachment delivery; external mail delivery not run",
+    "whatsapp": "Source and packaged startup checks; real device pairing or external message delivery not run",
+    "deployment": "Not requested or performed",
+    "security": "Verified braces mitigation with exception expiring 2026-11-04; raw audit still reports its version-based advisory"
+  }
+}
