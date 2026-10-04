@@ -185,7 +185,8 @@
       "version": "3.0.0",
       "notes": [
         "Breaking for optional Next consumers: require patched Next ^15.5.24 || ^16.3.6 instead of older Next releases.",
-        "Preserve existing React UI exports and Tailwind/CSS contracts."
+        "Preserve existing React UI exports and Tailwind/CSS contracts.",
+        "Expose the confirmation dialog close-focus callback for menu-triggered confirmations."
       ]
     },
     {
@@ -196,7 +197,8 @@
       "version": "0.3.0",
       "notes": [
         "Require patched Next ^15.5.24 || ^16.3.6 for optional Next integration and Sharp ^0.35.5.",
-        "Verify managed theme builds with Najm Kit 3; existing theme APIs are unchanged."
+        "Require Najm Kit 3 to restore reset-menu focus after closing a confirmation.",
+        "Wait for every branding upload before saving so the last selected image is retained."
       ]
     },
     {

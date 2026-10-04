@@ -101,4 +101,16 @@ describe("compact settings actions", () => {
     expect(screen.getByRole("menuitem", { name: "Reset branding to factory" })).toBeTruthy();
 
   });
+
+  it("returns keyboard focus to the reset menu after cancelling its confirmation", async () => {
+    await mount();
+    const user = userEvent.setup();
+    const trigger = screen.getByRole("button", { name: "Reset to factory" });
+    await user.click(trigger);
+    await user.click(await screen.findByRole("menuitem", { name: "Reset branding to factory" }));
+    const dialog = await screen.findByRole("dialog", { name: "Reset branding?" });
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(dialog.isConnected).toBe(false));
+    await waitFor(() => expect(document.activeElement).toBe(trigger));
+  });
 });

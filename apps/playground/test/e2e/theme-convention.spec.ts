@@ -100,13 +100,7 @@ const sidebarLogo = (page: Page) => page.locator('aside img[alt="Najm Playground
 const saveButton = (page: Page) => actionBar(page).getByRole('button', { name: 'Save changes' });
 
 /**
- * Each reset names the resource it destroys, so both are addressable directly.
- *
- * They used to share the name "Reset to factory" and had to be told apart by
- * position — two identical destructive controls, distinguished only by the
- * order they happened to render in. `exact` matters here: Playwright's default
- * name matching is a substring, and this is precisely the ambiguity being
- * asserted away.
+ * The compact action bar has one reset trigger with distinct resource choices.
  */
 const RESET = {
   appearance: { button: 'Reset appearance to factory', confirm: 'Reset appearance?' },
@@ -121,17 +115,22 @@ function confirmDialog(page: Page, which: 'appearance' | 'branding') {
     .filter({ hasText: RESET[which].confirm });
 }
 
-function resetButton(page: Page, which: 'appearance' | 'branding') {
-  return actionBar(page).getByRole('button', { name: RESET[which].button, exact: true });
+function resetTrigger(page: Page) {
+  return actionBar(page).getByRole('button', { name: 'Reset to factory', exact: true });
+}
+
+function resetChoice(page: Page, which: 'appearance' | 'branding') {
+  return page.getByRole('menuitem', { name: RESET[which].button, exact: true });
 }
 
 async function resetVia(page: Page, which: 'appearance' | 'branding'): Promise<void> {
-  await expect(resetButton(page, which)).toHaveCount(1);
-  await resetButton(page, which).click();
+  await expect(resetTrigger(page)).toHaveCount(1);
+  await resetTrigger(page).click();
+  await resetChoice(page, which).click();
 
   const dialog = confirmDialog(page, which);
   await expect(dialog).toBeVisible();
-  await dialog.getByRole('button', { name: 'Reset to factory', exact: true }).click();
+  await dialog.getByRole('button', { name: RESET[which].button, exact: true }).click();
   await expect(dialog).toBeHidden();
 }
 
@@ -205,10 +204,11 @@ async function tabThroughSettings(page: Page, endAt: string, limit = 320) {
   return { stops, invisible, repeated, reachedEnd };
 }
 
-/** Both resets are present, and no two controls on the bar share a name. */
+/** Both resource choices are named, and the factory appearance cannot reset. */
 async function expectDistinctResetNames(page: Page): Promise<void> {
-  const labels = await actionBar(page)
-    .getByRole('button')
+  await resetTrigger(page).click();
+  const labels = await page.getByRole('menu')
+    .getByRole('menuitem')
     .evaluateAll((nodes) =>
       nodes
         .map((node) => node.getAttribute('aria-label') ?? (node.textContent ?? '').trim())
@@ -217,6 +217,8 @@ async function expectDistinctResetNames(page: Page): Promise<void> {
 
   expect(labels.sort()).toEqual([RESET.appearance.button, RESET.branding.button].sort());
   expect(new Set(labels).size, 'the two resets are distinguishable by name').toBe(labels.length);
+  await expect(resetChoice(page, 'appearance')).toBeDisabled();
+  await page.keyboard.press('Escape');
 }
 
 // ---------------------------------------------------------------------------
@@ -365,6 +367,8 @@ test.describe('desktop', () => {
     for (const slot of SLOTS) {
       const input = brandingSlot(page, slot.key).locator('input[type=file]');
       await input.setInputFiles(path.join(FIXTURES, UPLOADS[slot.key]));
+      await expect(brandingSlot(page, slot.key).locator('img').first()).toHaveAttribute('src', /^blob:/);
+      await expect(brandingSlot(page, slot.key).locator('.najm-theme-branding-provenance')).not.toHaveText('Uploading…');
     }
 
     await expect(saveButton(page), 'four candidates make the form dirty').toBeEnabled();
@@ -512,14 +516,14 @@ test.describe('desktop', () => {
     await page.goto('/dashboard/theme');
     await openSettingsTab(page, 'Appearance');
 
-    const walk = await tabThroughSettings(page, RESET.branding.button);
+    const walk = await tabThroughSettings(page, 'Reset to factory');
 
     // 1. Reach. Tab has to arrive at the far end of the surface on its own.
     // The action bar is the last thing in the settings tree, so reaching the
-    // branding reset means every control between here and there was traversable.
+    // reset menu means every control between here and there was traversable.
     expect(
       walk.reachedEnd,
-      `Tab never reached the branding reset in ${walk.stops.length} stops`,
+      `Tab never reached the reset menu in ${walk.stops.length} stops`,
     ).toBe(true);
 
     // 2. No trap. A control that keeps handing focus back to itself is how a
@@ -541,46 +545,36 @@ test.describe('desktop', () => {
     expect(slots, 'collapsible section triggers are reachable').toContain('collapsible-trigger');
 
     const names = walk.stops.map((stop) => stop.name);
-    expect(names, 'the branding reset is reachable').toContain(RESET.branding.button);
+    expect(names, 'the reset menu is reachable').toContain('Reset to factory');
 
-    // 5. The two resets are told apart by name, not by position.
+    // 5. The reset menu names both resources and disables the factory appearance.
     await expectDistinctResetNames(page);
 
-    // 6. Save and the appearance reset are absent from that walk, and the only
-    // reason is that both are disabled: the run is sitting on the factory
-    // design with nothing unsaved. The action bar keeps them rendered so it
-    // does not reflow as an administrator edits, and a disabled control is
-    // correctly not a tab stop. Proved rather than assumed — make the surface
-    // dirty and Save becomes reachable, with a ring, in one Tab from here.
+    // 6. A changed draft enables Save, next in the footer's tab order.
     await expect(saveButton(page), 'Save is disabled while nothing is dirty').toBeDisabled();
-    await expect(resetButton(page, 'appearance')).toBeDisabled();
 
     await page.getByRole('combobox', { name: 'Radius' }).click();
     await page.getByRole('option', { name: '24px', exact: true }).click();
     await expect(saveButton(page)).toBeEnabled();
 
-    await resetButton(page, 'branding').focus();
+    await resetTrigger(page).focus();
     const save = await tabTo(page);
     expect(save?.name, 'an enabled Save is the next tab stop').toBe('Save changes');
     expect(save && hasVisibleFocusIndicator(save), 'Save shows a focus ring').toBe(true);
 
-    // Discarded by keyboard, which both exercises the third bar control and
-    // hands the next step the factory state it expects.
-    const discard = actionBar(page).getByRole('button', { name: 'Discard changes' });
-    await expect(discard).toBeEnabled();
-    await discard.focus();
-    await page.keyboard.press('Enter');
+    // Dismissing the sheet by keyboard discards its uncommitted draft.
+    await page.keyboard.press('Escape');
+    await page.waitForURL('**/dashboard');
+    await page.goto('/dashboard/theme');
     await expect(saveButton(page), 'the draft was discarded').toBeDisabled();
     expect(await radiusPx(page), 'and the factory radius came back').toBe(8);
 
-    // 7. Operable: open the confirmation with Enter and dismiss it with Escape,
-    // touching nothing but the keyboard. The branding reset, because the
-    // appearance one is legitimately disabled here — step 8 restored the
-    // factory design, and a reset with nothing to restore stays rendered but
-    // inert. Pressing Enter on a disabled control proves nothing.
-    const resetBranding = resetButton(page, 'branding');
+    // 7. Enter opens the menu and selects its enabled branding action.
+    const resetBranding = resetTrigger(page);
     await expect(resetBranding).toBeEnabled();
     await resetBranding.focus();
+    await page.keyboard.press('Enter');
+    await expect(resetChoice(page, 'branding')).toBeFocused();
     await page.keyboard.press('Enter');
 
     const dialog = confirmDialog(page, 'branding');
@@ -591,9 +585,7 @@ test.describe('desktop', () => {
     // refuses to close is the one trap worth checking twice.
     for (let index = 0; index < 6; index += 1) {
       await page.keyboard.press('Tab');
-      const inside = await page.evaluate(
-        () => document.activeElement?.closest('[role=alertdialog], [role=dialog]') !== null,
-      );
+      const inside = await dialog.evaluate((element) => element.contains(document.activeElement));
       expect(inside, `dialog tab stop ${index} stayed inside the dialog`).toBe(true);
     }
 
@@ -609,7 +601,7 @@ test.describe('desktop', () => {
       .poll(async () => (await focusedStop(page))?.name ?? '<body>', {
         message: 'focus returns to the trigger that opened the dialog',
       })
-      .toBe(RESET.branding.button);
+      .toBe('Reset to factory');
 
     health.assertClean('keyboard acceptance');
   });
@@ -687,11 +679,11 @@ test.describe('mobile', () => {
     await page.goto('/dashboard/theme');
     await openSettingsTab(page, 'Appearance');
 
-    const walk = await tabThroughSettings(page, RESET.branding.button);
+    const walk = await tabThroughSettings(page, 'Reset to factory');
 
     expect(
       walk.reachedEnd,
-      `Tab never reached the branding reset in ${walk.stops.length} stops`,
+      `Tab never reached the reset menu in ${walk.stops.length} stops`,
     ).toBe(true);
     expect(walk.repeated, 'a control held focus across three consecutive Tabs').toEqual([]);
     expect(walk.invisible, 'focused with no visible indicator (mobile)').toEqual([]);

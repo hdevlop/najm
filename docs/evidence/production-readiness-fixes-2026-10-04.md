@@ -86,8 +86,9 @@ the harness still rejects unexpected redirects. All three integrations build
 and run actual production fixtures.
 
 CI pins Bun 1.3.14 on all jobs and adds these three production integrations to
-both Bun platforms. The changed workflow has not run remotely. Node 20/22 and
-PostgreSQL/MySQL service jobs have not been rerun for this candidate locally.
+both Bun platforms. Commit `e97145cdd386aa096a01b0c6850333e7b1d0ec17` passed all
+eight remote jobs, including Node 20/22 and PostgreSQL/MySQL services:
+[CI run 37199137245](https://github.com/hdevlop/najm/actions/runs/37199137245).
 OSV skipped two upstream Git dependencies (`libsignal-node` and
 `whiskeysockets/eslint-config`) because the lockfile records abbreviated commits
 that its API cannot query. Its passing result does not cover those commits.
@@ -121,5 +122,51 @@ separately. Deployment remains outside this release verification.
 The pre-publication tarball inspection caught a missing CLI declaration entry.
 CLI clean now removes `tsconfig.tsbuildinfo`, so two consecutive builds emit
 the declared executable and types. Its 24 tests pass, including the new built
-entry regression. All release artifacts will be repacked from the corrected
-source commit before publication.
+entry regression. All 19 corrected archives were packed and inspected from
+that commit; their declared runtime/type entries and CSS files were present.
+
+## Playground consumer fixes found during release acceptance
+
+The acceptance copy installs package archives with every Najm source alias
+removed. A fresh hoisted install is required for this Windows/Bun fixture;
+switching a partially failed isolated install to hoisted left mixed paths that
+prevented Next from externalizing native dependencies. The final configuration
+keeps only the original native dependencies external, preserving one bundled
+copy of framework injection classes.
+
+Playground now declares its native and JSON-editor feature dependencies.
+Migration `0007` adds the auth role-name unique index. Migration `0008` creates
+the RAG and storage tables; their named schema exports were missing from
+Drizzle's migration input even though the runtime aggregate included them.
+Existing databases with duplicate role names must reconcile those duplicates
+before applying the unique index. Acceptance uses a new disposable database;
+the developer's application database is unchanged.
+
+The production browser run exposed a branding save race: a completed image
+could enable Save while a later image was still uploading. Theme now disables
+Save until every branding upload finishes and its provider refuses a partial
+commit. A deferred-upload regression proves both slots reach the save request.
+The compact reset confirmation now returns keyboard focus to its persistent
+menu trigger, using Kit's new close-focus callback. Theme requires Kit 3.
+Its full suite passed: 349 backend/contract/database, 90 React, and 21 RSC tests.
+
+The browser suite now exercises the current compact reset menu rather than the
+retired two-button bar. It still verifies resource names, disabled factory
+appearance reset, confirmation, keyboard reach, focus rings, modal containment,
+focus restoration, draft dismissal, and desktop/mobile layouts.
+
+Repeatable isolated checks are provided by `scripts/prepare-release-playground.ts`
+and `scripts/check-release-playground.ts`. Prepare supports local archives or
+`--registry`; the runner requires the isolated fixture marker and rejects Najm
+source aliases. It migrates/seeds a new database, runs public-package SMTP and
+query-rewrite regressions, builds/starts production Next, and checks health,
+login, MCP initialize/list/invoke, protected navigation, refresh, signed-session
+recovery, file upload/download/delete, desktop/mobile browser behavior, rotating
+forwarded-header rate limiting, and logout. Embeddings use a loopback stub;
+external AI, WhatsApp device pairing, external mail delivery, and deployment
+remain separate checks.
+
+The first four packages (Core, Guard, Validation, Rate) were published and their
+registry bytes matched the reviewed archives. Publication stopped at the clean
+worktree gate while the consumer-discovered UI fixes were prepared. Remaining
+packages must use the corrected commit, fresh CI, and inspected archives.

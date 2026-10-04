@@ -23,6 +23,8 @@ export interface NConfirmDialogProps {
   loading?: boolean;
   children?: React.ReactNode;
   icon?: NIconSource;
+  /** Restore focus to a persistent trigger when a menu opened the dialog. */
+  onCloseAutoFocus?: React.ComponentProps<typeof DialogContent>["onCloseAutoFocus"];
 }
 
 export function NConfirmDialog({
@@ -37,6 +39,7 @@ export function NConfirmDialog({
   loading = false,
   children,
   icon,
+  onCloseAutoFocus,
 }: NConfirmDialogProps) {
   const isDestructive = variant === "destructive";
   const resolvedIcon = icon ?? (isDestructive ? "alert-triangle" : "circle-help");
@@ -46,7 +49,7 @@ export function NConfirmDialog({
       if (!value && loading) return;
       onOpenChange(value);
     }}>
-      <DialogContent>
+      <DialogContent onCloseAutoFocus={onCloseAutoFocus}>
         <div className="flex flex-col items-center gap-3 text-center pt-1">
           <div
             className={cn(

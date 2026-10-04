@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX `roles_name_unique` ON `roles` (`name`);

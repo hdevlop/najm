@@ -1,6 +1,6 @@
 import { describe, expect, it } from "bun:test";
 import * as React from "react";
-import { act, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react";
 
 import { NThemeSettingsActions } from "../../src/react/components/NThemeSettingsActions";
 import { NThemeSettingsStatus } from "../../src/react/components/NThemeSettingsStatus";
@@ -290,6 +290,37 @@ describe("presets", () => {
 
     expect(view.value.design?.theme.tokens?.primary).toBe("#0ea5e9");
     expect(view.value.dirty.appearance).toBe(false);
+  });
+});
+
+describe("branding upload completion", () => {
+  it("preserves every candidate until the last upload finishes before saving", async () => {
+    const fake = makeFakeClient();
+    const view = await mount({ client: fake.client });
+    const image = new File([new Uint8Array([1, 2, 3])], "logo.png", { type: "image/png" });
+    await act(async () => { await view.value.uploadBrandingAsset("sidebarLogoExpanded", image); });
+
+    let finishUpload!: () => void;
+    const waiting = new Promise<void>((resolve) => { finishUpload = resolve; });
+    const upload = fake.client.uploadBrandingAsset;
+    fake.client.uploadBrandingAsset = async (input) => { await waiting; return upload(input); };
+    let pending!: Promise<void>;
+    await act(async () => { pending = view.value.uploadBrandingAsset("authHeroImage", image); });
+
+    const save = screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.click(save);
+    await act(async () => { await view.value.saveBranding(); });
+    expect(fake.calls.saveBranding).toHaveLength(0);
+    expect(view.value.brandingSlots.find((slot) => slot.key === "authHeroImage")?.uploading).toBe(true);
+
+    await act(async () => { finishUpload(); await pending; });
+    expect(save.disabled).toBe(false);
+    await act(async () => { await view.value.saveBranding(); });
+    expect(fake.calls.saveBranding).toHaveLength(1);
+    expect(Object.keys((fake.calls.saveBranding[0] as { slots: object }).slots).sort())
+      .toEqual(["authHeroImage", "sidebarLogoExpanded"]);
+    expect(view.value.dirty.branding).toBe(false);
   });
 });
 

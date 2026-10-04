@@ -42,13 +42,14 @@ export function NThemeSettingsSaveButton({
   const settings = useNThemeSettingsOptional();
   if (!settings) return null;
 
-  const { dirty, status, saveAppearance, saveBranding, capabilities, features, t } = settings;
+  const { dirty, status, brandingSlots, saveAppearance, saveBranding, capabilities, features, t } = settings;
 
   const wants = (resource: "appearance" | "branding") =>
     resources === undefined || resources.includes(resource);
 
   const savesAppearance = wants("appearance") && features.appearance && dirty.appearance;
   const savesBranding = wants("branding") && features.branding && dirty.branding;
+  const brandingUploading = wants("branding") && brandingSlots.some((slot) => slot.uploading);
 
   const allowed =
     (!savesAppearance || capabilities.manageAppearance)
@@ -64,7 +65,7 @@ export function NThemeSettingsSaveButton({
       {...buttonProps}
       onClick={handleSave}
       loading={status.phase === "saving"}
-      disabled={disabled || !allowed || (!savesAppearance && !savesBranding)}
+      disabled={disabled || brandingUploading || !allowed || (!savesAppearance && !savesBranding)}
     >
       {children ?? t("theme.actions.save")}
     </NButton>
