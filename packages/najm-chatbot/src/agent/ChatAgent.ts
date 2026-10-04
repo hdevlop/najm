@@ -17,6 +17,7 @@ import {
   type ConversationStore,
 } from '../sessions/ConversationStore';
 import { ChatLogRepository, type RoutingStatus } from '../chatLogs';
+import type { RagDiagnosticsRunner } from 'najm-rag';
 
 export type ChatChannel = 'web' | 'whatsapp' | string;
 
@@ -631,7 +632,12 @@ export class ChatAgent {
       : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
     diagnostics.data.messages = { stored: storedHistory.length, prompt: promptMessages.length };
 
-    const prepared = await diagnostics.span('prepareMs', () => this.prepare(channel, routingText, settings, diagnostics));
+    const prepare = () => diagnostics.span('prepareMs', () => this.prepare(channel, routingText, settings, diagnostics));
+    // Resolve an optional public bridge; chat still works without the RAG package/plugin.
+    let ragDiagnostics: RagDiagnosticsRunner | undefined;
+    try { ragDiagnostics = this.container.get(Symbol.for('najm:rag:diagnostics')); }
+    catch { /* Older RAG releases and applications without RAG have no bridge. */ }
+    const prepared = await (ragDiagnostics ? diagnostics.rag(ragDiagnostics, prepare) : prepare());
     diagnostics.data.routingStatus = prepared.routingStatus;
     diagnostics.data.routedToolCount = prepared.routedToolNames.length;
 

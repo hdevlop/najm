@@ -4,6 +4,22 @@ Chatbot plugin for the Najm framework — AI settings management, multi-provider
 
 ## Installation
 
+### Embedding diagnostics
+
+With `najm-rag@2.4.0+` registered, `chatLogging.onDiagnostics` also receives
+`embeddings` from routing and context preparation. Each logical call records
+operation, purpose, cache status, duration, timeout and outcome, plus individual
+provider attempts. Offsets are relative to chat request start, including attempt
+offsets. Records omit input text, vectors, endpoints, credentials and raw errors.
+They are included for both streaming and `runOnce`, including setup failures.
+
+An empty array means capture was available but no embedding call was made;
+an absent field means the RAG diagnostics bridge was unavailable. RAG remains
+optional. Version-1 diagnostics are extended additively. Embedding durations
+overlap routing/context/preparation; attempts are nested inside their call, so
+do not add these durations together. The existing sink remains best effort
+and interaction-table logging does not need to be enabled.
+
 ```bash
 bun add najm-chatbot
 ```

@@ -273,7 +273,7 @@
     },
     "packages/najm-chatbot": {
       "name": "najm-chatbot",
-      "version": "2.1.3",
+      "version": "2.2.0",
       "dependencies": {
         "@ai-sdk/anthropic": "^3.0.100",
         "@ai-sdk/google": "^3.0.99",

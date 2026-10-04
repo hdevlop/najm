@@ -38,6 +38,7 @@ export { summarizeUsage } from './agent/ChatDiagnostics';
 export type {
   ChatDiagnostics,
   ChatDiagnosticsSink,
+  ChatEmbeddingSpan,
   ChatOutcome,
   ChatPreparationSpans,
   ChatStepSpan,

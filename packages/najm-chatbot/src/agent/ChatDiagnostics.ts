@@ -1,5 +1,8 @@
 import type { RoutingStatus } from '../chatLogs';
 import type { UsageCost } from './modelPricing';
+import type { EmbeddingDiagnostic, RagDiagnosticsRunner } from 'najm-rag';
+
+export type ChatEmbeddingSpan = EmbeddingDiagnostic;
 
 /**
  * How one chat request ended. Exactly one is recorded per request, including
@@ -71,6 +74,10 @@ export interface ChatDiagnostics {
   marks: { firstTextMs: number | null; finishMs: number | null };
   steps: ChatStepSpan[];
   tools: ChatToolSpan[];
+  /** Present when RAG's diagnostics bridge is available, even for zero calls.
+   * Offsets (including attempts) are relative to chat request start. Durations
+   * overlap preparation/routing/context; do not add nested spans. */
+  embeddings?: ChatEmbeddingSpan[];
   usage: ChatUsageSummary | null;
   cost: (UsageCost & { provider: string; model: string }) | null;
 }
@@ -154,6 +161,20 @@ export class ChatDiagnosticsRecorder {
 
   now(): number {
     return round(performance.now() - this.startedAt);
+  }
+
+  async rag<T>(runner: RagDiagnosticsRunner, work: () => T | Promise<T>): Promise<T> {
+    const offset = this.now();
+    this.data.embeddings = [];
+    return runner.run({
+      correlationId: this.data.correlationId,
+      onEmbedding: (event) => {
+        this.data.embeddings!.push({ ...event,
+          startMs: round(offset + event.startMs),
+          attempts: event.attempts.map(attempt => ({ ...attempt, startMs: round(offset + attempt.startMs) })),
+        });
+      },
+    }, work);
   }
 
   async span<T>(name: keyof ChatPreparationSpans, run: () => Promise<T> | T): Promise<T> {
