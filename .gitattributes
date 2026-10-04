@@ -1,5 +1,8 @@
 * text=auto
 
+# Unified patches require a space on empty context lines and stable LF hashes.
+patches/*.patch text eol=lf whitespace=-blank-at-eol
+
 # Binary evidence and assets must never be line-ending converted.
 *.pdf binary
 *.png binary

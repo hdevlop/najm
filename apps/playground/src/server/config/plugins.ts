@@ -48,7 +48,8 @@ export const authConfig = () => {
 
 export const validationConfig = () => validation();
 
-export const rateLimitConfig = () => rateLimit();
+// The playground connects directly to its backend; forwarded headers are untrusted.
+export const rateLimitConfig = () => rateLimit({ trustedProxyHops: 0 });
 
 export const cookiesConfig = () => cookies({
   // `next start` runs with NODE_ENV=production, but LAN device testing often

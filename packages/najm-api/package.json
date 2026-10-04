@@ -1,6 +1,6 @@
 {
   "name": "najm-api",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "description": "Modern TypeScript decorator-based web framework built on Hono.js",
   "type": "module",
   "main": "./dist/index.mjs",

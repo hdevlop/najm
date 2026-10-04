@@ -128,27 +128,6 @@ function assertHops(trustedProxyHops: number): void {
 }
 
 /**
- * Historical behavior: trust the leftmost forwarded value.
- *
- * @deprecated Client-controlled and spoofable. It remains only so consumers
- * that have not yet declared their topology keep working, and is scheduled for
- * removal in the next major release. Set `trustedProxyHops` to opt into the
- * secure contract.
- */
-function legacyAddress(
-  headers: Record<string, string | undefined>,
-  peerIp?: string,
-): string {
-  const forwarded = headers['x-forwarded-for'];
-  if (forwarded) return forwarded.split(',')[0]?.trim() ?? UNRESOLVED_CLIENT_ADDRESS;
-
-  const realIp = headers['x-real-ip'];
-  if (realIp) return realIp;
-
-  return peerIp ?? UNRESOLVED_CLIENT_ADDRESS;
-}
-
-/**
  * Resolve the address used as rate-limit key material.
  *
  * @param headers Lowercased request headers.
@@ -156,7 +135,7 @@ function legacyAddress(
  *   client. `0` refuses forwarded headers and uses the socket peer. A positive
  *   value indexes the `X-Forwarded-For` chain from the right, so values an
  *   attacker prepends sit to the left of the boundary and are ignored.
- *   `undefined` selects the deprecated legacy path.
+ *   `undefined` defaults to `0`; forwarded headers require explicit trust.
  * @param peerIp The socket-level remote address, when the runtime exposes one.
  *   It must come from the connection itself. A header-derived value is client
  *   input, and passing one here would let a client pick its own bucket at
@@ -169,13 +148,12 @@ export function resolveClientAddress(
 ): string {
   if (trustedProxyHops === undefined) {
     warnOnce(
-      'legacy',
-      'trustedProxyHops is not configured, so rate-limit keys fall back to the ' +
-        'leftmost X-Forwarded-For value. That value is set by the client and can ' +
-        'be rotated to mint a fresh bucket per request. Declare the number of ' +
-        'proxies in front of this application to opt into the trusted-hop contract.',
+      'default',
+      'trustedProxyHops is not configured; forwarded headers are ignored and ' +
+        'the socket peer is used. Declare the number of trusted proxies if ' +
+        'this application runs behind a reverse proxy.',
     );
-    return legacyAddress(headers, peerIp);
+    trustedProxyHops = 0;
   }
 
   assertHops(trustedProxyHops);

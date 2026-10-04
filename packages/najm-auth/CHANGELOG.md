@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.0.0 - 2026-10-04
+
+- Breaking: adopt najm-rate 3 and najm-email 3; unconfigured rate limits use the socket peer and SMTP requires Nodemailer 10.
+- Require Hono ^4.13.12 and patched Next ^15.5.24 || ^16.3.6 for optional Next integrations.
+- Keep the existing Auth 5 revocation, recovery, and caller-owned database contracts.
+
 ## 4.2.4 - 2026-10-03
 
 - Keep caller-owned databases open after `seedAuthData()` stops its temporary

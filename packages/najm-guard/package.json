@@ -1,6 +1,6 @@
 {
   "name": "najm-guard",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "license": "MIT",
   "type": "module",
   "files": [
@@ -30,7 +30,7 @@
     "najm-core": "workspace:*"
   },
   "peerDependencies": {
-    "hono": "^4.0.0"
+    "hono": "^4.13.12"
   },
   "devDependencies": {
     "typescript": "^5.7.3",

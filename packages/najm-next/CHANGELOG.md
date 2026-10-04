@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.9.0 - 2026-10-04
+
+- Require patched Next ^15.5.24 || ^16.3.6 and reject older versions during configuration.
+- Accept Auth 6, Kit 3, and Theme 0.3 while retaining supported prior Najm peer ranges.
+
 ## 0.8.0 - 2026-09-17
 
 - Added validated `appName` and `currency` application defaults and projects

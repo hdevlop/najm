@@ -1,5 +1,12 @@
 # najm-theme
 
+## 0.3.0 - 2026-10-04
+
+- Require patched Next ^15.5.24 || ^16.3.6 for optional Next integration and Sharp ^0.35.5.
+- Verify managed theme builds with Najm Kit 3; existing theme APIs are unchanged.
+- Wait for every branding upload to finish before saving so the last selected image is retained.
+- Restore keyboard focus to the compact reset menu after its confirmation closes; require Najm Kit 3 for its focus callback.
+
 ## 0.2.3
 
 - The `theme_preset_apply` MCP tool is annotated `destructiveHint: true`:

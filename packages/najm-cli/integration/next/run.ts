@@ -69,7 +69,7 @@ try {
       scripts: { build: 'next build --webpack' },
       dependencies: {
         ...dependencyRecordWithCandidates(plan.dependencies),
-        next: '16.2.11',
+        next: '16.3.8',
         react: '19.2.4',
         'react-dom': '19.2.4',
       },

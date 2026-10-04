@@ -32,7 +32,7 @@
     "najm-storage": "workspace:*",
     "najm-theme": "workspace:*",
     "najm-validation": "workspace:*",
-    "next": "^15.5.21",
+    "next": "^15.5.27",
     "react": "^19",
     "react-dom": "^19",
     "react-hook-form": "^7",

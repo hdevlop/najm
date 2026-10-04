@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- Bring the 2.2.0/2.2.1 embedding diagnostics onto the 3.x line; the published
+  3.0.0 was cut without them.
+
+## 3.0.0 - 2026-10-04
+
+- Breaking: update the optional RAG peer to Najm RAG 3; accept Auth 6 alongside Auth 4/5.
+- Preserve the current AI SDK tool inputSchema adapter and chatbot APIs.
+
 ## 2.2.1
 
 - Keep terminal diagnostics stable after cancellation: ignore late text, step,

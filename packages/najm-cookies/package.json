@@ -1,6 +1,6 @@
 {
   "name": "najm-cookies",
-  "version": "2.0.2",
+  "version": "2.0.3",
   "license": "MIT",
   "description": "Cookie handling plugin for Najm API framework",
   "type": "module",
@@ -23,7 +23,7 @@
     "test:watch": "bun test --watch"
   },
   "peerDependencies": {
-    "hono": "^4.0.0",
+    "hono": "^4.13.12",
     "najm-core": "workspace:*",
     "reflect-metadata": "^0.2.0"
   },

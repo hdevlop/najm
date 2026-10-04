@@ -1,6 +1,9 @@
 # najm-core
 
-## Unreleased
+## 3.0.3 - 2026-10-04
+
+- Hide internal details in production 5xx responses while preserving status and logging the original server error.
+- Require Hono ^4.13.12.
 
 ### Fixed
 

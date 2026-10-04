@@ -2,10 +2,10 @@ import { mkdir, readFile, writeFile } from 'fs/promises';
 import path from 'path';
 
 export const NAJM_NEXT_INTEGRATION_VERSIONS = Object.freeze({
-  auth: '4.0.4',
-  kit: '2.15.3',
-  next: '0.8.0',
-  theme: '0.2.1',
+  auth: '6.0.0',
+  kit: '3.0.0',
+  next: '0.9.0',
+  theme: '0.3.0',
 });
 
 export type NextLocationChoice = 'disabled' | 'leaflet' | 'google';

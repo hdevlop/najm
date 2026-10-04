@@ -1,6 +1,6 @@
 {
   "name": "najm-whatsapp",
-  "version": "2.0.3",
+  "version": "3.0.0",
   "license": "MIT",
   "description": "WhatsApp plugin for Najm framework — Cloud API and Baileys engine support",
   "type": "module",
@@ -70,7 +70,7 @@
     "najm-auth": "workspace:*",
     "najm-rate": "workspace:*",
     "najm-validation": "workspace:*",
-    "hono": "^4.0.0",
+    "hono": "^4.13.12",
     "react": ">=18",
     "react-dom": ">=18",
     "reflect-metadata": "^0.2.0",

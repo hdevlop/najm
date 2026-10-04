@@ -53,8 +53,6 @@ const mockBaileys = {
   proto: { Message: { AppStateSyncKeyData: { fromObject: (v: any) => v } } },
 };
 
-setBaileysLoaderForTest(async () => mockBaileys);
-
 import { BaileysInstance } from '../../src/engine/BaileysInstance';
 import { BaileysAdapter } from '../../src/engine/BaileysAdapter';
 import { SessionStore as RealSessionStore } from '../../src/engine/SessionStore';
@@ -64,6 +62,7 @@ describe('BaileysInstance', () => {
   let sessionStore: RealSessionStore;
 
   beforeEach(() => {
+    setBaileysLoaderForTest(async () => mockBaileys);
     mockEv._handlers = {};
     jest.clearAllMocks();
     sessionStore = Object.assign(new RealSessionStore(), {
@@ -75,7 +74,6 @@ describe('BaileysInstance', () => {
   afterEach(async () => {
     try { await sessionStore.deleteSession('test-instance-1'); } catch {}
     resetBaileysLoaderForTest();
-    setBaileysLoaderForTest(async () => mockBaileys);
   });
 
   // ── connect() loads auth state and creates socket ─────────────────────

@@ -12,6 +12,12 @@ import {
 import { aiSettingsTable, chatSessionsTable, chatbotCoreSchema } from 'najm-chatbot/sqlite';
 import { ragSchema } from 'najm-rag/sqlite';
 import { storageSchema } from 'najm-storage/sqlite';
+export {
+  chatbotToolEmbeddingsTable, chatbotToolSemanticsTable, chatbotRoutingSettingsTable,
+  chatbotDocumentSourcesTable, chatbotDocumentChunksTable, chatbotDocumentEmbeddingsTable,
+  chatbotStudioAuditLogsTable, chatbotUnmatchedQueriesTable, chatbotRoutingTestsTable,
+} from 'najm-rag/sqlite';
+export { storageFiles, storageBuckets, storageTags, storageFileTags, auditLog } from 'najm-storage/sqlite';
 import {
   najmThemeAppearance,
   najmThemeBranding,

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+- Bring the 2.4.0 embedding diagnostics onto the 3.x line; the published 3.0.0
+  was cut without them.
+
+## 3.0.0 - 2026-10-04
+
+- Breaking: adopt Najm Kit 3 and the compatible Storage 4 peer contract; accept Auth 6 alongside Auth 4/5.
+- Preserve the published 2.3.0 Darija query rewriter, its root exports, and najm-rag/query-rewrites subpath.
+- Require Hono ^4.13.12.
+
 ## 2.4.0
 
 - Add request-scoped `withEmbeddingDiagnostics`, public embedding/attempt

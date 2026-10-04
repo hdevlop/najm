@@ -318,6 +318,22 @@ describe('service workers', () => {
 });
 
 describe('compatibility', () => {
+  test.each(['15.5.23', '16.2.11', '16.3.5'])('rejects vulnerable Next %s', (version) => {
+    const app = scratch();
+    write(join(app, 'package.json'), '{"name":"app"}');
+    write(join(app, 'node_modules', 'next', 'package.json'), JSON.stringify({ name: 'next', version, main: 'index.js' }));
+    write(join(app, 'node_modules', 'next', 'index.js'), '');
+    expect(() => assertNextCompatible(app)).toThrow(NajmNextConfigError);
+  });
+
+  test.each(['15.5.24', '16.3.6'])('accepts patched Next %s', (version) => {
+    const app = scratch();
+    write(join(app, 'package.json'), '{"name":"app"}');
+    write(join(app, 'node_modules', 'next', 'package.json'), JSON.stringify({ name: 'next', version, main: 'index.js' }));
+    write(join(app, 'node_modules', 'next', 'index.js'), '');
+    expect(assertNextCompatible(app)).toBe(version);
+  });
+
   test('compares versions', () => {
     expect(compareVersions('16.2.10', '15.3.0')).toBe(1);
     expect(compareVersions('15.2.9', '15.3.0')).toBe(-1);

@@ -2,8 +2,7 @@
 // SmtpProvider.ts - SMTP Email Provider
 // ============================================================================
 
-import nodemailer from 'nodemailer';
-import type Mail from 'nodemailer/lib/mailer';
+import nodemailer, { type Transporter, type TransportOptions, type SendMailOptions } from 'nodemailer';
 import { BaseProvider } from './BaseProvider';
 import type { SmtpConfig, EmailMessage, SendResult } from '../types';
 
@@ -12,14 +11,14 @@ import type { SmtpConfig, EmailMessage, SendResult } from '../types';
  */
 export class SmtpProvider extends BaseProvider {
   readonly name = 'smtp';
-  private transporter: nodemailer.Transporter | null = null;
+  private transporter: Transporter | null = null;
 
   constructor(private readonly config: SmtpConfig) {
     super();
   }
 
   async initialize(): Promise<void> {
-    const options: nodemailer.TransportOptions = {
+    const options: TransportOptions = {
       host: this.config.host,
       port: this.config.port,
       secure: this.config.secure ?? this.config.port === 465,
@@ -28,7 +27,7 @@ export class SmtpProvider extends BaseProvider {
       pool: this.config.pool,
       maxConnections: this.config.maxConnections,
       maxMessages: this.config.maxMessages,
-    } as nodemailer.TransportOptions;
+    } as TransportOptions;
 
     this.transporter = nodemailer.createTransport(options);
   }
@@ -39,7 +38,7 @@ export class SmtpProvider extends BaseProvider {
     }
 
     try {
-      const mailOptions: Mail.Options = {
+      const mailOptions: SendMailOptions = {
         from: message.from ? this.formatAddress(message.from) : undefined,
         to: this.formatAddresses(message.to),
         cc: message.cc ? this.formatAddresses(message.cc) : undefined,

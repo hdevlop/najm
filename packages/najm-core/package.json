@@ -1,6 +1,6 @@
 {
   "name": "najm-core",
-  "version": "3.0.2",
+  "version": "3.0.3",
   "license": "MIT",
   "type": "module",
   "files": [
@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "diject": "^0.1.11",
-    "hono": "^4.12.31",
+    "hono": "^4.13.12",
     "reflect-metadata": "^0.2.2"
   },
   "peerDependencies": {

@@ -90,13 +90,15 @@ describe("trusted-hop client address resolution", () => {
     });
   });
 
-  describe("legacy compatibility path", () => {
-    test("an unconfigured hop count keeps the historical leftmost behavior", () => {
-      expect(resolve({ "x-forwarded-for": "1.2.3.4, 203.0.113.7" }, undefined)).toBe("1.2.3.4");
+  describe("secure default", () => {
+    test("an unconfigured hop count ignores spoofed forwarded headers", () => {
+      for (const ip of ["1.2.3.4", "9.9.9.9"]) {
+        expect(resolve({ "x-forwarded-for": ip, "x-real-ip": ip }, undefined, "10.0.0.1")).toBe("10.0.0.1");
+      }
     });
 
-    test("the legacy path still falls back to x-real-ip and the peer address", () => {
-      expect(resolve({ "x-real-ip": "203.0.113.7" }, undefined)).toBe("203.0.113.7");
+    test("missing peers share a fixed bucket instead of trusting x-real-ip", () => {
+      expect(resolve({ "x-real-ip": "203.0.113.7" }, undefined)).toBe(UNRESOLVED_CLIENT_ADDRESS);
       expect(resolve({}, undefined, "10.0.0.1")).toBe("10.0.0.1");
     });
   });
@@ -132,12 +134,12 @@ describe("misconfiguration diagnostics", () => {
     resetClientAddressWarnings();
   });
 
-  test("an unconfigured hop count announces that keys are client-controlled", () => {
-    resolve({ "x-forwarded-for": "1.2.3.4, 203.0.113.7" }, undefined);
+  test("an unconfigured hop count announces the socket-peer default", () => {
+    resolve({ "x-forwarded-for": "1.2.3.4, 203.0.113.7" }, undefined, "10.0.0.1");
 
     expect(warnings).toHaveLength(1);
     expect(warnings[0]).toContain("trustedProxyHops is not configured");
-    expect(warnings[0]).toContain("leftmost X-Forwarded-For");
+    expect(warnings[0]).toContain("forwarded headers are ignored");
   });
 
   test("a chain shorter than the declared topology reports the collapse", () => {

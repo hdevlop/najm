@@ -1,0 +1,4 @@
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm"
+ignoreUntil = 2026-11-04
+reason = "braces@3.0.3 is patched with depth limits in parse, compile, expand, and stringify. CI runs scripts/check-braces-patch.ts before auditing. Remove this exception when an upstream fixed release is available."

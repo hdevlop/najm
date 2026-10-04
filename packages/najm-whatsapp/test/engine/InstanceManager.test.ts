@@ -36,12 +36,6 @@ const mockBaileysModule = {
   useMultiFileAuthState: jest.fn().mockResolvedValue({ state: { creds: {}, keys: {} }, saveCreds: jest.fn() }),
 };
 
-setBaileysLoaderForTest(async () => mockBaileysModule);
-
-(jest as any).mock('../../src/engine/BaileysInstance', () => ({
-  BaileysInstance: originalBaileysInstance,
-}));
-
 import type { InstanceInfo } from '../../src/engine/InstanceManager';
 import type { SessionStore } from '../../src/engine/SessionStore';
 
@@ -52,6 +46,7 @@ describe('InstanceManager', () => {
   let repositoryRows: Map<string, any>;
 
   beforeEach(() => {
+    setBaileysLoaderForTest(async () => mockBaileysModule);
     instancesCreated = [];
     jest.clearAllMocks();
     sessionStore = {
@@ -93,6 +88,7 @@ describe('InstanceManager', () => {
       }),
     };
     manager = new InstanceManager();
+    (manager as any).createInstance = originalBaileysInstance;
     (manager as any).sessionStore = sessionStore;
     (manager as any).repository = repository;
     (manager as any).events = { emit: jest.fn(), emitAsync: jest.fn().mockResolvedValue(undefined) };

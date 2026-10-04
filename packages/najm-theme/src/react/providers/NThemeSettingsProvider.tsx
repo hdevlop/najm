@@ -537,7 +537,7 @@ export function NThemeSettingsProvider({
   });
 
   const saveBranding = React.useCallback(async () => {
-    if (!brandingQuery.data) return;
+    if (!brandingQuery.data || Object.values(brandingDraft).some((entry) => entry.uploading)) return;
 
     const slots: Record<string, { fileName: string } | null> = {};
     const committing = new Set<string>();

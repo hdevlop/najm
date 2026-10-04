@@ -63,6 +63,7 @@ export function NThemeSettingsActions({
 }: NThemeSettingsActionsProps) {
   const settings = useNThemeSettingsOptional();
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const resetTriggerRef = React.useRef<HTMLButtonElement>(null);
   const [fileError, setFileError] = React.useState(false);
   const [resetResource, setResetResource] = React.useState<ThemeResource | null>(null);
 
@@ -191,6 +192,7 @@ export function NThemeSettingsActions({
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <NButton
+                ref={resetTriggerRef}
                 type="button"
                 variant="outline"
                 size="icon-sm"
@@ -242,6 +244,10 @@ export function NThemeSettingsActions({
       {compact && resetResource ? (
         <NConfirmDialog
           open
+          onCloseAutoFocus={(event) => {
+            event.preventDefault();
+            resetTriggerRef.current?.focus();
+          }}
           onOpenChange={(open) => {
             if (!open) setResetResource(null);
           }}

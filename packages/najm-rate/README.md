@@ -59,6 +59,7 @@ rateLimit({
   defaultWindow: '1m',        // Time window: '1s', '1m', '1h', '1d'
   defaultLimit: 100,           // Max requests per window
   keyGenerator: 'ip',         // 'ip' | 'user' | 'api-key' | 'user+ip' | (ctx) => string
+  trustedProxyHops: 0,        // Default: socket peer only; use 1 for one trusted reverse proxy
   skip: (ctx) => ctx.req.path === '/health',  // Skip rate limiting for certain requests
 })
 ```
@@ -90,8 +91,9 @@ rateLimit({
   unrelated endpoints do not share the same counter.
 - Controller-level decorators share a controller-scoped bucket.
 - Plugin-level `defaultLimit` creates a global bucket.
-- The default key strategy is IP address. Behind a proxy, only trust
-  `x-forwarded-for` / `x-real-ip` when that proxy is controlled by you; otherwise
-  provide a custom `keyGenerator`.
+- The default key strategy uses the socket peer and ignores forwarded headers.
+  Set `trustedProxyHops` to the number of controlled reverse proxies and prevent
+  direct access that bypasses them. Without a usable peer, requests share one
+  fixed bucket. `x-real-ip` never substitutes for a trusted forwarded chain.
 - Counters use the configured `najm-cache` backend. Use Redis or another shared
   cache for multi-instance deployments.
