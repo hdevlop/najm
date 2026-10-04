@@ -117,3 +117,9 @@ resolves its installed Next package, including when it is hoisted.
 
 Remote CI, publication, and consumer acceptance results will be recorded
 separately. Deployment remains outside this release verification.
+
+The pre-publication tarball inspection caught a missing CLI declaration entry.
+CLI clean now removes `tsconfig.tsbuildinfo`, so two consecutive builds emit
+the declared executable and types. Its 24 tests pass, including the new built
+entry regression. All release artifacts will be repacked from the corrected
+source commit before publication.

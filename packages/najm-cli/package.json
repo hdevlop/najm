@@ -20,7 +20,7 @@
     "dist"
   ],
   "scripts": {
-    "clean": "rimraf dist",
+    "clean": "rimraf dist tsconfig.tsbuildinfo",
     "build:lib": "bun build src/index.ts --outdir dist --format esm --target node --external najm-core --external najm-mcp --external najm-auth",
     "build:types": "tsc --project tsconfig.json",
     "build": "bun run clean && bun run build:types && bun run build:lib",
