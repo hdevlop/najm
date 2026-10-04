@@ -119,7 +119,7 @@ describe('KnowledgeService.search', () => {
   test('embeds the query before searching', async () => {
     const { service, embedding } = makeKnowledgeService();
     await service.search('my query');
-    expect(embedding.embed).toHaveBeenCalledWith('my query');
+    expect(embedding.embed).toHaveBeenCalledWith('my query', 'query', 'knowledge-search');
   });
 
   test('skips the embedding call when no document is indexed', async () => {

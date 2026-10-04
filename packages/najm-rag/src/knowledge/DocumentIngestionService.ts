@@ -268,7 +268,7 @@ export class DocumentIngestionService {
       const texts = batch.map((row: any) => row.text);
 
       try {
-        const embeddings = await this.embedding.embedBatch(texts);
+        const embeddings = await this.embedding.embedBatch(texts, 'document', 'document-index');
         const embedData: CreateDocumentEmbeddingData[] = batch.map((row: any, j: number) => ({
           chunkId: row.id,
           embedding: embeddings[j],

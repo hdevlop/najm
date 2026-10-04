@@ -18,6 +18,42 @@ bun add najm-rag
 
 ## Quick Start
 
+### Request-scoped embedding diagnostics
+
+```typescript
+import { withEmbeddingDiagnostics } from 'najm-rag';
+
+const embeddings = [];
+const result = await withEmbeddingDiagnostics({
+  correlationId: requestId,
+  onEmbedding: event => { embeddings.push(event); },
+}, () => runRequest());
+```
+
+The scope captures nested async calls to `EmbeddingService` without sharing a
+current-request variable. Events contain counts and timings, operation/purpose,
+cache status, provider/model and outcome; they omit input text, vectors,
+endpoints, credentials and raw error messages. Offsets are relative to scope
+start. `attempts` records each actual HTTP request, including batch requests and
+health retries. A cache hit or cooldown skip has no attempts. `embed` emits one
+logical call rather than duplicating its internal batch. Empty knowledge indexes
+make no embedding call and therefore emit no event.
+
+`onEmbedding` is best effort and runs when each logical call finishes. Throws
+and rejected promises are ignored; async sinks are not awaited. Prefer a
+synchronous collector or queue. Capture ends when the scope's callback settles;
+await work that must be included. Nested scopes isolate their events and restore
+their parent. Do not sum logical-call durations with their nested attempt durations
+or with routing/context spans.
+
+The plugin registers `RAG_DIAGNOSTICS` as a `RagDiagnosticsRunner` when embeddings
+are enabled. Optional consumers can resolve this DI bridge without importing a
+mandatory RAG runtime dependency. `najm-chatbot` uses it to include embedding
+spans in its existing diagnostics. Apps outside chat can use the function above.
+`EmbeddingService.clearQueryCache()` clears only that instance's vector cache;
+it does not reset cooldown, the embedding model, routing settings or application
+caches. This is one measurement control, not a complete cold-cache reset.
+
 ### Optional Darija wording support
 
 Use the exported vocabulary helper with the existing routing rewrite hook:

@@ -90,7 +90,7 @@ export class SemanticPhraseService {
     let embedding: number[] | null = null;
     let embeddingError: string | null = null;
     try {
-      embedding = await this.embedding.embed(dto.phrase, 'document');
+      embedding = await this.embedding.embed(dto.phrase, 'document', 'semantic-index');
     } catch (err) {
       embeddingError = err instanceof Error ? err.message : String(err);
       this.log?.warn?.(`[semantic-phrase] createSemantic: embedding failed for phrase "${dto.phrase}" → saved as PENDING. Reason: ${embeddingError}`);
@@ -119,7 +119,7 @@ export class SemanticPhraseService {
 
     if (phraseChanged) {
       try {
-        newEmbedding = await this.embedding.embed(dto.phrase!, 'document');
+        newEmbedding = await this.embedding.embed(dto.phrase!, 'document', 'semantic-index');
       } catch {
         // keep existing embedding if re-embed fails
       }
@@ -231,7 +231,7 @@ export class SemanticPhraseService {
 
     for (const row of rows) {
       try {
-        const [embedding] = await this.embedding.embedBatch([row.phrase]);
+        const [embedding] = await this.embedding.embedBatch([row.phrase], 'document', 'semantic-index');
         await this.repository.updateSemanticEmbeddingById(row.id, embedding);
         reindexed++;
       } catch {
@@ -250,7 +250,7 @@ export class SemanticPhraseService {
     }
 
     const embeddings = await this.validator.resolveSemanticEmbeddings(
-      this.embedding.embedBatch(this.validator.getSemanticImportPhrases(state)),
+      this.embedding.embedBatch(this.validator.getSemanticImportPhrases(state), 'document', 'semantic-index'),
       state,
     );
 

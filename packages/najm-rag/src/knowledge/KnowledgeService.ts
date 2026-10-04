@@ -24,7 +24,7 @@ export class KnowledgeService {
     if (!(await this.repository.hasEmbeddings())) {
       return { query, citations: [] };
     }
-    const queryEmbedding = await this.embedding.embed(normalized);
+    const queryEmbedding = await this.embedding.embed(normalized, 'query', 'knowledge-search');
     const matches = await this.repository.searchChunks(queryEmbedding, limit, resolvedThreshold);
 
     if (matches.length === 0) {

@@ -112,7 +112,7 @@ export class ToolIndexerService {
       return { indexed: 0, skipped: tools.length };
     }
 
-    const embeddings = await this.embedding.embedBatch(toIndex.map((t) => t.text));
+    const embeddings = await this.embedding.embedBatch(toIndex.map((t) => t.text), 'document', 'tool-index');
 
     for (let i = 0; i < toIndex.length; i++) {
       const item = toIndex[i];

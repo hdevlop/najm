@@ -152,7 +152,7 @@ export class SemanticImportJobService {
       BATCH_SIZE,
       async (batch, batchIndex, batchStart) => {
         const phrases = batch.map((e) => e.phrase);
-        const embeddings = await this.embedding.embedBatch(phrases);
+        const embeddings = await this.embedding.embedBatch(phrases, 'document', 'semantic-index');
 
         job.currentPhase = 'saving';
 

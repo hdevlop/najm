@@ -67,7 +67,7 @@ export class RoutingPreviewService {
     try {
       const rewritten = rewriteRoutingQuery(normalized, this.config.rewriteRoutingQuery);
       if (rewritten !== normalized) shown = { rewritten };
-      const embedding = await this.embedding.embed(rewritten);
+      const embedding = await this.embedding.embed(rewritten, 'query', 'routing-preview');
 
       const registeredToolNames = new Set(routableTools.map((tool) => tool.name));
       let rawMatches = this.filterRegisteredMatches(

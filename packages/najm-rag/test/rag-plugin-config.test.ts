@@ -2,6 +2,7 @@ import 'reflect-metadata';
 import { describe, expect, test } from 'bun:test';
 import { rag } from '../src/plugin';
 import { EmbeddingService } from '../src/embeddings';
+import { RagDiagnosticsService } from '../src/diagnostics';
 import type { RagMergedConfig } from '../src/config';
 
 const configOf = (plugin: ReturnType<typeof rag>) => plugin.config as RagMergedConfig;
@@ -11,6 +12,7 @@ describe('rag() enablement', () => {
     const plugin = rag({ dialect: 'sqlite' });
     expect(configOf(plugin).rag.enabled).toBe(false);
     expect(plugin.services ?? []).not.toContain(EmbeddingService);
+    expect(plugin.services ?? []).not.toContain(RagDiagnosticsService);
   });
 
   test('embedding, routing or knowledge enables the embedder', () => {
@@ -22,6 +24,7 @@ describe('rag() enablement', () => {
       const plugin = rag(config);
       expect(configOf(plugin).rag.enabled).toBe(true);
       expect(plugin.services).toContain(EmbeddingService);
+      expect(plugin.services).toContain(RagDiagnosticsService);
     }
   });
 

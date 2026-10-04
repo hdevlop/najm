@@ -37,7 +37,7 @@ export class ToolRouterService {
     }
 
     try {
-      const embedding = await this.embedding.embed(rewriteRoutingQuery(normalized, this.config.rewriteRoutingQuery));
+      const embedding = await this.embedding.embed(rewriteRoutingQuery(normalized, this.config.rewriteRoutingQuery), 'query', 'tool-routing');
 
       const maxTools = routing.maxTools ?? 12;
       const topSemanticHits = routing.topSemanticHits ?? 8;

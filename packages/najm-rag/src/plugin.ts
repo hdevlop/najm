@@ -1,6 +1,7 @@
 import { plugin } from 'najm-core';
 import { TOOL_PROVIDER } from 'najm-mcp';
-import { RAG_CONFIG, RAG_SCHEMA, VECTOR_STRATEGY, RAG_OCR_PROVIDER } from './tokens';
+import { RAG_CONFIG, RAG_DIAGNOSTICS, RAG_SCHEMA, VECTOR_STRATEGY, RAG_OCR_PROVIDER } from './tokens';
+import { RagDiagnosticsService } from './diagnostics';
 import {
   EmbeddingService,
   EmbeddingValidator,
@@ -171,6 +172,7 @@ export const rag = (config?: RagConfig) => {
   if (ragEnabled) {
     services.push(
       EmbeddingService,
+      RagDiagnosticsService,
       EmbeddingValidator,
       ToolIndexRepository,
       ToolIndexValidator,
@@ -236,6 +238,8 @@ export const rag = (config?: RagConfig) => {
     .set(RAG_SCHEMA, resolveSchema(config))
     .set(VECTOR_STRATEGY, vectorStrategy)
     .set(RAG_OCR_PROVIDER, new NoopOcrProvider());
+
+  if (ragEnabled) builder.alias(RAG_DIAGNOSTICS, RagDiagnosticsService);
 
   if (routingEnabled) {
     builder.alias(TOOL_PROVIDER, ToolRouterService);

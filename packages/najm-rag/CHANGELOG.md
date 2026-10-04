@@ -1,5 +1,19 @@
 # Changelog
 
+## 2.4.0
+
+- Add request-scoped `withEmbeddingDiagnostics`, public embedding/attempt
+  diagnostics types, and the `RAG_DIAGNOSTICS` DI bridge. AsyncLocalStorage
+  isolates concurrent requests. Sink failures do not change embedding results;
+  work detached after a scope closes cannot append events.
+- Report logical embedding calls and real provider attempts separately, with
+  query/document/health purpose, operation, cache hit/miss/bypass, monotonic
+  timing, provider/model, timeout bound and completed/timeout/unavailable/
+  cooldown/error outcomes. Events omit text, vectors, endpoints, credentials
+  and raw errors. Label routing, preview, knowledge and indexing callers.
+- Expose instance-scoped `EmbeddingService.clearQueryCache()` for isolated
+  measurements without clearing provider cooldown or other instances.
+
 ## 2.3.0
 
 - Export `createDarijaQueryRewriter`, `DarijaQueryRewriteOptions` and

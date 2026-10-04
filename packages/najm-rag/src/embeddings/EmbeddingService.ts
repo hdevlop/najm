@@ -4,6 +4,8 @@ import type { RagMergedConfig } from '../config';
 import type { EmbeddingConfig } from './EmbeddingDto';
 import { EmbeddingValidator } from './EmbeddingValidator';
 import { EmbeddingLru } from './EmbeddingUtils';
+import { startEmbeddingDiagnostic, type EmbeddingDiagnosticRecorder,
+  type EmbeddingOperation, type EmbeddingOutcome } from '../diagnostics/EmbeddingDiagnostics';
 
 @Service()
 export class EmbeddingService {
@@ -85,29 +87,59 @@ export class EmbeddingService {
     };
   }
 
-  async embed(text: string, purpose: 'query' | 'document' = 'query'): Promise<number[]> {
-    const cacheKey = `${purpose}\0${text}`;
-    const cached = this.queryCache.get(cacheKey);
-    if (cached) return cached;
-    const results = await this.embedBatch([text], purpose);
-    if (!results[0]) {
-      throw new Error('Embedding service returned empty result for single text');
+  async embed(text: string, purpose: 'query' | 'document' = 'query', operation: EmbeddingOperation = 'unspecified'): Promise<number[]> {
+    const diagnostic = startEmbeddingDiagnostic({ purpose, operation, inputCount: 1, cache: 'miss' });
+    try {
+      const cacheKey = `${purpose}\0${text}`;
+      const cached = this.queryCache.get(cacheKey);
+      if (cached) {
+        if (diagnostic) {
+          const config = this.embeddingConfig;
+          Object.assign(diagnostic.data, { cache: 'hit', provider: config.provider,
+            model: config.model, timeoutMs: purpose === 'query' ? config.queryTimeoutMs : config.timeoutMs });
+        }
+        return cached;
+      }
+      const results = await this.embedBatchInternal([text], purpose, diagnostic);
+      if (!results[0]) throw new Error('Embedding service returned empty result for single text');
+      this.queryCache.set(cacheKey, results[0]);
+      return results[0];
+    } catch (err) {
+      if (diagnostic?.data.outcome !== 'cooldown') diagnostic?.fail();
+      throw err;
+    } finally {
+      diagnostic?.finish();
     }
-    this.queryCache.set(cacheKey, results[0]);
-    return results[0];
   }
 
-  async embedBatch(texts: string[], purpose: 'query' | 'document' = 'document'): Promise<number[][]> {
+  async embedBatch(texts: string[], purpose: 'query' | 'document' = 'document', operation: EmbeddingOperation = 'unspecified'): Promise<number[][]> {
+    const diagnostic = startEmbeddingDiagnostic({ purpose, operation, inputCount: texts.length, cache: 'bypass' });
+    try { return await this.embedBatchInternal(texts, purpose, diagnostic); }
+    catch (err) {
+      if (diagnostic?.data.outcome !== 'cooldown') diagnostic?.fail();
+      throw err;
+    } finally { diagnostic?.finish(); }
+  }
+
+  /** Instance-scoped cache control for isolated measurements; does not reset provider cooldown. */
+  clearQueryCache(): void { this.queryCache.clear(); }
+
+  private async embedBatchInternal(texts: string[], purpose: 'query' | 'document', diagnostic: EmbeddingDiagnosticRecorder): Promise<number[][]> {
     const config = this.embeddingConfig;
     const query = purpose === 'query';
+    if (diagnostic) Object.assign(diagnostic.data, {
+      provider: config.provider, model: config.model,
+      timeoutMs: query ? config.queryTimeoutMs : config.timeoutMs,
+    });
     if (query && Date.now() < this.queryUnavailableUntil) {
+      if (diagnostic) diagnostic.data.outcome = 'cooldown';
       throw new EmbeddingUnavailableError(`Embedding provider skipped after a recent failure: ${this.queryFailure}`);
     }
     const timeoutMs = query ? config.queryTimeoutMs : config.timeoutMs;
     const results: number[][] = [];
     try {
       for (let offset = 0; offset < texts.length; offset += config.batchSize) {
-        results.push(...await this.requestEmbeddings(config, texts.slice(offset, offset + config.batchSize), purpose, timeoutMs));
+        results.push(...await this.requestEmbeddings(config, texts.slice(offset, offset + config.batchSize), purpose, timeoutMs, diagnostic));
       }
     } catch (err) {
       if (query && err instanceof EmbeddingUnavailableError && config.queryFailureCooldownMs > 0) {
@@ -125,6 +157,7 @@ export class EmbeddingService {
     texts: string[],
     purpose: 'query' | 'document',
     timeoutMs: number,
+    diagnostic?: EmbeddingDiagnosticRecorder,
   ): Promise<number[][]> {
     const { provider, baseUrl, model, apiKey, dimensions, requestDimensions, truncateDimensions, queryPrefix, documentPrefix } = config;
     const prefix = purpose === 'query' ? queryPrefix : documentPrefix;
@@ -132,6 +165,8 @@ export class EmbeddingService {
     const openAi = provider === 'openai-compatible';
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    const attemptStart = performance.now();
+    let attemptOutcome: Exclude<EmbeddingOutcome, 'cooldown'> = 'completed';
     try {
       const response = await fetch(`${baseUrl}${openAi ? '/embeddings' : '/api/embed'}`, {
         method: 'POST',
@@ -158,13 +193,16 @@ export class EmbeddingService {
         ? this.validator.assertOpenAiResponse(data, texts.length, dimensions, truncateDimensions)
         : this.validator.assertResponse(data, texts.length, dimensions, truncateDimensions);
     } catch (err) {
+      attemptOutcome = 'error';
       const aborted = (err as any)?.name === 'AbortError';
       if (aborted) {
+        attemptOutcome = 'timeout';
         throw new EmbeddingUnavailableError(`Embedding request timed out after ${timeoutMs}ms — is ${provider} running at ${baseUrl}?`);
       }
       // Node reports transport failures as TypeError with a `cause.code`; Bun throws an Error with `code`.
       const code = [(err as any)?.cause?.code, (err as any)?.code].find((c) => typeof c === 'string' && /^\w+$/.test(c));
       if (err instanceof TypeError || code) {
+        attemptOutcome = 'unavailable';
         throw new EmbeddingUnavailableError(
           `Embedding request could not reach ${provider} at ${baseUrl}${code ? ` (${code})` : ''} — check the endpoint, redirects and authentication`,
         );
@@ -175,6 +213,7 @@ export class EmbeddingService {
       throw err;
     } finally {
       clearTimeout(timeout);
+      diagnostic?.attempt(attemptStart, texts.length, attemptOutcome);
     }
   }
 
@@ -183,6 +222,16 @@ export class EmbeddingService {
   }
 
   async health(timeoutMs?: number, options: EmbeddingHealthOptions = {}): Promise<EmbeddingHealth> {
+    const diagnostic = startEmbeddingDiagnostic({ purpose: 'health', operation: 'unspecified', inputCount: 1, cache: 'bypass' });
+    try {
+      const result = await this.healthInternal(timeoutMs, options, diagnostic);
+      if (!result.ok) diagnostic?.fail();
+      return result;
+    } catch (err) { diagnostic?.fail(); throw err; }
+    finally { diagnostic?.finish(); }
+  }
+
+  private async healthInternal(timeoutMs: number | undefined, options: EmbeddingHealthOptions, diagnostic: EmbeddingDiagnosticRecorder): Promise<EmbeddingHealth> {
     let config: ResolvedEmbeddingConfig;
     try {
       config = this.embeddingConfig;
@@ -199,11 +248,14 @@ export class EmbeddingService {
       };
     }
     const effectiveTimeoutMs = timeoutMs ?? config.healthTimeoutMs;
+    if (diagnostic) Object.assign(diagnostic.data, {
+      provider: config.provider, model: config.model, timeoutMs: effectiveTimeoutMs,
+    });
     const retries = Math.max(0, options.retries ?? 0);
     let last: EmbeddingHealth | null = null;
 
     for (let attempt = 0; attempt <= retries; attempt++) {
-      const result = await this.probeHealth(config, effectiveTimeoutMs);
+      const result = await this.probeHealth(config, effectiveTimeoutMs, diagnostic);
       last = result;
       if (result.ok || !result.timedOut) {
         return this.toPublicHealth(result);
@@ -213,12 +265,12 @@ export class EmbeddingService {
     return this.toPublicHealth(last!);
   }
 
-  private async probeHealth(config: ResolvedEmbeddingConfig, timeoutMs: number): Promise<EmbeddingHealthProbe> {
+  private async probeHealth(config: ResolvedEmbeddingConfig, timeoutMs: number, diagnostic: EmbeddingDiagnosticRecorder): Promise<EmbeddingHealthProbe> {
     const { provider, baseUrl, model } = config;
     const started = Date.now();
     try {
       // Validate the same authenticated request and vector contract used by reads/indexing.
-      await this.requestEmbeddings(config, ['ok'], 'query', timeoutMs);
+      await this.requestEmbeddings(config, ['ok'], 'query', timeoutMs, diagnostic);
       this.queryUnavailableUntil = 0;
       return { ok: true, provider, baseUrl, model, latencyMs: Date.now() - started };
     } catch (err) {
