@@ -30,7 +30,7 @@ export {
   PROVIDERS,
   PROVIDER_OPTIONS,
 } from './agent/LlmProviderFactory';
-export type { LlmProvider, ProviderMeta, LlmSettings } from './agent/LlmProviderFactory';
+export type { LlmProvider, ProviderMeta, LlmSettings, BuildModelOptions, OpenRouterRequestOptions } from './agent/LlmProviderFactory';
 
 export { buildAiSdkTools, schemaToZod } from './agent/McpToolAdapter';
 export type { BuildAiSdkToolsOptions, ToolSettledEvent } from './agent/McpToolAdapter';
@@ -50,7 +50,7 @@ export type {
 export { calculateCost, getModelPricing, normalizeUsage } from './agent/modelPricing';
 export type { ModelPricing, ReportedUsage, UsageCost } from './agent/modelPricing';
 
-export { ChatAgent, ROUTING_UNAVAILABLE_PROMPT } from './agent/ChatAgent';
+export { ChatAgent, ROUTING_UNAVAILABLE_PROMPT, answerAfterRepeatedToolCall } from './agent/ChatAgent';
 
 export { ChatLogRepository } from './chatLogs';
 export type { InsertChatLogInput, RoutingStatus } from './chatLogs';

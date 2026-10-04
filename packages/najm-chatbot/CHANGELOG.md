@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.2.0 - 2026-10-04
+
+- Add `chatbot({ openrouter })`: OpenRouter-only fields sent with every chat
+  request when the AI settings provider is `openrouter`, such as host routing
+  (`provider: { order: ['cerebras'], allow_fallbacks: true }`) and
+  `reasoning: { effort: 'low' }`. `buildModel` accepts the same options.
+- When the last two steps made exactly the same tool calls, the next step
+  answers without tools (`answerAfterRepeatedToolCall`). A model retrying a
+  failing call no longer loops to `maxSteps` and ends with no answer.
+
 ## 3.1.0 - 2026-10-04
 
 - Restore the 2.2.0/2.2.1 embedding diagnostics on the 3.x line: optional

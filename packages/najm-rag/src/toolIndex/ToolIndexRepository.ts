@@ -61,6 +61,13 @@ export class ToolIndexRepository {
       });
   }
 
+  async deleteEmbeddingsByToolNames(toolNames: string[]): Promise<number> {
+    if (toolNames.length === 0) return 0;
+    const table = this.validator.embeddingsTable();
+    await this.db.delete(table).where(inArray(table.toolName, toolNames));
+    return toolNames.length;
+  }
+
   async searchSemantics(embedding: number[], limit: number, threshold: number): Promise<SemanticMatch[]> {
     return this.vectors.search(this.db, this.validator.semanticsTable(), embedding, limit, threshold);
   }

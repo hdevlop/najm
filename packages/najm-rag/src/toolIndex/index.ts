@@ -9,6 +9,7 @@ export type {
   SemanticPhraseRow,
   ToolIndexInput,
   ToolIndexEntry,
+  ToolIndexResult,
   UpsertEmbeddingData,
   UpsertSemanticData,
   PaginatedSemanticsResult,

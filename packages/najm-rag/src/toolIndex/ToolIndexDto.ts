@@ -60,6 +60,13 @@ export interface ToolIndexEntry extends ToolIndexInput {
   text: string;
 }
 
+export interface ToolIndexResult {
+  indexed: number;
+  skipped: number;
+  /** Rows deleted because their tool is no longer routable. */
+  removed: number;
+}
+
 export interface UpsertEmbeddingData {
   toolName: string;
   description: string;

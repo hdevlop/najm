@@ -14,6 +14,7 @@ import { chatbotCoreSchema as mysqlSchema } from './schema/internal/mysql';
 import { loadChatbotRoutingConfig } from './config/loadRoutingConfig';
 import type { ChatbotSchema } from './ai-settings';
 import type { ChatDiagnosticsSink } from './agent/ChatDiagnostics';
+import type { OpenRouterRequestOptions } from './agent/LlmProviderFactory';
 
 export type ChatbotDialect = 'sqlite' | 'pg' | 'mysql';
 
@@ -72,6 +73,12 @@ export interface ChatbotConfig {
   defaultSystemPrompt?: string;
   maxSteps?: number;
   streamTimeout?: ChatbotStreamTimeout;
+  /**
+   * Added to every chat request when the AI settings provider is
+   * `openrouter`: host routing and reasoning control. Ignored by every
+   * other provider.
+   */
+  openrouter?: OpenRouterRequestOptions;
   maxPromptMessages?: number;
   maxStoredMessages?: number;
   routingHistoryMessages?: number;
@@ -216,6 +223,7 @@ const mergeConfig = (config?: ChatbotConfig): ChatbotConfig => {
     defaultSystemPrompt: effective.defaultSystemPrompt ?? '',
     maxSteps: effective.maxSteps ?? 10,
     streamTimeout: { chunkMs: 60_000, ...effective.streamTimeout },
+    openrouter: effective.openrouter,
     maxPromptMessages: effective.maxPromptMessages ?? 10,
     maxStoredMessages: effective.maxStoredMessages ?? 100,
     routingHistoryMessages: effective.routingHistoryMessages ?? 2,

@@ -138,6 +138,27 @@ function estimateToolPromptTokens(tool: any): number {
   return estimate;
 }
 
+function stepToolCalls(step: { toolCalls?: Array<{ toolName: string; input?: unknown }> }): string {
+  return (step.toolCalls ?? [])
+    .map((call) => `${call.toolName}:${JSON.stringify(call.input ?? null)}`)
+    .sort()
+    .join('\n');
+}
+
+/**
+ * When the last two steps made exactly the same tool calls, the next step
+ * answers without tools. A repeated call returns the same result, so a model
+ * retrying a failing call would otherwise loop until `maxSteps` and end with
+ * no answer.
+ */
+export function answerAfterRepeatedToolCall({ steps }: {
+  steps: ReadonlyArray<{ toolCalls?: Array<{ toolName: string; input?: unknown }> }>;
+}): { toolChoice: 'none' } | undefined {
+  if (steps.length < 2) return undefined;
+  const last = stepToolCalls(steps[steps.length - 1]);
+  return last && last === stepToolCalls(steps[steps.length - 2]) ? { toolChoice: 'none' } : undefined;
+}
+
 async function settleWrites(writes: Promise<void>[]): Promise<void> {
   const results = await Promise.allSettled(writes);
   const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
@@ -301,6 +322,7 @@ export class ChatAgent {
       messages,
       tools: Object.keys(tools).length > 0 ? tools : undefined,
       stopWhen: stepCountIs(this.config.maxSteps ?? 10),
+      prepareStep: answerAfterRepeatedToolCall,
       timeout: this.config.streamTimeout,
       onChunk: ({ chunk }) => {
         if (chunk.type === 'text-delta') diagnostics.textDelta(chunk.text);
@@ -374,6 +396,7 @@ export class ChatAgent {
         messages: await toModelMessages(promptMessages),
         tools: Object.keys(tools).length > 0 ? tools : undefined,
         stopWhen: stepCountIs(this.config.maxSteps ?? 10),
+        prepareStep: answerAfterRepeatedToolCall,
         onStepFinish: (step) => {
           steps.push(step);
           diagnostics.step(step);
@@ -462,6 +485,7 @@ export class ChatAgent {
         messages: await toModelMessages(promptMessages),
         tools: Object.keys(tools).length > 0 ? tools : undefined,
         stopWhen: stepCountIs(this.config.maxSteps ?? 10),
+        prepareStep: answerAfterRepeatedToolCall,
       });
     } catch (err) {
       return {
@@ -761,7 +785,7 @@ export class ChatAgent {
   }
 
   protected buildModel(settings: LlmSettings) {
-    return buildModel(settings);
+    return buildModel(settings, { openrouter: this.config.openrouter });
   }
 
   private computeUsageCost(

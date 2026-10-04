@@ -213,7 +213,57 @@ export const PROVIDER_OPTIONS = (Object.entries(PROVIDERS) as [LlmProvider, Prov
   ([value, meta]) => ({ value, label: meta.label }),
 );
 
-export function buildModel(settings: LlmSettings): LanguageModel {
+/**
+ * OpenRouter-only fields added to every chat request body, sent as given.
+ * They are not OpenAI fields, so the OpenAI-compatible client cannot set them.
+ */
+export interface OpenRouterRequestOptions {
+  /**
+   * Host routing, e.g. `{ order: ['cerebras'], allow_fallbacks: true }`.
+   * https://openrouter.ai/docs/features/provider-routing
+   */
+  provider?: {
+    order?: string[];
+    allow_fallbacks?: boolean;
+    sort?: 'price' | 'throughput' | 'latency';
+    only?: string[];
+    ignore?: string[];
+    require_parameters?: boolean;
+    [field: string]: unknown;
+  };
+  /**
+   * Reasoning control for models that reason, e.g. `{ effort: 'low' }`.
+   * https://openrouter.ai/docs/use-cases/reasoning-tokens
+   */
+  reasoning?: {
+    effort?: 'minimal' | 'low' | 'medium' | 'high';
+    max_tokens?: number;
+    exclude?: boolean;
+    [field: string]: unknown;
+  };
+}
+
+export interface BuildModelOptions {
+  openrouter?: OpenRouterRequestOptions;
+}
+
+/** A fetch that merges `fields` into each JSON request body. */
+export function withBodyFields(fields: Record<string, unknown>): typeof fetch {
+  return (async (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    if (typeof init?.body !== 'string') return globalThis.fetch(input, init);
+    const body = JSON.parse(init.body) as Record<string, unknown>;
+    return globalThis.fetch(input, { ...init, body: JSON.stringify({ ...body, ...fields }) });
+  }) as typeof fetch;
+}
+
+function openRouterBodyFields(options?: OpenRouterRequestOptions): Record<string, unknown> | undefined {
+  const fields = Object.fromEntries(
+    Object.entries(options ?? {}).filter(([, value]) => value !== undefined),
+  );
+  return Object.keys(fields).length > 0 ? fields : undefined;
+}
+
+export function buildModel(settings: LlmSettings, options: BuildModelOptions = {}): LanguageModel {
   const { provider, apiKey, baseUrl, model } = settings;
 
   switch (provider) {
@@ -257,9 +307,11 @@ export function buildModel(settings: LlmSettings): LanguageModel {
     }
 
     case 'openrouter': {
+      const fields = openRouterBodyFields(options.openrouter);
       const openrouter = createOpenAI({
         apiKey: apiKey ?? '',
         baseURL: baseUrl ?? 'https://openrouter.ai/api/v1',
+        fetch: fields ? withBodyFields(fields) : undefined,
       });
       return openrouter.chat(model);
     }

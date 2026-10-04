@@ -4,14 +4,14 @@ import { RAG_CONFIG } from '../tokens';
 import type { RagMergedConfig } from '../config';
 import { EmbeddingService } from '../embeddings';
 import { ToolIndexRepository } from './ToolIndexRepository';
-import type { ToolIndexEntry } from './ToolIndexDto';
+import type { ToolIndexEntry, ToolIndexResult } from './ToolIndexDto';
 import { createFingerprint, buildIndexText } from './ToolIndexUtils';
 import { getRoutableTools } from '../toolVisibility';
 
 @Service()
 @Meta({ layer: 'plugin', order: 55 })
 export class ToolIndexerService {
-  private indexingPromise: Promise<{ indexed: number; skipped: number }> | null = null;
+  private indexingPromise: Promise<ToolIndexResult> | null = null;
 
   constructor(
     @Inject(RAG_CONFIG) private config: RagMergedConfig,
@@ -68,7 +68,7 @@ export class ToolIndexerService {
     })();
   }
 
-  async indexTools(): Promise<{ indexed: number; skipped: number }> {
+  async indexTools(): Promise<ToolIndexResult> {
     if (this.indexingPromise) {
       return this.indexingPromise;
     }
@@ -82,7 +82,7 @@ export class ToolIndexerService {
     }
   }
 
-  private async runIndexTools(): Promise<{ indexed: number; skipped: number }> {
+  private async runIndexTools(): Promise<ToolIndexResult> {
     const tools = getRoutableTools(this.registry.tools);
     const existing = await this.repository.listEmbeddings();
     const fingerprintMap = new Map(existing.map((e) => [e.toolName, e.fingerprint]));
@@ -108,8 +108,16 @@ export class ToolIndexerService {
       toIndex.push({ ...input, fingerprint, text: buildIndexText(input) });
     }
 
+    // A renamed or removed tool keeps its old row otherwise, and the index
+    // grows past the registry. An empty registry is more likely a startup
+    // problem than a server without tools, so it removes nothing.
+    const routable = new Set(tools.map((tool) => tool.name));
+    const removed = tools.length === 0 ? 0 : await this.repository.deleteEmbeddingsByToolNames(
+      existing.map((row) => row.toolName).filter((name) => !routable.has(name)),
+    );
+
     if (toIndex.length === 0) {
-      return { indexed: 0, skipped: tools.length };
+      return { indexed: 0, skipped: tools.length, removed };
     }
 
     const embeddings = await this.embedding.embedBatch(toIndex.map((t) => t.text), 'document', 'tool-index');
@@ -128,6 +136,6 @@ export class ToolIndexerService {
       });
     }
 
-    return { indexed: toIndex.length, skipped: tools.length - toIndex.length };
+    return { indexed: toIndex.length, skipped: tools.length - toIndex.length, removed };
   }
 }

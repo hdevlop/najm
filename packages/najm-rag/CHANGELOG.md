@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.0 - 2026-10-04
+
+- Tool indexing removes the embeddings of tools that are no longer routable,
+  so renamed or removed tools stop accumulating in the index. The result adds
+  `removed`. An empty registry removes nothing.
+
 ## 3.1.0 - 2026-10-04
 
 - Restore the 2.4.0 embedding diagnostics on the 3.x line: request-scoped

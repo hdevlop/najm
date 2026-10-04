@@ -8,6 +8,7 @@ describe('ToolIndexerService', () => {
     const repository = {
       listEmbeddings: mock(() => Promise.resolve([])),
       upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
     } as any;
 
     const service = new ToolIndexerService(
@@ -45,6 +46,7 @@ describe('ToolIndexerService', () => {
       const repository = {
         listEmbeddings: mock(() => Promise.resolve(existing)),
         upsertEmbedding: mock(() => Promise.resolve()),
+        deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
       } as any;
       const service = new ToolIndexerService(
         { toolRouting: { enabled: true }, rag: { embedding: { provider: 'openai-compatible', model, dimensions: 768 } } } as any,
@@ -56,8 +58,44 @@ describe('ToolIndexerService', () => {
 
     const qwen = await indexWith('qwen3-embedding', []);
     expect(qwen.result.indexed).toBe(2);
-    expect((await indexWith('qwen3-embedding', qwen.rows)).result).toEqual({ indexed: 0, skipped: 2 });
-    expect((await indexWith('embeddinggemma', qwen.rows)).result).toEqual({ indexed: 2, skipped: 0 });
+    expect((await indexWith('qwen3-embedding', qwen.rows)).result).toEqual({ indexed: 0, skipped: 2, removed: 0 });
+    expect((await indexWith('embeddinggemma', qwen.rows)).result).toEqual({ indexed: 2, skipped: 0, removed: 0 });
+  });
+
+  test('removes rows of tools that are no longer routable', async () => {
+    const registry = { tools: [{ name: 'teachers_get_teacher_by_id', description: 'A' }] } as any;
+    const embedding = { embedBatch: mock((texts: string[]) => Promise.resolve(texts.map(() => new Array(768).fill(0.1)))) } as any;
+    const repository = {
+      listEmbeddings: mock(() => Promise.resolve([
+        { toolName: 'teachers_get_teacher', fingerprint: 'old' },
+        { toolName: 'gone_tool', fingerprint: 'old' },
+      ])),
+      upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
+    } as any;
+    const service = new ToolIndexerService(
+      { toolRouting: { enabled: true } } as any,
+      registry, embedding, repository, { info: mock(() => {}), error: mock(() => {}) } as any,
+    );
+
+    expect(await service.indexTools()).toEqual({ indexed: 1, skipped: 0, removed: 2 });
+    expect(repository.deleteEmbeddingsByToolNames).toHaveBeenCalledWith(['teachers_get_teacher', 'gone_tool']);
+  });
+
+  test('removes nothing when the registry is empty', async () => {
+    const repository = {
+      listEmbeddings: mock(() => Promise.resolve([{ toolName: 'a', fingerprint: 'fp' }])),
+      upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
+    } as any;
+    const service = new ToolIndexerService(
+      { toolRouting: { enabled: true } } as any,
+      { tools: [] } as any, { embedBatch: mock(() => Promise.resolve([])) } as any, repository,
+      { info: mock(() => {}), error: mock(() => {}) } as any,
+    );
+
+    expect(await service.indexTools()).toEqual({ indexed: 0, skipped: 0, removed: 0 });
+    expect(repository.deleteEmbeddingsByToolNames).not.toHaveBeenCalled();
   });
 
   test('indexes changed tools', async () => {
@@ -72,6 +110,7 @@ describe('ToolIndexerService', () => {
         Promise.resolve([{ toolName: 'a', fingerprint: 'old_fp' }]),
       ),
       upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
     } as any;
 
     const service = new ToolIndexerService(
@@ -94,6 +133,7 @@ describe('ToolIndexerService', () => {
     const repository = {
       listEmbeddings: mock(() => Promise.resolve([])),
       upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
     } as any;
     const log = { info: mock(() => {}), error: mock(() => {}) } as any;
 
@@ -115,6 +155,7 @@ describe('ToolIndexerService', () => {
     const repository = {
       listEmbeddings: mock(() => Promise.resolve([])),
       upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
     } as any;
     const log = { info: mock(() => {}), error: mock(() => {}) } as any;
 
@@ -147,6 +188,7 @@ describe('ToolIndexerService', () => {
     const repository = {
       listEmbeddings: mock(() => Promise.resolve([])),
       upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
     } as any;
     const log = { info: mock(() => {}), error: mock(() => {}) } as any;
 
@@ -182,6 +224,7 @@ describe('ToolIndexerService', () => {
     const repository = {
       listEmbeddings: mock(() => Promise.resolve([])),
       upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
     } as any;
     const log = { info: mock(() => {}), error: mock(() => {}) } as any;
 
@@ -202,8 +245,8 @@ describe('ToolIndexerService', () => {
     const results = await Promise.all([first, second]);
 
     expect(results).toEqual([
-      { indexed: 1, skipped: 0 },
-      { indexed: 1, skipped: 0 },
+      { indexed: 1, skipped: 0, removed: 0 },
+      { indexed: 1, skipped: 0, removed: 0 },
     ]);
     expect(embedding.embedBatch).toHaveBeenCalledTimes(1);
     expect(repository.upsertEmbedding).toHaveBeenCalledTimes(1);
@@ -216,6 +259,7 @@ describe('ToolIndexerService', () => {
     const repository = {
       listEmbeddings: mock(() => Promise.resolve([])),
       upsertEmbedding: mock(() => Promise.resolve()),
+      deleteEmbeddingsByToolNames: mock((names: string[]) => Promise.resolve(names.length)),
     } as any;
     const log = { info: mock(() => {}), error: mock(() => {}) } as any;
 
