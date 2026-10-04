@@ -1,7 +1,7 @@
 import 'reflect-metadata';
 import { afterEach, describe, expect, test } from 'bun:test';
 import { CORRELATION_ID } from 'najm-core';
-import { TOOL_PROVIDER } from 'najm-mcp';
+import { TOOL_PROVIDER, McpRegistryService, McpBuilderService } from 'najm-mcp';
 import { EmbeddingService, EmbeddingValidator, RagDiagnosticsService } from 'najm-rag';
 import { ChatAgent } from '../../src/agent/ChatAgent';
 import { type ChatDiagnostics } from '../../src/agent/ChatDiagnostics';
@@ -48,6 +48,48 @@ const input = (text: string) => ({ messages: [{ role: 'user', content: text } as
 const success = () => { globalThis.fetch = (async () => new Response(JSON.stringify({ embeddings: [[0.1, 0.2]] }))) as any; };
 
 describe('embedding spans in chat diagnostics', () => {
+  test.each(['stream', 'runOnce'] as const)('captures embeddings from a tool during %s without losing preparation spans', async mode => {
+    success();
+    const events: ChatDiagnostics[] = [];
+    const embedding = embedder();
+    const agent = makeAgent('tool-id', embedding, events);
+    const previousGet = (agent as any).container.get;
+    (agent as any).container.get = (token: any) => {
+      if (token === McpRegistryService) return { tools: [{ name: 'lookup', description: 'Lookup' }] };
+      if (token === McpBuilderService) return { invokeTool: async () => {
+        await embedding.embed('tool detail', 'query', 'knowledge-search');
+        return { content: [{ text: 'result' }] };
+      } };
+      return previousGet(token);
+    };
+    (agent as any).config.tools = 'all';
+    let step = 0;
+    (agent as any).buildModel = () => new MockLanguageModelV1({
+      doGenerate: async () => ++step === 1
+        ? { toolCalls: [{ toolCallId: 'call', toolName: 'lookup', args: '{}' }], finishReason: 'tool-calls' }
+        : { text: 'answer', finishReason: 'stop' },
+      doStream: async () => ({ stream: new ReadableStream({ start(controller) {
+        if (++step === 1) {
+          controller.enqueue({ type: 'tool-call', toolCallId: 'call', toolName: 'lookup', args: '{}' });
+          controller.enqueue({ type: 'finish', finishReason: 'tool-calls' });
+        } else {
+          controller.enqueue({ type: 'text-delta', textDelta: 'answer' });
+          controller.enqueue({ type: 'finish', finishReason: 'stop' });
+        }
+        controller.close();
+      } }), rawCall: { rawPrompt: null, rawSettings: {} } }),
+    });
+    const result = mode === 'stream'
+      ? await (await agent.stream(input('preparation query'))).text()
+      : await agent.runOnce(input('preparation query'));
+    expect(result).toContain('answer');
+    for (let n = 0; !events.length && n < 100; n++) await new Promise(resolve => setTimeout(resolve, 5));
+    expect(events[0]!.embeddings).toHaveLength(2);
+    expect(events[0]!.embeddings!.every(e => e.correlationId === 'tool-id')).toBe(true);
+    expect(events[0]!.tools[0]!.outcome).toBe('executed');
+    expect(events[0]!.embeddings![1]!.startMs).toBeGreaterThanOrEqual(events[0]!.tools[0]!.startMs);
+  });
+
   test('available capture with no calls is an explicit empty array', async () => {
     globalThis.fetch = (async () => { throw new Error('no embedding expected'); }) as any;
     const events: ChatDiagnostics[] = [];

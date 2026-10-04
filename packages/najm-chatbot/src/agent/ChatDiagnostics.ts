@@ -76,7 +76,7 @@ export interface ChatDiagnostics {
   tools: ChatToolSpan[];
   /** Present when RAG's diagnostics bridge is available, even for zero calls.
    * Offsets (including attempts) are relative to chat request start. Durations
-   * overlap preparation/routing/context; do not add nested spans. */
+   * overlap preparation/routing/context/tool execution; do not add nested spans. */
   embeddings?: ChatEmbeddingSpan[];
   usage: ChatUsageSummary | null;
   cost: (UsageCost & { provider: string; model: string }) | null;
@@ -164,8 +164,9 @@ export class ChatDiagnosticsRecorder {
   }
 
   async rag<T>(runner: RagDiagnosticsRunner, work: () => T | Promise<T>): Promise<T> {
+    if (this.settled) return work();
     const offset = this.now();
-    this.data.embeddings = [];
+    this.data.embeddings ??= [];
     return runner.run({
       correlationId: this.data.correlationId,
       onEmbedding: (event) => {

@@ -634,9 +634,7 @@ export class ChatAgent {
 
     const prepare = () => diagnostics.span('prepareMs', () => this.prepare(channel, routingText, settings, diagnostics));
     // Resolve an optional public bridge; chat still works without the RAG package/plugin.
-    let ragDiagnostics: RagDiagnosticsRunner | undefined;
-    try { ragDiagnostics = this.container.get(Symbol.for('najm:rag:diagnostics')); }
-    catch { /* Older RAG releases and applications without RAG have no bridge. */ }
+    const ragDiagnostics = this.tryGetRagDiagnostics();
     const prepared = await (ragDiagnostics ? diagnostics.rag(ragDiagnostics, prepare) : prepare());
     diagnostics.data.routingStatus = prepared.routingStatus;
     diagnostics.data.routedToolCount = prepared.routedToolNames.length;
@@ -779,11 +777,26 @@ export class ChatAgent {
   }
 
   private buildChatTools(builder: McpBuilderService, tools: any[], diagnostics?: ChatDiagnosticsRecorder) {
-    return buildAiSdkTools(builder, tools, {
+    const built = buildAiSdkTools(builder, tools, {
       blockConfirmationTools: true,
       readOnlyMessage: (tool) => this.getReadOnlyToolMessage(tool),
       onToolSettled: diagnostics ? (event) => diagnostics.tool(event) : undefined,
     });
+    const runner = diagnostics ? this.tryGetRagDiagnostics() : undefined;
+    if (runner && diagnostics) {
+      for (const tool of Object.values(built)) {
+        const execute = tool.execute;
+        // Keep the MCP request/authorization scope, while tracing any embeddings
+        // performed by a tool after preparation (including streamed LLM steps).
+        tool.execute = (args: any, callOptions: any) => diagnostics.rag(runner, () => execute(args, callOptions));
+      }
+    }
+    return built;
+  }
+
+  private tryGetRagDiagnostics(): RagDiagnosticsRunner | undefined {
+    try { return this.container.get(Symbol.for('najm:rag:diagnostics')); }
+    catch { return undefined; /* Older RAG releases and apps without RAG have no bridge. */ }
   }
 
   private getReadOnlyToolMessage(tool: { name: string; confirmation?: { message?: string } }): string {
