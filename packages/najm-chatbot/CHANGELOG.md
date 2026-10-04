@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 - 2026-10-04
 
-- Bring the 2.2.0/2.2.1 embedding diagnostics onto the 3.x line; the published
-  3.0.0 was cut without them.
+- Restore the 2.2.0/2.2.1 embedding diagnostics on the 3.x line: optional
+  `embeddings` in chat diagnostics, `ChatEmbeddingSpan`, `embeddingsIncomplete`
+  and stable terminal diagnostics after cancellation. Requires najm-rag 3.1.0
+  for capture. The published 3.0.0 was cut without them.
 
 ## 3.0.0 - 2026-10-04
 

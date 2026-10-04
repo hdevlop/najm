@@ -1,9 +1,11 @@
 # Changelog
 
-## Unreleased
+## 3.1.0 - 2026-10-04
 
-- Bring the 2.4.0 embedding diagnostics onto the 3.x line; the published 3.0.0
-  was cut without them.
+- Restore the 2.4.0 embedding diagnostics on the 3.x line: request-scoped
+  `withEmbeddingDiagnostics`, the diagnostics types, the `RAG_DIAGNOSTICS` DI
+  bridge and `EmbeddingService.clearQueryCache()`. The published 3.0.0 was cut
+  without them.
 
 ## 3.0.0 - 2026-10-04
 
