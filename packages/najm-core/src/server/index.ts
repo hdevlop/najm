@@ -29,6 +29,26 @@ export { handle } from './handle';
 
 const CORE_SERVICES = [BootService, LoggerService, ScannerService];
 
+/**
+ * The injection entries the last boot on a shared container registered. A dev
+ * server's hot reload boots a new Server in the same process while unchanged
+ * modules keep their classes, so without this the new boot would see every
+ * route, guard and transaction twice. Keyed with `Symbol.for` on the container
+ * itself so it survives a reload that re-evaluates this module too.
+ */
+const BOOT_INJECTIONS = Symbol.for('najm:core:boot-injections');
+
+type BootInjectionRecord = { [BOOT_INJECTIONS]?: unknown[] };
+
+/** Tokens `setInjection` created: symbols carrying an injection `type`. */
+function injectionTokens(target: Container): Set<unknown> {
+   const tokens = new Set<unknown>();
+   for (const token of target.registry.keys()) {
+      if (typeof token === 'symbol' && target.hasMeta(token, 'type')) tokens.add(token);
+   }
+   return tokens;
+}
+
 /** Resolves true if `promise` settles within `ms`, false on timeout; rejects if it rejects first. */
 function settlesWithin(promise: Promise<unknown>, ms: number): Promise<boolean> {
    let timer: ReturnType<typeof setTimeout> | undefined;
@@ -403,6 +423,12 @@ export class Server {
       this.logger.serverInitializing();
       let bootService: BootService | undefined;
 
+      // On the shared container, this boot replaces the previous one.
+      // An isolated container starts empty and holds no other boot.
+      const shared = !this.opts.isolated;
+      if (shared) await this.releasePreviousBootInjections();
+      const injectionsBefore = shared ? injectionTokens(this.container) : undefined;
+
       try {
          this.registerDefaultPlugins();
          this.registry.validatePendingRequirements();
@@ -467,6 +493,30 @@ export class Server {
          this.initPromise = undefined;
          this.initError = error;
          throw Err.startFailed(this.resolvePortForErrors(), error);
+      } finally {
+         // Recorded whether the boot succeeded or not, so the next boot,
+         // a retry or a reload, starts without this one's entries.
+         if (injectionsBefore) {
+            (this.container as BootInjectionRecord)[BOOT_INJECTIONS] = [...injectionTokens(this.container)]
+               .filter((token) => !injectionsBefore.has(token));
+         }
+      }
+   }
+
+   /**
+    * Drops the injection entries the previous boot on this container left.
+    * A server still running from that boot keeps the routes it mounted, but
+    * the container now describes this boot; concurrent servers that must not
+    * affect each other use `isolated: true`.
+    */
+   private async releasePreviousBootInjections(): Promise<void> {
+      const record = this.container as BootInjectionRecord;
+      const previous = record[BOOT_INJECTIONS];
+      record[BOOT_INJECTIONS] = undefined;
+      if (!previous?.length) return;
+
+      for (const token of previous) {
+         if (this.container.registry.has(token as never)) await this.container.delete(token as never);
       }
    }
 

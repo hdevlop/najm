@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.2.1 - 2026-10-06
+
+### Fixed
+
+- `@Transaction` methods are wrapped once per instance when a server reboots on
+  the same container (a dev hot reload). The container keeps one transaction
+  injector, delegating to the latest boot's `TransactionService`, instead of
+  one per boot that wrapped the method again ("Duplicate transaction wrapper
+  detected"). Needs najm-core 3.0.4 to drop the previous boot's injections.
+
 ## 2.1.1 - 2026-10-03
 
 - Restore caller-managed connections as the default (`close: false`).

@@ -1,6 +1,6 @@
 import { createAlsToken, Err, Scan, ScannerService, ScanType } from 'najm-core';
 import { LoggerService } from 'najm-core';
-import { Container, DI, Inject, Meta, Service } from 'najm-core';
+import { Container, DI, Inject, Meta, Service, type Constructor } from 'najm-core';
 import { DatabaseService } from './DatabaseService';
 import type { TransactionalOptions, TransactionInjection } from './types';
 import { TRANSACTION_DEPTH, TRANSACTIONS } from './tokens';
@@ -11,6 +11,15 @@ type CommitCallback = () => unknown | Promise<unknown>;
 const COMMIT_CALLBACKS = createAlsToken<Map<string, CommitCallback[]>>('transactionCommitCallbacks');
 const ROLLBACK_CALLBACKS = createAlsToken<Map<string, CommitCallback[]>>('transactionRollbackCallbacks');
 const SQLITE_TRANSACTIONS = new WeakMap<object, Promise<void>>();
+
+/**
+ * One transaction injector per container, delegating to the service of the
+ * latest boot. diject cannot remove an injector, so a server rebooted on the
+ * same container (a dev hot reload) would otherwise wrap each method once per
+ * boot. `Symbol.for` keeps the slot across a reload of this module.
+ */
+const TRANSACTION_INJECTOR = Symbol.for('najm:database:transaction-injector');
+type InjectorSlot = { current?: TransactionService };
 
 type WrappedTransactionMethod = Function & {
    [TRANSACTION_WRAPPER]?: {
@@ -57,27 +66,37 @@ export class TransactionService {
    }
 
    private registerInjector(): void {
-      this.container.use({
-         name: 'Transaction',
-         global: true,
-         inject: (instance, ctor) => {
-            const injections = this.container.getInjectionsFor<TransactionInjection>('transaction', ctor);
+      const host = this.container as unknown as { [TRANSACTION_INJECTOR]?: InjectorSlot };
+      let slot = host[TRANSACTION_INJECTOR];
+      if (!slot) {
+         const created: InjectorSlot = {};
+         slot = created;
+         host[TRANSACTION_INJECTOR] = created;
+         this.container.use({
+            name: 'Transaction',
+            global: true,
+            inject: (instance, ctor) => created.current?.injectInto(instance, ctor as Constructor),
+         });
+      }
+      slot.current = this;
+   }
 
-            for (const { target, propertyKey, options } of injections) {
-               if (target !== ctor) {
-                  this.invalidTransactionConfig(
-                     target,
-                     ctor,
-                     propertyKey,
-                     options,
-                     'Injection target does not match the constructor being wrapped',
-                  );
-               }
+   private injectInto(instance: any, ctor: Constructor): void {
+      const injections = this.container.getInjectionsFor<TransactionInjection>('transaction', ctor);
 
-               this.wrapMethod(instance, ctor, target, propertyKey, options);
-            }
+      for (const { target, propertyKey, options } of injections) {
+         if (target !== ctor) {
+            this.invalidTransactionConfig(
+               target,
+               ctor,
+               propertyKey,
+               options,
+               'Injection target does not match the constructor being wrapped',
+            );
          }
-      });
+
+         this.wrapMethod(instance, ctor, target, propertyKey, options);
+      }
    }
 
    private wrapMethod(

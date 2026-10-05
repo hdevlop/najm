@@ -1,5 +1,16 @@
 # najm-core
 
+## 3.0.4 - 2026-10-06
+
+### Fixed
+
+- A server booted on the shared container replaces the injection entries the
+  previous boot there registered. A Next dev server's hot reload builds a new
+  `Server` in the same process while unchanged modules keep their classes; the
+  new boot used to see every route, guard and transaction injection twice and
+  fail with "Duplicate transaction injection detected". Servers that must run
+  side by side use `isolated: true`.
+
 ## 3.0.3 - 2026-10-04
 
 - Hide internal details in production 5xx responses while preserving status and logging the original server error.

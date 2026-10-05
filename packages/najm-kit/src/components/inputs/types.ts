@@ -36,8 +36,9 @@ export interface TextInputProps extends BaseProps, Omit<InputHTMLAttributes<HTML
 }
 
 export interface NumberInputProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "onChange" | "placeholder" | "type" | "value"> {
-  value: string | number;
-  onChange: (value: number) => void;
+  value: string | number | undefined;
+  /** `undefined` when the field is empty. */
+  onChange: (value: number | undefined) => void;
   placeholder?: string;
   icon?: InputIcon;
   showIcon?: boolean;

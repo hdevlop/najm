@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.0 - 2026-10-06
+
+- `NumberInput` reports `undefined` when the field is emptied, instead of
+  `Number("")`, which is 0. A cleared field used to show "0", so the next digit
+  read "05"; a half-typed "-" was also replaced with "0". `onChange` is typed
+  `(value: number | undefined) => void` and `value` accepts `undefined`, which
+  is a type change for code that uses `NumberInput` directly. Through
+  `FormInput`, a cleared number field now holds `undefined`: optional schema
+  fields omit it rather than receive 0.
+
 ## 3.0.0 - 2026-10-04
 
 - Breaking for optional Next consumers: require patched Next ^15.5.24 || ^16.3.6 instead of older Next releases.
