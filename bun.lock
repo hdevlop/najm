@@ -284,7 +284,7 @@
     },
     "packages/najm-chatbot": {
       "name": "najm-chatbot",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "dependencies": {
         "@ai-sdk/anthropic": "^3.0.100",
         "@ai-sdk/google": "^3.0.99",
@@ -370,7 +370,7 @@
     },
     "packages/najm-core": {
       "name": "najm-core",
-      "version": "3.0.3",
+      "version": "3.0.4",
       "dependencies": {
         "diject": "^0.1.11",
         "hono": "^4.13.12",
@@ -401,7 +401,7 @@
     },
     "packages/najm-database": {
       "name": "najm-database",
-      "version": "2.2.0",
+      "version": "2.2.1",
       "devDependencies": {
         "najm-core": "workspace:*",
         "najm-core-v2": "npm:najm-core@2.1.1",
@@ -488,7 +488,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "3.0.0",
+      "version": "3.1.0",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",
