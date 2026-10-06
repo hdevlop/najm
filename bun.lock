@@ -488,7 +488,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "3.1.0",
+      "version": "3.1.1",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",

@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.1.1 - 2026-10-06
+
+- A cleared `FormInput type="number"` now stays empty and holds `null`. React
+  Hook Form cannot keep `undefined` in a registered field: it restores the
+  default on the next render, so the 3.1.0 change never reached a form. A
+  field that started with a value filled itself in again when erased, and the
+  next digit was appended to the old value ("200" then "5" read "2005").
+  Contrary to the 3.1.0 note, a cleared form field never held `undefined`.
+  Schemas that accept an empty optional number must now accept `null`
+  (`.nullable()`, or a preprocess that maps `null` to `undefined`); a required
+  one rejects it as before. `NumberInput` used on its own still reports
+  `undefined`.
+
 ## 3.1.0 - 2026-10-06
 
 - `NumberInput` reports `undefined` when the field is emptied, instead of
