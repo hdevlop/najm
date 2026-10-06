@@ -98,8 +98,12 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
       const hasError = !!fieldState.error;
       const isHidden = hidden || className?.includes("hidden");
       const handleChange = (val: any) => {
-        field.onChange(val);
-        consumerOnChange?.(val);
+        // React Hook Form cannot hold `undefined`: it restores the default on
+        // the next render, so a cleared number field would fill itself in
+        // again. `null` is the empty value it keeps.
+        const next = type === "number" && val === undefined ? null : val;
+        field.onChange(next);
+        consumerOnChange?.(next);
       };
       const nativeFieldBinding = nativeFieldTypes.has(type)
         ? {
