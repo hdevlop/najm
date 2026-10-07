@@ -19,7 +19,9 @@ import {
 import { ChatLogRepository, type RoutingStatus } from '../chatLogs';
 import type { RagDiagnosticsRunner } from 'najm-rag';
 import { replyLanguageInstruction, replyUnavailable } from './replyPolicy';
-import { executeReplyTemplate, type TemplateCallResult } from './replyTemplate';
+import { executeReplyTemplate, validateReplyTemplate, type TemplateCallResult } from './replyTemplate';
+import { selectReplyPreparation } from './replyReadiness';
+import type { ReplyPreparationContext, ReplyTemplate } from './replyPolicy';
 
 export type ChatChannel = 'web' | 'whatsapp' | string;
 
@@ -27,6 +29,7 @@ export interface ChatAgentInput {
   messages: UIMessage[];
   sessionKey?: string;
   channel?: ChatChannel;
+  signal?: AbortSignal;
 }
 
 export interface ChatAgentTrace {
@@ -288,6 +291,8 @@ export class ChatAgent {
   ) {}
 
   async stream(input: ChatAgentInput): Promise<Response> {
+    const streamAbort = new AbortController();
+    input = { ...input, signal: input.signal ? AbortSignal.any([input.signal, streamAbort.signal]) : streamAbort.signal };
     const { channel = 'web', sessionKey } = input;
     const userText = getLatestUserText(input.messages);
     const diagnostics = this.startDiagnostics(channel);
@@ -299,7 +304,7 @@ export class ChatAgent {
     try {
       turn = await this.prepareTurn(input, channel, diagnostics);
     } catch (error) {
-      await settle('setup_error', error);
+      await settle(input.signal?.aborted ? 'aborted' : 'setup_error', error);
       throw error;
     }
     if (!turn) {
@@ -332,11 +337,12 @@ export class ChatAgent {
     try {
       messages = await toModelMessages(promptMessages);
     } catch (error) {
-      await settle('setup_error', error);
+      await settle(input.signal?.aborted ? 'aborted' : 'setup_error', error);
       throw error;
     }
 
     const result = streamText({
+      abortSignal: input.signal,
       model: model!,
       system,
       messages,
@@ -354,13 +360,13 @@ export class ChatAgent {
       onError: async ({ error }) => {
         // Keeps the SDK's default report, which an onError option replaces.
         console.error(error);
-        await settle('error', error);
+        await settle(input.signal?.aborted ? 'aborted' : 'error', error);
       },
       onAbort: async () => {
         await settle('aborted');
       },
       onFinish: async ({ response, totalUsage }) => {
-        if (diagnostics.isSettled) return;
+        if (diagnostics.isSettled || input.signal?.aborted) return;
         diagnostics.data.marks.finishMs = diagnostics.now();
         diagnostics.data.usage = summarizeUsage(totalUsage);
         diagnostics.data.cost = this.computeUsageCost(settings, totalUsage);
@@ -384,7 +390,7 @@ export class ChatAgent {
     // client disconnect reaches onAbort only with an abort signal; the body sees both.
     return observeBody(response, {
       error: (error) => { void settle('error', error).catch(() => {}); },
-      cancel: () => { void settle('aborted').catch(() => {}); },
+      cancel: () => { streamAbort.abort(); void settle('aborted').catch(() => {}); },
     });
   }
 
@@ -401,7 +407,7 @@ export class ChatAgent {
     try {
       turn = await this.prepareTurn(input, channel, diagnostics);
     } catch (error) {
-      await settle('setup_error', error);
+      await settle(input.signal?.aborted ? 'aborted' : 'setup_error', error);
       throw error;
     }
     if (!turn) return 'AI assistant is currently disabled.';
@@ -416,6 +422,7 @@ export class ChatAgent {
     let result: Awaited<ReturnType<typeof generateText>>;
     try {
       result = await generateText({
+        abortSignal: input.signal,
         model: model!,
         system,
         messages: await toModelMessages(promptMessages),
@@ -428,10 +435,11 @@ export class ChatAgent {
         },
       });
     } catch (error) {
-      await settle('error', error);
+      await settle(input.signal?.aborted ? 'aborted' : 'error', error);
       throw error;
     }
 
+    input.signal?.throwIfAborted();
     diagnostics.data.marks.finishMs = diagnostics.now();
     diagnostics.data.usage = summarizeUsage(result.totalUsage);
     diagnostics.data.cost = this.computeUsageCost(settings, result.totalUsage);
@@ -479,13 +487,14 @@ export class ChatAgent {
     let routedToolNames: string[];
 
     try {
-      const prepared = await this.prepare(channel, routingText, settings, undefined, getLatestUserText(input.messages));
+      const prepared = await this.prepareReply(input, channel, routingText, settings);
       model = prepared.model;
       system = prepared.system;
       tools = prepared.tools;
       routingStatus = prepared.routingStatus;
       routedToolNames = prepared.routedToolNames;
       if (prepared.templateReply) {
+        input.signal?.throwIfAborted();
         if (!useStatelessHistory) await this.saveSession(sessionKey, sessionMessages,
           [{ role: 'assistant', content: prepared.templateReply.text }], channel,
           { maxStoredMessages: settings.maxStoredMessages ?? this.config.maxStoredMessages });
@@ -517,6 +526,7 @@ export class ChatAgent {
     let result: Awaited<ReturnType<typeof generateText>>;
     try {
       result = await generateText({
+        abortSignal: input.signal,
         model: model,
         system,
         messages: await toModelMessages(promptMessages),
@@ -531,6 +541,7 @@ export class ChatAgent {
       };
     }
 
+    if (input.signal?.aborted) return { error: 'Request aborted', code: 'PROVIDER_ERROR' };
     const userText = getLatestUserText(input.messages);
     const writes: Promise<void>[] = [
       this.logChat(sessionKey, userText, routingStatus, routedToolNames, result.steps),
@@ -675,6 +686,7 @@ export class ChatAgent {
 
   /** Settings, history and preparation shared by stream() and runOnce(). Null when the assistant is disabled. */
   private async prepareTurn(input: ChatAgentInput, channel: ChatChannel, diagnostics: ChatDiagnosticsRecorder) {
+    input.signal?.throwIfAborted();
     const settings = await diagnostics.span('settingsMs', () => this.settingsService.getInternal());
     if (!settings || !settings.isEnabled) return null;
     diagnostics.data.provider = settings.provider;
@@ -694,7 +706,7 @@ export class ChatAgent {
       : this.buildPromptMessages(sessionMessages, settings.maxPromptMessages ?? this.config.maxPromptMessages);
     diagnostics.data.messages = { stored: storedHistory.length, prompt: promptMessages.length };
 
-    const prepare = () => diagnostics.span('prepareMs', () => this.prepare(channel, routingText, settings, diagnostics, getLatestUserText(input.messages)));
+    const prepare = () => diagnostics.span('prepareMs', () => this.prepareReply(input, channel, routingText, settings, diagnostics));
     // Resolve an optional public bridge; chat still works without the RAG package/plugin.
     const ragDiagnostics = this.tryGetRagDiagnostics();
     const prepared = await (ragDiagnostics ? diagnostics.rag(ragDiagnostics, prepare) : prepare());
@@ -739,13 +751,63 @@ export class ChatAgent {
     }
   }
 
+  /** Async candidates are opt-in; the synchronous policy retains precedence. */
+  private async prepareReply(input: ChatAgentInput, channel: ChatChannel, routingText: string,
+    settings: Parameters<ChatAgent['prepare']>[2], diagnostics?: ChatDiagnosticsRecorder) {
+    input.signal?.throwIfAborted();
+    const policy = this.config.reply?.preparation;
+    const userText = getLatestUserText(input.messages);
+    if (policy?.enabled !== true) return this.prepare(channel, routingText, settings, diagnostics, userText, false, input.signal);
+    const language = this.config.reply?.detectLanguage?.(userText) ?? null;
+    const request = { userText, language, channel, userId: this.getCurrentUserId(), sessionKey: input.sessionKey };
+    const mcp = this.getMcpTools();
+    const available = this.config.tools === 'none' ? [] : mcp?.registry.tools ?? [];
+    const execute = async (template: ReplyTemplate) => {
+      input.signal?.throwIfAborted();
+      const label = typeof template.label === 'string' ? { label: template.label.slice(0, 128) } : {};
+      if (diagnostics) diagnostics.data.reply = { source: 'template', language, ...label };
+      let templateReply: { text: string; calls: TemplateCallResult[] };
+      try { templateReply = await executeReplyTemplate(template, available, mcp?.builder ?? null,
+        event => diagnostics?.tool(event), input.signal); }
+      catch {
+        input.signal?.throwIfAborted();
+        templateReply = { text: replyUnavailable(language), calls: [] };
+        if (diagnostics) diagnostics.data.reply = { source: 'template', language, error: true, ...label };
+      }
+      return { model: null, system: '', tools: {}, routingStatus: 'disabled' as RoutingStatus,
+        routedToolNames: templateReply.calls.map(call => call.name), templateReply };
+    };
+    const synchronous = this.config.reply?.template?.({ userText, language, channel });
+    if (synchronous) return execute(synchronous);
+    let context: ReplyPreparationContext = { historyComplete: false, priorUserTurns: null };
+    try {
+      const resolved = policy.resolveContext?.(request);
+      if (resolved && typeof (resolved as any).then === 'function') void Promise.resolve(resolved).catch(() => {});
+      if (resolved?.historyComplete === true && Number.isSafeInteger(resolved.priorUserTurns) && resolved.priorUserTurns! >= 0)
+        context = { historyComplete: true, priorUserTurns: resolved.priorUserTurns };
+    } catch { /* Unknown history is deliberately ineligible for first-turn policies. */ }
+    const selected = await selectReplyPreparation({ policy, request: { ...request, ...context }, signal: input.signal,
+      onSelection: event => {
+        if (!diagnostics) return;
+        diagnostics.data.replyPreparation = { ...event };
+        // A losing router may still have an unabortable embedding request.
+        if (event.selected === 'template' && diagnostics.data.embeddings) diagnostics.data.embeddingsIncomplete = true;
+      },
+      valid: template => { validateReplyTemplate(template, available, mcp?.builder ?? null); return true; },
+      ordinary: signal => this.prepare(channel, routingText, settings, diagnostics, userText, true, signal) });
+    return selected.kind === 'template' ? execute(selected.value) : selected.value;
+  }
+
   private async prepare(
     channel: ChatChannel,
     userText: string,
     settings: { provider: LlmProvider; model?: string; systemPrompt?: string; apiKey?: string | null; baseUrl?: string | null; isEnabled?: boolean },
     diagnostics?: ChatDiagnosticsRecorder,
     latestUserText = userText,
+    skipTemplate = false,
+    signal?: AbortSignal,
   ) {
+    signal?.throwIfAborted();
     const llmSettings: LlmSettings = {
       provider: settings.provider,
       apiKey: settings.apiKey ?? null,
@@ -773,7 +835,8 @@ export class ChatAgent {
       const router = this.tryGetRouter();
       if (router) {
         const findTools = () => router.findRelevantTools(userText);
-        const routerResult = diagnostics ? await diagnostics.span('routingMs', findTools) : await findTools();
+        const routerResult = diagnostics ? await diagnostics.span('routingMs', findTools, signal) : await findTools();
+        signal?.throwIfAborted();
         routingStatus = routerResult.status;
         routedToolNames = routerResult.tools.map((t) => t.name);
         if (mcp && routerResult.tools.length > 0) {
@@ -801,35 +864,41 @@ export class ChatAgent {
       const contextParts: string[] = [];
       const collect = async () => {
         for (const provider of this.tryGetContextProviders()) {
+          signal?.throwIfAborted();
           const ctx = await provider.getContext(userText, { latestUserText, channel });
+          signal?.throwIfAborted();
           if (ctx) contextParts.push(ctx);
         }
       };
-      if (diagnostics) await diagnostics.span('contextMs', collect);
+      if (diagnostics) await diagnostics.span('contextMs', collect, signal);
       else await collect();
       if (contextParts.length > 0) {
         system = contextParts.join('\n\n') + '\n\n' + system;
       }
     }
 
+    signal?.throwIfAborted();
     const language = this.config.reply?.detectLanguage?.(latestUserText) ?? null;
     const instruction = replyLanguageInstruction(language);
     if (instruction) system += `\n\n${instruction}`;
     let templateReply: { text: string; calls: TemplateCallResult[] } | null = null;
-    const template = this.config.reply?.template?.({ userText: latestUserText, language, channel });
+    const template = skipTemplate ? null : this.config.reply?.template?.({ userText: latestUserText, language, channel });
     if (template) {
-      if (diagnostics) diagnostics.data.reply = { source: 'template', language };
+      const label = typeof template.label === 'string' ? { label: template.label.slice(0, 128) } : {};
+      if (diagnostics) diagnostics.data.reply = { source: 'template', language, ...label };
       try {
         templateReply = await executeReplyTemplate(template,
           mcp?.registry.tools.filter(tool => Object.hasOwn(tools, tool.name)) ?? [], mcp?.builder ?? null,
-          event => diagnostics?.tool(event));
+          event => diagnostics?.tool(event), signal);
       } catch {
+        signal?.throwIfAborted();
         // No fallback generation or partial-count guess after a failed read.
         templateReply = { text: replyUnavailable(language), calls: [] };
-        if (diagnostics) diagnostics.data.reply = { source: 'template', language, error: true };
+        if (diagnostics) diagnostics.data.reply = { source: 'template', language, error: true, ...label };
       }
     } else if (this.config.reply && diagnostics) diagnostics.data.reply = { source: 'model', language };
 
+    signal?.throwIfAborted();
     return {
       model,
       // The notice also leads, ahead of instructions about using tools.
@@ -843,6 +912,7 @@ export class ChatAgent {
 
   private async finishTemplate(input: ChatAgentInput,
     turn: NonNullable<Awaited<ReturnType<ChatAgent['prepareTurn']>>>, diagnostics: ChatDiagnosticsRecorder) {
+    input.signal?.throwIfAborted();
     const reply = turn.templateReply!;
     diagnostics.textDelta(reply.text);
     diagnostics.data.marks.finishMs = diagnostics.now();

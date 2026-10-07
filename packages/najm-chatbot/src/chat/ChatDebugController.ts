@@ -1,4 +1,5 @@
-import { Body, Controller, Post } from 'najm-core';
+import { Body, Controller, Post, Ctx } from 'najm-core';
+import type { Context } from 'hono';
 import { isAdmin } from 'najm-auth';
 import { ChatAgent } from '../agent/ChatAgent';
 import type {
@@ -30,7 +31,7 @@ export class ChatDebugController {
   constructor(private agent: ChatAgent) {}
 
   @Post()
-  async debug(@Body() body: ChatDebugRequest): Promise<ChatDebugResponse | ChatDebugError> {
+  async debug(@Body() body: ChatDebugRequest, @Ctx() ctx?: Context): Promise<ChatDebugResponse | ChatDebugError> {
     if (!body?.message && (!body?.messages || body.messages.length === 0)) {
       return {
         error: 'Either message or messages must be provided.',
@@ -54,6 +55,7 @@ export class ChatDebugController {
       })),
       sessionKey,
       channel: 'web',
+      signal: ctx?.req.raw.signal,
       traceOptions: {
         ...DEFAULT_TRACE_OPTIONS,
         ...body.traceOptions,

@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.4.0 - 2026-10-07
+
+- Add explicitly enabled `reply.preparation`, with server-owned history/eligibility,
+  a zero-grace readiness race and independent selection/late-settlement observers.
+- Share preparation across streaming, text and debug paths. Early synchronous
+  replies take precedence; winning plans retain the existing read-only MCP guards.
+- Propagate request/stream cancellation, suppress late work and keep selection
+  diagnostics stable. Mark application-owned preparation cost as unreported.
+- Keep the existing synchronous reply API and disabled behavior compatible.
+
 ## 3.2.0 - 2026-10-04
 
 - Add `chatbot({ openrouter })`: OpenRouter-only fields sent with every chat

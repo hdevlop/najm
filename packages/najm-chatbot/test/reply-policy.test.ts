@@ -51,18 +51,18 @@ describe('reply template tool boundary', () => {
   });
 });
 
-function agent(options: { provider?: string; template?: any; result?: any } = {}) {
+function agent(options: { provider?: string; template?: any; result?: any; preparation?: any; router?: any; tools?: any; context?: any } = {}) {
   const read = { name: 'counts', annotations: { readOnlyHint: true } };
   const settings = { isEnabled: true, provider: options.provider ?? 'openrouter', model: 'selected-model', useMemory: true };
   const store = { load: async () => [], save: mock(async () => {}) };
   const diagnostics: any[] = [];
-  const context = { getContext: mock(async () => 'knowledge') };
+  const context = { getContext: mock(options.context ?? (async () => 'knowledge')) };
   const instance = new ChatAgent({ getInternal: async () => settings } as any, store as any, store as any,
-    { reply: { detectLanguage: detectMoroccanReplyLanguage, template: options.template },
+    { tools: options.tools, reply: { detectLanguage: detectMoroccanReplyLanguage, template: options.template, preparation: options.preparation },
       chatLogging: { enabled: false, onDiagnostics: data => { diagnostics.push(data); } } },
     { insert: async () => {} } as any);
   (instance as any).container = { get: (token: any) => {
-    if (token === TOOL_PROVIDER) return { findRelevantTools: async () => ({ status: 'routed', tools: [read] }) };
+    if (token === TOOL_PROVIDER) return { findRelevantTools: options.router ?? (async () => ({ status: 'routed', tools: [read] })) };
     if (token === McpRegistryService) return { tools: [read] };
     if (token === McpBuilderService) return { invokeTool: mock(async () => options.result ?? { content: [{ type: 'text', text: '{"count":7}' }] }) };
     if (token === CHATBOT_CONTEXT_PROVIDER) return context;
@@ -112,4 +112,127 @@ describe('provider-independent reply integration', () => {
     expect(diagnostics[0].reply.error).toBe(true);
     expect(generate).not.toHaveBeenCalled();
   });
+});
+
+const firstMessage = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Bonjour!' }] }] } as any;
+const pendingRouter = () => new Promise<any>(() => {});
+const fastPolicy = (extra: any = {}) => ({ enabled: true, eligible: () => true,
+  prepare: async () => ({ text: 'prepared answer' }), ...extra });
+
+describe('async reply integration', () => {
+  test.each(['runOnce', 'stream', 'debugRun'])('%s uses the winning candidate without waiting for routing', async method => {
+    const { instance, generate, store } = agent({ provider: 'openai', router: pendingRouter, preparation: fastPolicy() });
+    const input = { ...firstMessage, sessionKey: 'session' };
+    const result = await (instance as any)[method](input);
+    const text = result instanceof Response ? await result.text() : typeof result === 'string' ? result : result.answer;
+    expect(text).toContain('prepared answer');
+    expect(generate).not.toHaveBeenCalled();
+    expect(store.save).toHaveBeenCalledTimes(1);
+  });
+  test('synchronous template has precedence and starts neither classifier nor router', async () => {
+    const prepare = mock(async () => ({ text: 'classifier' }));
+    const router = mock(pendingRouter);
+    const { instance } = agent({ router, template: () => ({ text: 'early' }), preparation: fastPolicy({ prepare }) });
+    expect(await instance.runOnce(firstMessage)).toBe('early');
+    expect(prepare).not.toHaveBeenCalled();
+    expect(router).not.toHaveBeenCalled();
+  });
+  test('unknown history cannot be asserted from client messages or empty store', async () => {
+    const eligible = mock((req: any) => req.historyComplete === true && req.priorUserTurns === 0);
+    const prepare = mock(async () => ({ text: 'unsafe' }));
+    const { instance } = agent({ preparation: fastPolicy({ eligible, prepare }) });
+    expect(await instance.runOnce({ ...firstMessage, historyComplete: true, priorUserTurns: 0 })).toBe('model answer');
+    expect(eligible.mock.calls[0][0]).toMatchObject({ historyComplete: false, priorUserTurns: null, userId: null });
+    expect(prepare).not.toHaveBeenCalled();
+  });
+  test.each([-1, 1.5, Infinity, NaN])('invalid server history count %s defaults to unknown', async count => {
+    const eligible = mock((req: any) => req.historyComplete);
+    const { instance } = agent({ preparation: fastPolicy({ eligible, resolveContext: () => ({ historyComplete: true, priorUserTurns: count }) }) });
+    expect(await instance.runOnce(firstMessage)).toBe('model answer');
+    expect(eligible.mock.calls[0][0].priorUserTurns).toBeNull();
+  });
+  test('server-owned complete history can enable a first-turn candidate', async () => {
+    const { instance } = agent({ router: pendingRouter, preparation: fastPolicy({
+      resolveContext: () => ({ historyComplete: true, priorUserTurns: 0 }),
+      eligible: (req: any) => req.historyComplete && req.priorUserTurns === 0,
+    }) });
+    expect(await instance.runOnce(firstMessage)).toBe('prepared answer');
+  });
+  test('disabled hook leaves existing model preparation intact', async () => {
+    const prepare = mock(async () => ({ text: 'unexpected' }));
+    const { instance } = agent({ preparation: fastPolicy({ enabled: false, prepare }) });
+    expect(await instance.runOnce(firstMessage)).toBe('model answer');
+    expect(prepare).not.toHaveBeenCalled();
+  });
+  test('winning read uses registered MCP tool even when routing has not finished', async () => {
+    const { instance, generate, diagnostics } = agent({ router: pendingRouter, preparation: fastPolicy({
+      prepare: async () => ({ calls: [{ name: 'counts', input: {} }], render: ([data]: any[]) => `count ${data.count}` }),
+    }) });
+    expect(await instance.runOnce(firstMessage)).toBe('count 7');
+    expect(diagnostics[0].tools).toHaveLength(1);
+    expect(generate).not.toHaveBeenCalled();
+  });
+  test('tools none declines an async read plan and makes no MCP call', async () => {
+    const { instance, diagnostics } = agent({ tools: 'none', preparation: fastPolicy({
+      prepare: async () => ({ calls: [{ name: 'counts', input: {} }], render: () => 'fake' }),
+    }) });
+    expect(await instance.runOnce(firstMessage)).toBe('model answer');
+    expect(diagnostics[0].tools).toHaveLength(0);
+  });
+  test('failed winning MCP read returns unavailability without generation', async () => {
+    const { instance, generate } = agent({ router: pendingRouter, result: { isError: true }, preparation: fastPolicy({
+      prepare: async () => ({ calls: [{ name: 'counts', input: {} }], render: () => 'fake' }),
+    }) });
+    expect(await instance.runOnce(firstMessage)).toContain('Je ne peux pas');
+    expect(generate).not.toHaveBeenCalled();
+  });
+  test('late ordinary preparation cannot overwrite template diagnostics or persist again', async () => {
+    let release!: () => void;
+    const pending = new Promise<void>(resolve => { release = resolve; });
+    const { instance, diagnostics, store } = agent({ provider: 'openai', router: async () => {
+      await pending; return { status: 'routed', tools: [] };
+    }, preparation: fastPolicy() });
+    await instance.runOnce({ ...firstMessage, sessionKey: 'session' });
+    const saved = JSON.stringify(diagnostics[0]);
+    release();
+    await new Promise(resolve => setTimeout(resolve, 10));
+    expect(JSON.stringify(diagnostics[0])).toBe(saved);
+    expect(store.save).toHaveBeenCalledTimes(1);
+  });
+});
+
+
+test.each([null, {}, { text: 42 }, { text: 'answer', calls: [] },
+  { calls: [{ name: 'counts', input: {} }] },
+  { calls: [{ name: 'counts', input: [] }], render: () => 'fake' },
+  { calls: [{ name: 'missing', input: {} }], render: () => 'fake' },
+])('malformed async plans decline before executing any read', async candidate => {
+  const { instance, diagnostics } = agent({ preparation: fastPolicy({ prepare: async () => candidate }) });
+  expect(await instance.runOnce(firstMessage)).toBe('model answer');
+  expect(diagnostics[0].tools).toHaveLength(0);
+});
+test('disconnect during preparation suppresses generation and persistence', async () => {
+  const controller = new AbortController();
+  let signal!: AbortSignal;
+  const { instance, generate, store, diagnostics } = agent({ router: pendingRouter, preparation: fastPolicy({
+    prepare: (request: any) => { signal = request.signal; return new Promise(() => {}); },
+  }) });
+  const result = instance.runOnce({ ...firstMessage, sessionKey: 'session', signal: controller.signal });
+  for (let i = 0; !signal && i < 20; i++) await Promise.resolve();
+  controller.abort(new Error('disconnect'));
+  await expect(result).rejects.toThrow('disconnect');
+  expect(signal.aborted).toBe(true);
+  expect(generate).not.toHaveBeenCalled();
+  expect(store.save).not.toHaveBeenCalled();
+  expect(diagnostics[0].outcome).toBe('aborted');
+});
+test('disconnect after one read prevents a second read and rendering', async () => {
+  const controller = new AbortController();
+  const invokeTool = mock(async () => { controller.abort(); return { content: [{ type: 'text', text: '{}' }] }; });
+  const render = mock(() => 'fake');
+  await expect(executeReplyTemplate({ calls: [{ name: 'counts', input: {} }, { name: 'counts', input: {} }], render },
+    [{ name: 'counts', annotations: { readOnlyHint: true } }] as any,
+    { invokeTool } as any, () => {}, controller.signal)).rejects.toThrow();
+  expect(invokeTool).toHaveBeenCalledTimes(1);
+  expect(render).not.toHaveBeenCalled();
 });

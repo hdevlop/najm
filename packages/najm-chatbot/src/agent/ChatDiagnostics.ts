@@ -1,6 +1,7 @@
 import type { RoutingStatus } from '../chatLogs';
 import type { UsageCost } from './modelPricing';
 import type { EmbeddingDiagnostic, RagDiagnosticsRunner } from 'najm-rag';
+import type { ReplyPreparationSelection } from './replyPolicy';
 
 export type ChatEmbeddingSpan = EmbeddingDiagnostic;
 
@@ -83,7 +84,9 @@ export interface ChatDiagnostics {
   usage: ChatUsageSummary | null;
   cost: (UsageCost & { provider: string; model: string }) | null;
   /** Template replies make no LLM request; model is the selected setting only. */
-  reply?: { source: 'template' | 'model'; language: string | null; error?: true };
+  reply?: { source: 'template' | 'model'; language: string | null; error?: true; label?: string };
+  /** Immutable selection snapshot; factory settlement/cost may arrive later. */
+  replyPreparation?: ReplyPreparationSelection;
 }
 
 export type ChatDiagnosticsSink = (diagnostics: ChatDiagnostics) => void | Promise<void>;
@@ -188,12 +191,12 @@ export class ChatDiagnosticsRecorder {
     finally { this.activeRagScopes--; }
   }
 
-  async span<T>(name: keyof ChatPreparationSpans, run: () => Promise<T> | T): Promise<T> {
+  async span<T>(name: keyof ChatPreparationSpans, run: () => Promise<T> | T, signal?: AbortSignal): Promise<T> {
     const start = performance.now();
     try {
       return await run();
     } finally {
-      this.data.spans[name] = round(performance.now() - start);
+      if (!signal?.aborted) this.data.spans[name] = round(performance.now() - start);
     }
   }
 

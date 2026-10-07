@@ -1,6 +1,6 @@
 import 'reflect-metadata';
 import { describe, test, expect, afterEach } from 'bun:test';
-import { Server, Controller, Get, Post, Service } from 'najm-core';
+import { Server, Controller, Get, Post, Service, DI, type Container } from 'najm-core';
 import { database } from 'najm-database';
 import { auth } from 'najm-auth';
 import { mcp, McpTool } from 'najm-mcp';
@@ -15,7 +15,7 @@ import { aiSettingsTable } from '../src/schema/sqlite';
 import { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } from 'najm-auth/sqlite';
 import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 import { simulateReadableStream } from 'ai';
-import { createGuard } from 'najm-guard';
+import { createGuard, USER } from 'najm-guard';
 import { detectMoroccanReplyLanguage } from '../src/agent/replyPolicy';
 
 const JWT_SECRET = 'test-access-secret-that-is-at-least-32-chars!';
@@ -47,6 +47,14 @@ const Denied = createGuard(DenyReads);
 
 @Controller('/grades')
 class GradeTools {
+  @DI() private container!: Container;
+
+  @Get('/scoped-count')
+  @McpTool({ description: 'Read the active server scope', readOnly: true })
+  scopedCount() {
+    return { year: this.container.store.get('selectedYear'), userId: this.container.get(USER)?.id };
+  }
+
   @Get('/count')
   @McpTool({ description: 'Count grades', readOnly: true })
   count() {
@@ -406,5 +414,49 @@ describe('reply templates through real MCP guards and HTTP streaming', () => {
     expect(reply.body).not.toContain('Invented fact');
     expect(d.received[0].tools[0].outcome).toBe('error');
     expect(d.received[0].reply?.error).toBe(true);
+  });
+});
+
+
+describe('async winners through real scoped MCP execution', () => {
+  test('route guards still deny an async read before its controller executes', async () => {
+    const d = collect();
+    const { p, token, container } = await setup(new MockLanguageModelV1({
+      doStream: async () => { throw new Error('Unexpected generation'); },
+    }), { reply: { detectLanguage: detectMoroccanReplyLanguage },
+      chatLogging: { enabled: false, onDiagnostics: d.onDiagnostics } });
+    const registry = container.get((await import('najm-mcp')).McpRegistryService);
+    const denied = registry.tools.find((tool: any) => tool.methodKey === 'deniedCount');
+    const agent = container.get(ChatAgent) as any;
+    agent.tryGetRouter = () => ({ findRelevantTools: () => new Promise(() => {}) });
+    agent.config.reply.preparation = { enabled: true, eligible: () => true,
+      prepare: async () => ({ calls: [{ name: denied.name, input: {} }], render: () => 'Invented fact' }) };
+    const response = await chat(p, token, 'Bonjour');
+    expect(response.body).toContain('Je ne peux pas');
+    expect(response.body).not.toContain('Invented fact');
+    expect(d.received[0].reply?.error).toBe(true);
+    expect(d.received[0].tools[0].outcome).toBe('error');
+  });
+  test('parallel winners preserve distinct authenticated user and selected-year scopes', async () => {
+    const { container } = await setup(new MockLanguageModelV1({
+      doGenerate: async () => { throw new Error('Unexpected generation'); },
+    }), { reply: {}, chatLogging: { enabled: false } });
+    const registry = container.get((await import('najm-mcp')).McpRegistryService);
+    const scoped = registry.tools.find((tool: any) => tool.methodKey === 'scopedCount');
+    const agent = container.get(ChatAgent) as any;
+    agent.tryGetRouter = () => ({ findRelevantTools: () => new Promise(() => {}) });
+    const observed: string[] = [];
+    agent.config.reply.preparation = { enabled: true,
+      eligible: (request: any) => { observed.push(request.userId); return true; },
+      prepare: async () => ({ calls: [{ name: scoped.name, input: {} }],
+        render: ([value]: any[]) => `${value.userId}:${value.year}` }) };
+    const message = { messages: [{ role: 'user', parts: [{ type: 'text', text: 'Bonjour' }] }] };
+    const results = await Promise.all([
+      container.run({ [USER.key]: { id: 'actor-a' }, selectedYear: '2025-2026' }, () => agent.runOnce(message)),
+      container.run({ [USER.key]: { id: 'actor-b' }, selectedYear: '2026-2027' }, () => agent.runOnce(message)),
+    ]);
+    expect(results).toEqual(['actor-a:2025-2026', 'actor-b:2026-2027']);
+    expect(observed.sort()).toEqual(['actor-a', 'actor-b']);
+    expect(container.store.get('selectedYear')).toBeUndefined();
   });
 });

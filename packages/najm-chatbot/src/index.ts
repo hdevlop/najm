@@ -52,7 +52,7 @@ export type { ModelPricing, ReportedUsage, UsageCost } from './agent/modelPricin
 
 export { ChatAgent, ROUTING_UNAVAILABLE_PROMPT, answerAfterRepeatedToolCall } from './agent/ChatAgent';
 export { detectMoroccanReplyLanguage, normalizeReplyText, replyLanguageInstruction } from './agent/replyPolicy';
-export type { ChatReplyPolicy, ReplyLanguage, ReplyRequest, ReplyTemplate, ReplyToolCall } from './agent/replyPolicy';
+export type { ChatReplyPolicy, ReplyPreparationPolicy, ReplyPreparationRequest, ReplyPreparationContext, ReplyPreparationSelection, ReplyLanguage, ReplyRequest, ReplyTemplate, ReplyToolCall } from './agent/replyPolicy';
 
 export { ChatLogRepository } from './chatLogs';
 export type { InsertChatLogInput, RoutingStatus } from './chatLogs';

@@ -23,6 +23,6 @@ export class ChatController {
     const sessionKey = typeof body.sessionKey === 'string' && body.sessionKey.trim()
       ? body.sessionKey
       : undefined;
-    return this.agent.stream({ messages, sessionKey, channel: 'web' });
+    return this.agent.stream({ messages, sessionKey, channel: 'web', signal: ctx.req.raw.signal });
   }
 }

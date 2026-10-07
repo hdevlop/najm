@@ -528,3 +528,61 @@ import { ragSchema } from 'najm-rag/sqlite';
 ```
 
 See [najm-rag README](packages/najm-rag/README.md) for the full RAG and tool routing documentation.
+
+## Optional asynchronous reply preparation (3.4.0)
+
+Keep `reply.template` synchronous. `reply.preparation` is a separate opt-in factory
+that runs alongside routing/context after a synchronous miss:
+
+```ts
+reply: {
+  template: selectKnownReply,
+  preparation: {
+    enabled: true,
+    resolveContext: request => trustedTurnMetadata(request),
+    eligible: request => request.channel === 'web'
+      && request.userId !== null && request.historyComplete
+      && request.priorUserTurns === 0,
+    timeoutMs: 800,
+    prepare: request => classifyToReadOnlyPlan(request.userText, request.signal),
+    onSelection: event => recordSelection(event),
+    onSettled: event => recordFactorySettlement(event),
+  },
+}
+```
+
+The example functions are application-owned. In particular, authenticate the
+administrator and enforce the mode/language/data policy in the server gate;
+a non-null user ID alone is not administrator authorization. Context resolution
+and eligibility are synchronous and trusted server configuration. Missing,
+malformed or unavailable history defaults to `historyComplete: false` and
+`priorUserTurns: null`. Neither client messages nor an empty/expired cache prove
+that a request is a first turn. A session key is only a lookup identifier.
+
+The factory prepares a plan only. It must not invoke tools, emit text, save a
+session or start answer generation. Ordinary readiness wins immediately, including
+cached routing, with no extra grace period. A valid earlier candidate can win;
+invalid candidates, errors and the deadline leave ordinary preparation running.
+Ties prefer ordinary preparation. The winning read plan uses the existing MCP
+builder, guards and request scope against registered, explicitly read-only tools.
+Confirmation/destructive tools are refused. `tools: 'none'` forbids read plans.
+A selected read failure produces unavailability instead of a guessed model answer.
+
+Streaming, `runOnce` and debugging share this selection. Disconnect signals reach
+the factory and AI SDK. Losing preparation is logically cancelled: existing router
+and context interfaces cannot necessarily stop their underlying network work.
+Their late results cannot execute a plan, overwrite the selected reply or save it
+again. Pass `ChatAgentInput.signal` from server request scope for direct calls;
+the HTTP controllers do this automatically. In-flight MCP reads also cannot be
+physically recalled, but abort stops subsequent reads and suppresses their answer.
+
+`replyPreparation` diagnostics capture selection time, timeout, candidate state
+and potentially continuing losing work. The snapshot stays fixed after selection.
+`onSettled` observes the factory's actual late completion/error once, independently
+of chat completion. Sinks must not throw or delay a reply; sink errors are ignored.
+The factory must record every paid attempt and reconcile actual or unknown cost
+in its own ledger, including aborted/unused work. A zero `cost.totalCost` for a
+template means zero answer-generation cost, not zero classifier/router cost;
+`replyPreparation.externalCost` is deliberately `unreported`. Do not infer a
+successful free request from cancellation. No preparation is started when the
+policy is absent/disabled; the existing synchronous API remains compatible.

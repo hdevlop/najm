@@ -12,14 +12,55 @@ export interface ReplyToolCall {
   input: Record<string, unknown>;
 }
 
-export type ReplyTemplate =
+export type ReplyTemplate = (
   | { text: string }
-  | { calls: ReplyToolCall[]; render: (results: unknown[]) => string };
+  | { calls: ReplyToolCall[]; render: (results: unknown[]) => string }
+) & { /** App-owned diagnostic label; never used to authorize a tool. */ label?: string };
+
+/** Supplied by server configuration, never inferred from client messages. */
+export interface ReplyPreparationContext {
+  historyComplete: boolean;
+  priorUserTurns: number | null;
+}
+
+export interface ReplyPreparationRequest extends ReplyRequest, ReplyPreparationContext {
+  userId: string | null;
+  /** A lookup identifier, not proof of ownership or complete history. */
+  sessionKey?: string;
+  signal: AbortSignal;
+}
+
+export interface ReplyPreparationSelection {
+  selected: 'template' | 'ordinary';
+  elapsedMs: number;
+  timedOut: boolean;
+  candidateState: 'not_started' | 'pending' | 'candidate' | 'declined' | 'error';
+  /** Router/context providers may not support physical cancellation. */
+  losingWorkMayContinue: boolean;
+  /** App-owned preparation costs are not part of answer-generation cost. */
+  externalCost: 'unreported';
+}
+
+export interface ReplyPreparationPolicy {
+  /** Explicit enablement is required. */
+  enabled: boolean;
+  resolveContext?: (request: ReplyRequest & { userId: string | null; sessionKey?: string }) => ReplyPreparationContext;
+  /** Synchronous server-owned gate; only literal true starts preparation. */
+  eligible: (request: ReplyPreparationRequest) => boolean;
+  prepare: (request: ReplyPreparationRequest) => Promise<ReplyTemplate | null>;
+  /** Default 800 ms. Readiness of ordinary preparation always wins immediately. */
+  timeoutMs?: number;
+  onSelection?: (event: ReplyPreparationSelection) => void | Promise<void>;
+  /** Observes the factory's actual settlement, including late results/errors.
+   * The factory owns billing reconciliation; abort never implies zero cost. */
+  onSettled?: (event: { outcome: 'candidate' | 'declined' | 'error'; elapsedMs: number; aborted: boolean }) => void | Promise<void>;
+}
 
 /** Opt-in, provider-independent language hints and app-owned response templates. */
 export interface ChatReplyPolicy {
   detectLanguage?: (userText: string) => ReplyLanguage | null;
   template?: (request: ReplyRequest) => ReplyTemplate | null;
+  preparation?: ReplyPreparationPolicy;
 }
 
 /** For intent/language hints only; never use normalized text as a stored name. */
