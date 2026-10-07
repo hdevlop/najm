@@ -48,7 +48,10 @@ export interface ReplyPreparationPolicy {
   /** Synchronous server-owned gate; only literal true starts preparation. */
   eligible: (request: ReplyPreparationRequest) => boolean;
   prepare: (request: ReplyPreparationRequest) => Promise<ReplyTemplate | null>;
-  /** Default 800 ms. Readiness of ordinary preparation always wins immediately. */
+  /** Parallel is the default. Candidate-first defers ordinary preparation until
+   * a validated candidate, decline, failure or the bounded deadline. */
+  strategy?: 'parallel' | 'candidate-first';
+  /** Default 800 ms. Candidate-first can add this wait to a fallback. */
   timeoutMs?: number;
   onSelection?: (event: ReplyPreparationSelection) => void | Promise<void>;
   /** Observes the factory's actual settlement, including late results/errors.

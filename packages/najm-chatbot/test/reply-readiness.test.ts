@@ -132,3 +132,66 @@ test('routing failure is observed even when the classifier never resolves', asyn
   await ticks();
   expect(f.settled).toHaveBeenCalledTimes(1);
 });
+
+test('candidate-first winner never starts ordinary preparation', async () => {
+  const prepare = deferred<ReplyTemplate | null>();
+  const ordinary = mock(async () => 'fallback');
+  const result = selectReplyPreparation({ request, valid: () => true, ordinary,
+    policy: { enabled: true, strategy: 'candidate-first', eligible: () => true, prepare: () => prepare.promise } });
+  await ticks();
+  expect(ordinary).not.toHaveBeenCalled();
+  prepare.resolve({ text: 'selected' });
+  expect(await result).toEqual({ kind: 'template', value: { text: 'selected' } });
+  expect(ordinary).not.toHaveBeenCalled();
+});
+
+test.each(['decline', 'invalid', 'error'])('candidate-first %s starts fallback once', async outcome => {
+  const ordinary = mock(async () => 'fallback');
+  const result = await selectReplyPreparation({ request, ordinary, valid: value => 'text' in value && !!value.text,
+    policy: { enabled: true, strategy: 'candidate-first', eligible: () => true, prepare: async () => {
+      if (outcome === 'error') throw Error('provider failure');
+      return outcome === 'decline' ? null : { text: '' };
+    } } });
+  expect(result).toEqual({ kind: 'ordinary', value: 'fallback' });
+  expect(ordinary).toHaveBeenCalledTimes(1);
+});
+
+test('candidate-first deadline starts fallback without awaiting a late candidate', async () => {
+  const candidate = deferred<ReplyTemplate | null>();
+  const ordinary = mock(async () => 'fallback');
+  let signal!: AbortSignal;
+  const selection = mock(() => {});
+  const result = await selectReplyPreparation({ request, ordinary, valid: () => true,
+    policy: { enabled: true, strategy: 'candidate-first', timeoutMs: 5, eligible: () => true,
+      prepare: req => { signal = req.signal; return candidate.promise; }, onSelection: selection } });
+  expect(result.kind).toBe('ordinary');
+  expect(signal.aborted).toBe(true);
+  expect(ordinary).toHaveBeenCalledTimes(1);
+  expect(selection.mock.calls[0][0].timedOut).toBe(true);
+  candidate.resolve({ text: 'late' });
+  await ticks();
+  expect(selection).toHaveBeenCalledTimes(1);
+});
+
+test('candidate-first ineligible gate starts ordinary immediately and skips factory', async () => {
+  const prepare = mock(async () => null);
+  const ordinary = mock(async () => 'fallback');
+  expect((await selectReplyPreparation({ request, ordinary, valid: () => true,
+    policy: { enabled: true, strategy: 'candidate-first', eligible: () => false, prepare } })).kind).toBe('ordinary');
+  expect(ordinary).toHaveBeenCalledTimes(1);
+  expect(prepare).not.toHaveBeenCalled();
+});
+
+test('disconnect during candidate-first wait prevents fallback dispatch', async () => {
+  const controller = new AbortController();
+  const candidate = deferred<ReplyTemplate | null>();
+  const ordinary = mock(async () => 'fallback');
+  const result = selectReplyPreparation({ request, signal: controller.signal, ordinary, valid: () => true,
+    policy: { enabled: true, strategy: 'candidate-first', eligible: () => true, prepare: () => candidate.promise } });
+  await ticks();
+  controller.abort(Error('disconnect'));
+  await expect(result).rejects.toThrow('disconnect');
+  candidate.resolve(null);
+  await ticks();
+  expect(ordinary).not.toHaveBeenCalled();
+});

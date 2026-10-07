@@ -1,6 +1,6 @@
 import type { ReplyPreparationPolicy, ReplyPreparationRequest, ReplyPreparationSelection, ReplyTemplate } from './replyPolicy';
 
-/** Start both paths once. No grace period is added to ready model preparation. */
+/** One selector owns both scheduling strategies; tools run only after selection. */
 export async function selectReplyPreparation<T>(options: {
   policy: ReplyPreparationPolicy;
   request: Omit<ReplyPreparationRequest, 'signal'>;
@@ -52,11 +52,13 @@ export async function selectReplyPreparation<T>(options: {
         elapsedMs: performance.now() - started, aborted: candidate.signal.aborted })).catch(() => {}); }
       catch { /* observational sink */ }
     }
-    const normal = Promise.resolve().then(() => {
+    const candidateFirst = eligible && options.policy.strategy === 'candidate-first';
+    let normal: Promise<{ kind: 'ordinary'; value: T }> | undefined;
+    const startOrdinary = () => normal ??= Promise.resolve().then(() => {
       ordinary.signal.throwIfAborted();
       return options.ordinary(ordinary.signal);
-    })
-      .then(value => ({ kind: 'ordinary' as const, value }));
+    }).then(value => ({ kind: 'ordinary' as const, value }));
+    if (!candidateFirst) startOrdinary();
     const selected = (winner: { kind: 'ordinary'; value: T } | { kind: 'template'; value: ReplyTemplate }) => {
       const event: ReplyPreparationSelection = { selected: winner.kind, elapsedMs: performance.now() - started,
         timedOut, candidateState, losingWorkMayContinue: eligible, externalCost: 'unreported' };
@@ -65,15 +67,15 @@ export async function selectReplyPreparation<T>(options: {
       catch { /* observational sink */ }
       return winner;
     };
-    if (!eligible) return selected(await Promise.race([normal, aborted]));
+    if (!eligible) return selected(await Promise.race([startOrdinary(), aborted]));
     const configured = options.policy.timeoutMs ?? 800;
     const timeout = Number.isFinite(configured) && configured > 0 ? configured : 800;
     const expired = new Promise<null>(resolve => {
       timer = setTimeout(() => { timedOut = true; candidate.abort(); resolve(null); }, timeout);
     });
     const fast = Promise.race([prepared, expired]).then(value => value
-      ? { kind: 'template' as const, value } : normal);
-    const winner = await Promise.race([normal, fast, aborted]);
+      ? { kind: 'template' as const, value } : startOrdinary());
+    const winner = await Promise.race(candidateFirst ? [fast, aborted] : [startOrdinary(), fast, aborted]);
     if (winner.kind === 'template') ordinary.abort();
     else candidate.abort();
     return selected(winner);
