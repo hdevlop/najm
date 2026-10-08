@@ -791,10 +791,11 @@ export class ChatAgent {
         if (!diagnostics) return;
         diagnostics.data.replyPreparation = { ...event };
         // A losing router may still have an unabortable embedding request.
-        if (event.selected === 'template' && diagnostics.data.embeddings) diagnostics.data.embeddingsIncomplete = true;
+        if (event.selected === 'template' && event.losingWorkMayContinue && diagnostics.data.embeddings) diagnostics.data.embeddingsIncomplete = true;
       },
       valid: template => { validateReplyTemplate(template, available, mcp?.builder ?? null); return true; },
-      ordinary: signal => this.prepare(channel, routingText, settings, diagnostics, userText, true, signal) });
+      ordinary: signal => this.prepare(channel, routingText, settings, diagnostics, userText, true, signal),
+      ordinaryToolNames: value => Object.keys(value.tools) });
     return selected.kind === 'template' ? execute(selected.value) : selected.value;
   }
 

@@ -11,6 +11,50 @@ function deferred<T>() {
 const request = { userText: 'Bonjour', language: 'fr' as const, channel: 'web', userId: 'admin',
   historyComplete: true, priorUserTurns: 0 };
 const ticks = async () => { for (let i = 0; i < 10; i++) await Promise.resolve(); };
+
+test('router-first waits for shortlist, then selects a matching candidate without generation', async () => {
+  const routing = deferred<{ names: string[] }>();
+  const prepare = mock(async req => {
+    expect(req.availableToolNames).toEqual(['count']);
+    return { calls: [{ name: 'count', input: {} }], render: () => '8' };
+  });
+  const ordinary = mock(async () => routing.promise);
+  const result = selectReplyPreparation({ request, valid: () => true, ordinary,
+    ordinaryToolNames: value => value.names,
+    policy: { enabled: true, strategy: 'router-first', eligible: () => true, prepare } });
+  await ticks(); expect(prepare).not.toHaveBeenCalled();
+  routing.resolve({ names: ['count'] });
+  expect((await result).kind).toBe('template');
+  expect(ordinary).toHaveBeenCalledTimes(1);
+  expect(prepare).toHaveBeenCalledTimes(1);
+});
+
+test.each(['decline', 'missing-tool', 'error', 'timeout'])('router-first reuses ordinary result on %s', async outcome => {
+  const ordinary = mock(async () => ({ names: ['count'] }));
+  const result = await selectReplyPreparation({ request, valid: () => true, ordinary,
+    ordinaryToolNames: value => value.names,
+    policy: { enabled: true, strategy: 'router-first', timeoutMs: 1, eligible: () => true,
+      prepare: async () => {
+        if (outcome === 'error') throw Error('provider');
+        if (outcome === 'timeout') return new Promise(() => {});
+        return outcome === 'decline' ? null : { calls: [{ name: 'other', input: {} }], render: () => 'wrong' };
+      } } });
+  expect(result).toEqual({ kind: 'ordinary', value: { names: ['count'] } });
+  expect(ordinary).toHaveBeenCalledTimes(1);
+});
+
+test('router-first disconnect while routing never dispatches candidate', async () => {
+  const controller = new AbortController();
+  const routing = deferred<string>();
+  const prepare = mock(async () => ({ text: 'late' }));
+  const result = selectReplyPreparation({ request, signal: controller.signal, valid: () => true,
+    ordinary: async () => routing.promise,
+    policy: { enabled: true, strategy: 'router-first', eligible: () => true, prepare } });
+  await ticks(); controller.abort(Error('closed'));
+  await expect(result).rejects.toThrow('closed');
+  routing.resolve('late'); await ticks();
+  expect(prepare).not.toHaveBeenCalled();
+});
 function fixture(extra: Partial<ReplyPreparationPolicy> = {}) {
   const candidate = deferred<ReplyTemplate | null>();
   const normal = deferred<string>();

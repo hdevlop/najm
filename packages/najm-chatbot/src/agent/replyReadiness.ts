@@ -7,6 +7,7 @@ export async function selectReplyPreparation<T>(options: {
   signal?: AbortSignal;
   valid: (template: ReplyTemplate) => boolean;
   ordinary: (signal: AbortSignal) => Promise<T>;
+  ordinaryToolNames?: (value: T) => readonly string[];
   onSelection?: (event: ReplyPreparationSelection) => void;
 }): Promise<{ kind: 'ordinary'; value: T } | { kind: 'template'; value: ReplyTemplate }> {
   const candidate = new AbortController();
@@ -38,12 +39,29 @@ export async function selectReplyPreparation<T>(options: {
     // Invoke the factory before ordinary preparation so immediate candidates
     // can win, but never execute tools until selection is final.
     const started = performance.now();
+    const routerFirst = eligible && options.policy.strategy === 'router-first';
+    let ordinaryNames: readonly string[] | undefined;
+    let normal: Promise<{ kind: 'ordinary'; value: T }> | undefined;
+    const startOrdinary = () => normal ??= Promise.resolve().then(() => {
+      ordinary.signal.throwIfAborted();
+      return options.ordinary(ordinary.signal);
+    }).then(value => ({ kind: 'ordinary' as const, value }));
+    if (routerFirst) {
+      const routed = await Promise.race([startOrdinary(), aborted]);
+      lifetime.signal.throwIfAborted();
+      ordinaryNames = Object.freeze([...(options.ordinaryToolNames?.(routed.value) ?? [])]);
+      request.availableToolNames = ordinaryNames;
+    }
     const prepared = eligible ? Promise.resolve().then(() => {
       candidate.signal.throwIfAborted();
       return options.policy.prepare(request);
     }).then(value => {
       notify(value ? 'candidate' : 'declined');
-      try { return value && !candidate.signal.aborted && options.valid(value) ? value : null; }
+      try {
+        const shortlisted = !routerFirst || !value || !('calls' in value)
+          || value.calls.every(call => ordinaryNames!.includes(call.name));
+        return value && shortlisted && !candidate.signal.aborted && options.valid(value) ? value : null;
+      }
       catch { return null; }
     }, () => { notify('error'); return null; }) : Promise.resolve(null);
     function notify(outcome: 'candidate' | 'declined' | 'error') {
@@ -52,16 +70,12 @@ export async function selectReplyPreparation<T>(options: {
         elapsedMs: performance.now() - started, aborted: candidate.signal.aborted })).catch(() => {}); }
       catch { /* observational sink */ }
     }
-    const candidateFirst = eligible && options.policy.strategy === 'candidate-first';
-    let normal: Promise<{ kind: 'ordinary'; value: T }> | undefined;
-    const startOrdinary = () => normal ??= Promise.resolve().then(() => {
-      ordinary.signal.throwIfAborted();
-      return options.ordinary(ordinary.signal);
-    }).then(value => ({ kind: 'ordinary' as const, value }));
+    const candidateFirst = eligible && (options.policy.strategy === 'candidate-first' || routerFirst);
     if (!candidateFirst) startOrdinary();
     const selected = (winner: { kind: 'ordinary'; value: T } | { kind: 'template'; value: ReplyTemplate }) => {
       const event: ReplyPreparationSelection = { selected: winner.kind, elapsedMs: performance.now() - started,
-        timedOut, candidateState, losingWorkMayContinue: eligible, externalCost: 'unreported' };
+        timedOut, candidateState, losingWorkMayContinue: eligible && !routerFirst, externalCost: 'unreported',
+        ...(ordinaryNames ? { availableToolNames: ordinaryNames } : {}) };
       options.onSelection?.(event);
       try { void Promise.resolve(options.policy.onSelection?.({ ...event })).catch(() => {}); }
       catch { /* observational sink */ }

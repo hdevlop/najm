@@ -28,6 +28,8 @@ export interface ReplyPreparationRequest extends ReplyRequest, ReplyPreparationC
   /** A lookup identifier, not proof of ownership or complete history. */
   sessionKey?: string;
   signal: AbortSignal;
+  /** Server-produced shortlist, supplied only by router-first preparation. */
+  availableToolNames?: readonly string[];
 }
 
 export interface ReplyPreparationSelection {
@@ -39,6 +41,8 @@ export interface ReplyPreparationSelection {
   losingWorkMayContinue: boolean;
   /** App-owned preparation costs are not part of answer-generation cost. */
   externalCost: 'unreported';
+  /** Observational shortlist; never permission to execute a tool. */
+  availableToolNames?: readonly string[];
 }
 
 export interface ReplyPreparationPolicy {
@@ -50,7 +54,7 @@ export interface ReplyPreparationPolicy {
   prepare: (request: ReplyPreparationRequest) => Promise<ReplyTemplate | null>;
   /** Parallel is the default. Candidate-first defers ordinary preparation until
    * a validated candidate, decline, failure or the bounded deadline. */
-  strategy?: 'parallel' | 'candidate-first';
+  strategy?: 'parallel' | 'candidate-first' | 'router-first';
   /** Default 800 ms. Candidate-first can add this wait to a fallback. */
   timeoutMs?: number;
   onSelection?: (event: ReplyPreparationSelection) => void | Promise<void>;
