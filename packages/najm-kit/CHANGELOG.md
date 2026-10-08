@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.1.2 - 2026-10-08
+
+- `NTable` no longer fails to hydrate on phones. Its first render read
+  `matchMedia`, so a phone rendered the card layout over the server's table
+  layout and React discarded the server HTML with a hydration error. The
+  viewport is now read through `useMediaQuery`: the hydration render uses the
+  server snapshot and the phone switches to cards on the render after it.
+  `responsiveSkeleton` is no longer needed to avoid the mismatch.
+- The `headerSlot` wrapper is capped at the header's width and wraps its
+  content. It was `shrink-0`, so a slot wider than a phone ran off the screen.
+
 ## 3.1.1 - 2026-10-06
 
 - A cleared `FormInput type="number"` now stays empty and holds `null`. React

@@ -284,7 +284,7 @@
     },
     "packages/najm-chatbot": {
       "name": "najm-chatbot",
-      "version": "3.3.0",
+      "version": "3.4.0",
       "dependencies": {
         "@ai-sdk/anthropic": "^3.0.100",
         "@ai-sdk/google": "^3.0.99",
@@ -488,7 +488,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "3.1.1",
+      "version": "3.1.2",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",
