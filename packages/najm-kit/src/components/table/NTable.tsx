@@ -16,6 +16,7 @@ import { downloadTable, printTable, tableDataSnapshot } from "./dataActions";
 import type { Table } from "@tanstack/react-table";
 import { NTableCardsLoadingSkeleton, NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
 import { cn } from "../../lib/cn";
+import { useMediaQuery } from "../../hooks/useMediaQuery";
 import { NErrorState } from "../feedback/NErrorState";
 import { NEmptyState } from "../feedback/NEmptyState";
 import { Button } from "../Button";
@@ -286,20 +287,10 @@ function TableLayout<T>(props: { renderEmpty?: () => React.ReactNode; renderFilt
   const isCustomMode = useTableStore.use.isCustomMode();
   const renderCustomMode = useTableStore.use.renderCustomMode();
 
-  // Mobile viewport detection
-  const [isMobile, setIsMobile] = useState(() => (
-    typeof window !== "undefined" && typeof window.matchMedia === "function"
-      ? window.matchMedia("(max-width: 639px)").matches
-      : false
-  ));
-  useEffect(() => {
-    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
-    const mql = window.matchMedia("(max-width: 639px)");
-    setIsMobile(mql.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mql.addEventListener("change", handler);
-    return () => mql.removeEventListener("change", handler);
-  }, []);
+  // Mobile viewport detection. The hydration render must match the server's
+  // HTML, which cannot know the viewport, so it reads the server snapshot and
+  // the phone switches to cards on the render after it.
+  const isMobile = useMediaQuery("(max-width: 639px)");
 
   // Resolve effective mode: userMode=json always shows json; userMode=table+mobile+responsiveCards+CardComponent → cards
   const effectiveMode: ViewMode = (() => {

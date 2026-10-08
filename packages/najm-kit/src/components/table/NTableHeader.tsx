@@ -474,7 +474,7 @@ export function NTableHeader() {
     <div data-ntable-header onContextMenu={onHeaderContextMenu ?? undefined} aria-busy={isFirstLoad ? "true" : undefined} className={cn("flex shrink-0 items-center gap-0 lg:gap-3 flex-wrap lg:flex-nowrap", justify, firstLoadChromeClass, classNames?.header)}>
       <TableFilters />
       <TableMobileToolbar />
-      {headerSlot && <div className="ml-auto flex shrink-0 items-center gap-2">{headerSlot}</div>}
+      {headerSlot && <div className="ml-auto flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-2">{headerSlot}</div>}
       <TableToolbarSlot />
       {hasControls && <div className="flex gap-2 shrink-0 flex-wrap"><TableToolbarActions /><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
     </div>
