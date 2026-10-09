@@ -29,6 +29,7 @@ export { useOAuthCallback } from './useOAuthCallback';
 
 // Event hooks
 export { useAuthEvent } from './useAuthEvent';
+export { useRedirectOnSessionExpired } from './useRedirectOnSessionExpired';
 export { useAuthEvents } from './useAuthEvents';
 export type { AuthEventEntry } from './useAuthEvents';
 
