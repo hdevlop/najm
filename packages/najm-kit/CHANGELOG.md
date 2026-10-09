@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.2.0 - 2026-10-09
+
+- `NTable` takes `mobileList`, also settable for every table through
+  `tableDefaults` (`NTableDefaults.mobileList`). Below `lg` the table becomes
+  one card list that shows 12 rows and reveals 12 more each time the end
+  scrolls into view, with no page bar or view toggle. Filters, search,
+  sorting and selection still cover every row, and a new sort or filter
+  starts again from the first batch. A table without `renderCard` shows each
+  visible column as a label and its value (`NTableCellCard`), and editable
+  columns stay editable in place. Server-paged tables and the JSON and files
+  views are unchanged. Off by default.
+- `NScrollContinuation` is exported: a sentinel that calls `loadMore` when the
+  end of a list scrolls into view, observing the nearest ancestor that
+  actually scrolls.
+- `filterNavItems(items, canSee, strip)` keeps the sidebar entries a viewer
+  may open and drops groups left empty. `isNavItemActiveOrNested` is an
+  `isActive` for `NSidebar` that keeps an entry active on the pages under it.
+- `najm-kit/next` exports `NSidebarNextLink`, a `linkComponent` for
+  `NSidebar` built on `next/link`. Clicking the entry for the page already
+  open does nothing, and the links are not prefetched.
+- Fixed: a table whose `pagination`, `mode`, `rowSelection`, `expanded` or
+  `sorting` became controlled after it mounted kept treating it as
+  uncontrolled. A server-rendered page hydrates at desktop width before a
+  phone hands over its own pagination, so automatic sizing overwrote the
+  controlled page size and rendered every row.
+
 ## 3.1.2 - 2026-10-08
 
 - `NTable` no longer fails to hydrate on phones. Its first render read
