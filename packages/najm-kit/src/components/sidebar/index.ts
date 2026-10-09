@@ -8,6 +8,7 @@ export { NSidebarItem } from './NSidebarItem';
 export { NSidebarFooter } from './NSidebarFooter';
 export { NSidebarMobile } from './NSidebarMobile';
 export { NSidebarProvider, useNSidebar } from './NSidebarContext';
+export { filterNavItems, isNavItemActiveOrNested, type GatedNavItem } from './filterNavItems';
 
 // All types from single source
 export type { NSidebarContextValue } from './NSidebarContext';

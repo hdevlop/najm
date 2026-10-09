@@ -3,6 +3,8 @@ export { buildPageItems, type NTablePageItem } from "./paginationPages";
 export { NTableDefaultsProvider, useNTableDefaults, useResolvedToolbarLabels, type NTableDefaults } from "./TableDefaults";
 export { NTableContent } from "./NTableContent";
 export { NTableCards } from "./NTableCards";
+export { NTableCellCard, MOBILE_LIST_BATCH_SIZE, mobileListPresentation } from "./NTableMobileList";
+export { NScrollContinuation } from "./NScrollContinuation";
 export { NTablePagination } from "./NTablePagination";
 export { NTableHeader } from "./NTableHeader";
 export { NTableJson } from "./NTableJson";

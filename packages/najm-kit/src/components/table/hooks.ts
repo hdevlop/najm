@@ -111,6 +111,13 @@ export function useStoreSync(props: any) {
     } else if (!storeState.hasSyncedSortingFromProps && props.defaultSorting !== undefined) {
       syncData.sorting = props.defaultSorting;
     }
+    // Whether a value is controlled can change after mount: a server-rendered
+    // page hydrates at the server's width, then a phone hands over its own
+    // pagination. Leaving the flag at its first value made the automatic
+    // sizing overwrite a controlled page size.
+    (syncData as any).isModeControlled = isControlled;
+    (syncData as any).isPaginationControlled = isPaginationControlled;
+    (syncData as any).isRowSelectionControlled = isRowSelectionControlled;
     (syncData as any).isExpandedControlled = isExpandedControlled;
     (syncData as any).isSortingControlled = isSortingControlled;
     // Don't pass hasSyncedPaginationFromProps in syncData; syncWithProps computes it

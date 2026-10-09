@@ -8,6 +8,7 @@ import { useContextMenu, type ContextMenuItem } from "../data-display/useContext
 import { useStoreSync, useDynamicPageSize, useTable, useTableKeyboard } from "./hooks";
 import { NTableContent } from "./NTableContent";
 import { NTableCards } from "./NTableCards";
+import { NTableMobileList } from "./NTableMobileList";
 import { NTablePagination } from "./NTablePagination";
 import { NTableHeader } from "./NTableHeader";
 import { NTableJson } from "./NTableJson";
@@ -174,6 +175,15 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   onSortingChange?: (state: SortingState) => void;
   // Responsive cards
   responsiveCards?: boolean;
+  /**
+   * Below `lg`, render the table as one card list that reveals more rows as
+   * the page scrolls, instead of paged cards. A table without `renderCard`
+   * shows each visible column as a label and its value, editable in place
+   * where the column is. Filters, sorting and selection still cover every row.
+   * Server-paged tables and the JSON and files views are unaffected.
+   * Inherits `NTableDefaults.mobileList`; otherwise false.
+   */
+  mobileList?: boolean;
   // Empty states
   isEmpty?: boolean;
   isFilteredEmpty?: boolean;
@@ -422,6 +432,16 @@ export function NTable<T = any, M extends ViewMode = ViewMode>(
   props: NTableProps<T, M>,
 ): React.ReactElement;
 export function NTable<T = any, M extends ViewMode = ViewMode>(
+  props: NTableProps<T, M> | NTableColumnDefCompatibilityProps<T, M>,
+) {
+  const defaults = useNTableDefaults();
+  if (props.mobileList ?? defaults.mobileList) {
+    return <NTableMobileList props={props as NTableProps<any>} Base={NTableBase as React.ComponentType<NTableProps<any>>} />;
+  }
+  return <NTableBase {...(props as NTableProps<T, M>)} />;
+}
+
+function NTableBase<T = any, M extends ViewMode = ViewMode>(
   props: NTableProps<T, M> | NTableColumnDefCompatibilityProps<T, M>,
 ) {
   const recipe = useNajmComponentStyle("table");

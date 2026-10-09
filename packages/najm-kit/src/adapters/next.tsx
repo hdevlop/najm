@@ -1,5 +1,6 @@
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
+import NextLink from 'next/link';
 import NextImage from 'next/image';
 import type { ImageProps } from 'next/image';
 
@@ -18,6 +19,41 @@ export interface NextLinkAdapterProps extends Record<string, any> {
 
 export function NextLinkAdapter({ children, ...props }: NextLinkAdapterProps) {
   return React.createElement('a', props, children);
+}
+
+/**
+ * A Next.js `linkComponent` for `NSidebar`. Clicking the entry for the page
+ * already open does nothing, instead of re-running the route and its data
+ * requests, and the links are not prefetched: a sidebar would otherwise
+ * prefetch every page in the app on each mount.
+ */
+export function NSidebarNextLink({
+  href,
+  className,
+  children,
+  onClick,
+}: {
+  href: string;
+  className?: string;
+  children: React.ReactNode;
+  onClick?: React.MouseEventHandler;
+}) {
+  const pathname = usePathname();
+
+  const handleClick: React.MouseEventHandler<HTMLAnchorElement> = (event) => {
+    const target = new URL(href, window.location.href);
+    if (pathname === target.pathname && window.location.search === target.search
+      && window.location.hash === target.hash) {
+      event.preventDefault();
+    }
+    onClick?.(event);
+  };
+
+  return (
+    <NextLink href={href} prefetch={false} className={className} onClick={handleClick}>
+      {children}
+    </NextLink>
+  );
 }
 
 export function useNextNavigationAdapter() {

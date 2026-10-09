@@ -13,6 +13,8 @@ import type { NTableToolbarLabels } from "./toolbarContract";
 export interface NTableDefaults {
   /** Enable built-in CSV export, CSV/JSON import, and table printing. */
   dataActions?: boolean;
+  /** Render every table as a scrolling card list below `lg`. See `NTableProps.mobileList`. */
+  mobileList?: boolean;
   paginationLabels?: NTablePaginationLabels;
   toolbarLabels?: NTableToolbarLabels;
 }

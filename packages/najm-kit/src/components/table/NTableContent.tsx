@@ -36,7 +36,7 @@ function resolveEditorValue<TData, TValue>(
     : value;
 }
 
-function EditableCell({ cell, onCellEdit }: { cell: any; onCellEdit: (row: any, columnId: string, value: any) => Promise<any> | any }) {
+export function EditableCell({ cell, onCellEdit }: { cell: any; onCellEdit: (row: any, columnId: string, value: any) => Promise<any> | any }) {
   const columnDef = cell.column.columnDef as any;
   const meta = (columnDef.meta || {}) as NTableColumnMeta<any, any>;
   const row = cell.row.original;

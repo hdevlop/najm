@@ -246,7 +246,7 @@ export { NForm, FormInput, AvatarFormInput, NFormSectionHeader, RepeatingFields,
 export type { FormInputBackground, FormInputProps, FormProps, AvatarFormInputProps, NFormSectionHeaderProps, FormVariant, FormSlotClassNames, UseNFormOptions, DynamicArrayProps, RepeatingFieldsProps, StepConfig, WizardClassNames, WizardFormProps, StepMeta, FormDevTools, FormDevToolsConfig, FormDevToolsOptions, FormFillOverride, FormFillOverrides } from "./components/form";
 
 // Table
-export { NTable, NTableContent, NTableCards, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses, buildPageItems, NTableDefaultsProvider, useNTableDefaults, useResolvedToolbarLabels, createCardPagination, buildCardPaginationLabels, DEFAULT_CARD_PAGINATION_KEY_PREFIX } from "./components/table";
+export { NTable, NTableContent, NTableCards, NTableCellCard, NScrollContinuation, MOBILE_LIST_BATCH_SIZE, mobileListPresentation, NTablePagination, NTableHeader, NTableJson, NTableLoadingSkeleton, NDataCardShell, NTableCardRoot, NFileBrowser, buildDefaultFileColumns, formatFileBytes, formatFileRelative, TableStoreContext, useTableStore, createTableStore, useStoreSync, useDynamicPageSize, useTable, useTableKeyboard, filterResponsiveColumns, resolveHiddenBelowClass, hiddenBelowClasses, buildPageItems, NTableDefaultsProvider, useNTableDefaults, useResolvedToolbarLabels, createCardPagination, buildCardPaginationLabels, DEFAULT_CARD_PAGINATION_KEY_PREFIX } from "./components/table";
 export type { ListStrategy, ResolvedListMode, CardPaginationState, CardPaginationLabels, CardPaginationKey } from "./components/table";
 export type { NTableProps, NTableState, NTableClassNames, TableState, TableStore, TableHeaderColor, NTableMenu, NTableMenuProp, NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableEditorType, NTableEditorOption, NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels, NTableToolbarLabels, NTablePageItem, NTableDefaults } from "./components/table";
 export type { NDataCardShellProps, NDataCardShellActions } from "./components/table";
@@ -317,6 +317,7 @@ export { NSidebarSection } from "./components/sidebar/NSidebarSection";
 export { NSidebarFooter } from "./components/sidebar/NSidebarFooter";
 export { NSidebarMobile } from "./components/sidebar/NSidebarMobile";
 export { NSidebarProvider, useNSidebar } from "./components/sidebar/NSidebarContext";
+export { filterNavItems, isNavItemActiveOrNested, type GatedNavItem } from "./components/sidebar/filterNavItems";
 export type {
   NSidebarHeaderProps,
   NSidebarBrandProps,
