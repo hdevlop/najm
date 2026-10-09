@@ -1,5 +1,13 @@
 # Changelog
 
+## 6.1.0 - 2026-10-09
+
+- `useRedirectOnSessionExpired(loginRoute = '/login')` sends the user to sign
+  in when the session ends while a page is open, with `from` set to the
+  current page as the auth middleware does. A server page checks the session
+  only when it renders, so without it a revoked or expired session left the
+  page up and every list read empty. A normal sign-out does not redirect.
+
 ## 6.0.0 - 2026-10-04
 
 - Breaking: adopt najm-rate 3 and najm-email 3; unconfigured rate limits use the socket peer and SMTP requires Nodemailer 10.
