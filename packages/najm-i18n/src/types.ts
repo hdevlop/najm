@@ -36,6 +36,25 @@ export interface I18nOptions {
     * rather than echoing the key. Off by default. See `TranslatorOptions`.
     */
    fallbackToDefaultLanguage?: boolean;
+   /**
+    * Detection for a server whose own client names its interface language in
+    * a request header. It changes the defaults of `order` to
+    * `['header', 'cookie', 'querystring']`, of `lookupFromHeaderKey` to
+    * `languageHeader`, and of `caches` to `[]`; options set explicitly still
+    * win. The header comes first, so a page receives messages in the language
+    * it is showing even when a `language` cookie says otherwise. Clients
+    * without the header (scripts, MCP) still use the cookie and `?lang=`, and
+    * detection never writes a cookie that could pin a later request to the
+    * first language guessed.
+    *
+    * @example i18n({ translations, server: { languageHeader: 'X-Language' } })
+    */
+   server?: I18nServerPreset;
+}
+
+export interface I18nServerPreset {
+   /** Header the client sends its interface language in, e.g. `'X-Language'`. */
+   languageHeader: string;
 }
 
 // Decorator options

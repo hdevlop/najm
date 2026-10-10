@@ -133,6 +133,8 @@ export class I18nService {
          this.parsedConfig = {
             ...I18nService.DEFAULT_CONFIG,
             ...i18nOption,
+            // The `server` preset changes these defaults; explicit options win.
+            ...resolveDetectionDefaults(i18nOption),
          };
       }
 
@@ -471,4 +473,21 @@ export class I18nService {
    public getTranslations(): Translations {
       return this.translations;
    }
+}
+
+/**
+ * The detection order, header key and caches in effect: explicit options,
+ * then the `server` preset's, then the package defaults.
+ */
+export function resolveDetectionDefaults(options: Pick<I18nOptions, 'order' | 'lookupFromHeaderKey' | 'caches' | 'server'>): {
+   order: NonNullable<I18nOptions['order']>;
+   lookupFromHeaderKey: string;
+   caches: NonNullable<I18nOptions['caches']>;
+} {
+   const preset = options.server;
+   return {
+      order: options.order ?? (preset ? ['header', 'cookie', 'querystring'] : ['cookie', 'querystring', 'header']),
+      lookupFromHeaderKey: options.lookupFromHeaderKey ?? preset?.languageHeader ?? 'language',
+      caches: options.caches ?? (preset ? [] : ['cookie']),
+   };
 }

@@ -172,7 +172,7 @@
       "export * from './tokens';",
       "export * from './decorator';",
       "export * from './I18nPlugin';",
-      "export { I18nService } from './I18nService';",
+      "export { I18nService, resolveDetectionDefaults } from './I18nService';",
       "export { t } from './t';",
       "export * from './translator';",
       "export * from './defineI18n';"
@@ -398,7 +398,8 @@
     ],
     "najm-rate": [
       "export type { TimeWindow, KeyStrategy, CustomRateLimitKey, RateLimitKeyContext, RateLimitOptions, RateLimitPluginConfig, RateLimitEntry, } from './types';",
-      "export { resolveClientAddress, normalizeAddress, UNRESOLVED_CLIENT_ADDRESS, } from './clientAddress';",
+      "export { resolveClientAddress, normalizeAddress, UNRESOLVED_CLIENT_ADDRESS, MAX_TRUSTED_PROXY_HOPS, } from './clientAddress';",
+      "export type { UnresolvedClientPolicy } from './clientAddress';",
       "export { RATE_LIMIT_META, RATE_LIMIT_CONFIG, RATE_LIMIT_SKIP } from './tokens';",
       "export { RateLimit, SkipRateLimit, getRateLimitOptions, isRateLimitSkipped } from './decorator';",
       "export { rateLimit } from './RateLimitPlugin';",
