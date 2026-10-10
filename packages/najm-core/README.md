@@ -104,6 +104,46 @@ await new Server()
   .listen(3000);
 ```
 
+Plugins register in `.use()` order, and the first plugin of a name wins. A
+plugin passed to `.depends()` is registered only when no plugin of its name is
+registered yet. Use `lazyPlugin(name, create)` when building the dependency
+reads or validates config the application may supply by registering the
+plugin itself: `create()` runs only when the name is free. When the dependent
+also forwarded config for it, pass `forwardedConfig` and the server warns once
+at startup that the forwarded config was ignored.
+
+```typescript
+import { lazyPlugin, plugin } from 'najm-core';
+
+export const myPlugin = (config?: { cache?: CachePluginConfig }) =>
+  plugin('my-plugin')
+    .depends(lazyPlugin('cache', () => cache(config?.cache), {
+      forwardedConfig: config?.cache ? 'myPlugin({ cache })' : undefined,
+    }))
+    .build();
+```
+
+## Environment readers
+
+`najm-core/env` has no imports, so any server entrypoint can use it, including
+one a bundler evaluates at build time. The caller reads `process.env.NAME`
+literally and passes the value with its name; a reader never looks a name up.
+Unset and blank mean "use the default"; a set but malformed value throws an
+error naming the variable.
+
+```typescript
+import { envChoice, envFlag, envInt, envString, isProduction, requireEnv } from 'najm-core/env';
+
+const hops = envInt('TRUSTED_PROXY_HOPS', process.env.TRUSTED_PROXY_HOPS, {
+  fallback: isProduction() ? 1 : 0,
+  max: 8,
+});
+const provider = envChoice('EMAIL_PROVIDER', process.env.EMAIL_PROVIDER, ['console', 'smtp'], 'console');
+const host = provider === 'smtp'
+  ? requireEnv('SMTP_HOST', process.env.SMTP_HOST, 'when EMAIL_PROVIDER is smtp')
+  : undefined;
+```
+
 ## OpenAPI
 
 Generate an OpenAPI 3.1 document after loading controllers. If

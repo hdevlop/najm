@@ -24,7 +24,7 @@ import { generateOpenAPI, type OpenAPIDocument, type OpenAPIGenerateOptions } fr
 import { afterResponse } from '../middleware/responseLifecycle';
 
 // Re-export plugin builder
-export { plugin, type ContributionToken, type PluginContribution } from './plugin';
+export { plugin, lazyPlugin, type ContributionToken, type PluginContribution } from './plugin';
 export { handle } from './handle';
 
 const CORE_SERVICES = [BootService, LoggerService, ScannerService];
@@ -431,6 +431,9 @@ export class Server {
 
       try {
          this.registerDefaultPlugins();
+         for (const warning of this.registry.takeIgnoredConfigWarnings()) {
+            this.logger.warn(warning);
+         }
          this.registry.validatePendingRequirements();
          this.registry.mergeMiddlewareHandlers(this.middlewareHandlers);
          await this.resolveScanRoots();

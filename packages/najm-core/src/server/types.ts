@@ -65,12 +65,36 @@ export interface NajmPlugin {
    /** Multiple tokens to inject */
    tokens?: Array<[Token, any]>;
 
-   /** Dependencies: NajmPlugin = auto-register, string = required */
-   dependencies?: (NajmPlugin | string)[];
+   /**
+    * Dependencies: NajmPlugin = auto-register, LazyDependency = auto-register
+    * built only when needed, string = required
+    */
+   dependencies?: (NajmPlugin | LazyDependency | string)[];
 
    /** Token-to-constructor aliases */
    aliases?: Array<[Token, Constructor]>;
 
    /** Contributions to other plugins (accumulated as arrays) */
    contributions?: PluginContribution[];
+}
+
+/**
+ * A dependency registered under `name` only when no plugin of that name is
+ * registered yet. Unlike a plain plugin dependency, `create()` is not called
+ * when the name is already taken, so building the plugin (and validating its
+ * config) happens only for the plugin that is actually used.
+ */
+export interface LazyDependency {
+   /** Name of the plugin `create()` returns. */
+   readonly name: string;
+
+   /** Builds the plugin. Called at most once, during registration. */
+   readonly create: () => NajmPlugin;
+
+   /**
+    * Names the config the dependent plugin received for this dependency, e.g.
+    * `'auth({ cache })'`. When `name` is already registered that config is not
+    * used, and the server warns once at startup naming it.
+    */
+   readonly forwardedConfig?: string;
 }

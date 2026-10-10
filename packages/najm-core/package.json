@@ -14,6 +14,11 @@
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
     },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "import": "./dist/env.mjs",
+      "default": "./dist/env.mjs"
+    },
     "./*": {
       "types": "./src/*.ts",
       "import": "./src/*.ts",

@@ -3,7 +3,7 @@
 // ============================================================================
 
 import { isInjectable, type Token } from 'diject';
-import type { NajmPlugin, Constructor } from './types';
+import type { NajmPlugin, LazyDependency, Constructor } from './types';
 
 /**
  * Contribution token with type branding for type safety
@@ -37,7 +37,7 @@ export interface PluginContribution<T = unknown> {
 class PluginBuilder {
   private _name: string;
   private _version?: string;
-  private _deps: (NajmPlugin | string)[] = [];
+  private _deps: (NajmPlugin | LazyDependency | string)[] = [];
   private _contributions: PluginContribution[] = [];
   private _services: Constructor[] = [];
   private _token?: Token;
@@ -55,8 +55,11 @@ class PluginBuilder {
     return this;
   }
 
-  /** Add auto-register dependencies (plugins) */
-  depends(...plugins: NajmPlugin[]): this {
+  /**
+   * Add auto-register dependencies: plugins, or lazy dependencies from
+   * `lazyPlugin()` that are built only when their name is not registered.
+   */
+  depends(...plugins: Array<NajmPlugin | LazyDependency>): this {
     this._deps.push(...plugins);
     return this;
   }
@@ -167,3 +170,22 @@ class PluginBuilder {
  * ```
  */
 export const plugin = (name: string): PluginBuilder => new PluginBuilder(name);
+
+/**
+ * Declare a dependency that is built only when no plugin named `name` is
+ * registered yet. Use it when building the plugin reads or validates config
+ * that an application may supply by registering the plugin itself.
+ *
+ * @example
+ * ```ts
+ * plugin('auth')
+ *   .depends(lazyPlugin('cache', () => cache(opts?.cache), {
+ *     forwardedConfig: opts?.cache ? 'auth({ cache })' : undefined,
+ *   }))
+ * ```
+ */
+export const lazyPlugin = (
+  name: string,
+  create: () => NajmPlugin,
+  options: { forwardedConfig?: string } = {},
+): LazyDependency => ({ name, create, forwardedConfig: options.forwardedConfig });

@@ -2,9 +2,9 @@
 // najm-core - Main Framework Exports
 // ============================================================================
 
-export { Server, plugin, handle } from './server';
+export { Server, plugin, lazyPlugin, handle } from './server';
 export type { ContributionToken, PluginContribution } from './server';
-export type { NajmPlugin, ServerOpts, Loadable, ScanTarget } from './server/types';
+export type { NajmPlugin, LazyDependency, ServerOpts, Loadable, ScanTarget } from './server/types';
 export { SERVER_OPTS, APP, BASE_PATH, LOGGER, DECLARED_CONTROLLERS, DECLARED_PLUGIN_SERVICES, DECLARED_APP_SERVICES } from './server/tokens';
 
 // ============================================================================

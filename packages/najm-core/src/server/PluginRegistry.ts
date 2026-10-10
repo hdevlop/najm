@@ -5,19 +5,21 @@
 import { MiddlewareHandler } from 'hono';
 import { Container } from 'diject';
 import { Err } from '../errors';
-import type { NajmPlugin, Constructor } from './types';
+import type { NajmPlugin, LazyDependency, Constructor } from './types';
 
 /**
  * Owns the plugin graph for a Server instance: registration with circular
- * dependency detection, auto-registration of NajmPlugin dependencies,
- * deferred validation of string (required) dependencies, and accumulation
- * of cross-plugin contributions.
+ * dependency detection, auto-registration of NajmPlugin dependencies, lazy
+ * dependencies built only when their name is free, deferred validation of
+ * string (required) dependencies, and accumulation of cross-plugin
+ * contributions.
  */
 export class PluginRegistry {
    private readonly plugins = new Map<string, NajmPlugin>();
    private readonly contributions = new Map<symbol, unknown[]>();
    private readonly registeredContributions = new Set<string>();
    private readonly pendingRequirements = new Map<string, Set<string>>();
+   private readonly ignoredConfig: string[] = [];
 
    public has(name: string): boolean {
       return this.plugins.has(name);
@@ -57,11 +59,50 @@ export class PluginRegistry {
             continue;
          }
 
+         if (isLazyDependency(dep)) {
+            this.registerLazyDependency(plugin.name, dep, stack);
+            continue;
+         }
+
          // NajmPlugin = auto-register
          if (!this.plugins.has(dep.name)) {
             this.register(dep, stack);
          }
       }
+   }
+
+   /**
+    * Build and register a lazy dependency only when its name is free. When it
+    * is taken, the dependent's forwarded config for it goes unused; that is
+    * recorded for one startup warning instead of being dropped silently.
+    */
+   private registerLazyDependency(dependent: string, dep: LazyDependency, stack: Set<string>): void {
+      if (this.plugins.has(dep.name)) {
+         if (dep.forwardedConfig) {
+            this.ignoredConfig.push(
+               `Plugin "${dependent}" received config for its "${dep.name}" dependency (${dep.forwardedConfig}), `
+               + `but a "${dep.name}" plugin is already registered. The registered plugin's config is used; `
+               + `remove the forwarded config.`,
+            );
+         }
+         return;
+      }
+
+      const created = dep.create();
+      if (created?.name !== dep.name) {
+         throw new Error(
+            `Lazy dependency "${dep.name}" of plugin "${dependent}" created a plugin named "${created?.name}".`,
+         );
+      }
+      this.register(created, stack);
+   }
+
+   /**
+    * Warnings for forwarded config that registration ignored. Each is
+    * returned once.
+    */
+   public takeIgnoredConfigWarnings(): string[] {
+      return this.ignoredConfig.splice(0);
    }
 
    /**
@@ -178,3 +219,6 @@ export class PluginRegistry {
       return [...targets];
    }
 }
+
+const isLazyDependency = (dep: NajmPlugin | LazyDependency): dep is LazyDependency =>
+   typeof (dep as LazyDependency).create === 'function';
