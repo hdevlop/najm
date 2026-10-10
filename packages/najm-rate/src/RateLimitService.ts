@@ -13,7 +13,7 @@ import type {
   KeyStrategy,
 } from './types';
 import { CONTEXT, HRequest, getRequestData } from 'najm-core';
-import { resolveClientAddress } from './clientAddress';
+import { resolveClientAddress, UNRESOLVED_CLIENT_ADDRESS } from './clientAddress';
 import { socketPeerAddress } from './peerAddress';
 
 // ============================================================
@@ -171,7 +171,22 @@ export class RateLimitService {
       }
 
       const request = this.getRequest();
-      const baseKey = await this.generateKey(request, context, key);
+      // One resolution per request, shared by every strategy, so a custom key and
+      // a built-in key can never disagree about who the client is.
+      const clientIp = this.extractClientIP(request);
+      if (clientIp === UNRESOLVED_CLIENT_ADDRESS && this.keyUsesClientAddress(key)) {
+        const policy = this.config.onUnresolvedClient ?? 'shared';
+        if (policy === 'skip') return next();
+        if (policy === 'reject') {
+          return new Response(JSON.stringify({
+            code: 'HTTP_503',
+            message: 'Client address could not be determined',
+            status: 503,
+          }), { status: 503, headers: { 'Content-Type': 'application/json' } });
+        }
+      }
+
+      const baseKey = await this.generateKey(request, context, key, clientIp);
       const rateLimitKey = this.buildRateLimitKey(request, baseKey, scope);
       this.rememberKey(baseKey, rateLimitKey);
       const { count, resetAt } = await this.cache.incr(rateLimitKey, windowMs);
@@ -236,11 +251,20 @@ export class RateLimitService {
   // ============================================================
   // KEY GENERATION
   // ============================================================
-  private async generateKey(request: HRequest, context: Context, strategy: KeyStrategy): Promise<string> {
-    // One resolution per request, shared by every strategy, so a custom key and
-    // a built-in key can never disagree about who the client is.
-    const clientIp = this.extractClientIP(request);
+  /** Whether this request's key would contain the client address. */
+  private keyUsesClientAddress(strategy: KeyStrategy): boolean {
+    if (typeof strategy === 'function') return true;
+    if (strategy === 'ip') return true;
+    if (strategy === 'user+ip') return !this.getUser()?.id;
+    return false;
+  }
 
+  private async generateKey(
+    request: HRequest,
+    context: Context,
+    strategy: KeyStrategy,
+    clientIp: string,
+  ): Promise<string> {
     if (typeof strategy === 'function') {
       return strategy(context, { clientIp });
     }
@@ -268,6 +292,7 @@ export class RateLimitService {
       request.headers,
       this.config.trustedProxyHops,
       socketPeerAddress(this.getContext()),
+      this.config.onUnresolvedClient,
     );
   }
 

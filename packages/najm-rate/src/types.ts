@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { UnresolvedClientPolicy } from './clientAddress';
 
 // ============================================================
 // TIME & KEY TYPES
@@ -106,6 +107,15 @@ export interface RateLimitPluginConfig {
    * attacker-selected key material.
    */
   trustedProxyHops?: number;
+
+  /**
+   * What happens to a request whose client address cannot be resolved when
+   * its key depends on that address (`'ip'`, `'user+ip'` without a user, or a
+   * custom key function): `'shared'` (default) counts it in one fixed bucket,
+   * `'skip'` does not rate-limit it, `'reject'` refuses it with 503.
+   * A common choice is `isProduction() ? 'shared' : 'skip'`.
+   */
+  onUnresolvedClient?: UnresolvedClientPolicy;
 }
 
 // ============================================================

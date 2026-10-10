@@ -14,7 +14,9 @@ export {
   resolveClientAddress,
   normalizeAddress,
   UNRESOLVED_CLIENT_ADDRESS,
+  MAX_TRUSTED_PROXY_HOPS,
 } from './clientAddress';
+export type { UnresolvedClientPolicy } from './clientAddress';
 
 // Tokens
 export { RATE_LIMIT_META, RATE_LIMIT_CONFIG, RATE_LIMIT_SKIP } from './tokens';

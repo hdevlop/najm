@@ -11,6 +11,29 @@
  */
 export const UNRESOLVED_CLIENT_ADDRESS = 'unresolved';
 
+/**
+ * Largest proxy chain an application should declare. Real deployments have one
+ * or two proxies; a larger count usually means a typo, and it widens the part
+ * of the chain a client must not control.
+ */
+export const MAX_TRUSTED_PROXY_HOPS = 8;
+
+/**
+ * What a rate limit keyed on the client address does with a request whose
+ * address could not be resolved:
+ * - `'shared'` (default): count it in one fixed bucket shared by every such request.
+ * - `'skip'`: do not rate-limit it, e.g. in development, where a framework's
+ *   route handlers may expose no socket peer.
+ * - `'reject'`: refuse it with 503 until the topology is fixed.
+ */
+export type UnresolvedClientPolicy = 'shared' | 'skip' | 'reject';
+
+const POLICY_EFFECT: Record<UnresolvedClientPolicy, string> = {
+  shared: 'every affected request shares one rate-limit bucket.',
+  skip: "affected requests are not rate limited (onUnresolvedClient: 'skip').",
+  reject: "affected requests are refused with 503 (onUnresolvedClient: 'reject').",
+};
+
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/;
 const IPV6_CHARS = /^[0-9a-f:]+$/;
 /** Longest possible textual IPv6 address, so one header element stays bounded. */
@@ -114,8 +137,8 @@ export function resetClientAddressWarnings(): void {
  * getting its own. That collapse is the observable symptom of a hop count that
  * does not match the real proxy chain, so it is announced rather than absorbed.
  */
-function unresolved(cause: string, message: string): string {
-  warnOnce(cause, `${message} Until this is corrected, every affected request shares one rate-limit bucket.`);
+function unresolved(cause: string, message: string, policy: UnresolvedClientPolicy): string {
+  warnOnce(`${cause}:${policy}`, `${message} Until this is corrected, ${POLICY_EFFECT[policy]}`);
   return UNRESOLVED_CLIENT_ADDRESS;
 }
 
@@ -140,11 +163,15 @@ function assertHops(trustedProxyHops: number): void {
  *   It must come from the connection itself. A header-derived value is client
  *   input, and passing one here would let a client pick its own bucket at
  *   `trustedProxyHops: 0`, which is precisely the setting that refuses headers.
+ * @param onUnresolved The caller's policy for an unresolved address; it only
+ *   changes what the one-time warning says. The return value is
+ *   `UNRESOLVED_CLIENT_ADDRESS` either way.
  */
 export function resolveClientAddress(
   headers: Record<string, string | undefined>,
   trustedProxyHops: number | undefined,
   peerIp?: string,
+  onUnresolved: UnresolvedClientPolicy = 'shared',
 ): string {
   if (trustedProxyHops === undefined) {
     warnOnce(
@@ -165,6 +192,7 @@ export function resolveClientAddress(
       'peer',
       'trustedProxyHops is 0, so the socket peer address is the only trusted ' +
         'source, but the runtime did not expose a usable one.',
+      onUnresolved,
     );
   }
 
@@ -175,6 +203,7 @@ export function resolveClientAddress(
       `trustedProxyHops is ${trustedProxyHops}, but requests are arriving with no ` +
         'X-Forwarded-For header. Either the edge proxy is not setting it, or the ' +
         'application is reachable without passing through that proxy.',
+      onUnresolved,
     );
   }
 
@@ -188,6 +217,7 @@ export function resolveClientAddress(
         `${trustedProxyHops}, so the trusted boundary is not present in it. The ` +
         'configured topology does not match the proxies actually in front of this ' +
         'application.',
+      onUnresolved,
     );
   }
 
@@ -199,5 +229,6 @@ export function resolveClientAddress(
     'unusable-boundary',
     `The chain element at hop ${trustedProxyHops} is not a bare IP literal, so it ` +
       'cannot be used as key material.',
+    onUnresolved,
   );
 }
