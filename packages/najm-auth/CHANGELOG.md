@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.3.0 - 2026-10-10
+
+- `OwnershipToken.for(role, ...steps)` accepts `when(...rules)` row conditions,
+  each rule a SQL condition or `(userId, role) => SQL`. After a join chain they
+  narrow the rows it reaches; on their own they are the whole rule. A chain
+  must still end with `where()`.
+- `ownedIds(token, role, userId)` returns the subquery of ids a user owns
+  through a token, for pg and sqlite tables: every id for an admin role, none
+  for a role without a rule.
+- `own(table, { name })` sets the token's resource name.
+
 ## 6.2.0 - 2026-10-10
 
 - Auth builds its `cache`, `validation`, `rate-limit` and `email` dependencies

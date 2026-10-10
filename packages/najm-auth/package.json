@@ -1,6 +1,6 @@
 {
   "name": "najm-auth",
-  "version": "6.2.0",
+  "version": "6.3.0",
   "description": "Authentication and authorization library for najm framework",
   "type": "module",
   "files": [
