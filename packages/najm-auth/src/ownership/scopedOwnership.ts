@@ -1,10 +1,16 @@
-import { aliasedTable, eq, getTableColumns, sql } from 'drizzle-orm';
+import { aliasedTable, and, eq, getTableColumns, is, sql, type SQL } from 'drizzle-orm';
+import { PgTable, QueryBuilder as PgQueryBuilder } from 'drizzle-orm/pg-core';
+import { SQLiteTable, QueryBuilder as SQLiteQueryBuilder } from 'drizzle-orm/sqlite-core';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
 export interface JoinStep  { type: 'join';  left: any; right: any; table: any; }
 export interface OwnerStep { type: 'owner'; col: any; }
 export type OwnershipStep = JoinStep | OwnerStep;
+
+/** A condition on the owned row; a function receives the user id and the rule's role. */
+export type RowRule = SQL | ((userId: string, role: string) => SQL);
+export interface WhenStep  { type: 'when';  rules: RowRule[]; }
 
 // ── Default admin roles (used when OwnershipToken has no explicit adminRoles) ──
 
@@ -35,6 +41,27 @@ export function join(left: any, right: any): JoinStep {
 export function where(col: any): OwnerStep {
   return { type: 'owner', col };
 }
+
+/**
+ * Row-condition step — a condition on the owned row itself.
+ *
+ * After a join chain it narrows the rows the chain reaches ("…and the alert is
+ * for parents"). On its own it is the whole rule, for rows that belong to an
+ * audience rather than to one linked person ("every published notice for
+ * parents"). Several rules in one step, and several steps, are AND-ed.
+ *
+ * @example
+ * own(alerts)
+ *   .for('parent', join(alerts.studentId, students.id), where(students.parentUserId),
+ *     when(eq(alerts.audience, 'parents')))
+ *   .for('teacher', when(isNull(alerts.studentId), (userId) => eq(alerts.createdBy, userId)))
+ */
+export function when(...rules: RowRule[]): WhenStep {
+  return { type: 'when', rules };
+}
+
+const resolveWhen = (step: WhenStep, uid: string, role: string): SQL =>
+  and(...step.rules.map((rule) => typeof rule === 'function' ? rule(uid, role) : rule))!;
 
 // ── Compiler ───────────────────────────────────────────────────────────────
 
@@ -132,6 +159,8 @@ function compile(steps: OwnershipStep[]): (uid: string, query: any) => ScopeResu
 export interface OwnershipTokenOptions {
   /** Admin roles that bypass all scoping. Falls back to global admin roles if not set. */
   adminRoles?: string[];
+  /** Resource name (default: the table's name), e.g. for permission and policy names. */
+  name?: string;
 }
 
 export class OwnershipToken {
@@ -145,6 +174,7 @@ export class OwnershipToken {
 
   constructor(table: any, opts?: OwnershipTokenOptions) {
     const name =
+      opts?.name                        ??
       table[DRIZZLE_NAME]               ??
       (table as any)?._.baseName       ??
       (table as any)?._.name           ??
@@ -160,9 +190,26 @@ export class OwnershipToken {
     return (this._adminRoles ?? DEFAULT_ADMIN_ROLES).includes(role);
   }
 
-  /** Define scope rules for a role. */
-  for(role: string, ...steps: OwnershipStep[]): this {
-    this._rules[role] = compile(steps);
+  /**
+   * Define the scope rule for a role: a join chain ending in `where()`, and/or
+   * `when()` row conditions. A chain with conditions reaches the rows the
+   * chain reaches that also satisfy them; conditions alone are the whole rule.
+   */
+  for(role: string, ...steps: Array<OwnershipStep | WhenStep>): this {
+    const chain = steps.filter((step): step is OwnershipStep => step.type !== 'when');
+    const conditions = steps.filter((step): step is WhenStep => step.type === 'when');
+    if (!conditions.length) {
+      this._rules[role] = compile(chain);
+      return this;
+    }
+
+    const joined = chain.length ? compile(chain) : undefined;
+    this._rules[role] = (uid: string, query: any): ScopeResult => {
+      const narrowing = and(...conditions.map((condition) => resolveWhen(condition, uid, role)));
+      if (!joined) return { query, condition: narrowing };
+      const scoped = joined(uid, query);
+      return { query: scoped.query, condition: and(scoped.condition, narrowing) };
+    };
     return this;
   }
 
@@ -201,6 +248,31 @@ export class OwnershipToken {
   }
 }
 
+// ── Subquery ───────────────────────────────────────────────────────────────
+
+/**
+ * The ids of `token`'s rows that a `role` user owns, as a subquery — for a
+ * `when()` condition on another resource: "one of the classes this parent's
+ * children are in". A role that bypasses scoping gets every id; a role with no
+ * rule gets none.
+ *
+ * @example
+ * own(announcements).for('parent', when((userId, role) =>
+ *   inArray(announcements.classId, ownedIds(Class, role, userId))))
+ */
+export function ownedIds(token: OwnershipToken, role: string, userId: string): any {
+  const table = token.table;
+  if (!table?.id) throw new Error(`ownedIds(): ${token.name} has no id column.`);
+  const builder = is(table, SQLiteTable) ? new SQLiteQueryBuilder()
+    : is(table, PgTable) ? new PgQueryBuilder()
+    : null;
+  if (!builder) throw new Error(`ownedIds(): ${token.name} is not a pg or sqlite table.`);
+
+  const rows = (builder as PgQueryBuilder).select({ id: table.id }).from(table);
+  const { query, condition } = token.applyScopeSplit(userId, role, rows);
+  return condition === null ? query : query.where(condition);
+}
+
 // ── Entry point ────────────────────────────────────────────────────────────
 
 /**
@@ -215,6 +287,9 @@ export class OwnershipToken {
  * // With explicit admin roles (avoids global state):
  * export const Grade = own(grades, { adminRoles: ['admin', 'principal'] })
  *   .for('teacher', join(grades.studentId, students.id), where(teachers.userId));
+ *
+ * // With a resource name other than the table's:
+ * export const Report = own(reportRows, { name: 'reports' });
  */
 export function own(table: any, opts?: OwnershipTokenOptions): OwnershipToken {
   return new OwnershipToken(table, opts);

@@ -1,5 +1,5 @@
-export { own, join, where, OwnershipToken } from './scopedOwnership';
-export type { OwnershipTokenOptions, ScopeResult } from './scopedOwnership';
+export { own, join, where, when, ownedIds, OwnershipToken } from './scopedOwnership';
+export type { OwnershipTokenOptions, ScopeResult, RowRule, WhenStep } from './scopedOwnership';
 export { configureOwnership } from './configureOwnership';
 export type {
   OwnershipProvider, ResourceGuards, ResourceGuardsOptions,

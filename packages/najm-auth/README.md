@@ -635,6 +635,29 @@ An upgrade alone does not rewrite unsafe queries in consumers. Keep role
 and cross-user integration tests in each app. `@Policy` and `@CanRead` check
 permissions, not the ownership of a requested record ID.
 
+### Row conditions and owned-id subqueries (6.3+)
+
+A rule may also hold `when()` conditions on the owned row. After a join chain
+they narrow it; on their own they are the whole rule, for rows that belong to
+an audience rather than to one linked person. A function receives the user id
+and the rule's role. `ownedIds(token, role, userId)` is the subquery of ids a
+user owns through another token, for use inside a condition.
+
+```typescript
+import { own, join, where, when, ownedIds } from 'najm-auth';
+
+export const Alert = own(alerts, { adminRoles: ['admin'] })
+  // Alerts about my children that are addressed to parents
+  .for('parent', join(alerts.studentId, students.id), where(students.parentUserId),
+    when(eq(alerts.audience, 'parents')))
+  // Alerts naming nobody, for classes I teach
+  .for('teacher', when(isNull(alerts.studentId),
+    (userId, role) => inArray(alerts.classId, ownedIds(Class, role, userId))));
+```
+
+`own(table, { name })` sets the token's resource name when it should differ
+from the table's.
+
 ### Advanced Ownership: Multi-Role Scoping
 
 ```typescript
