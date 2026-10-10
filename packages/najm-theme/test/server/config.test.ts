@@ -246,3 +246,24 @@ describe("actor attribution", () => {
     expect(resolved.resolveActorId(null)).toBeNull();
   });
 });
+
+describe("default diagnostic reporter", () => {
+  it("prints every field of a diagnostic on one line", async () => {
+    const { reportThemeDiagnostic } = await import("../../src/server/config");
+    const lines: string[] = [];
+    const original = console.warn;
+    console.warn = (...args: unknown[]) => void lines.push(args.map(String).join(" "));
+    try {
+      reportThemeDiagnostic({ code: "asset.cleanup-failed", scopeId: "school", detail: "slot logo", error: "Error: denied" });
+      reportThemeDiagnostic({ code: "audit.sink-failed" });
+      reportThemeDiagnostic({ code: "preset.invalid-design", error: "non-error thrown: object" });
+    } finally {
+      console.warn = original;
+    }
+    expect(lines).toEqual([
+      "[najm-theme] asset.cleanup-failed (scope school): slot logo — Error: denied",
+      "[najm-theme] audit.sink-failed",
+      "[najm-theme] preset.invalid-design — non-error thrown: object",
+    ]);
+  });
+});

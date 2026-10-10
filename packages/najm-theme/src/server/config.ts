@@ -337,11 +337,16 @@ function requireGuards(
  * stale slot, an asset that could not be cleaned up. Silence was the old
  * default, and silence is how a consumer discovers months later that branding
  * reconciliation has been failing since a storage credential rotated. This
- * prints the code and the sanitized detail and nothing else; anything richer is
- * the application's own sink to write.
+ * prints the code, the scope, the package-written detail and the error's
+ * `"<name>: <message>"` — every field of the diagnostic, each already safe to
+ * log by contract — on one line. Anything richer is the application's own
+ * sink to write.
  */
-const reportThemeDiagnostic: ThemeDiagnosticSink = (diagnostic) => {
-  console.warn(`[najm-theme] ${diagnostic.code}${diagnostic.detail ? `: ${diagnostic.detail}` : ""}`);
+export const reportThemeDiagnostic: ThemeDiagnosticSink = (diagnostic) => {
+  const scope = diagnostic.scopeId ? ` (scope ${diagnostic.scopeId})` : "";
+  const detail = diagnostic.detail ? `: ${diagnostic.detail}` : "";
+  const error = diagnostic.error ? ` — ${diagnostic.error}` : "";
+  console.warn(`[najm-theme] ${diagnostic.code}${scope}${detail}${error}`);
 };
 
 /**
