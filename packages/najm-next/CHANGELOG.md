@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.10.0 - 2026-10-10
+
+- Added `najm-next/env` with `isNextBuildPhase()`, true only while
+  `next build` evaluates server modules. The entry has no imports, so server
+  packages and seed scripts can use it without loading Next or React.
+
 ## 0.9.0 - 2026-10-04
 
 - Require patched Next ^15.5.24 || ^16.3.6 and reject older versions during configuration.
