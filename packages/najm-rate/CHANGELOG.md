@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.1.0 - 2026-10-10
+
+- Added `onUnresolvedClient: 'shared' | 'skip' | 'reject'` for a request
+  whose client address cannot be resolved while its key depends on it
+  (`'ip'`, `'user+ip'` without a user, or a custom key function). `'shared'`
+  (default) keeps today's single bucket; `'skip'` does not rate-limit it;
+  `'reject'` answers 503. The one-time warning names the policy in effect.
+- Exported `MAX_TRUSTED_PROXY_HOPS` (8) for applications that bound their
+  configured hop count.
+
 ## 3.0.0 - 2026-10-04
 
 - Breaking: omitted trustedProxyHops now defaults to zero and ignores forwarded headers. Declare the actual trusted hop count behind a reverse proxy.
