@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.2.0 - 2026-10-10
+
+- Auth builds its `cache`, `validation`, `rate-limit` and `email` dependencies
+  only when the application has not registered a plugin of that name before
+  `auth()`. An application that registers `email()` itself no longer needs
+  `EMAIL_PROVIDER`, or email config forwarded to `auth()`, for auth to start.
+- Config passed to `auth()` for one of those plugins that the application
+  also registered is ignored, as before, but the server now warns once at
+  startup naming the option. Remove the forwarded config to silence it.
+- Requires najm-core 3.1.0 (`lazyPlugin`).
+
 ## 6.1.0 - 2026-10-09
 
 - `useRedirectOnSessionExpired(loginRoute = '/login')` sends the user to sign
