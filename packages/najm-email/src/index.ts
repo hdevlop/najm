@@ -4,6 +4,8 @@
 
 // Plugin factory function
 export { email } from './EmailPlugin';
+export { emailConfigFromEnv, EMAIL_ENV_PROVIDERS } from './emailConfigFromEnv';
+export type { EmailEnv, EmailEnvProvider, EmailConfigFromEnvOptions } from './emailConfigFromEnv';
 
 // Main service
 export { EmailService } from './EmailService';

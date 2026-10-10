@@ -153,8 +153,44 @@ export class EmailService {
   async send(message: EmailMessage): Promise<SendResult> {
     this.ensureInitialized();
 
-    const preparedMessage = this.prepareMessage(message);
+    let result: SendResult;
+    try {
+      result = await this.deliver(this.prepareMessage(message));
+    } catch (error) {
+      this.logFailure('send');
+      throw error;
+    }
 
+    if (!result.success) this.logFailure('send');
+    return result;
+  }
+
+  /**
+   * Send multiple emails in bulk. A failed invocation logs once, with the
+   * failed count; the messages' own `send()` logs are not repeated.
+   */
+  async sendBulk(messages: EmailMessage[]): Promise<BulkSendResult> {
+    this.ensureInitialized();
+
+    const preparedMessages = messages.map((m) => this.prepareMessage(m));
+
+    let result: BulkSendResult;
+    try {
+      result = this.provider.sendBulk
+        ? await this.provider.sendBulk(preparedMessages)
+        : await this.deliverSequentially(preparedMessages);
+    } catch (error) {
+      // A thrown batch delivered nothing it can report, so count every message.
+      this.logFailure('sendBulk', preparedMessages.length);
+      throw error;
+    }
+
+    if (result.failed > 0) this.logFailure('sendBulk', result.failed);
+    return result;
+  }
+
+  /** One message through the provider with retries and events; logs nothing. */
+  private async deliver(preparedMessage: EmailMessage): Promise<SendResult> {
     // Emit sending event
     await this.emit('email:sending', { message: preparedMessage });
 
@@ -182,26 +218,15 @@ export class EmailService {
     }
   }
 
-  /**
-   * Send multiple emails in bulk
-   */
-  async sendBulk(messages: EmailMessage[]): Promise<BulkSendResult> {
-    this.ensureInitialized();
-
-    const preparedMessages = messages.map((m) => this.prepareMessage(m));
-
-    if (this.provider.sendBulk) {
-      return this.provider.sendBulk(preparedMessages);
-    }
-
-    // Fallback to sequential sending
+  /** Fallback for providers without `sendBulk`. */
+  private async deliverSequentially(preparedMessages: EmailMessage[]): Promise<BulkSendResult> {
     const results: SendResult[] = [];
     let sent = 0;
     let failed = 0;
 
     for (const message of preparedMessages) {
       try {
-        const result = await this.send(message);
+        const result = await this.deliver(message);
         results.push(result);
         if (result.success) {
           sent++;
@@ -218,11 +243,28 @@ export class EmailService {
     }
 
     return {
-      total: messages.length,
+      total: preparedMessages.length,
       sent,
       failed,
       results,
     };
+  }
+
+  /**
+   * The built-in failure log. Only fixed, safe fields: provider errors,
+   * responses and subjects can all carry recipient addresses, so none of them
+   * is passed to the logger.
+   */
+  private logFailure(operation: 'send' | 'sendBulk', failed?: number): void {
+    if (this.config.logFailures === false) return;
+
+    const context: Record<string, string | number> = {
+      provider: this.getProviderName(),
+      operation,
+    };
+    if (failed !== undefined) context.failed = failed;
+
+    this.log.error('Email delivery failed', undefined, context);
   }
 
   /**

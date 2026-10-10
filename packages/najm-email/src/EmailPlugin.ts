@@ -53,9 +53,14 @@ const loadProviderFromEnv = (): ProviderConfig | undefined => {
 };
 
 /**
- * Default configuration values with environment variable fallbacks
+ * Default configuration values with environment variable fallbacks. Read when
+ * `email()` is called, never when the package is imported, so importing
+ * najm-email in a bundled or build-time module reads no environment.
+ *
+ * These fallbacks are lenient and unvalidated; `emailConfigFromEnv()` builds
+ * validated config from the same variables.
  */
-const DEFAULT_CONFIG: Partial<EmailConfig> = {
+const defaultConfig = (): Partial<EmailConfig> => ({
   provider: loadProviderFromEnv(),
   defaultFrom: process.env.EMAIL_DEFAULT_FROM,
   defaultReplyTo: process.env.EMAIL_DEFAULT_REPLY_TO,
@@ -68,17 +73,18 @@ const DEFAULT_CONFIG: Partial<EmailConfig> = {
       ? parseInt(process.env.EMAIL_RETRY_DELAY, 10)
       : 1000,
   },
-};
+});
 
 /**
  * Merge user config with defaults
  */
 const mergeConfig = (config?: EmailPluginConfig): EmailConfig => {
+  const defaults = defaultConfig();
   const finalConfig = {
-    ...DEFAULT_CONFIG,
+    ...defaults,
     ...config,
     retry: {
-      ...DEFAULT_CONFIG.retry,
+      ...defaults.retry,
       ...config?.retry,
     },
   } as EmailConfig;
@@ -95,7 +101,15 @@ const mergeConfig = (config?: EmailPluginConfig): EmailConfig => {
  *
  * Supports configuration via:
  * 1. Direct config object (overrides env vars)
- * 2. Environment variables (as fallback)
+ * 2. Environment variables (as fallback, read when `email()` is called)
+ *
+ * Prefer `email(emailConfigFromEnv({ ... }))` for environment-driven config:
+ * it validates every variable and names the one that is wrong.
+ *
+ * A failed delivery is logged once through LoggerService with only the
+ * provider name and operation (and, for bulk sends, the failed count) —
+ * never recipients, subjects, content or provider error text. Set
+ * `logFailures: false` to turn that off.
  *
  * Environment variables:
  * - EMAIL_PROVIDER ('resend' | 'sendgrid' | 'smtp' | 'console' | 'memory')

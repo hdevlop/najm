@@ -235,6 +235,13 @@ export interface EmailConfig {
   templates?: TemplateConfig;
   /** Enable debug logging */
   debug?: boolean;
+  /**
+   * Log failed deliveries through LoggerService (default: true): once per
+   * `send()` after retries, once per `sendBulk()` with the failed count. The
+   * log holds only the provider name, the operation and that count — never
+   * recipients, subjects, content, provider responses or error text.
+   */
+  logFailures?: boolean;
   /** Retry configuration */
   retry?: {
     /** Number of retry attempts */

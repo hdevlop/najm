@@ -38,6 +38,39 @@ const server = new Server()
   .listen(3000);
 ```
 
+### From environment variables
+
+`emailConfigFromEnv()` builds validated config from the standard variables. Pass
+each one as a literal `process.env` read; the helper never looks a name up, so
+every variable stays visible to the bundler. Values are read when you call it,
+and a missing credential, half-configured SMTP login or malformed number throws
+an error naming the variable.
+
+```typescript
+import { email, emailConfigFromEnv } from 'najm-email';
+
+server.use(email(emailConfigFromEnv({
+  EMAIL_PROVIDER: process.env.EMAIL_PROVIDER,          // console | memory | resend | sendgrid | smtp
+  EMAIL_LOG_LEVEL: process.env.EMAIL_LOG_LEVEL,        // console: debug | info
+  RESEND_API_KEY: process.env.RESEND_API_KEY,
+  SENDGRID_API_KEY: process.env.SENDGRID_API_KEY,
+  SENDGRID_SANDBOX_MODE: process.env.SENDGRID_SANDBOX_MODE,
+  SMTP_HOST: process.env.SMTP_HOST,
+  SMTP_PORT: process.env.SMTP_PORT,                    // default 587
+  SMTP_USER: process.env.SMTP_USER,                    // both or neither
+  SMTP_PASS: process.env.SMTP_PASS,
+  SMTP_SECURE: process.env.SMTP_SECURE,
+  EMAIL_DEFAULT_FROM: process.env.EMAIL_DEFAULT_FROM,
+  EMAIL_DEFAULT_REPLY_TO: process.env.EMAIL_DEFAULT_REPLY_TO,
+  EMAIL_DEBUG: process.env.EMAIL_DEBUG,
+  EMAIL_RETRY_ATTEMPTS: process.env.EMAIL_RETRY_ATTEMPTS, // default 1
+  EMAIL_RETRY_DELAY: process.env.EMAIL_RETRY_DELAY,       // ms, default 1000
+}, { defaultProvider: 'console', defaultFrom: 'noreply@example.com' })));
+```
+
+Without `defaultProvider`, `EMAIL_PROVIDER` is required. `defaultFrom` applies
+only when `EMAIL_DEFAULT_FROM` is unset or blank.
+
 ### Using in Services
 
 ```typescript
@@ -235,6 +268,15 @@ interface EmailAttachment {
 }
 ```
 
+## Failure logging
+
+A failed delivery is logged through `LoggerService` without any listener: once
+per `send()` after its retries, and once per `sendBulk()` with the number of
+failed messages, whichever provider path the batch takes. The entry carries
+only the provider name, the operation and that count. Recipients, subjects,
+content, provider responses and provider error text are never logged, because
+any of them can contain an address. Set `logFailures: false` to turn it off.
+
 ## Events
 
 Subscribe to email lifecycle events:
@@ -275,6 +317,9 @@ interface EmailConfig {
   
   // Enable debug logging (optional)
   debug?: boolean;
+
+  // Log failed deliveries with safe fields only (default: true)
+  logFailures?: boolean;
   
   // Retry configuration (optional)
   retry?: {
