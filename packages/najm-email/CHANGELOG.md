@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.1.1 - 2026-10-10
+
+- Resend attachments carry `content_disposition` and `content_id` from the
+  message's `disposition` and `cid`, as the SMTP and SendGrid providers
+  already did. An inline image referenced as `cid:` in the HTML — such as the
+  logo najm-auth embeds in account invitations — now renders through Resend
+  instead of arriving as a plain attachment.
+
 ## 3.1.0 - 2026-10-10
 
 - Added `emailConfigFromEnv(env, { defaultProvider?, defaultFrom? })`, which
