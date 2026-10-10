@@ -1,5 +1,12 @@
 # najm-theme
 
+## 0.3.1 - 2026-10-10
+
+- The default diagnostic reporter prints the scope and the error's
+  `"<name>: <message>"` with the code and detail, on one line. Every field is
+  already safe to log by the diagnostic contract; applications that copied a
+  reporter just to see them can drop it.
+
 ## 0.3.0 - 2026-10-04
 
 - Require patched Next ^15.5.24 || ^16.3.6 for optional Next integration and Sharp ^0.35.5.
