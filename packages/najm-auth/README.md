@@ -186,11 +186,21 @@ auth({
     }
   }
 
-  // Dependencies (forwarded to plugins)
+  // Dependencies auth registers when the application has not
   validation?: ValidationPluginConfig
   rateLimit?: RateLimitPluginConfig
+  cache?: CachePluginConfig
+  email?: EmailPluginConfig
 })
 ```
+
+Auth depends on the `cache`, `validation`, `rate-limit` and `email` plugins and
+builds each only when the application has not registered one of that name
+before `auth()`. An application that registers its own configures it there and
+passes nothing for it to `auth()`; config passed both ways is ignored on the
+auth side, and the server warns once at startup naming the option. In
+particular, `auth()` needs no `EMAIL_PROVIDER` when the application registers
+`email()` itself.
 
 ---
 

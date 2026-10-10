@@ -261,21 +261,33 @@ export type AuthPluginConfig = {
    * a user has a durable setup requirement.
    */
   credentialSetup?: CredentialSetupConfig;
-  /** Optional config forwarded to validation() dependency */
+  /*
+   * Auth depends on the cache, validation, rate-limit and email plugins. The
+   * first plugin of a name to register wins, and auth builds its own only when
+   * the application has not registered one before `auth()`. The four options
+   * below configure that auth-built plugin. An application that registers the
+   * plugin itself configures it there instead: config passed here as well is
+   * ignored, and the server warns once at startup naming it.
+   */
+
+  /** Config for the validation() plugin auth registers when the application has none. */
   validation?: ValidationPluginConfig;
-  /** Optional config forwarded to rateLimit() dependency */
+  /** Config for the rateLimit() plugin auth registers when the application has none. */
   rateLimit?: RateLimitPluginConfig;
 
   /**
-   * Optional config forwarded to the package-owned cache() dependency.
-   *
-   * Auth registers cache() itself, so a consumer cannot configure the store by
-   * registering its own plugin first. Pass it here to select a shared, durable
-   * backend — required in production wherever the cache backs rate limiting,
-   * since a per-process memory bucket resets on every restart.
+   * Config for the cache() plugin auth registers when the application has
+   * none. Select a shared, durable backend — here or on the application's own
+   * `cache()` — in production wherever the cache backs rate limiting, since a
+   * per-process memory bucket resets on every restart.
    */
   cache?: CachePluginConfig;
-  /** Email transport used by password reset and verification flows. */
+  /**
+   * Email transport for password reset and verification flows, used when the
+   * application registers no email() plugin. Auth builds its email plugin only
+   * in that case, so an application with its own needs no `EMAIL_PROVIDER`
+   * for auth to start.
+   */
   email?: EmailPluginConfig;
   /** AES-256-GCM key for reversible encryption (e.g. API keys). Falls back to NAJM_ENCRYPTION_KEY env var. */
   encryptionKey?: string;

@@ -2,8 +2,8 @@
 // AuthPlugin.ts - Auth Plugin Factory (Fluent API)
 // ============================================================================
 
-import { Err, plugin } from 'najm-core';
-import { cache, type CachePluginConfig } from 'najm-cache';
+import { Err, lazyPlugin, plugin, type NajmPlugin } from 'najm-core';
+import { cache } from 'najm-cache';
 import { AUTH_CONFIG, AUTH_ENCRYPTION_KEY, AUTH_SCHEMA } from './auth.tokens';
 import type { AuthPluginConfig, AuthConfig, AuthSchema } from './types';
 import { authSchema as pgSchema } from './schema/pg';
@@ -242,17 +242,33 @@ export const selectAuthSchema = (config?: AuthPluginConfig): AuthSchema => {
   }
 };
 
+/**
+ * A dependency auth registers only when the application has not registered a
+ * plugin of that name itself. Building it is deferred so its config is never
+ * validated when the application's own plugin is used — `email()` throws
+ * without a provider. Config forwarded through auth() for a plugin the
+ * application registered is ignored, and the server warns about it.
+ */
+const configurableDependency = <K extends 'cache' | 'validation' | 'rateLimit' | 'email'>(
+  config: AuthPluginConfig | undefined,
+  option: K,
+  name: string,
+  create: (options: AuthPluginConfig[K]) => NajmPlugin,
+) => lazyPlugin(name, () => create(config?.[option]), {
+  forwardedConfig: config?.[option] === undefined ? undefined : `auth({ ${option} })`,
+});
+
 export const auth = (config?: AuthPluginConfig) =>
   plugin('auth')
     .version('1.0.0')
     .depends(
-      cache(config?.cache),
+      configurableDependency(config, 'cache', 'cache', cache),
       cookies(),
       i18n(),
       guards(),
-      validation(config?.validation),
-      rateLimit(config?.rateLimit),
-      email(config?.email)
+      configurableDependency(config, 'validation', 'validation', validation),
+      configurableDependency(config, 'rateLimit', 'rate-limit', rateLimit),
+      configurableDependency(config, 'email', 'email', email),
     )
     .requires('database')
     .contributes(I18N_CONTRIBUTIONS, AUTH_LOCALES)
