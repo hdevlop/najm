@@ -1,5 +1,14 @@
 # Changelog
 
+## 2.3.0 - 2026-10-10
+
+- Added `redisCacheConfig({ url, Redis, keyPrefix?, required?, buildPhase?, variable? })`.
+  It validates the Redis URL (`redis:`/`rediss:` with a host, and a password
+  when `required`), builds the client from the application's ioredis
+  constructor with the shared connection options, returns memory when no URL
+  is set and the cache is not required, and returns unrequired memory during a
+  build phase. Errors name the variable and never include the URL.
+
 ## 2.2.0 - 2026-09-05
 
 - feat(cache): add atomic `compareAndDelete(key, expected)` support to the
