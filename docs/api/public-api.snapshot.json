@@ -57,6 +57,8 @@
     ],
     "najm-cache": [
       "export { cache } from './CachePlugin';",
+      "export { redisCacheConfig } from './redisCacheConfig';",
+      "export type { RedisCacheConfigOptions, RedisCacheClientOptions, RedisConstructor } from './redisCacheConfig';",
       "export { CacheService, CacheConfigError } from './CacheService';",
       "export { MemoryDriver, type MemoryDriverOptions } from './drivers/MemoryDriver';",
       "export { RedisDriver, isRedisAvailable, type RedisDriverOptions, type RedisClient } from './drivers/RedisDriver';",
@@ -141,6 +143,8 @@
     ],
     "najm-email": [
       "export { email } from './EmailPlugin';",
+      "export { emailConfigFromEnv, EMAIL_ENV_PROVIDERS } from './emailConfigFromEnv';",
+      "export type { EmailEnv, EmailEnvProvider, EmailConfigFromEnvOptions } from './emailConfigFromEnv';",
       "export { EmailService } from './EmailService';",
       "export { EMAIL_CONFIG, EMAIL_PROVIDER, EMAIL_SERVICE } from './tokens';",
       "export type { EmailAddress, EmailAttachment, EmailMessage, TemplateEmailMessage, TemplateVariables, SendResult, BulkSendResult, EmailProvider, SmtpConfig, ResendConfig, SendGridConfig, MailgunConfig, SesConfig, PostmarkConfig, ConsoleConfig, MemoryConfig, ProviderConfig, TemplateConfig, EmailConfig, EmailPluginConfig, EmailEvents, EmailEventHandler, } from './types';",

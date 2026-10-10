@@ -39,6 +39,8 @@
 
 // Plugin
 export { cache } from './CachePlugin';
+export { redisCacheConfig } from './redisCacheConfig';
+export type { RedisCacheConfigOptions, RedisCacheClientOptions, RedisConstructor } from './redisCacheConfig';
 
 // Service
 export { CacheService, CacheConfigError } from './CacheService';

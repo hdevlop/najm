@@ -33,6 +33,32 @@ await new Server()
 
 Redis is optional — if not available, falls back to in-memory automatically.
 
+### Redis from environment variables
+
+`redisCacheConfig()` validates the URL and builds the client with the options
+every Najm app shares (lazy connect, 3 retries per request, up to 3 reconnect
+attempts, a swallowed `error` event). Pass the ioredis constructor so your
+bundler sees a static import; the driver's own fallback loads ioredis with a
+dynamic `require` that server bundles such as Next's do not trace.
+
+```typescript
+import Redis from 'ioredis';
+import { cache, redisCacheConfig } from 'najm-cache';
+import { isProduction } from 'najm-core/env';
+import { isNextBuildPhase } from 'najm-next/env';
+
+server.use(cache(redisCacheConfig({
+  url: process.env.REDIS_URL,
+  Redis,
+  keyPrefix: 'myapp:',
+  required: isProduction(),       // URL with a password required
+  buildPhase: isNextBuildPhase(), // a build contacts no Redis
+})));
+```
+
+Without a URL it returns memory (or throws when `required`). Errors name the
+variable and never include the URL.
+
 ### In Services
 
 ```typescript
