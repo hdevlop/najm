@@ -1,5 +1,20 @@
 # najm-core
 
+## 3.1.0 - 2026-10-10
+
+### Added
+
+- `najm-core/env`: `envString`, `requireEnv`, `envFlag`, `envInt`,
+  `envChoice` and `isProduction`. The entry has no imports. The caller passes
+  the variable's name and its literal `process.env` value; blank means unset,
+  and a set but malformed value throws an error naming the variable.
+- `lazyPlugin(name, create, { forwardedConfig? })` and the `LazyDependency`
+  type. `.depends()` accepts a lazy dependency, which is built only when no
+  plugin of that name is registered, so its config is never validated for a
+  plugin the application registered itself. When `forwardedConfig` is set and
+  the name is already taken, the server warns once at startup that the
+  forwarded config was ignored. Plain plugin dependencies are unchanged.
+
 ## 3.0.4 - 2026-10-06
 
 ### Fixed
