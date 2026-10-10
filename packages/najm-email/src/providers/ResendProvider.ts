@@ -25,6 +25,9 @@ interface ResendEmailPayload {
     filename: string;
     content: string;
     content_type?: string;
+    /** `inline` with `content_id` lets the HTML reference the file as `cid:<id>`. */
+    content_disposition?: 'attachment' | 'inline';
+    content_id?: string;
   }[];
 }
 
@@ -177,6 +180,8 @@ export class ResendProvider extends BaseProvider {
             ? att.content
             : att.content.toString('base64'),
         content_type: att.contentType,
+        content_disposition: att.disposition,
+        content_id: att.cid,
       }));
     }
 
