@@ -474,6 +474,12 @@ server-side.
 | `NAJM_NEXT_DIST_DIR` | `.next` | Build directory, for parallel builds such as E2E runs. |
 | `NAJM_NEXT_DEV_ORIGINS` | *(empty)* | Extra dev-server origins, comma or space separated. |
 
+`najm-next/env` exports `isNextBuildPhase()`, true only while `next build`
+evaluates server modules (`NEXT_PHASE === 'phase-production-build'`). It has no
+imports, so a server package or seed script can use it without loading Next or
+React — for example to keep a cache client from contacting production Redis
+during the build.
+
 ## Notes
 
 - Requires patched Next releases: `^15.5.24 || ^16.3.6`; tested through Next 16.

@@ -40,6 +40,7 @@ export default defineConfig([
       index: 'src/index.ts',
       config: 'src/config.ts',
       configurable: 'src/configurable.ts',
+      env: 'src/env.ts',
       app: 'src/app.ts',
       'app/server': 'src/app/server.ts',
       'app/next': 'src/app/next.ts',

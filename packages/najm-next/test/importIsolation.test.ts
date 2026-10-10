@@ -100,7 +100,7 @@ describe("import isolation (DX-01/DX-02)", () => {
   test("root tsconfig maps every new subpath", () => {
     const tsconfig = readFileSync(resolve(packageRoot, "..", "..", "tsconfig.json"), "utf8");
 
-    for (const subpath of ["najm-next/app", "najm-next/app/server", "najm-next/app/next", "najm-next/app/react", "najm-next/app/client", "najm-next/query/tanstack", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
+    for (const subpath of ["najm-next/env", "najm-next/app", "najm-next/app/server", "najm-next/app/next", "najm-next/app/react", "najm-next/app/client", "najm-next/query/tanstack", "najm-next/security", "najm-next/security/reports", "najm-next/instrumentation/client"]) {
       expect(tsconfig).toContain(`"${subpath}"`);
     }
   });

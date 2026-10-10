@@ -27,6 +27,11 @@
       "import": "./dist/configurable.js",
       "default": "./dist/configurable.js"
     },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "import": "./dist/env.js",
+      "default": "./dist/env.js"
+    },
     "./app": {
       "types": "./dist/app.d.ts",
       "import": "./dist/app.js",
