@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.2.2 - 2026-10-11
+
+- `NTable` shows skeletons for its filters during the initial load, inside the
+  existing desktop and mobile wrappers so widths, wrapping and header height
+  stay stable. Refreshes keep the real filters and their values visible.
+
 ## 3.2.1 - 2026-10-11
 
 - `NAvatar` shows a neutral background while its image loads, reserving name

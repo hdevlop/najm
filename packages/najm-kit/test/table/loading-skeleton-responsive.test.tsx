@@ -23,17 +23,7 @@ function CardRenderer() {
 }
 
 describe("NTable responsive loading skeleton", () => {
-  /*
-   * There is no toolbar skeleton any more, and that is the point.
-   *
-   * A placeholder toolbar has to be matched to the real one pixel for pixel, or
-   * swapping them moves the body underneath and the measured page size changes
-   * with it. Rendering the real toolbar throughout the load makes the two
-   * heights equal by construction. The loading state still has to show the
-   * right controls at both breakpoints, which is what this checks — now against
-   * the real toolbar rather than a copy of it.
-   */
-  test("shows the real toolbar at both breakpoints while loading", () => {
+  test("shows filter skeletons in the existing toolbar at both breakpoints", () => {
     const { container } = render(
       <NTable<Row>
         data={[]}
@@ -56,12 +46,50 @@ describe("NTable responsive loading skeleton", () => {
     const mobile = container.querySelector("[data-ntable-mobile-toolbar]") as HTMLElement;
     expect(mobile).toBeTruthy();
     expect(mobile.querySelector("[data-ntable-mobile-primary-filter]")).toBeTruthy();
+    expect(mobile.querySelector("[data-ntable-filter-skeleton]")).toBeTruthy();
+    expect(mobile.querySelector("[data-ntable-filter-menu-skeleton]")).toBeTruthy();
+    expect(mobile.querySelector("input")).toBeNull();
 
     const desktop = container.querySelector("[data-ntable-desktop-filters]") as HTMLElement;
     expect(desktop.children).toHaveLength(3);
+    expect(desktop.querySelectorAll("[data-ntable-filter-skeleton]")).toHaveLength(3);
+    expect(desktop.querySelector("input")).toBeNull();
+    expect(container.querySelector("[data-ntable-header]")?.getAttribute("aria-busy")).toBe("true");
 
     // No second, differently sized header inside the skeleton.
     expect(container.querySelector("[data-ntable-loading-header]")).toBeNull();
+  });
+
+  test("preserves filter wrappers after loading and keeps values during refresh", () => {
+    const props = {
+      columns,
+      filters: [
+        { type: "text", name: "search", placeholder: "Search", className: "max-w-lg", value: "Jane", onChange: () => {} },
+        { type: "select", name: "status", placeholder: "Status", options: ["active"] },
+      ],
+      dynamicHeight: false,
+      showPagination: false,
+      showCheckbox: false,
+    };
+    const rows: Row[] = [{ id: "1", name: "Jane", guardian: "Ali", status: "active" }];
+    const { container, rerender } = render(<NTable<Row> {...props} data={[]} loading />);
+    const desktop = container.querySelector("[data-ntable-desktop-filters]")!;
+    const wrappers = Array.from(desktop.children);
+    const classes = wrappers.map((wrapper) => wrapper.className);
+
+    rerender(<NTable<Row> {...props} data={rows} loading={false} />);
+    expect(Array.from(desktop.children)).toEqual(wrappers);
+    expect(Array.from(desktop.children).map((wrapper) => wrapper.className)).toEqual(classes);
+    expect(container.querySelector("[data-ntable-filter-skeleton]")).toBeNull();
+    const search = desktop.querySelector("input")!;
+    expect(search.value).toBe("Jane");
+
+    rerender(<NTable<Row> {...props} data={rows} loading />);
+    expect(desktop.querySelector("input")).toBe(search);
+    expect(search.value).toBe("Jane");
+    expect(container.querySelector("[data-ntable-filter-skeleton]")).toBeNull();
+    expect(container.querySelector("[data-ntable-filter-menu-skeleton]")).toBeNull();
+    expect(container.querySelector("[data-ntable-header]")?.getAttribute("aria-busy")).toBeNull();
   });
 
   test("uses a compact mobile avatar card and expanded desktop details", () => {

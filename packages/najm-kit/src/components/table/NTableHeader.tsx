@@ -1,6 +1,7 @@
 import React from "react";
 import { TextInput, SelectInput, ComboboxInput, DateInput } from "../inputs";
 import { BaseInput } from "../inputs/BaseInput";
+import { NSkeleton } from "../feedback/NSkeletonPresets";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -100,6 +101,12 @@ function defaultWrapperClass(filter: any) {
 function RenderFilter({ filter, mobilePrimary = false }: { filter: any; mobilePrimary?: boolean }) {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
+  const isLoading = useTableStore.use.isLoading();
+  const isRefreshing = useTableStore.use.isRefreshing();
+
+  if (isLoading && !isRefreshing) {
+    return <NSkeleton data-ntable-filter-skeleton className="h-10 w-full" />;
+  }
 
   if (filter.type === "search") {
     return <SearchFilter placeholder={filter.placeholder} />;
@@ -265,7 +272,12 @@ function TableToolbarActions({ mobile = false }: { mobile?: boolean }) {
 function MobileFiltersMenu({ filters }: { filters: any[] }) {
   const bordered = useTableStore.use.bordered();
   const copy = useToolbarCopy();
+  const isLoading = useTableStore.use.isLoading();
+  const isRefreshing = useTableStore.use.isRefreshing();
   if (!filters.length) return null;
+  if (isLoading && !isRefreshing) {
+    return <NSkeleton data-ntable-filter-menu-skeleton className="h-10 w-10 shrink-0 rounded-lg" />;
+  }
 
   return (
     <Popover>
@@ -430,12 +442,9 @@ export function NTableHeader() {
   const hasHeaderMenu = useTableStore.use.hasHeaderMenu();
   const onHeaderContextMenu = useTableStore.use.onHeaderContextMenu();
 
-  // The real toolbar renders during loading too. Swapping it for a placeholder
-  // of a different height moves the body underneath it — a two-line filter row
-  // replacing a one-line skeleton costs the body 96px, which is nearly two rows
-  // of page size, reported the instant the rows arrive. Rendering the real
-  // controls makes the header the same height before and after by construction,
-  // rather than by matching a placeholder to it pixel for pixel.
+  // Keep the same toolbar and filter wrappers throughout loading. Each filter
+  // replaces only its control with a skeleton of the same height; widths,
+  // breakpoint rules and wrapping remain owned by the existing wrappers.
   // `hasNoData` is true while loading too, where it means "nothing has arrived
   // yet" rather than "this list is empty" — so it must not hide the toolbar, or
   // the header is short during the skeleton and full once rows land, and the
@@ -444,12 +453,10 @@ export function NTableHeader() {
 
   // Present but not usable during a first load. The toolbar has to hold its
   // height — that is the whole reason it renders here — so it cannot be removed
-  // or swapped for something shorter. Dimming costs no layout: `opacity` and
-  // `pointer-events` do not participate in it, so the body is measured against
-  // the same box either way. A refresh keeps its controls live, since the rows
-  // underneath are still real.
+  // or swapped for something shorter. Pointer blocking costs no layout.
+  // A refresh keeps its controls live, since the rows underneath are still real.
   const isFirstLoad = Boolean(isLoading) && !isRefreshing;
-  const firstLoadChromeClass = isFirstLoad ? "pointer-events-none opacity-60" : undefined;
+  const firstLoadChromeClass = isFirstLoad ? "pointer-events-none" : undefined;
 
   if (isCustomMode) {
     if (!showViewToggle && !showColumnVisibility && !headerSlot && !hasControls) return null;
