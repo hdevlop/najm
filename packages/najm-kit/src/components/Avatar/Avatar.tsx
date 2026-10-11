@@ -110,8 +110,8 @@ function getInitials(name: string): string {
 }
 
 /**
- * Person or record avatar: an image with a fallback image behind it, initials
- * behind that, and an optional title/subtitle/meta column beside it.
+ * Person or record avatar: an image with a neutral loading background, a
+ * fallback image, then initials, and an optional title/subtitle/meta column.
  *
  * The image is a native `<img>`, not a framework image component and not
  * Radix's `AvatarImage`. Two reasons, both load-bearing:
@@ -167,26 +167,25 @@ export function NAvatar({
 
   // An image already in the browser cache can finish before React attaches the
   // load handler — during hydration it is usually already complete by the time
-  // the element is claimed. Without this the initials would never come down.
+  // the element is claimed. Reveal it before paint even without a load event.
   // Only the success direction is inferred: `complete` with no natural width is
   // also the state of an element that has not started, so treating it as a
   // failure here would burn through the chain on mount.
-  React.useEffect(() => {
+  React.useLayoutEffect(() => {
     const element = imageRef.current;
     if (element?.complete && element.naturalWidth > 0) markLoaded();
   }, [chain.src, markLoaded]);
 
   const showImage = Boolean(chain.src) && !chain.exhausted;
-  // Initials stay mounted until an image has actually painted, and come back
-  // when every source has failed. While both are mounted the image is absolutely
-  // positioned over the initials, so it does not push them out of the box; once
-  // it loads they unmount, which is what keeps a transparent PNG from showing
-  // letters through its own pixels.
-  const showFallback = !showImage || !chain.loaded;
+  // The fixed avatar box supplies a neutral background while an image loads.
+  // Text is the final fallback, never a loading placeholder. Cached images are
+  // revealed by the layout effect before paint, without replaying an animation.
+  const showFallback = !showImage;
 
   return (
     <div className={cn("flex items-center gap-3", classNames?.root, className)}>
       <AvatarPrimitive
+        aria-busy={showImage && !chain.loaded}
         className={cn(SIZE_CLASSES[size], shapeClass, "flex justify-center items-center overflow-hidden bg-muted", classNames?.avatar)}
       >
         {showImage && (
@@ -197,7 +196,7 @@ export function NAvatar({
             src={chain.src}
             alt={alt || label}
             loading={imageLoading ?? "lazy"}
-            className={cn("absolute inset-0 size-full object-cover", classNames?.image)}
+            className={cn("absolute inset-0 size-full object-cover", !chain.loaded && "opacity-0", classNames?.image)}
             onLoad={(event) => {
               markLoaded();
               onImageLoad?.(event);

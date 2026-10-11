@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.2.1 - 2026-10-11
+
+- `NAvatar` shows a neutral background while its image loads, reserving name
+  fallbacks for missing images or failed source chains. Switching table views
+  or pages no longer flashes colored name circles. Cached images are revealed
+  before paint without an animation; lazy loading and native events are retained.
+
 ## 3.2.0 - 2026-10-09
 
 - `NTable` takes `mobileList`, also settable for every table through

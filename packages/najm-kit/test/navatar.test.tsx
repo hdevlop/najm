@@ -39,7 +39,45 @@ describe("NAvatar text and initials", () => {
 });
 
 describe("NAvatar image lifecycle", () => {
-  test("keeps initials mounted while the image is still loading", () => {
+  test("reveals a cached image on mount and remount without a load event", () => {
+    const prototype = window.HTMLImageElement.prototype;
+    const complete = Object.getOwnPropertyDescriptor(prototype, "complete")!;
+    const naturalWidth = Object.getOwnPropertyDescriptor(prototype, "naturalWidth")!;
+    Object.defineProperty(prototype, "complete", { configurable: true, get: () => true });
+    Object.defineProperty(prototype, "naturalWidth", { configurable: true, get: () => 64 });
+
+    try {
+      const first = render(<NAvatar src="/cached.png" fallback="FM" />);
+      expect(img(first.container)?.className).not.toContain("opacity-0");
+      expect(initials(first.container)).toBeNull();
+      first.unmount();
+
+      const second = render(<NAvatar src="/cached.png" fallback="FM" />);
+      expect(img(second.container)?.className).not.toContain("opacity-0");
+      expect(second.container.querySelector("[data-slot=avatar]")?.getAttribute("aria-busy")).toBe("false");
+      expect(initials(second.container)).toBeNull();
+    } finally {
+      Object.defineProperty(prototype, "complete", complete);
+      Object.defineProperty(prototype, "naturalWidth", naturalWidth);
+    }
+  });
+
+  test("a complete image with no decoded width stays pending", () => {
+    const prototype = window.HTMLImageElement.prototype;
+    const complete = Object.getOwnPropertyDescriptor(prototype, "complete")!;
+    Object.defineProperty(prototype, "complete", { configurable: true, get: () => true });
+    try {
+      const { container } = render(<NAvatar src="/pending.png" fallback="FM" />);
+      expect(img(container)?.className).toContain("opacity-0");
+      expect(initials(container)).toBeNull();
+      fireEvent.error(img(container)!);
+      expect(initials(container)?.textContent).toBe("FM");
+    } finally {
+      Object.defineProperty(prototype, "complete", complete);
+    }
+  });
+
+  test("shows a neutral box without initials while the image is loading", () => {
     const { container } = render(
       <NAvatar src="https://example.com/fahd.png" title="Fahd Moujahid" />,
     );
@@ -47,9 +85,9 @@ describe("NAvatar image lifecycle", () => {
     expect(img(container)?.getAttribute("src")).toBe(
       "https://example.com/fahd.png",
     );
-    // Both are mounted: the image is absolutely positioned over the initials,
-    // so nothing shifts when it paints.
-    expect(initials(container)).not.toBeNull();
+    expect(initials(container)).toBeNull();
+    expect(container.querySelector("[data-slot=avatar]")?.getAttribute("aria-busy")).toBe("true");
+    expect(img(container)?.className).toContain("opacity-0");
     expect(img(container)?.className).toContain("absolute");
   });
 
@@ -64,6 +102,8 @@ describe("NAvatar image lifecycle", () => {
     // purpose: unmounting is what stops letters showing through the image.
     expect(initials(container)).toBeNull();
     expect(img(container)).not.toBeNull();
+    expect(img(container)?.className).not.toContain("opacity-0");
+    expect(container.querySelector("[data-slot=avatar]")?.getAttribute("aria-busy")).toBe("false");
   });
 
   test("brings initials back when the only source fails, with no broken image left behind", () => {
@@ -103,7 +143,8 @@ describe("NAvatar fallback chain", () => {
     expect(img(container)?.getAttribute("src")).toBe(
       "https://example.com/stock.png",
     );
-    expect(initials(container)).not.toBeNull();
+    expect(initials(container)).toBeNull();
+    expect(img(container)?.className).toContain("opacity-0");
 
     fireEvent.load(img(container)!);
     expect(initials(container)).toBeNull();
@@ -247,7 +288,8 @@ describe("NAvatar cache versions", () => {
     rerender(<NAvatar src="/b.png" title="Fahd Moujahid" />);
 
     expect(img(container)?.getAttribute("src")).toBe("/b.png");
-    expect(initials(container)).not.toBeNull();
+    expect(initials(container)).toBeNull();
+    expect(img(container)?.className).toContain("opacity-0");
   });
 });
 
@@ -317,7 +359,6 @@ describe("NAvatar presentation", () => {
   test("keeps the class slots", () => {
     const { container } = render(
       <NAvatar
-        src="/a.png"
         title="Fahd"
         subtitle="Admin"
         meta="meta"
@@ -339,11 +380,17 @@ describe("NAvatar presentation", () => {
     expect(container.querySelector("[data-slot=avatar]")?.className).toContain(
       "avatar-slot",
     );
-    expect(img(container)?.className).toContain("image-slot");
     expect(initials(container)?.className).toContain("fallback-slot");
     expect(container.innerHTML).toContain("title-slot");
     expect(container.innerHTML).toContain("subtitle-slot");
     expect(container.innerHTML).toContain("meta-slot");
+  });
+
+  test("keeps the image class slot while loading", () => {
+    const { container } = render(
+      <NAvatar src="/a.png" classNames={{ image: "image-slot" }} />,
+    );
+    expect(img(container)?.className).toContain("image-slot");
   });
 
   test("shape and size reach the avatar box", () => {

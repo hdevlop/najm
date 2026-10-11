@@ -189,8 +189,9 @@ import { NAvatar } from 'najm-kit';
 - The primary source is tried first, then `fallbackSrc`, then the initials.
 - `version` (or `srcVersion`) is appended as `?v=…` to every remote source, so a
   re-upload is not served from cache. `data:` and `blob:` sources are left alone.
-- Initials stay visible until an image paints and come back if every source
-  fails — a transparent PNG never shows letters through itself.
+- A fixed neutral circle appears while an image loads. Initials appear only
+  when no image is available or every source fails. Cached images are revealed
+  before paint, and a transparent PNG never shows letters through itself.
 - `imageProps` reaches the element for `loading`, `sizes`, `crossOrigin`,
   `referrerPolicy`, and the load/error handlers. It defaults to `loading="lazy"`,
   and supplied handlers are composed with the fallback chain rather than
