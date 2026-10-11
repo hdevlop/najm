@@ -5,7 +5,7 @@ by the factory theme convention shipped in `0.2.0`.
 
 Date: 2026-08-09; convention amendment 2026-08-10.
 
-> **0.2.0 amendment.** `NAJM-THEME-RELEASE-ACCEPTANCE-PLAN.md` replaces the
+> **0.2.0 amendment.** `docs/plans/NAJM-THEME-RELEASE-ACCEPTANCE-PLAN.md` replaces the
 > consumer-supplied factory contract this document froze. What it supersedes,
 > and nothing else:
 >
@@ -37,7 +37,7 @@ Date: 2026-08-09; convention amendment 2026-08-10.
 > safety, storage lifecycle, diagnostics, route table, and the Kafil migration
 > evidence — is unchanged and still binding.
 
-Companion to `najm-theme.md` §6-§11. That file states the plan; this file records
+Companion to `docs/plans/najm-theme.md` §6-§11. That file states the plan; this file records
 the decisions that close Move 0 and the source evidence behind each one.
 
 Inputs:
@@ -53,13 +53,13 @@ commit, not inferred from the plan.
 
 ---
 
-## 0. Corrections to `najm-theme.md`
+## 0. Corrections to `docs/plans/najm-theme.md`
 
 Two statements in the plan were wrong and are corrected here. Both change work.
 
 ### 0.1 School is PostgreSQL, not SQLite
 
-`najm-theme.md` §3, §9 (Move 9), §15, and §17 describe School as the SQLite
+`docs/plans/najm-theme.md` §3, §9 (Move 9), §15, and §17 describe School as the SQLite
 consumer. School is PostgreSQL throughout:
 
 ```text
@@ -78,7 +78,7 @@ Consequences, all of which must be carried into the plan:
 
 - Move 9 must compose `najm-theme/pg`, not `najm-theme/sqlite`.
 - **SQLite ships with no real consumer.** Both planned adopters are PostgreSQL.
-  `najm-theme.md` §17 requires School to pass "SQLite … gates", which is now
+  `docs/plans/najm-theme.md` §17 requires School to pass "SQLite … gates", which is now
   unsatisfiable as written.
 - SQLite parity therefore rests on the package's own dialect tests alone. That
   is a weaker guarantee than the plan assumed and must be stated honestly in
@@ -90,7 +90,7 @@ third consumer to satisfy the matrix, and do not delete working tested code.
 
 ### 0.2 School's `schoolLogo` is not a runtime branding source
 
-`najm-theme.md` §3 and Move 9 treat `schoolLogo` as a live branding source
+`docs/plans/najm-theme.md` §3 and Move 9 treat `schoolLogo` as a live branding source
 requiring careful migration to avoid "two sources of truth". It has five
 references in the entire repository and none of them render anything:
 
@@ -179,7 +179,7 @@ The contract review deferred this pending School. School is now reviewed and
 has no presets, and Kafil has zero live rows that ever exercised its 409 path.
 Neither consumer depends on rejection in data or in a workflow. Adding a policy
 option now would be a configuration surface invented for a hypothetical
-consumer, and `najm-theme.md` §6 requires the option set to stay minimal.
+consumer, and `docs/plans/najm-theme.md` §6 requires the option set to stay minimal.
 
 Requirements this creates:
 
@@ -320,7 +320,7 @@ Requirements this creates:
 (`src/server/config.ts:401`). Enforced in `ThemePresetService.remove:184`, and
 projected to the client through `ThemePresetController:62` →
 `react/types.ts:38` → `NThemePresetSettings.tsx:102`. Backend and UI read the
-same value, so they cannot silently diverge — the divergence `najm-theme.md` §7
+same value, so they cannot silently diverge — the divergence `docs/plans/najm-theme.md` §7
 warns about is structurally prevented.
 
 **Kafil behavior**: the schema comment says built-ins cannot be deleted;
@@ -339,7 +339,7 @@ Requirements this creates:
 - With all 5 live presets built-in, an administrator can delete **none** of
   them until they create their own. That is intended.
 - The delete control must be **disabled with a visible reason**, not hidden.
-  `najm-theme.md` §11 already forbids hiding as an authorization boundary; the
+  `docs/plans/najm-theme.md` §11 already forbids hiding as an authorization boundary; the
   same rule applies to a capability limit.
 - Kafil's schema comment, backend, UI, and tests are aligned in one adoption
   change, not spread across several.
@@ -498,7 +498,7 @@ features: { appearance: true, branding: true, presets: false,
 
 Presets stay off for School's first adoption. School has no preset concept, no
 UI for one, and no data to migrate; enabling it would ship an empty feature to
-prove a package capability. `najm-theme.md` §6 explicitly supports this — and
+prove a package capability. `docs/plans/najm-theme.md` §6 explicitly supports this — and
 School with `presets: false` becomes the partial-feature proof the package
 needs, which Kafil (all five enabled) cannot provide.
 
@@ -598,7 +598,7 @@ Nothing in this table needs a package code path. Every row is a config value.
 
 ### Kafil reference acceptance — status
 
-`najm-theme.md` Move 0 requires acceptance "needed to distinguish correct
+`docs/plans/najm-theme.md` Move 0 requires acceptance "needed to distinguish correct
 behavior from merely present source code". What this freeze establishes from
 live data rather than source:
 

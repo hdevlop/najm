@@ -7,7 +7,7 @@ was not rerun during the 2026-09-18 closeout by explicit request.**
 
 Last verified: 2026-09-18
 
-Closeout evidence: [`docs/evidence/global-actions/README.md`](docs/evidence/global-actions/README.md)
+Closeout evidence: [`docs/evidence/global-actions/README.md`](../evidence/global-actions/README.md)
 
 The execution checklists below remain the original runbook. The final definition
 of done and closeout ledger are the authoritative record of what was verified.

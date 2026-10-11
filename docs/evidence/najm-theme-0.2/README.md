@@ -5,7 +5,7 @@ of `apps/playground` on Chromium. This file records what was run, what passed,
 what was found, and what remains open.
 
 Nothing here has been committed, tagged, packed, or published. Sections 8 and 9
-of `NAJM-THEME-RELEASE-ACCEPTANCE-PLAN.md` (Kafil migration, packaging, push,
+of `docs/plans/NAJM-THEME-RELEASE-ACCEPTANCE-PLAN.md` (Kafil migration, packaging, push,
 publication) are untouched.
 
 ## Candidate
