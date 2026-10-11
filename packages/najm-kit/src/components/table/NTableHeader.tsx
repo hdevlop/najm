@@ -105,7 +105,11 @@ function RenderFilter({ filter, mobilePrimary = false }: { filter: any; mobilePr
   const isRefreshing = useTableStore.use.isRefreshing();
 
   if (isLoading && !isRefreshing) {
-    return <NSkeleton data-ntable-filter-skeleton className="h-10 w-full" />;
+    return (
+      <BaseInput data-ntable-filter-skeleton aria-hidden="true" bordered={bordered}>
+        <NSkeleton className="h-4 w-2/3" />
+      </BaseInput>
+    );
   }
 
   if (filter.type === "search") {
@@ -219,6 +223,8 @@ function TableIconButton({ mobile = false, label, icon: Icon, onClick, disabled 
   const headerColor = useTableStore.use.headerColor();
   const headerTextColor = useTableStore.use.headerTextColor();
   const bordered = useTableStore.use.bordered();
+  const isLoading = useTableStore.use.isLoading();
+  const isRefreshing = useTableStore.use.isRefreshing();
 
   const btnStyle = mobile
     ? { color: resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR) }
@@ -228,6 +234,24 @@ function TableIconButton({ mobile = false, label, icon: Icon, onClick, disabled 
       };
   // Desktop stays filled; mobile matches the compact input/filter controls.
   const borderedCls = bordered ? "border border-muted-foreground" : "";
+
+  if (isLoading && !isRefreshing) {
+    return (
+      <div
+        data-ntable-action-skeleton
+        aria-hidden="true"
+        data-bordered={bordered === false ? "false" : "true"}
+        className={cn(
+          "h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-card",
+          mobile
+            ? cn("flex md:hidden", bordered === false ? "shadow-sm" : "border border-input")
+            : `hidden md:flex ${borderedCls}`,
+        )}
+      >
+        <NSkeleton className="h-5 w-5 rounded-sm" />
+      </div>
+    );
+  }
 
   return (
     <button
@@ -276,7 +300,16 @@ function MobileFiltersMenu({ filters }: { filters: any[] }) {
   const isRefreshing = useTableStore.use.isRefreshing();
   if (!filters.length) return null;
   if (isLoading && !isRefreshing) {
-    return <NSkeleton data-ntable-filter-menu-skeleton className="h-10 w-10 shrink-0 rounded-lg" />;
+    return (
+      <div
+        data-ntable-filter-menu-skeleton
+        aria-hidden="true"
+        data-bordered={bordered === false ? "false" : "true"}
+        className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-card", bordered === false ? "shadow-sm" : "border border-input")}
+      >
+        <NSkeleton className="h-5 w-5 rounded-sm" />
+      </div>
+    );
   }
 
   return (
@@ -343,8 +376,17 @@ function TableSettingsMenu() {
   const table = useTableStore.use.table();
   const bordered = useTableStore.use.bordered();
   const copy = useToolbarCopy();
+  const isLoading = useTableStore.use.isLoading();
+  const isRefreshing = useTableStore.use.isRefreshing();
 
   if (!showViewToggle && !showColumnVisibility) return null;
+  if (isLoading && !isRefreshing) {
+    return (
+      <BaseInput data-ntable-settings-skeleton aria-hidden="true" className="w-auto px-3" bordered={bordered}>
+        <NSkeleton className="h-4 w-4 shrink-0 rounded-sm" />
+      </BaseInput>
+    );
+  }
 
   const allModes: ViewMode[] = ["table", "cards", "json", "files"];
   const filteredModes = availableModes ?? allModes;

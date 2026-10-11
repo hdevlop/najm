@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.2.3 - 2026-10-11
+
+- `NTable` loading filters retain their input borders and design radii
+  around an inner placeholder. Settings, Add, toolbar actions, and
+  menu buttons also show matching, non-focusable skeletons on initial load,
+  with the same desktop and mobile dimensions as the loaded controls.
+  Refreshes keep the real controls visible.
+
 ## 3.2.2 - 2026-10-11
 
 - `NTable` shows skeletons for its filters during the initial load, inside the

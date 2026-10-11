@@ -127,12 +127,13 @@ describe("NTable toolbar actions", () => {
     expect(container.querySelector('[aria-label="Import"]')).toBeNull();
   });
 
-  test("disables actions during first load and keeps them usable during a refresh", () => {
+  test("replaces actions during first load and keeps them usable during a refresh", () => {
     const onImport = mock();
     const { container, rerender } = render(<NTable {...base} data={[]} loading onImport={onImport} />);
-    const button = container.querySelector<HTMLButtonElement>('[aria-label="Import"]')!;
-    expect(button.disabled).toBe(true);
-    fireEvent.click(button);
+    expect(container.querySelector('[aria-label="Import"]')).toBeNull();
+    const skeleton = container.querySelector('[data-ntable-action-skeleton]')!;
+    expect(skeleton.getAttribute("aria-hidden")).toBe("true");
+    fireEvent.click(skeleton);
     fireEvent.contextMenu(container.querySelector('[data-ntable-header]')!);
     expect(onImport).not.toHaveBeenCalled();
     expect(menuLabels(container)).toEqual([]);

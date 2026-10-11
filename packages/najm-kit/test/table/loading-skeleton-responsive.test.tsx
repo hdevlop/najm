@@ -1,6 +1,6 @@
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import React from "react";
-import { render } from "@testing-library/react";
+import { fireEvent, render } from "@testing-library/react";
 import type { ColumnDef } from "@tanstack/react-table";
 
 import { NTable } from "../../src/components/table/NTable";
@@ -23,6 +23,56 @@ function CardRenderer() {
 }
 
 describe("NTable responsive loading skeleton", () => {
+  test.each([true, false])("keeps control surfaces and replaces all built-in toolbar buttons while loading (bordered=%s)", (bordered) => {
+    const onCreate = mock();
+    const onExport = mock();
+    const props = {
+      columns,
+      filters: [{ type: "text", name: "name" }, { type: "select", name: "status" }],
+      onCreate,
+      onExport,
+      bordered,
+      dynamicHeight: false,
+      showPagination: false,
+      showCheckbox: false,
+    };
+    const { container, rerender } = render(<NTable<Row> {...props} data={[]} loading />);
+    const header = container.querySelector("[data-ntable-header]")!;
+    expect(header.querySelector("button")).toBeNull();
+    expect(header.querySelector("svg")).toBeNull();
+    expect(header.querySelectorAll("[data-ntable-action-skeleton]")).toHaveLength(6);
+    expect(header.querySelectorAll("[data-ntable-settings-skeleton]")).toHaveLength(1);
+
+    for (const shell of header.querySelectorAll("[data-ntable-filter-skeleton], [data-ntable-filter-menu-skeleton], [data-ntable-settings-skeleton], [data-ntable-action-skeleton]")) {
+      expect(shell.getAttribute("aria-hidden")).toBe("true");
+      expect(shell.getAttribute("data-bordered")).toBe(String(bordered));
+      expect(shell.className).toContain("bg-card");
+      expect(shell.className).toContain("h-10");
+      expect(shell.querySelector(".animate-pulse")).toBeTruthy();
+    }
+    const field = header.querySelector("[data-ntable-filter-skeleton]")!;
+    expect(field.className).toContain(bordered ? "border" : "border-0");
+    const mobile = header.querySelector("[data-ntable-mobile-toolbar]")!;
+    const action = mobile.querySelector("[data-ntable-action-skeleton]")!;
+    expect(action.className).toContain(bordered ? "border-input" : "shadow-sm");
+    expect(action.className).toContain("w-10");
+
+    const rows: Row[] = [{ id: "1", name: "Jane", guardian: "Ali", status: "active" }];
+    rerender(<NTable<Row> {...props} data={rows} />);
+    const buttons = Array.from(header.querySelectorAll("button"));
+    expect(buttons).toHaveLength(8); // Filter menu, both sets of actions, and settings.
+    for (const button of header.querySelectorAll('button[aria-label="Create"], button[aria-label="Export"]')) {
+      fireEvent.click(button);
+    }
+    expect(onCreate).toHaveBeenCalledTimes(2);
+    expect(onExport).toHaveBeenCalledTimes(2);
+
+    rerender(<NTable<Row> {...props} data={rows} loading />);
+    expect(Array.from(header.querySelectorAll("button"))).toEqual(buttons);
+    expect(header.querySelector("[data-ntable-action-skeleton], [data-ntable-settings-skeleton], [data-ntable-filter-menu-skeleton], [data-ntable-filter-skeleton]")).toBeNull();
+    expect(header.getAttribute("aria-busy")).toBeNull();
+  });
+
   test("shows filter skeletons in the existing toolbar at both breakpoints", () => {
     const { container } = render(
       <NTable<Row>

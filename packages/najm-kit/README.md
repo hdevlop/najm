@@ -974,10 +974,11 @@ keyboard focus always reveals the action. Applications still decide which menu
 items exist through `menu`, `onView`, `onEdit`, and `onDelete`; visibility does
 not grant an action or replace server authorization.
 
-During the initial load, desktop filter fields and the mobile primary filter
-and filter-menu button show skeletons inside their existing wrappers. Their
-widths and wrapping stay the same when the controls appear. Refreshes keep the
-real filters and their selected values visible.
+During the initial load, filters and the built-in Settings, Add, action, and
+menu buttons show skeletons inside their normal control surfaces. Border
+settings, input design radii, widths, and wrapping stay consistent
+with the loaded controls. The placeholders are decorative and cannot receive
+focus. Refreshes keep the real controls and selected filter values visible.
 
 When `dynamicHeight` is enabled, table and card loading skeletons measure the
 available body. Table rows use the same header/row geometry as dynamic page
