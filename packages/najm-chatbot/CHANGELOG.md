@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.7.0 - 2026-10-13
+
+- On phones (a touch screen or a window 640px wide or less) the panel fills the
+  screen instead of a 70% bottom sheet, with no frame and safe-area padding.
+  The header hides the resize control there; custom headers read the new
+  `HeaderSlotProps.canResize`.
+- The header shows the assistant status instead of the provider and model.
+- The launcher and header use the `BotMessageSquare` icon.
+- The empty state shows only the suggestions, without the "Ready when you are"
+  heading and icon.
+
 ## 3.4.0 - 2026-10-07
 
 - Add explicitly enabled `reply.preparation`, with server-owned history/eligibility,

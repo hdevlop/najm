@@ -117,14 +117,7 @@ function UsageBadge({ usage }: { usage: TokenUsageAnnotation }) {
 
 function DefaultEmptyState({ suggestions, onSuggestion, t }: EmptyStateSlotProps) {
   return (
-    <div className="flex h-full flex-col justify-between overflow-y-auto px-4 py-5">
-      <div className="mx-auto flex max-w-[280px] flex-col items-center pt-5 text-center">
-        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-[var(--ncb-radius)] bg-[var(--ncb-primary)] text-white shadow-lg shadow-black/10">
-          <Sparkles className="h-6 w-6" />
-        </div>
-        <p className="text-base font-semibold text-zinc-950 dark:text-white">{t('Ready when you are')}</p>
-      </div>
-
+    <div className="flex h-full flex-col justify-end overflow-y-auto px-4 py-5">
       <div className="grid grid-cols-2 gap-2">
         {suggestions.map((suggestion, index) => {
           const Icon = suggestion.icon ?? DEFAULT_ICONS[index % DEFAULT_ICONS.length];

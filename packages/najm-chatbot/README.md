@@ -355,7 +355,7 @@ function App() {
 | `sessionKey` | `string` | Session key for conversation persistence |
 | `suggestions` | `ChatbotSuggestionInput[]` | Quick-action suggestion buttons |
 | `initialOpen` | `boolean` | Open the panel on mount |
-| `initialSize` | `'sm' \| 'md' \| 'lg' \| 'xl'` | Panel size |
+| `initialSize` | `'sm' \| 'md' \| 'lg' \| 'xl'` | Panel size on desktop. On a touch screen or a window 640px wide or less the panel fills the screen and the header hides its resize control (`HeaderSlotProps.canResize` is `false`) |
 | `theme` | `ChatbotTheme` | Theme colors (`primary`, `radius`, `accent`, `codeBg`) |
 | `slots` | `Partial<ChatbotSlots>` | Override individual UI slots (Trigger, Header, Message, Input, EmptyState) |
 | `i18n` | `I18nFn` | Translation function for UI labels |

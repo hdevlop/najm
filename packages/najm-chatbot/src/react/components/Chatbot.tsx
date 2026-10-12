@@ -1,7 +1,7 @@
 'use client';
 
 import { type CSSProperties, useEffect, useMemo, useState, useCallback } from 'react';
-import { Bot, Sparkles, X } from 'lucide-react';
+import { BotMessageSquare, X } from 'lucide-react';
 import { ChatPanel } from './ChatPanel';
 import { useAiSettings } from '../hooks/useAiSettings';
 import { useToolStatus } from '../hooks/useToolStatus';
@@ -59,19 +59,22 @@ function normalizeSuggestions(input: ChatbotSuggestionInput[] | undefined): Chat
   ));
 }
 
-function useIsCoarsePointer(): boolean {
-  const [coarse, setCoarse] = useState(false);
+/** A phone: a touch screen or a narrow window. The panel then fills the screen. */
+const COMPACT_QUERY = '(pointer: coarse), (max-width: 640px)';
+
+function useIsCompact(): boolean {
+  const [compact, setCompact] = useState(false);
 
   useEffect(() => {
     if (typeof window === 'undefined' || !window.matchMedia) return;
-    const mql = window.matchMedia('(pointer: coarse)');
-    setCoarse(mql.matches);
-    const handler = (e: MediaQueryListEvent) => setCoarse(e.matches);
+    const mql = window.matchMedia(COMPACT_QUERY);
+    setCompact(mql.matches);
+    const handler = (e: MediaQueryListEvent) => setCompact(e.matches);
     mql.addEventListener('change', handler);
     return () => mql.removeEventListener('change', handler);
   }, []);
 
-  return coarse;
+  return compact;
 }
 
 function DefaultTrigger({ open, status, onToggle, t }: TriggerSlotProps) {
@@ -90,10 +93,7 @@ function DefaultTrigger({ open, status, onToggle, t }: TriggerSlotProps) {
       {open ? (
         <X className="h-5 w-5" />
       ) : (
-        <span className="relative">
-          <Bot className="h-6 w-6" />
-          <Sparkles className="absolute -right-1 -top-1 h-3 w-3 text-yellow-200" />
-        </span>
+        <BotMessageSquare className="h-6 w-6" />
       )}
       <span
         className={cn(
@@ -135,7 +135,7 @@ export function Chatbot({
       try { window.localStorage.setItem(SIZE_STORAGE_KEY, next); } catch { /* ignore */ }
     }
   }, [persistSize]);
-  const isCoarse = useIsCoarsePointer();
+  const isCompact = useIsCompact();
   const t: I18nFn = i18n ?? ((key) => key);
   const resolvedMcpPath = mcpApiPath ?? inferMcpPath(apiPath);
   const resolvedTestPath = testApiPath ?? joinApiPath(settingsApiPath, 'test');
@@ -179,9 +179,7 @@ export function Chatbot({
         <div
           className={cn(
             'fixed z-50',
-            isCoarse
-              ? 'inset-x-0 bottom-0 h-[70dvh] w-full max-h-[70dvh] rounded-t-xl'
-              : cn(sizeClasses[size], 'max-[640px]:inset-x-3 max-[640px]:bottom-20 max-[640px]:top-auto max-[640px]:h-[calc(100dvh-6rem)] max-[640px]:w-auto max-[640px]:max-w-none'),
+            isCompact ? 'inset-0 h-dvh w-full' : sizeClasses[size],
           )}
         >
           <ChatPanel
@@ -194,6 +192,7 @@ export function Chatbot({
             slots={slots as Partial<ChatbotSlots> | undefined}
             panelClassName={panelClassName}
             size={size}
+            fullScreen={isCompact}
             onSizeChange={setSize}
             t={t}
             onClose={() => setOpen(false)}

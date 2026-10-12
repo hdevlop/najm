@@ -44,6 +44,8 @@ export interface HeaderSlotProps {
   status: ChatbotStatus;
   hasMessages: boolean;
   size: ChatbotSize;
+  /** False when the panel fills the screen, where sizes do not apply. */
+  canResize: boolean;
   onClose: () => void;
   onClear: () => void;
   onViewChange: (view: ChatbotView) => void;
