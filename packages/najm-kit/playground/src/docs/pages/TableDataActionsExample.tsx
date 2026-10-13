@@ -25,7 +25,7 @@ export function TableDataActionsExample() {
   const [showPrint, setShowPrint] = useState(true);
   const [isEmpty, setIsEmpty] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [display, setDisplay] = useState<'buttons' | 'menu' | 'both'>('both');
+  const [display, setDisplay] = useState<'buttons' | 'menu' | 'both' | 'settings'>('both');
   const code = `<NTable\n  data={members}\n  columns={columns}\n  dataActions\n  showExportButton={${showExport}}\n  showImportButton={${showImport}}\n  showPrintButton={${showPrint}}\n  toolbarActionDisplay="${display}"\n/>`;
   return (
     <Example title="Export, import, and print" description="Choose which actions appear, then try a CSV download, XLSX/CSV/JSON import, or printing. Imports replace displayed rows after confirmation." code={code} lang="tsx" previewHeight="h-[600px]" center={false} noPad>
@@ -37,10 +37,10 @@ export function TableDataActionsExample() {
           <label className="flex items-center gap-2"><Switch aria-label="Empty table" checked={isEmpty} onCheckedChange={setIsEmpty} />Empty</label>
           <label className="flex items-center gap-2"><Switch aria-label="Loading table" checked={loading} onCheckedChange={setLoading} />Loading</label>
           <select aria-label="Action presentation" value={display} onChange={event => setDisplay(event.target.value as typeof display)} className="rounded-md border border-input bg-card px-2 py-1 text-foreground">
-            <option value="both">Buttons and menu</option><option value="buttons">Buttons only</option><option value="menu">Menu only</option>
+            <option value="both">Buttons and menu</option><option value="buttons">Buttons only</option><option value="menu">Menu only</option><option value="settings">Settings menu</option>
           </select>
         </div>
-        <NTable data={isEmpty ? empty : members} columns={columns} dataActions showExportButton={showExport} showImportButton={showImport} showPrintButton={showPrint} toolbarActionDisplay={display} loading={loading} renderCard={MemberCard} showCheckbox={false} showPagination={false} showViewToggle={false} dynamicHeight={false} filters={[{ name: 'search', type: 'search', placeholder: 'Search members' }]} />
+        <NTable data={isEmpty ? empty : members} columns={columns} dataActions showExportButton={showExport} showImportButton={showImport} showPrintButton={showPrint} toolbarActionDisplay={display} loading={loading} renderCard={MemberCard} showCheckbox={false} showPagination={false} showViewToggle={display === 'settings'} dynamicHeight={false} filters={[{ name: 'search', type: 'search', placeholder: 'Search members' }]} />
       </div>
     </Example>
   );

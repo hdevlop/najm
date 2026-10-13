@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.4.0 - 2026-10-13
+
+- `NTable` takes `toolbarActionDisplay="settings"`. Export, Import and Print
+  move into the table settings menu, below View and Columns, and the toolbar
+  shows no separate action buttons and no Table actions button. The settings
+  trigger becomes a gear in this mode; other modes keep the sliders icon.
+  Below `md`, where the settings menu is hidden, one gear opens the same
+  actions. Right-clicking the toolbar or a column header still opens them.
+
 ## 3.3.0 - 2026-10-13
 
 - `NTable`'s built-in Import accepts `.xlsx` alongside CSV and JSON. It previews

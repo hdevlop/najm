@@ -874,7 +874,9 @@ The import dialog waits for this callback and remains open on rejection so the
 user can retry. It does not install local rows when this callback is supplied.
 Import also works on empty tables.
 
-`toolbarActionDisplay` accepts `"buttons"`, `"menu"`, or `"both"` (default).
+`toolbarActionDisplay` accepts `"buttons"`, `"menu"`, `"both"` (default), or
+`"settings"`, which lists the actions in the gear settings menu below View and
+Columns instead of showing separate buttons (on phones, one gear opens them).
 Menu mode provides a visible trigger for touch and keyboard users. Right-click
 menus apply to the toolbar and column headers, keeping row and background menus
 independent. Use `menu={{ header: () => [...] }}` to replace the default header

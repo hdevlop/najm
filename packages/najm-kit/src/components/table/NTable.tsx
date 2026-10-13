@@ -79,8 +79,8 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   onImport?: () => void;
   /** Override the default table print workflow. Also enables Print on its own. */
   onPrint?: () => void;
-  /** Presentation of export/import/print actions. Defaults to "both". */
-  toolbarActionDisplay?: "buttons" | "menu" | "both";
+  /** Presentation of export/import/print actions. Defaults to "both"; "settings" lists them in the gear settings menu instead of separate buttons. */
+  toolbarActionDisplay?: "buttons" | "menu" | "both" | "settings";
   onEdit?: (row: T) => void;
   onView?: (row: T) => void;
   onDelete?: (row: T) => void;

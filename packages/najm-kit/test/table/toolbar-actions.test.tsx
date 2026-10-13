@@ -96,6 +96,42 @@ describe("NTable toolbar actions", () => {
     expect(onDownload).toHaveBeenCalledTimes(1);
   });
 
+  test("settings mode lists the actions in the gear menu below the view modes, with no separate buttons", async () => {
+    const onExport = mock();
+    const { container } = render(<NTable {...base} showViewToggle renderCard={() => <div />} toolbarActionDisplay="settings" onExport={onExport} onImport={mock()} onPrint={mock()} />);
+    const desktopButtons = Array.from(container.querySelectorAll("button[aria-label]")).filter(button => !button.closest("[data-ntable-mobile-toolbar]"));
+    for (const label of ["Export", "Import", "Print", "Table actions"]) {
+      expect(desktopButtons.some(button => button.getAttribute("aria-label") === label)).toBe(false);
+    }
+    const trigger = container.querySelector<HTMLElement>('[aria-label="Table settings"]')!;
+    expect(trigger.querySelector(".lucide-settings")).toBeTruthy();
+    fireEvent.pointerDown(trigger, { button: 0, pointerType: "mouse" });
+    fireEvent.click(trigger);
+    const menu = document.querySelector('[role="menu"]')!;
+    expect(Array.from(menu.querySelectorAll('[role="menuitemradio"]')).map(item => item.textContent?.trim())).toEqual(["Table", "Cards"]);
+    expect(Array.from(menu.querySelectorAll('[role="menuitem"]')).map(item => item.textContent?.trim())).toEqual(["Export", "Import", "Print"]);
+    fireEvent.click(menu.querySelector('[role="menuitem"]')!);
+    await new Promise(resolve => setTimeout(resolve, 0));
+    expect(onExport).toHaveBeenCalledTimes(1);
+  });
+
+  test("settings mode gives phones one gear that opens the actions and keeps header right click", () => {
+    const { container } = render(<NTable {...base} toolbarActionDisplay="settings" onExport={mock()} onImport={mock()} />);
+    const mobileGears = container.querySelectorAll('[data-ntable-mobile-toolbar] button[aria-label="Table actions"]');
+    expect(mobileGears).toHaveLength(1);
+    expect(mobileGears[0].querySelector(".lucide-settings")).toBeTruthy();
+    fireEvent.click(mobileGears[0]);
+    expect(menuLabels(container)).toEqual(["Export", "Import"]);
+    fireEvent.contextMenu(container.querySelector("thead th")!);
+    expect(menuLabels(container)).toEqual(["Export", "Import"]);
+  });
+
+  test("other modes keep the sliders settings trigger", () => {
+    const { container } = render(<NTable {...base} showViewToggle renderCard={() => <div />} onExport={mock()} />);
+    const trigger = container.querySelector('[aria-label="Table settings"]')!;
+    expect(trigger.querySelector(".lucide-sliders-horizontal")).toBeTruthy();
+  });
+
   test("buttons-only preserves native header right click", () => {
     const { container } = render(<NTable {...base} toolbarActionDisplay="buttons" onExport={mock()} />);
     expect(container.querySelector('button[aria-label="Table actions"]')).toBeNull();

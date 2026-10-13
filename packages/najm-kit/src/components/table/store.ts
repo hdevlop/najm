@@ -67,7 +67,7 @@ export interface TableState {
   headerSlot: ReactNode | null;
   onAddClick: any;
   toolbarActions: ContextMenuItem[];
-  toolbarActionDisplay: "buttons" | "menu" | "both";
+  toolbarActionDisplay: "buttons" | "menu" | "both" | "settings";
   hasHeaderMenu: boolean;
   onHeaderContextMenu: ((e: ReactMouseEvent) => void) | null;
   openHeaderMenu: ((e: ReactMouseEvent) => void) | null;

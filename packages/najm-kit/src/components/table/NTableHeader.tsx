@@ -9,11 +9,12 @@ import {
   DropdownMenuRadioGroup,
   DropdownMenuRadioItem,
   DropdownMenuCheckboxItem,
+  DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "../ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { SlidersHorizontal, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search, Filter, MoreHorizontal, type LucideIcon } from "lucide-react";
+import { SlidersHorizontal, Settings, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search, Filter, MoreHorizontal, type LucideIcon } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
 import type { ViewMode } from "./store";
@@ -285,6 +286,14 @@ function TableToolbarActions({ mobile = false }: { mobile?: boolean }) {
   const copy = useToolbarCopy();
   const disabled = Boolean(isLoading && !isRefreshing);
 
+  // The settings menu holds the actions on desktop. It is hidden below `md`,
+  // so phones get one gear that opens the same actions.
+  if (display === "settings") {
+    return mobile && hasHeaderMenu
+      ? <TableIconButton mobile label={copy.tableActions} icon={Settings} disabled={disabled} menu onClick={openHeaderMenu ?? undefined} />
+      : null;
+  }
+
   return <>
     {display !== "menu" && actions.map((action, index) => (
       <TableIconButton key={index} mobile={mobile} label={action.label} icon={action.icon!} disabled={disabled} onClick={() => action.onSelect?.()} />
@@ -378,8 +387,12 @@ function TableSettingsMenu() {
   const copy = useToolbarCopy();
   const isLoading = useTableStore.use.isLoading();
   const isRefreshing = useTableStore.use.isRefreshing();
+  const display = useTableStore.use.toolbarActionDisplay();
+  const toolbarActions = useTableStore.use.toolbarActions() as ContextMenuItem[];
+  const inSettings = display === "settings";
+  const actions = inSettings ? toolbarActions : [];
 
-  if (!showViewToggle && !showColumnVisibility) return null;
+  if (!showViewToggle && !showColumnVisibility && !actions.length) return null;
   if (isLoading && !isRefreshing) {
     return (
       <BaseInput data-ntable-settings-skeleton aria-hidden="true" className="w-auto px-3" bordered={bordered}>
@@ -406,12 +419,14 @@ function TableSettingsMenu() {
   const columns = table?.getAllColumns?.().filter((c: any) => c.getCanHide()) ?? [];
   const hasModes = modeItems.length > 0;
   const hasColumns = columns.length > 0;
+  const hasViewOrColumns = (showViewToggle && hasModes) || (showColumnVisibility && hasColumns);
+  const TriggerIcon = inSettings ? Settings : SlidersHorizontal;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <BaseInput aria-label={copy.settings} className="w-auto cursor-pointer px-3" bordered={bordered}>
-          <SlidersHorizontal className="h-4 w-4 shrink-0 text-muted-foreground" />
+        <BaseInput aria-label={copy.settings} title={inSettings ? copy.settings : undefined} className="w-auto cursor-pointer px-3" bordered={bordered}>
+          <TriggerIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
         </BaseInput>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 bg-card">
@@ -451,6 +466,21 @@ function TableSettingsMenu() {
             ))}
           </>
         )}
+        {actions.length > 0 && hasViewOrColumns && <DropdownMenuSeparator />}
+        {actions.map((action, index) => {
+          const Icon = action.icon;
+          return (
+            <DropdownMenuItem
+              key={index}
+              // Run once the menu has closed, so a dialog the action opens is
+              // not fighting the menu for focus and pointer events.
+              onSelect={() => { setTimeout(() => action.onSelect?.(), 0); }}
+            >
+              {Icon && <Icon className="h-4 w-4" />}
+              <span>{action.label}</span>
+            </DropdownMenuItem>
+          );
+        })}
       </DropdownMenuContent>
     </DropdownMenu>
   );
