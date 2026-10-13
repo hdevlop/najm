@@ -40,7 +40,7 @@ export function TableDataActionsExample() {
             <option value="both">Buttons and menu</option><option value="buttons">Buttons only</option><option value="menu">Menu only</option><option value="settings">Settings menu</option>
           </select>
         </div>
-        <NTable data={isEmpty ? empty : members} columns={columns} dataActions showExportButton={showExport} showImportButton={showImport} showPrintButton={showPrint} toolbarActionDisplay={display} loading={loading} renderCard={MemberCard} showCheckbox={false} showPagination={false} showViewToggle={display === 'settings'} dynamicHeight={false} filters={[{ name: 'search', type: 'search', placeholder: 'Search members' }]} />
+        <NTable data={isEmpty ? empty : members} columns={columns} dataActions importColumns={['name', 'email', 'status']} showExportButton={showExport} showImportButton={showImport} showPrintButton={showPrint} toolbarActionDisplay={display} loading={loading} renderCard={MemberCard} showCheckbox={false} showPagination={false} showViewToggle={display === 'settings'} dynamicHeight={false} filters={[{ name: 'search', type: 'search', placeholder: 'Search members' }]} />
       </div>
     </Example>
   );

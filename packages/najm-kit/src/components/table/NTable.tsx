@@ -73,6 +73,8 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   dataActions?: boolean;
   /** Receive imported rows instead of replacing the table's local data. Can save them through an API. */
   onDataChange?: (rows: T[]) => void | Promise<unknown>;
+  /** Field names the import accepts, shown as chips in the import dialog until a file is chosen. */
+  importColumns?: readonly string[];
   /** Override the default CSV export workflow. Also enables Export on its own. */
   onExport?: () => void;
   /** Override the default XLSX/CSV/JSON import workflow. Also enables Import on its own. */
@@ -717,7 +719,7 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
         contextMenuOpen={ctx.isOpen}
       />
       {ctx.menu}
-      {importOpen && <NTableImport open onClose={() => setImportOpen(false)} onApply={applyImport} labels={resolvedToolbarLabels} />}
+      {importOpen && <NTableImport open onClose={() => setImportOpen(false)} onApply={applyImport} labels={resolvedToolbarLabels} columns={props.importColumns} />}
     </TableStoreContext.Provider>
   );
 }

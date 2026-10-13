@@ -25,6 +25,10 @@ export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
   | `${Prefix}.print`
   | `${Prefix}.importDescription`
   | `${Prefix}.importFile`
+  | `${Prefix}.importDrop`
+  | `${Prefix}.importRemove`
+  | `${Prefix}.importColumns`
+  | `${Prefix}.importRowCount`
   | `${Prefix}.importReading`
   | `${Prefix}.importPreview`
   | `${Prefix}.importConfirm`
@@ -82,6 +86,14 @@ export function buildToolbarLabels<
     print: optional(`${scope}.print`),
     importDescription: optional(`${scope}.importDescription`),
     importFile: optional(`${scope}.importFile`),
+    importDrop: optional(`${scope}.importDrop`),
+    importRemove: optional(`${scope}.importRemove`),
+    importColumns: optional(`${scope}.importColumns`),
+    importRowCount: (count) => {
+      const key = `${scope}.importRowCount` as ToolbarKey<Prefix>;
+      const value = t(key, { count });
+      return value === key ? `${count} ${count === 1 ? 'row' : 'rows'}` : value;
+    },
     importReading: optional(`${scope}.importReading`),
     importPreview: (count) => {
       const key = `${scope}.importPreview` as ToolbarKey<Prefix>;

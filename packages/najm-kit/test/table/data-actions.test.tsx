@@ -119,6 +119,41 @@ describe("default table data workflows", () => {
   });
 });
 
+describe("import dialog layout", () => {
+  test("lists expected columns until a file is chosen, then shows the file with its size and rows", async () => {
+    const view = render(<NTable {...base} dataActions importColumns={["id", "name"]} />);
+    fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
+    const chips = Array.from(document.querySelectorAll("[data-ntable-import-columns] code")).map(chip => chip.textContent);
+    expect(chips).toEqual(["id", "name"]);
+    fireEvent.change(view.getByLabelText("XLSX, CSV or JSON file"), { target: { files: [new File(['[{"id":"2","name":"Bob"}]'], "rows.json")] } });
+    await waitFor(() => expect(document.querySelector("[data-ntable-import-file]")?.textContent).toContain("1 row"));
+    const card = document.querySelector("[data-ntable-import-file]")!;
+    expect(card.textContent).toContain("rows.json");
+    expect(card.textContent).toContain("25 B");
+    expect(document.querySelector("[data-ntable-import-columns]")).toBeNull();
+  });
+
+  test("removing the file clears the preview and disables confirmation", async () => {
+    const view = render(<NTable {...base} dataActions />);
+    await importFile(view, '[{"id":"2","name":"Bob"}]');
+    fireEvent.click(view.getByRole("button", { name: "Remove file" }));
+    expect(document.querySelector("[data-ntable-import-file]")).toBeNull();
+    expect(view.getByRole("dialog").textContent).not.toContain("Bob");
+    expect(view.getByRole("button", { name: "Replace table data" }).hasAttribute("disabled")).toBe(true);
+  });
+
+  test("a file dropped on the zone is read like a chosen one", async () => {
+    const view = render(<NTable {...base} dataActions />);
+    fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
+    const zone = document.querySelector("[data-ntable-import-dropzone]")!;
+    fireEvent.dragOver(zone, { dataTransfer: { files: [] } });
+    expect(zone.getAttribute("data-dragging")).toBe("true");
+    fireEvent.drop(zone, { dataTransfer: { files: [new File(['[{"id":"5","name":"Dropped"}]'], "drop.json")] } });
+    await waitFor(() => expect(view.getByRole("dialog").textContent).toContain("Dropped"));
+    expect(zone.getAttribute("data-dragging")).toBeNull();
+  });
+});
+
 const xlsxFile = async (fixture = "import.xlsx", filename = fixture) =>
   new File([await Bun.file(new URL("./fixtures/" + fixture, import.meta.url)).arrayBuffer()], filename);
 

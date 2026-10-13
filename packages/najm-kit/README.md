@@ -874,6 +874,10 @@ The import dialog waits for this callback and remains open on rejection so the
 user can retry. It does not install local rows when this callback is supplied.
 Import also works on empty tables.
 
+Pass `importColumns={['code', 'name', ...]}` to list the field names your import
+accepts; the dialog shows them as chips until a file is chosen. Files can be
+dropped on the dialog's drop zone or picked by clicking it.
+
 `toolbarActionDisplay` accepts `"buttons"`, `"menu"`, `"both"` (default), or
 `"settings"`, which lists the actions in the gear settings menu below View and
 Columns instead of showing separate buttons (on phones, one gear opens them).

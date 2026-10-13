@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.5.0 - 2026-10-13
+
+- `NTable`'s import dialog is redesigned: a drag-and-drop zone that also opens
+  the file picker, a card for the chosen file with its size, row count and a
+  remove button, an error panel, and a compact preview table with a sticky
+  header. The zone shrinks once a file is chosen and the confirm button shows
+  a spinner while `onDataChange` runs.
+- `NTable` takes `importColumns`, the field names an import accepts, shown as
+  chips in the dialog until a file is chosen.
+- New toolbar labels `importDrop`, `importRemove`, `importColumns` and
+  `importRowCount(count)`, read from `common.table.*` by `buildToolbarLabels`
+  and falling back to English when missing.
+
 ## 3.4.0 - 2026-10-13
 
 - `NTable` takes `toolbarActionDisplay="settings"`. Export, Import and Print

@@ -48,8 +48,16 @@ export interface NTableToolbarLabels {
   print?: string;
   /** Description of the default import workflow and its local data behavior. */
   importDescription?: string;
-  /** Label of the XLSX/CSV/JSON file input. */
+  /** Accessible name of the file input, shown under the drop zone as the accepted formats. */
   importFile?: string;
+  /** Call to action inside the drop zone. Defaults to "Drop a file here, or click to browse". */
+  importDrop?: string;
+  /** Name of the button that clears the chosen file. Defaults to "Remove file". */
+  importRemove?: string;
+  /** Heading above the expected-column chips (`importColumns`). Defaults to "Expected columns". */
+  importColumns?: string;
+  /** Row count beside the chosen file's size. */
+  importRowCount?: (count: number) => string;
   /** File-reading status. */
   importReading?: string;
   /** Imported row count and preview description. */
