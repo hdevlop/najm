@@ -113,7 +113,7 @@ test('CSV and JSON import preview, cancel, validation, and local replacement wor
   await expect(demo).toContainText('No data available');
   await demo.getByRole('button', { name: 'Import', exact: true }).click();
   const dialog = page.getByRole('dialog');
-  const input = dialog.getByLabel('CSV or JSON file');
+  const input = dialog.getByLabel('XLSX, CSV or JSON file');
   const confirm = dialog.getByRole('button', { name: 'Replace table data' });
   await input.setInputFiles({ name: 'invalid.json', mimeType: 'application/json', buffer: Buffer.from('{}') });
   await expect(dialog.getByRole('alert')).toContainText('array of row objects');

@@ -11,7 +11,7 @@ import type { NTableToolbarLabels } from "./toolbarContract";
  * an application with more than one locale should not have to remember to.
  */
 export interface NTableDefaults {
-  /** Enable built-in CSV export, CSV/JSON import, and table printing. */
+  /** Enable built-in CSV export, XLSX/CSV/JSON import, and table printing. */
   dataActions?: boolean;
   /** Render every table as a scrolling card list below `lg`. See `NTableProps.mobileList`. */
   mobileList?: boolean;

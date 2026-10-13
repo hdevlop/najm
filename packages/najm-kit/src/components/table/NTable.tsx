@@ -69,13 +69,13 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   error?: any;
   getRowId?: (row: T) => string;
   onCreate?: () => void;
-  /** Enable default CSV export, CSV/JSON import, and printing. Inherits provider defaults; otherwise false. */
+  /** Enable default CSV export, XLSX/CSV/JSON import, and printing. Inherits provider defaults; otherwise false. */
   dataActions?: boolean;
   /** Receive imported rows instead of replacing the table's local data. Can save them through an API. */
   onDataChange?: (rows: T[]) => void | Promise<unknown>;
   /** Override the default CSV export workflow. Also enables Export on its own. */
   onExport?: () => void;
-  /** Override the default CSV/JSON import workflow. Also enables Import on its own. */
+  /** Override the default XLSX/CSV/JSON import workflow. Also enables Import on its own. */
   onImport?: () => void;
   /** Override the default table print workflow. Also enables Print on its own. */
   onPrint?: () => void;

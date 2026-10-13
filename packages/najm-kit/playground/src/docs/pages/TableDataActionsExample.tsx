@@ -28,7 +28,7 @@ export function TableDataActionsExample() {
   const [display, setDisplay] = useState<'buttons' | 'menu' | 'both'>('both');
   const code = `<NTable\n  data={members}\n  columns={columns}\n  dataActions\n  showExportButton={${showExport}}\n  showImportButton={${showImport}}\n  showPrintButton={${showPrint}}\n  toolbarActionDisplay="${display}"\n/>`;
   return (
-    <Example title="Export, import, and print" description="Choose which actions appear, then try a CSV download, CSV/JSON import, or printing. Imports replace displayed rows after confirmation." code={code} lang="tsx" previewHeight="h-[600px]" center={false} noPad>
+    <Example title="Export, import, and print" description="Choose which actions appear, then try a CSV download, XLSX/CSV/JSON import, or printing. Imports replace displayed rows after confirmation." code={code} lang="tsx" previewHeight="h-[600px]" center={false} noPad>
       <div data-testid="ntable-data-actions-demo" className="flex h-full min-w-0 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <label className="flex items-center gap-2"><Switch aria-label="Show Export" checked={showExport} onCheckedChange={setShowExport} />Export</label>

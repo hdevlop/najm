@@ -851,10 +851,14 @@ remain application-owned.
   pagination mode this includes only the rows the app has fetched. Headers use
   accessor keys (or column IDs) so files can be imported again. Text that could
   run as a spreadsheet formula is prefixed with an apostrophe.
-- **Import:** accepts a JSON array of row objects or comma-separated CSV with a
-  header row, shows a preview, and replaces the displayed rows on confirmation.
-  CSV values stay strings; dotted accessor keys become nested fields. JSON
-  preserves value types. File fields must match what your columns/renderers
+- **Import:** accepts XLSX, a JSON array of row objects, or comma-separated CSV
+  with a header row, shows a preview, and replaces the displayed rows on confirmation.
+  XLSX reads the first worksheet, using its first row as unique text headers;
+  empty rows are skipped and blank cells become null. Text (including Arabic and
+  codes stored as text), numbers and booleans retain their types; Excel date cells
+  become ISO date-time strings. The Excel reader loads only when an XLSX is selected.
+  CSV values stay strings; dotted accessor keys in CSV and XLSX become nested fields.
+  JSON preserves value types. File fields must match what your columns/renderers
   expect. Import performs structural parsing, not application schema validation.
 - **Print:** opens the browser print dialog for a plain table containing the
   same rows and columns as export, without the app's navigation and controls.

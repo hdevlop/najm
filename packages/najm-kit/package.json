@@ -1,6 +1,6 @@
 {
   "name": "najm-kit",
-  "version": "3.2.3",
+  "version": "3.3.0",
   "license": "MIT",
   "type": "module",
   "description": "Reusable React UI component package for Najm framework",
@@ -210,6 +210,7 @@
     "react-day-picker": "^9",
     "react-file-icon": "^1.6.0",
     "react-international-phone": "^4.8.0",
+    "read-excel-file": "9.3.12",
     "screenfull": "^6.0.2",
     "sonner": "^2",
     "tailwind-merge": "^3",

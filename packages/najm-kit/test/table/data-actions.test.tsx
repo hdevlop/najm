@@ -4,7 +4,7 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { createTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { NTable } from "../../src/components/table/NTable";
 import { NTableDefaultsProvider } from "../../src/components/table/TableDefaults";
-import { downloadTable, parseTableImport, printTable, tableCsv, tableDataSnapshot } from "../../src/components/table/dataActions";
+import { downloadTable, parseTableImport, printTable, readTableImportFile, tableCsv, tableDataSnapshot } from "../../src/components/table/dataActions";
 
 const data = [{ id: "1", name: "Alice" }];
 const columns = [{ accessorKey: "name", header: "Name" }];
@@ -12,7 +12,7 @@ const base = { data, columns, dynamicHeight: false, showPagination: false, showV
 const importFile = async (view: ReturnType<typeof render>, text: string, name = "rows.json") => {
   fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
   const file = new File([text], name, { type: name.endsWith("json") ? "application/json" : "text/csv" });
-  fireEvent.change(view.getByLabelText("CSV or JSON file"), { target: { files: [file] } });
+  fireEvent.change(view.getByLabelText("XLSX, CSV or JSON file"), { target: { files: [file] } });
   await waitFor(() => expect(view.getByRole("button", { name: "Replace table data" }).hasAttribute("disabled")).toBe(false));
 };
 
@@ -63,7 +63,7 @@ describe("default table data workflows", () => {
   test("invalid files report errors without touching displayed data", async () => {
     const view = render(<NTable {...base} dataActions />);
     fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
-    fireEvent.change(view.getByLabelText("CSV or JSON file"), { target: { files: [new File(["{}"], "rows.json")] } });
+    fireEvent.change(view.getByLabelText("XLSX, CSV or JSON file"), { target: { files: [new File(["{}"], "rows.json")] } });
     await waitFor(() => expect(view.getByRole("alert").textContent).toContain("array of row objects"));
     expect(view.getByRole("button", { name: "Replace table data" }).hasAttribute("disabled")).toBe(true);
     expect(view.container.querySelector("tbody")!.textContent).toContain("Alice");
@@ -110,12 +110,66 @@ describe("default table data workflows", () => {
     const oldFile = { name: "old.json", text: () => new Promise<string>(resolve => { finish = resolve; }) };
     const view = render(<NTable {...base} dataActions />);
     fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
-    fireEvent.change(view.getByLabelText("CSV or JSON file"), { target: { files: [oldFile] } });
-    fireEvent.change(view.getByLabelText("CSV or JSON file"), { target: { files: [new File(['[{"name":"New"}]'], "new.json")] } });
+    fireEvent.change(view.getByLabelText("XLSX, CSV or JSON file"), { target: { files: [oldFile] } });
+    fireEvent.change(view.getByLabelText("XLSX, CSV or JSON file"), { target: { files: [new File(['[{"name":"New"}]'], "new.json")] } });
     await waitFor(() => expect(view.getByRole("dialog").textContent).toContain("New"));
     await act(async () => { finish('[{"name":"Old"}]'); });
     expect(view.getByRole("dialog").textContent).toContain("New");
     expect(view.getByRole("dialog").textContent).not.toContain("Old");
+  });
+});
+
+const xlsxFile = async (fixture = "import.xlsx", filename = fixture) =>
+  new File([await Bun.file(new URL("./fixtures/" + fixture, import.meta.url)).arrayBuffer()], filename);
+
+describe("XLSX table imports", () => {
+  test("reads the first sheet, preserves Arabic and text codes, and skips empty rows", async () => {
+    const rows = await readTableImportFile(await xlsxFile("import.xlsx", "STUDENTS.XLSX"));
+    expect(rows).toEqual([
+      { id: "001", name: "Ahmed", "Arabic name": "\u0623\u062d\u0645\u062f", user: { phone: "0612345678" }, "Birth date": "2020-01-01T00:00:00.000Z", amount: 12.5, active: true, note: "  keep spaces  " },
+      { id: "002", name: "Sara", "Arabic name": "\u0633\u0627\u0631\u0629", user: { phone: null }, "Birth date": null, amount: 2, active: false, note: null },
+    ]);
+  });
+
+  test("previews XLSX and changes local rows only after confirmation", async () => {
+    const view = render(<NTable {...base} dataActions />);
+    fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
+    const input = view.getByLabelText("XLSX, CSV or JSON file");
+    expect(input.getAttribute("accept")).toContain(".xlsx");
+    fireEvent.change(input, { target: { files: [await xlsxFile()] } });
+    await waitFor(() => expect(view.getByRole("dialog").textContent).toContain("Ahmed"));
+    expect(view.container.querySelector("tbody")!.textContent).toContain("Alice");
+    await act(async () => { fireEvent.click(view.getByRole("button", { name: "Replace table data" })); });
+    expect(view.queryByRole("dialog")).toBeNull();
+    expect(view.container.querySelector("tbody")!.textContent).toContain("Ahmed");
+  });
+
+  test("passes XLSX rows to onDataChange without replacing the authoritative data", async () => {
+    const onDataChange = mock(async (_rows: unknown) => {});
+    const view = render(<NTable {...base} showImportButton onDataChange={onDataChange} />);
+    fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
+    const file = await xlsxFile();
+    fireEvent.change(view.getByLabelText("XLSX, CSV or JSON file"), { target: { files: [file] } });
+    await waitFor(() => expect(view.getByRole("button", { name: "Replace table data" }).hasAttribute("disabled")).toBe(false));
+    await act(async () => { fireEvent.click(view.getByRole("button", { name: "Replace table data" })); });
+    expect(onDataChange).toHaveBeenCalledWith(await readTableImportFile(file));
+    expect(view.container.querySelector("tbody")!.textContent).toContain("Alice");
+  });
+
+  test("rejects unsafe headers, header-only sheets and corrupt workbooks", async () => {
+    await expect(readTableImportFile(await xlsxFile("import-unsafe.xlsx"))).rejects.toThrow("safe field names");
+    await expect(readTableImportFile(await xlsxFile("import-empty.xlsx"))).rejects.toThrow("at least one row");
+    await expect(readTableImportFile(new File(["not an Excel archive"], "broken.xlsx"))).rejects.toThrow("valid .xlsx");
+    expect(({} as Record<string, unknown>).polluted).toBeUndefined();
+  });
+
+  test("a corrupt XLSX leaves current data intact and confirmation disabled", async () => {
+    const view = render(<NTable {...base} dataActions />);
+    fireEvent.click(view.container.querySelector('[aria-label="Import"]')!);
+    fireEvent.change(view.getByLabelText("XLSX, CSV or JSON file"), { target: { files: [new File(["broken"], "broken.xlsx")] } });
+    await waitFor(() => expect(view.getByRole("alert").textContent).toContain("valid .xlsx"));
+    expect(view.getByRole("button", { name: "Replace table data" }).hasAttribute("disabled")).toBe(true);
+    expect(view.container.querySelector("tbody")!.textContent).toContain("Alice");
   });
 });
 

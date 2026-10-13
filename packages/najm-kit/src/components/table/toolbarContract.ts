@@ -48,7 +48,7 @@ export interface NTableToolbarLabels {
   print?: string;
   /** Description of the default import workflow and its local data behavior. */
   importDescription?: string;
-  /** Label of the CSV/JSON file input. */
+  /** Label of the XLSX/CSV/JSON file input. */
   importFile?: string;
   /** File-reading status. */
   importReading?: string;

@@ -2,7 +2,7 @@ import React from "react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../Dialog";
 import { Button } from "../Button";
 import type { NTableToolbarLabels } from "./toolbarContract";
-import { dataCellText, parseTableImport } from "./dataActions";
+import { dataCellText, readTableImportFile } from "./dataActions";
 
 export function NTableImport({ open, onClose, onApply, labels }: {
   open: boolean;
@@ -31,7 +31,7 @@ export function NTableImport({ open, onClose, onApply, labels }: {
     if (!file) { setReading(false); return; }
     setReading(true);
     try {
-      const parsed = parseTableImport(await file.text(), file.name);
+      const parsed = await readTableImportFile(file);
       if (request.current === current) setRows(parsed);
     } catch (cause) {
       if (request.current === current) setError(cause instanceof Error ? cause.message : (labels.importFailed ?? "Import failed."));
@@ -59,11 +59,11 @@ export function NTableImport({ open, onClose, onApply, labels }: {
       <DialogContent className="max-w-xl" onEscapeKeyDown={event => { if (applying) event.preventDefault(); }}>
         <DialogHeader>
           <DialogTitle>{labels.import ?? "Import"}</DialogTitle>
-          <DialogDescription>{labels.importDescription ?? "Choose a CSV or JSON file. Confirm to replace the rows displayed in this table. Imported data stays local unless your app saves it."}</DialogDescription>
+          <DialogDescription>{labels.importDescription ?? "Choose an XLSX, CSV or JSON file. Excel uses the first worksheet, with headers in its first row. Confirm to replace the rows displayed in this table. Imported data stays local unless your app saves it."}</DialogDescription>
         </DialogHeader>
         <label className="grid gap-2 text-sm">
-          {labels.importFile ?? "CSV or JSON file"}
-          <input type="file" accept=".csv,.json,text/csv,application/json" disabled={applying} onChange={event => { void readFile(event.target.files?.[0]); }} />
+          {labels.importFile ?? "XLSX, CSV or JSON file"}
+          <input type="file" accept=".xlsx,.csv,.json,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,text/csv,application/json" disabled={applying} onChange={event => { void readFile(event.target.files?.[0]); }} />
         </label>
         {reading && <p role="status">{labels.importReading ?? "Reading file…"}</p>}
         {error && <p role="alert" className="text-sm text-destructive">{error}</p>}

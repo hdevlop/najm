@@ -123,14 +123,19 @@ export function parseTableImport(text: string, filename: string): Record<string,
     if (!Array.isArray(rows) || !rows.length || !rows.every(safeObject)) throw new Error("JSON must contain a non-empty array of row objects with safe field names.");
     return rows as Record<string, unknown>[];
   }
-  if (!/\.csv$/i.test(filename)) throw new Error("Choose a CSV or JSON file.");
+  if (!/\.csv$/i.test(filename)) throw new Error("Choose an XLSX, CSV or JSON file.");
   const [headers, ...records] = csvRecords(text);
-  if (!headers?.length || !records.length) throw new Error("CSV must contain headers and at least one row.");
-  if (new Set(headers).size !== headers.length || headers.some(key => !key.trim() || key.split(".").some(part => !part || unsafeKeys.has(part)))) throw new Error("CSV headers must be unique, non-empty safe field names.");
+  return rowsFromCells(headers, records, "CSV");
+}
+
+/** Shared field validation keeps every tabular format safe, including dotted paths. */
+function rowsFromCells(headers: string[] | undefined, records: unknown[][], format: string): Record<string, unknown>[] {
+  if (!headers?.length || !records.length) throw new Error(format + " must contain headers and at least one row.");
+  if (new Set(headers).size !== headers.length || headers.some(key => !key.trim() || key.split(".").some(part => !part || unsafeKeys.has(part)))) throw new Error(format + " headers must be unique, non-empty safe field names.");
   // Reject conflicting paths such as `user` alongside `user.name`.
-  if (headers.some(key => headers.some(other => other !== key && other.startsWith(`${key}.`)))) throw new Error("CSV headers contain conflicting field paths.");
+  if (headers.some(key => headers.some(other => other !== key && other.startsWith(key + ".")))) throw new Error(format + " headers contain conflicting field paths.");
   return records.map(values => {
-    if (values.length !== headers.length) throw new Error("CSV row lengths must match the headers.");
+    if (values.length !== headers.length) throw new Error(format + " row lengths must match the headers.");
     const row: Record<string, unknown> = {};
     headers.forEach((key, index) => {
       const path = key.split(".");
@@ -140,4 +145,28 @@ export function parseTableImport(text: string, filename: string): Record<string,
     });
     return row;
   });
+}
+
+/** XLSX reads the first worksheet; the reader is loaded only for Excel uploads. */
+export async function readTableImportFile(file: File): Promise<Record<string, unknown>[]> {
+  if (!/\.xlsx$/i.test(file.name)) return parseTableImport(await file.text(), file.name);
+  const { readSheet } = await import("read-excel-file/universal");
+  let cells;
+  try {
+    cells = await readSheet(await file.arrayBuffer(), { trim: false });
+  } catch {
+    throw new Error("Could not read the XLSX workbook. Choose a valid .xlsx file.");
+  }
+  const [headerCells, ...records] = cells;
+  if (!headerCells?.length || headerCells.some(value => typeof value !== "string" || !value.trim())) {
+    throw new Error("XLSX must start with a row of non-empty text headers.");
+  }
+  const headers = headerCells.map(value => (value as string).trim());
+  const rows = records
+    .filter(values => values.some(value => value != null && value !== ""))
+    .map(values => Array.from({ length: Math.max(headers.length, values.length) }, (_, index) => {
+      const value = values[index] ?? null;
+      return value instanceof Date ? value.toISOString() : value;
+    }));
+  return rowsFromCells(headers, rows, "XLSX");
 }

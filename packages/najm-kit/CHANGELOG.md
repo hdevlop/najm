@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.3.0 - 2026-10-13
+
+- `NTable`'s built-in Import accepts `.xlsx` alongside CSV and JSON. It previews
+  the first worksheet using its first row as headers, skips empty rows, preserves
+  text, numbers and booleans, and converts date cells to ISO strings. The reader
+  loads only for Excel uploads; `onDataChange` and custom `onImport` are unchanged.
+
 ## 3.2.3 - 2026-10-11
 
 - `NTable` loading filters retain their input borders and design radii
