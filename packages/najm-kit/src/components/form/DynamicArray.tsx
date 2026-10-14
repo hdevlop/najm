@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState } from "react";
-import { useFieldArray, useFormContext } from "react-hook-form";
+import { get, useFieldArray, useFormContext, useFormState } from "react-hook-form";
 import { Button } from "../Button";
 import { Trash2, Plus, ChevronDown } from "lucide-react";
 import { PrefixProvider } from "./PrefixContext";
@@ -19,9 +19,24 @@ export interface DynamicArrayProps {
 
 export type RepeatingFieldsProps = DynamicArrayProps;
 
+/**
+ * A rule on the list itself ("at least one") lands on the array, not on any
+ * item: as `root` when the resolver knows it is a field array, as the error
+ * itself otherwise. No item renders it, so the list does.
+ */
+function listErrorMessage(error: any): string | undefined {
+  const message = error?.root?.message ?? error?.message;
+  return typeof message === "string" && message ? message : undefined;
+}
+
 const DynamicArray = ({ name, children, title, onAdd, className, collapsible = true, defaultCollapsed = false, addLabel = "Click to add item", emptyLabel = "No items added yet." }: DynamicArrayProps) => {
   const { control } = useFormContext();
   const { fields, append, remove, replace } = useFieldArray({ control, name });
+  const { errors } = useFormState({ control, name });
+  const listError = listErrorMessage(get(errors, name));
+  const errorNode = listError ? (
+    <p role="alert" data-dynamic-array-error className="text-sm font-medium text-destructive">{listError}</p>
+  ) : null;
   const [collapsedItems, setCollapsedItems] = useState<Set<number>>(defaultCollapsed ? new Set(fields.map((_, idx) => idx)) : new Set());
 
   const handleAdd = () => onAdd ? onAdd(append, replace) : append({});
@@ -59,7 +74,11 @@ const DynamicArray = ({ name, children, title, onAdd, className, collapsible = t
         <button
           type="button"
           onClick={handleAdd}
-          className="flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed border-border bg-background/40 px-4 py-8 text-center transition-colors hover:border-primary/60 hover:bg-primary/5"
+          aria-invalid={listError ? true : undefined}
+          className={cn(
+            "flex min-h-32 w-full cursor-pointer flex-col items-center justify-center gap-3 rounded-lg border border-dashed bg-background/40 px-4 py-8 text-center transition-colors hover:border-primary/60 hover:bg-primary/5",
+            listError ? "border-destructive" : "border-border",
+          )}
         >
           <span className="flex h-10 w-10 items-center justify-center rounded-full border border-border bg-muted text-muted-foreground">
             <Plus className="h-5 w-5" />
@@ -69,6 +88,7 @@ const DynamicArray = ({ name, children, title, onAdd, className, collapsible = t
             <span className="block text-xs text-muted-foreground">{emptyLabel}</span>
           </span>
         </button>
+        {errorNode}
       </div>
     );
   }
@@ -95,6 +115,7 @@ const DynamicArray = ({ name, children, title, onAdd, className, collapsible = t
         );
       })}
       {addButton}
+      {errorNode}
     </div>
   );
 };

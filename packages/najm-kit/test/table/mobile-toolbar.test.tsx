@@ -145,3 +145,26 @@ describe("NTable mobile toolbar", () => {
     expect(desktopFilters.textContent).toContain("Filter by status");
   });
 });
+
+describe("NTable desktop controls", () => {
+  // With many filters the filter row wraps; the header centred the buttons
+  // between its two rows instead of keeping them on the first.
+  test("keeps the buttons on the first row when the filters wrap", () => {
+    const { container } = render(
+      <NTable
+        data={data}
+        columns={columns}
+        filters={filters}
+        onCreate={mock()}
+        dynamicHeight={false}
+        showPagination={false}
+        showCheckbox={false}
+        showViewToggle={false}
+      />,
+    );
+
+    const controls = container.querySelector("[data-ntable-header] > [data-ntable-controls]") as HTMLElement;
+    expect(controls).toBeTruthy();
+    expect(controls.className).toContain("self-start");
+  });
+});

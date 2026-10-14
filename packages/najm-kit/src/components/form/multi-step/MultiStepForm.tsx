@@ -211,7 +211,11 @@ export function WizardForm({
 
       <Form {...form}>
         <VariantProvider variant={variant} bordered={bordered}>
-          <NajmScroll axis="y" className="min-h-0 flex-1" data-najm-wizard-step-scroll="true">
+          {/* The overlay scrollbar takes no room of its own, so it was drawn
+              over the right edge of the inputs. Reaching into the gutter by
+              the padding it adds back puts the bar there, and the fields keep
+              their width and stay aligned with the footer. */}
+          <NajmScroll axis="y" className="-me-3 min-h-0 flex-1 pe-3" data-najm-wizard-step-scroll="true">
             <form
               id={`step-${currentStepConfig.id}`}
               onSubmit={form.handleSubmit(handleSubmit)}

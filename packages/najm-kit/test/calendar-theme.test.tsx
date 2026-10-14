@@ -34,4 +34,17 @@ describe("Calendar theme", () => {
     expect(dayButton!.className).toContain("cursor-pointer")
     expect(dayButton!.className).toContain("disabled:cursor-not-allowed")
   })
+
+  // Tailwind makes svg a block, which dropped each chevron under its month or
+  // year; the label is a flex row so the chevron stays beside the text.
+  test("keeps each caption dropdown chevron beside its label", () => {
+    const { getAllByRole } = render(<Calendar captionLayout="dropdown" />)
+
+    for (const dropdown of getAllByRole("combobox")) {
+      const label = dropdown.parentElement!.querySelector("[aria-hidden]") as HTMLElement
+      expect(label.querySelector("svg")).toBeTruthy()
+      expect(label.className).toContain("inline-flex")
+      expect(label.className).toContain("items-center")
+    }
+  })
 })

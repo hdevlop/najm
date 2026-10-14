@@ -571,7 +571,9 @@ export function NTableHeader() {
       <TableMobileToolbar />
       {headerSlot && <div className="ml-auto flex min-w-0 max-w-full shrink-0 flex-wrap items-center gap-2">{headerSlot}</div>}
       <TableToolbarSlot />
-      {hasControls && <div className="flex gap-2 shrink-0 flex-wrap"><TableToolbarActions /><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
+      {/* self-start: when the filters wrap to a second row, the buttons stay
+          on the first instead of floating between the two. */}
+      {hasControls && <div data-ntable-controls className="flex gap-2 shrink-0 flex-wrap self-start"><TableToolbarActions /><span className="hidden md:contents"><TableSettingsMenu /></span><TableAddButton /></div>}
     </div>
   );
 }

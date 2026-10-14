@@ -60,6 +60,9 @@ describe("WizardForm", () => {
     expect(scroll).not.toBeNull();
     expect(scroll?.className).toContain("flex-1");
     expect(scroll?.querySelector("form")?.className).not.toContain("overflow-y-auto");
+    // The overlay bar sits in the gutter, not over the right edge of the fields.
+    expect(scroll?.className).toContain("-me-3");
+    expect(scroll?.className).toContain("pe-3");
   });
 
   test("uses a transparent footer surface by default", () => {

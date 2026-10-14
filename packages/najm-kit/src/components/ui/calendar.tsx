@@ -22,7 +22,10 @@ function Calendar(props: Record<string, any>) {
         months: "flex flex-col gap-4",
         month: "flex flex-col gap-4",
         month_caption: "flex justify-center pt-1 relative items-center w-full",
-        caption_label: "text-sm font-medium",
+        // In a dropdown caption the label holds the chevron too. Tailwind's
+        // base makes svg a block, which put the chevron under the month and
+        // year; a flex row keeps it beside them.
+        caption_label: "inline-flex items-center gap-1 text-sm font-medium",
         dropdowns: "relative inline-flex items-center gap-2",
         dropdown_root: "relative inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-sm font-medium text-foreground hover:bg-accent",
         dropdown: cn(

@@ -199,6 +199,17 @@ describe("NDeleteDialog", () => {
     expect(content?.className).toContain("bg-card");
     expect(content?.className).not.toContain("dark:bg-[");
   });
+
+  // The dialog names itself with a hidden title, and the visible heading used
+  // to repeat it, so a screen reader met two "Delete" headings.
+  test("exposes its title as one heading", () => {
+    const { getAllByRole, getByRole } = render(
+      <NDeleteDialog title="Delete" itemName="Sara Bennani" confirmText="Delete student" cancelText="Cancel" />
+    );
+
+    expect(getAllByRole("heading", { name: "Delete" })).toHaveLength(1);
+    expect(getByRole("dialog", { name: "Delete" })).toBeTruthy();
+  });
 });
 
 // ---------------------------------------------------------------------------

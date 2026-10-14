@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.5.2 - 2026-10-14
+
+- `DynamicArray` shows an error set on the list itself, such as "at least one
+  fee is required", under the list, and outlines the empty state. Such an
+  error belongs to no item, so nothing showed it and a wizard whose last step
+  failed only that rule refused to submit with nothing on screen.
+- `WizardForm`'s step area reaches into the dialog gutter by the padding it
+  adds back, so its overlay scrollbar no longer covers the right edge of the
+  fields.
+- The calendar's month and year dropdowns keep their chevron beside the label;
+  Tailwind's block `svg` had pushed it underneath.
+- `NDeleteDialog` exposes its title as one heading. The hidden dialog title
+  and the visible heading used to give screen readers two.
+- `NTable`'s desktop buttons stay on the first row when the filters wrap onto
+  a second, instead of being centred between the two.
+
 ## 3.5.1 - 2026-10-14
 
 - On phones, `NTable`'s first filter stays on the same row as the toolbar

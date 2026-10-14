@@ -11,6 +11,12 @@ export interface NDeleteDialogContentProps {
   icon?: NIconSource;
   warningText?: string;
   className?: string;
+  /**
+   * The visible heading repeats a title the dialog already names for
+   * assistive technology; true hides this copy from it, so the title is read
+   * once. Leave unset when the content is used outside a dialog.
+   */
+  titleIsDecorative?: boolean;
 }
 
 export interface NDeleteDialogProps extends Omit<NDeleteDialogContentProps, "className"> {
@@ -35,6 +41,7 @@ export function NDeleteDialogContent({
   icon: Icon = "trash-2",
   warningText = "Are you sure you want to delete?",
   className,
+  titleIsDecorative = false,
 }: NDeleteDialogContentProps) {
   return (
     <form id="najm-delete-form" onSubmit={(e) => e.preventDefault()}>
@@ -43,7 +50,7 @@ export function NDeleteDialogContent({
           <NIcon icon={Icon} className="size-7" />
         </div>
         <div className="space-y-3">
-          <h2 className="text-xl font-semibold leading-none text-card-foreground">{title}</h2>
+          <h2 aria-hidden={titleIsDecorative || undefined} className="text-xl font-semibold leading-none text-card-foreground">{title}</h2>
           <div className="space-y-1.5">
             <p className="text-sm font-medium leading-5 text-muted-foreground">{warningText}</p>
             <p className="mx-auto max-w-[280px] break-words text-center text-sm font-bold leading-5 text-card-foreground">
@@ -99,6 +106,7 @@ export function NDeleteDialog({
           icon={icon}
           warningText={warningText}
           className={contentClassName}
+          titleIsDecorative
         />
 
         <DialogFooter className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-2">
