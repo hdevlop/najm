@@ -1,5 +1,12 @@
 # Changelog
 
+## 6.3.1 - 2026-10-14
+
+- `inviteUser` creates an account without an email address without minting an
+  invite token or sending a mail, and returns `emailSent: false`. It used to
+  send the invitation to `""`, which a console mailer reported as sent.
+  Re-sending an invitation already refused such an account.
+
 ## 6.3.0 - 2026-10-10
 
 - `OwnershipToken.for(role, ...steps)` accepts `when(...rules)` row conditions,

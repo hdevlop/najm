@@ -183,6 +183,11 @@ export class AuthService {
       emailVerified: false,
     });
 
+    // An account created without an address has nowhere to send the link; the
+    // mail used to go to "" and count as sent. Like the resend path, which
+    // refuses such an account, mint no token and report nothing delivered.
+    if (!body.email?.trim()) return { ...user, emailSent: false };
+
     // Unlike forgot-password (which stays silent to prevent enumeration), invite
     // is an admin action — surface whether the mail actually left so the caller
     // can resend.
