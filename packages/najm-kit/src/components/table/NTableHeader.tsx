@@ -352,17 +352,33 @@ function MobileFiltersMenu({ filters }: { filters: any[] }) {
   );
 }
 
+/**
+ * Phones keep the primary filter beside this many 40px buttons. Three leave
+ * the filter about 190px at a 360px viewport; a fourth would crowd it, so the
+ * filter then takes a row of its own.
+ */
+const MOBILE_INLINE_BUTTON_LIMIT = 3;
+
 function TableMobileToolbar() {
   const filters = useTableStore.use.filters();
   const firstFilter = filters?.[0];
   const toolbarActions = useTableStore.use.toolbarActions();
+  const display = useTableStore.use.toolbarActionDisplay();
   const hasHeaderMenu = useTableStore.use.hasHeaderMenu();
-  const hasDataActions = toolbarActions.length > 0 || hasHeaderMenu;
+  const showAddButton = useTableStore.use.showAddButton();
+
+  // Mirrors what `MobileFiltersMenu`, `TableToolbarActions` and
+  // `TableAddButton` render below.
+  const actionButtons = display === "settings"
+    ? Number(hasHeaderMenu)
+    : (display !== "menu" ? toolbarActions.length : 0) + Number(hasHeaderMenu);
+  const buttonCount = Number((filters?.length ?? 0) > 1) + actionButtons + Number(Boolean(showAddButton));
+  const filterOwnsRow = buttonCount > MOBILE_INLINE_BUTTON_LIMIT;
 
   return (
     <div data-ntable-mobile-toolbar className="flex w-full min-w-0 flex-wrap items-center gap-2 md:hidden">
       {firstFilter && (
-        <div data-ntable-mobile-primary-filter className={cn("min-w-0 flex-1", hasDataActions && "basis-full")}>
+        <div data-ntable-mobile-primary-filter className={cn("min-w-0 flex-1", filterOwnsRow && "basis-full")}>
           <RenderFilter filter={firstFilter} mobilePrimary />
         </div>
       )}

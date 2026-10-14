@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.5.1 - 2026-10-14
+
+- On phones, `NTable`'s first filter stays on the same row as the toolbar
+  buttons while there are at most three of them (filters menu, actions, add),
+  as with `toolbarActionDisplay="settings"`. It takes a row of its own only
+  past three; before, any data action pushed it onto its own row.
+
 ## 3.5.0 - 2026-10-13
 
 - `NTable`'s import dialog is redesigned: a drag-and-drop zone that also opens

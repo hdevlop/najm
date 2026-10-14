@@ -79,6 +79,52 @@ describe("NTable mobile toolbar", () => {
     });
   });
 
+  test("keeps the first filter beside up to three buttons", () => {
+    const { container } = render(
+      <NTable
+        data={data}
+        columns={columns}
+        filters={filters}
+        onCreate={mock()}
+        toolbarActionDisplay="settings"
+        onExport={mock()}
+        onImport={mock()}
+        dynamicHeight={false}
+        showPagination={false}
+        showCheckbox={false}
+        showViewToggle={false}
+      />,
+    );
+
+    const mobileToolbar = container.querySelector("[data-ntable-mobile-toolbar]") as HTMLElement;
+    expect(mobileToolbar.querySelectorAll("button")).toHaveLength(3);
+    const primaryFilter = mobileToolbar.querySelector("[data-ntable-mobile-primary-filter]") as HTMLElement;
+    expect(primaryFilter.className).not.toContain("basis-full");
+  });
+
+  test("gives the first filter its own row past three buttons", () => {
+    const { container } = render(
+      <NTable
+        data={data}
+        columns={columns}
+        filters={filters}
+        onCreate={mock()}
+        toolbarActionDisplay="buttons"
+        onExport={mock()}
+        onImport={mock()}
+        dynamicHeight={false}
+        showPagination={false}
+        showCheckbox={false}
+        showViewToggle={false}
+      />,
+    );
+
+    const mobileToolbar = container.querySelector("[data-ntable-mobile-toolbar]") as HTMLElement;
+    expect(mobileToolbar.querySelectorAll("button").length).toBeGreaterThan(3);
+    const primaryFilter = mobileToolbar.querySelector("[data-ntable-mobile-primary-filter]") as HTMLElement;
+    expect(primaryFilter.className).toContain("basis-full");
+  });
+
   test("keeps every filter in the desktop filter row", () => {
     const { container } = render(
       <NTable
