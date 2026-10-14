@@ -1,5 +1,11 @@
 # Changelog
 
+## 6.4.1 - 2026-10-15
+
+- User reads (`UserService.getById`, `getAll` and the lookups built on the
+  same selection) include `phone` and `phoneVerified`. A phone-only account
+  showed no way to reach it in a user list or profile.
+
 ## 6.4.0 - 2026-10-14
 
 - An account is reached by its email, its phone, or both, and never by

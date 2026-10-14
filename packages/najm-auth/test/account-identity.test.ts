@@ -88,3 +88,12 @@ describe('an account needs an email or a phone', () => {
     expect(parseSessionCookiePayload(snapshot(''))).toBeNull();
   });
 });
+
+// The user list and profile read this selection; a phone-only account showed
+// no way to reach it.
+test('user reads include the phone', async () => {
+  const h = await harness();
+  const user = await h.users.create({ phone: '0612345606', password: 'ValidPass123' });
+  expect((await h.users.getById(user.id)).phone).toBe('+212612345606');
+  expect((await h.users.getAll()).find((row) => row.id === user.id)?.phone).toBe('+212612345606');
+});

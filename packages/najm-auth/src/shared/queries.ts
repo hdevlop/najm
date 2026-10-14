@@ -20,6 +20,10 @@ export class AuthQueries {
       name: this.schema.users.name,
       email: this.schema.users.email,
       emailVerified: this.schema.users.emailVerified,
+      // An account may be reached by phone only; without this the user list
+      // and profile showed no way to reach it at all.
+      phone: this.schema.users.phone,
+      phoneVerified: this.schema.users.phoneVerified,
       image: this.schema.users.image,
       status: this.schema.users.status,
       roleId: this.schema.users.roleId,
