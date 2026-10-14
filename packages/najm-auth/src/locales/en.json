@@ -67,6 +67,7 @@
       "notFound": "User not found",
       "idExists": "User ID already exists",
       "emailRequired": "Email is required",
+      "emailOrPhoneRequired": "An email address or a phone number is required",
       "phoneExists": "Phone number already registered",
       "passwordRequired": "Password is required",
       "invalidEmail": "Invalid email format",

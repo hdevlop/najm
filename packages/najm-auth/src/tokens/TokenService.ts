@@ -911,7 +911,7 @@ export class TokenService {
   ): Promise<SetPasswordToken> {
     const user = await this.tokenRepository.getCredentialState(userId);
     if (!user || (expectedEmail !== undefined
-      && user.email.trim().toLowerCase() !== expectedEmail.trim().toLowerCase())) {
+      && (user.email ?? '').trim().toLowerCase() !== expectedEmail.trim().toLowerCase())) {
       Err(this.t('errors.invalidResetToken'), 401);
     }
     const credentialState = credentialFingerprint(this.config.jwt.refreshSecret, user);

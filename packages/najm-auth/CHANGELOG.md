@@ -1,5 +1,28 @@
 # Changelog
 
+## 6.4.0 - 2026-10-14
+
+- An account is reached by its email, its phone, or both, and never by
+  neither. `users.email` is nullable, and a `users_email_or_phone` check
+  constraint requires one of the two. Email used to be NOT NULL, so every
+  account created without one was stored as `""`, and the second such account
+  failed the unique index with "User identity already exists".
+- `UserService.create` stores a blank email as `null` and treats a blank
+  phone as no phone. It refuses an account with neither with a 400 naming
+  `users.errors.emailOrPhoneRequired`. `update` clears an email or phone
+  sent as blank or `null`, but only while the other one remains.
+- Signing in by phone reads the account by its phone
+  (`UserService.findCredentialsByPhone`). It used to re-read the account by
+  its email, so a phone-only account could not sign in.
+- The session cookie accepts a user whose email is `null`. `AuthUser.email`
+  is `string | null` on the server and the client, and
+  `ProvisionUserInput.email` is optional.
+- The admin `/users` route accepts `phone`, with `email` optional.
+  Registration, invitation and password reset still take an email.
+- Migration: make `users.email` nullable, store `NULL` where it is `""`,
+  then add the check. An existing row with neither fails the check; add it
+  `NOT VALID` on PostgreSQL to enforce it only for new writes.
+
 ## 6.3.1 - 2026-10-14
 
 - `inviteUser` creates an account without an email address without minting an

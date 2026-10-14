@@ -1,6 +1,6 @@
 import type { SeedEntry } from 'najm-database';
 import { createRoleDto } from './roles/RoleDto';
-import { createUserDto } from './users/UserDto';
+import { registerDto } from './users/UserDto';
 import { createPermissionDto } from './permissions/PermissionDto';
 import type { AuthSeedConfig } from './seed.types';
 import { hashPassword } from './auth/password';
@@ -78,7 +78,7 @@ export const authSeed = (config: AuthSeedConfig): Record<string, SeedEntry> => (
     by: ['email'],
     rows: async (seeded) => {
       // Validate admin email and password BEFORE hashing (bcrypt hash would fail strength rules)
-      createUserDto.pick({ email: true, password: true }).parse({
+      registerDto.pick({ email: true, password: true }).parse({
         email: config.adminEmail,
         password: config.adminPass,
       });
@@ -101,7 +101,7 @@ export const authSeed = (config: AuthSeedConfig): Record<string, SeedEntry> => (
       if (config.additionalUsers) {
         for (const user of config.additionalUsers) {
           // Validate each user's email and password
-          createUserDto.pick({ email: true, password: true }).parse({
+          registerDto.pick({ email: true, password: true }).parse({
             email: user.email,
             password: user.password,
           });

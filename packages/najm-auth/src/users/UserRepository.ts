@@ -101,6 +101,22 @@ export class UserRepository {
     return existingUser;
   }
 
+  /** Login by phone reads the row it matched; the account may have no email. */
+  async getByPhoneWithCredentials(phone: string): Promise<(User & { role?: string | null }) | undefined> {
+    const [existingUser] = await this.db
+      .select({
+        ...this.q.userSelection(),
+        password: this.users.password,
+        failedLoginAttempts: this.users.failedLoginAttempts,
+        lockoutUntil: this.users.lockoutUntil,
+      })
+      .from(this.users)
+      .leftJoin(this.roles, eq(this.users.roleId, this.roles.id))
+      .where(eq(this.users.phone, phone))
+      .limit(1);
+    return existingUser;
+  }
+
   async create(data: NewUser): Promise<User> {
     const [newUser] = await this.db.insert(this.users).values(data).returning();
     return newUser;
@@ -129,7 +145,7 @@ export class UserRepository {
     const [updated] = await this.db.update(this.users).set(data).where(and(
       eq(this.users.id, id),
       eq(this.users.password, expected.password),
-      eq(this.users.email, expected.email),
+      expected.email == null ? isNull(this.users.email) : eq(this.users.email, expected.email),
       expected.status == null ? isNull(this.users.status) : eq(this.users.status, expected.status),
       expected.emailVerified == null ? isNull(this.users.emailVerified) : eq(this.users.emailVerified, expected.emailVerified),
     )).returning();

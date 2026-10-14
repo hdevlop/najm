@@ -38,9 +38,13 @@ import {
 export type ProvisionUserInput = {
   id?: string;
   name?: string;
-  email: string;
+  /**
+   * At least one of `email` and `phone` is required. Blank counts as absent;
+   * an account with no email is created without an invitation mail.
+   */
+  email?: string | null;
   /** Normalized through the configured identity preset before it is stored. */
-  phone?: string;
+  phone?: string | null;
   role?: string;
   roleId?: string;
   image?: string | null;
@@ -399,10 +403,9 @@ export class AuthService {
     if (identifier && isEmailIdentifier(identifier)) {
       user = await this.userService.findByEmailInsensitive(identifier);
     } else if (identifier) {
-      const phoneUser = await this.userService.findByPhone(identifier);
-      user = phoneUser
-        ? await this.userService.findByEmail(phoneUser.email)
-        : undefined;
+      // Read by the phone itself: going through the email left every
+      // phone-only account unable to sign in.
+      user = await this.userService.findCredentialsByPhone(identifier);
     }
 
     if (user?.lockoutUntil && !this.isLockoutActive(user.lockoutUntil)) {

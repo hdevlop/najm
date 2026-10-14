@@ -19,6 +19,11 @@ import type { CredentialState } from '../auth/credentialState';
 
 const E164_PHONE = /^\+[1-9]\d{7,14}$/;
 
+/** A blank email is no email: stored as null, never as "". */
+function normalizeEmail(value: unknown): string | null {
+  return typeof value === 'string' && value.trim() ? value.trim().toLowerCase() : null;
+}
+
 export type SanitizedUser = Omit<User, 'password' | 'failedLoginAttempts' | 'lockoutUntil'> & {
   role?: string | null;
   permissions?: string[];
@@ -54,6 +59,17 @@ export class UserService {
    */
   private async invalidateSessions(userId: string): Promise<void> {
     await this.sessionInvalidation?.invalidateUser(userId);
+  }
+
+  /**
+   * Stored in the same normalized form login lookup resolves to, or phone
+   * login would never find the row. Blank means no phone.
+   */
+  private normalizePhone(phone: unknown): string | null {
+    if (phone == null || (typeof phone === 'string' && !phone.trim())) return null;
+    const normalized = this.authConfig.identity?.resolve(phone) ?? normalizeAuthIdentifier(phone);
+    if (!normalized || !E164_PHONE.test(normalized)) Err('A valid phone number is required', 400);
+    return normalized;
   }
 
   private sanitizeUser(user: any): SanitizedUser | undefined {
@@ -134,6 +150,11 @@ export class UserService {
     return await this.userRepository.findByPhone(phone);
   }
 
+  /** The credential row behind a phone login, for timing-safe authentication. */
+  async findCredentialsByPhone(phone: string): Promise<(User & { role?: string | null }) | undefined> {
+    return await this.userRepository.getByPhoneWithCredentials(phone);
+  }
+
   async getAuthRecordById(id: string): Promise<User | undefined> {
     return await this.userRepository.getRawById(id);
   }
@@ -163,17 +184,12 @@ export class UserService {
 
     let userId = id || nanoid(10);
 
-    await this.userValidator.checkEmailUnique(data.email);
-    await this.userValidator.checkUserIdIsUnique(userId);
+    const normalizedEmail = normalizeEmail(email);
+    const normalizedPhone = this.normalizePhone(phone);
+    this.userValidator.checkHasIdentity(normalizedEmail, normalizedPhone);
 
-    // Stored in the same normalized form login lookup resolves to, or phone
-    // login would never find the row it just created.
-    const normalizedPhone = phone == null
-      ? null
-      : (this.authConfig.identity?.resolve(phone) ?? normalizeAuthIdentifier(phone));
-    if (phone != null && (!normalizedPhone || !E164_PHONE.test(normalizedPhone))) {
-      Err('A valid phone number is required', 400);
-    }
+    await this.userValidator.checkEmailUnique(normalizedEmail);
+    await this.userValidator.checkUserIdIsUnique(userId);
     if (normalizedPhone) {
       await this.userValidator.checkPhoneUnique(normalizedPhone, userId);
     }
@@ -184,7 +200,7 @@ export class UserService {
     const userDetails = {
       id: userId,
       name: name || null,
-      email: email.trim().toLowerCase(),
+      email: normalizedEmail,
       image,
       password: hashedPassword,
       roleId: resolvedRoleId,
@@ -213,7 +229,21 @@ export class UserService {
   ): Promise<SanitizedUser> {
     const { password, image } = data;
 
-    await this.userValidator.checkEmailUnique(data.email, id);
+    // A blank email or phone clears it, as long as the other one remains.
+    const touchesEmail = data.email !== undefined;
+    const touchesPhone = data.phone !== undefined;
+    const email = touchesEmail ? normalizeEmail(data.email) : undefined;
+    const phone = touchesPhone ? this.normalizePhone(data.phone) : undefined;
+    if ((touchesEmail && !email) || (touchesPhone && !phone)) {
+      const current = this.requireUser(await this.userRepository.getRawById(id));
+      this.userValidator.checkHasIdentity(
+        touchesEmail ? email : current.email,
+        touchesPhone ? phone : current.phone,
+      );
+    }
+
+    await this.userValidator.checkEmailUnique(email, id);
+    if (phone) await this.userValidator.checkPhoneUnique(phone, id);
 
     // Validate password strength if being updated
     let hashedPassword: string | undefined;
@@ -235,13 +265,9 @@ export class UserService {
       ...(hashedPassword && { password: hashedPassword })
     };
 
-    if (typeof data.email === 'string') updateData.email = data.email.trim().toLowerCase();
-    if (data.phone !== undefined && data.phone !== null) {
-      const phone = this.authConfig.identity?.resolve(data.phone) ?? normalizeAuthIdentifier(data.phone);
-      if (!phone || !E164_PHONE.test(phone)) Err('A valid phone number is required', 400);
-      await this.userValidator.checkPhoneUnique(phone, id);
-      updateData.phone = phone;
-    }
+    // null survives clean(); "" would be dropped as "unchanged".
+    if (touchesEmail) updateData.email = email;
+    if (touchesPhone) updateData.phone = phone;
 
     const cleanedUpdateData = clean(updateData);
     const updatedUser = await this.userValidator.writeUnique(() => options.expectedCredential

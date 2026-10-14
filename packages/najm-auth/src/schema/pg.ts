@@ -1,5 +1,5 @@
 // PostgreSQL schema for najm-auth
-import { pgTable, text, boolean, timestamp, pgEnum, primaryKey, integer, index, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, boolean, timestamp, pgEnum, primaryKey, integer, index, uniqueIndex, check } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { USER_STATUS, TOKEN_STATUS, TOKEN_TYPE } from './constants';
@@ -48,7 +48,10 @@ export const rolesTable = pgTable('roles', {
 export const usersTable = pgTable('users', {
   ...baseFields(8),
   name: text('name'),
-  email: text('email').notNull().unique(),
+  // An account is reached by its email, its phone, or both — never neither.
+  // Email is nullable so several phone-only accounts can coexist: a NOT NULL
+  // column forced them all to "" and the second one broke the unique index.
+  email: text('email').unique(),
   emailVerified: boolean('email_verified').default(false),
   phone: text('phone').unique(),
   phoneVerified: boolean('phone_verified').default(false),
@@ -61,6 +64,7 @@ export const usersTable = pgTable('users', {
   lockoutUntil: timestamp('lockout_until', { mode: 'string' }),
 }, (table) => ({
   roleIdx: index('users_role_id_idx').on(table.roleId),
+  emailOrPhone: check('users_email_or_phone', sql`${table.email} is not null or ${table.phone} is not null`),
 }));
 
 /** External identity-provider accounts linked to Najm users. */

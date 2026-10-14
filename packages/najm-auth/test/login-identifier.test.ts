@@ -180,9 +180,9 @@ describe('login identifier resolution', () => {
     const phoneLookups: string[] = [];
     const emailLookups: string[] = [];
     const { service } = authService({
-      findByPhone: async (phone) => {
+      findCredentialsByPhone: async (phone) => {
         phoneLookups.push(phone);
-        return { id: activeUser.id, email: activeUser.email };
+        return activeUser;
       },
       findByEmail: async (email) => {
         emailLookups.push(email);
@@ -195,14 +195,28 @@ describe('login identifier resolution', () => {
       password: 'StrongPass123',
     })).resolves.toMatchObject({ accessToken: 'access' });
     expect(phoneLookups).toEqual(['+212612345678']);
-    expect(emailLookups).toEqual(['alice@example.test']);
+    expect(emailLookups).toEqual([]);
+  });
+
+  // The phone path used to re-read the account by its email, so an account
+  // reached by phone only could never sign in.
+  test('signs in an account that has a phone and no email', async () => {
+    const { service, established } = authService({
+      findCredentialsByPhone: async () => ({ ...activeUser, email: null }),
+    });
+
+    await expect(service.loginUser({
+      identifier: '+212612345678',
+      password: 'StrongPass123',
+    })).resolves.toMatchObject({ accessToken: 'access' });
+    expect(established.count).toBe(1);
   });
 });
 
 function authService(overrides: {
   findByEmailInsensitive?: (email: string) => Promise<any>;
   findByEmail?: (email: string) => Promise<any>;
-  findByPhone?: (phone: string) => Promise<any>;
+  findCredentialsByPhone?: (phone: string) => Promise<any>;
   comparePassword?: (candidate: string, hash: string) => Promise<boolean>;
   incrementFailedAttempts?: (userId: string) => Promise<number>;
   setLockout?: (userId: string, until: string) => Promise<void>;
@@ -211,7 +225,7 @@ function authService(overrides: {
   const userService = {
     findByEmailInsensitive: overrides.findByEmailInsensitive ?? (async () => undefined),
     findByEmail: overrides.findByEmail ?? (async () => undefined),
-    findByPhone: overrides.findByPhone ?? (async () => undefined),
+    findCredentialsByPhone: overrides.findCredentialsByPhone ?? (async () => undefined),
     resetFailedAttempts: async () => undefined,
     incrementFailedAttempts: overrides.incrementFailedAttempts ?? (async () => 1),
     setLockout: overrides.setLockout ?? (async () => undefined),

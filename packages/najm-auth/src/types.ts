@@ -339,7 +339,8 @@ export interface TokenPair {
  */
 export interface AuthUser {
   id: string;
-  email: string;
+  /** Null for an account reached by phone only. */
+  email: string | null;
   name?: string | null;
   role?: string;
   status?: string;

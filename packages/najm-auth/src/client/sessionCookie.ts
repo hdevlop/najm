@@ -247,8 +247,8 @@ function isValidUser(value: unknown): value is AuthUser {
   return isRecord(value)
     && typeof value.id === 'string'
     && value.id.length > 0
-    && typeof value.email === 'string'
-    && value.email.length > 0
+    // A phone-only account has no email; a present one is never blank.
+    && (value.email === null || (typeof value.email === 'string' && value.email.length > 0))
     && (value.role === undefined || value.role === null || typeof value.role === 'string');
 }
 

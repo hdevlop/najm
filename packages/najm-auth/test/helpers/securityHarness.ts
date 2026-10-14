@@ -28,10 +28,10 @@ const DDL = `
   CREATE TABLE permissions (id text PRIMARY KEY, created_at text, updated_at text,
     name text NOT NULL UNIQUE, description text, resource text NOT NULL, action text NOT NULL);
   CREATE TABLE users (id text PRIMARY KEY, created_at text, updated_at text, name text,
-    email text NOT NULL UNIQUE, email_verified integer DEFAULT 0, phone text UNIQUE,
+    email text UNIQUE, email_verified integer DEFAULT 0, phone text UNIQUE,
     phone_verified integer DEFAULT 0, password text NOT NULL, image text, status text DEFAULT 'active',
     role_id text REFERENCES roles(id), last_login text, failed_login_attempts integer DEFAULT 0,
-    lockout_until text);
+    lockout_until text, CONSTRAINT users_email_or_phone CHECK (email IS NOT NULL OR phone IS NOT NULL));
   CREATE TABLE role_permissions (id text PRIMARY KEY, created_at text, updated_at text,
     role_id text NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     permission_id text NOT NULL REFERENCES permissions(id) ON DELETE CASCADE,

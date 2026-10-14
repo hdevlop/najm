@@ -1,5 +1,5 @@
 // SQLite schema for najm-auth
-import { sqliteTable, text, integer, primaryKey, uniqueIndex, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, primaryKey, uniqueIndex, index, check } from 'drizzle-orm/sqlite-core';
 import { sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import type { UserStatus, TokenStatus, TokenType } from './constants';
@@ -38,7 +38,8 @@ export const rolesTable = sqliteTable('roles', {
 export const usersTable = sqliteTable('users', {
   ...baseFields(8),
   name: text('name'),
-  email: text('email').notNull().unique(),
+  // Nullable, with at least one of email or phone; see schema/pg.ts.
+  email: text('email').unique(),
   emailVerified: integer('email_verified', { mode: 'boolean' }).default(false),
   phone: text('phone').unique(),
   phoneVerified: integer('phone_verified', { mode: 'boolean' }).default(false),
@@ -51,6 +52,7 @@ export const usersTable = sqliteTable('users', {
   lockoutUntil: text('lockout_until'),
 }, (table) => ({
   roleIdx: index('users_role_id_idx').on(table.roleId),
+  emailOrPhone: check('users_email_or_phone', sql`${table.email} is not null or ${table.phone} is not null`),
 }));
 
 /** External identity-provider accounts linked to Najm users. */

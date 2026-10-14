@@ -11,7 +11,7 @@ export interface SessionCookieData {
   /** Must satisfy the AuthUser contract — see AuthUser in ../types. */
   user: {
     id: string;
-    email: string;
+    email: string | null;
     name?: string | null;
     role?: string;
     status?: string;

@@ -3,7 +3,7 @@ import { Err } from 'najm-core';
 import { I18n, type TFn } from 'najm-i18n';
 import { UserRepository } from './UserRepository';
 import { EncryptionService } from '../auth/EncryptionService';
-import { isUniqueViolation } from '../shared/uniqueViolation';
+import { isMissingIdentityViolation, isUniqueViolation } from '../shared/uniqueViolation';
 
 /**
  * UserValidator - Business validation for user operations
@@ -22,7 +22,7 @@ export class UserValidator {
    /**
     * Check if email already exists in database
     */
-   async checkEmailUnique(email: string, excludeId?: string) {
+   async checkEmailUnique(email: string | null | undefined, excludeId?: string) {
       if (!email) return;
       const existingUser = await this.userRepository.getByEmailInsensitive(email);
       if (existingUser && existingUser.id !== excludeId) {
@@ -41,12 +41,24 @@ export class UserValidator {
       }
    }
 
+   /**
+    * An account is reached by its email, its phone, or both. Refused here with
+    * a message the caller can show; the `users_email_or_phone` check is the
+    * database's own copy of the rule.
+    */
+   checkHasIdentity(email: string | null | undefined, phone: string | null | undefined) {
+      if (!email && !phone) {
+         Err(this.t('errors.emailOrPhoneRequired'), 400);
+      }
+   }
+
    /** The database remains authoritative when two validation reads both pass. */
    async writeUnique<T>(write: () => Promise<T>): Promise<T> {
       try {
          return await write();
       } catch (error) {
          if (isUniqueViolation(error)) Err('User identity already exists', 409);
+         if (isMissingIdentityViolation(error)) Err(this.t('errors.emailOrPhoneRequired'), 400);
          throw error;
       }
    }
