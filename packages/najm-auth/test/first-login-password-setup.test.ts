@@ -354,10 +354,14 @@ describe('provisioning with a required password setup', () => {
       },
       frontendUrl: 'https://kafala360.ma',
     };
+    // Only the subject is in the catalog; a missing key comes back as itself,
+    // as najm-i18n returns it, so the body keeps the template's English.
     (service as any).t = (
-      _key: string,
+      key: string,
       params: { accountLabel: string; appName: string },
-    ) => `${params.appName}: activate your ${params.accountLabel}`;
+    ) => key === 'emails.accountInvite.subject'
+      ? `${params.appName}: activate your ${params.accountLabel}`
+      : key;
     (service as any).logger = { error() { }, warn() { } };
 
     await service.provisionUser({

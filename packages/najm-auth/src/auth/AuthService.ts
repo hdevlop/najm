@@ -1,8 +1,8 @@
 import { Injectable, Inject } from 'najm-core';
 import { Err, Log, type ILogger } from 'najm-core';
 import { Transaction } from 'najm-database';
-import { I18n, I18nService, type TFn } from 'najm-i18n';
-import { EmailService, passwordResetTemplate, accountInviteTemplate } from 'najm-email';
+import { I18n, I18nService, type TFn, type TranslationParams } from 'najm-i18n';
+import { EmailService, passwordResetTemplate, accountInviteTemplate, type PasswordResetEmailCopy, type AccountInviteEmailCopy } from 'najm-email';
 import { nanoid } from 'nanoid';
 import { UserService, type SanitizedUser } from '../users/UserService';
 import { UserValidator } from '../users/UserValidator';
@@ -35,6 +35,15 @@ import {
  * Identity fields for creating a user behind a person record (parent, student,
  * teacher, staff…). Role can be given by name (`role`) or id (`roleId`).
  */
+const PASSWORD_RESET_COPY_FIELDS = [
+  'documentTitle', 'heading', 'greeting', 'intro', 'button', 'expiry', 'ignore', 'singleUse', 'fallback',
+] as const satisfies readonly (keyof PasswordResetEmailCopy)[];
+
+const ACCOUNT_INVITE_COPY_FIELDS = [
+  'documentTitle', 'preheader', 'eyebrow', 'heading', 'greeting', 'intro', 'stepsTitle', 'stepsBody', 'button',
+  'expiry', 'expiryNote', 'fallbackPrefix', 'fallbackLink', 'footerIgnore', 'footerAutomated',
+] as const satisfies readonly (keyof AccountInviteEmailCopy)[];
+
 export type ProvisionUserInput = {
   id?: string;
   name?: string;
@@ -212,6 +221,40 @@ export class AuthService {
    *
    * Nothing here logs the token, the link, the message body, or the recipient.
    */
+  /**
+   * Translated words for a security email, read from `emails.<group>.<field>`
+   * in the active language. A field the catalog lacks is left out, so the
+   * template keeps its English default for it.
+   */
+  private emailCopy<K extends string>(group: 'passwordReset' | 'accountInvite', fields: readonly K[], params: TranslationParams): Partial<Record<K, string>> {
+    const copy: Partial<Record<K, string>> = {};
+    for (const field of fields) {
+      const key = `emails.${group}.${field}`;
+      const value = this.t(key, params);
+      if (typeof value === 'string' && value && !value.endsWith(key)) copy[field] = value;
+    }
+    return copy;
+  }
+
+  /** The active language; an email is still sent when it cannot be resolved. */
+  private emailLanguage(): string | undefined {
+    try {
+      return this.i18nService?.getCurrentLanguage?.();
+    } catch {
+      return undefined;
+    }
+  }
+
+  private passwordResetEmail(resetLink: string, userName: string) {
+    const lang = this.emailLanguage();
+    return passwordResetTemplate({
+      resetLink,
+      userName,
+      lang,
+      copy: this.emailCopy('passwordReset', PASSWORD_RESET_COPY_FIELDS, { name: userName, appName: this.config.appName }),
+    });
+  }
+
   private async deliverInvitation(
     userId: string,
     email: string,
@@ -240,6 +283,12 @@ export class AuthService {
           logoAlt: logo?.alt,
           logoSrc: logoCid ? `cid:${logoCid}` : undefined,
           userName: userName || email,
+          lang: this.emailLanguage(),
+          copy: this.emailCopy('accountInvite', ACCOUNT_INVITE_COPY_FIELDS, {
+            name: userName || email,
+            appName: this.config.appName,
+            accountLabel,
+          }),
         }),
         attachments: logo ? [{
           filename: logo.filename,
@@ -652,10 +701,7 @@ export class AuthService {
         await this.emailService.sendHtml(
           user.email,
           this.t('emails.passwordReset.subject'),
-          passwordResetTemplate({
-            resetLink,
-            userName: (user as any).name || email,
-          })
+          this.passwordResetEmail(resetLink, (user as any).name || email)
         );
       } catch (error) {
         // Log at warn level for operational monitoring
@@ -810,10 +856,7 @@ export class AuthService {
       const result = await this.emailService.sendHtml(
         email,
         this.t('emails.passwordReset.subject'),
-        passwordResetTemplate({
-          resetLink,
-          userName: (user as any).name || email,
-        }),
+        this.passwordResetEmail(resetLink, (user as any).name || email),
       );
       emailSent = result.success;
     } catch (error) {
