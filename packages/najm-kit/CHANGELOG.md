@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.5.3 - 2026-10-17
+
+- Icon-only controls are named in the active format locale (`en`, `fr`, `ar`,
+  `es`) instead of always in English: the dialog and sheet close buttons, the
+  page header's sidebar trigger, the sidebar's menu and collapse buttons, and
+  the calendar's previous/next month buttons. A label the app passes still
+  wins; without a format provider they stay English. `getNajmKitLabels` and
+  `useNajmKitLabels` resolve them.
+- The closed mobile sidebar drawer is inert. It was only moved off-screen, so
+  its links stayed in the tab order and the accessibility tree.
+- The French and Spanish location labels are spelled with their accents
+  ("Sélectionner sur la carte", "Seleccionar ubicación en el mapa", ...).
+
 ## 3.5.2 - 2026-10-14
 
 - `DynamicArray` shows an error set on the list itself, such as "at least one
