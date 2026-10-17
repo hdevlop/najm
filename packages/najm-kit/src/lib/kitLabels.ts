@@ -16,6 +16,8 @@ export interface NajmKitLabels {
   nextMonth: string;
   select: string;
   countrySelector: string;
+  today: string;
+  selected: string;
 }
 
 export type NajmKitLabelLocale = "en" | "fr" | "ar" | "es";
@@ -31,6 +33,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     nextMonth: "Go to the next month",
     select: "Select",
     countrySelector: "Country",
+    today: "Today",
+    selected: "selected",
   }),
   fr: Object.freeze({
     close: "Fermer",
@@ -42,6 +46,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     nextMonth: "Mois suivant",
     select: "Choisir",
     countrySelector: "Pays",
+    today: "Aujourd’hui",
+    selected: "sélectionné",
   }),
   ar: Object.freeze({
     close: "إغلاق",
@@ -53,6 +59,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     nextMonth: "الشهر التالي",
     select: "اختيار",
     countrySelector: "البلد",
+    today: "اليوم",
+    selected: "محدد",
   }),
   es: Object.freeze({
     close: "Cerrar",
@@ -64,6 +72,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     nextMonth: "Mes siguiente",
     select: "Seleccionar",
     countrySelector: "País",
+    today: "Hoy",
+    selected: "seleccionado",
   }),
 });
 

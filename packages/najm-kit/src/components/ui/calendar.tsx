@@ -2,7 +2,7 @@ import * as React from "react"
 import { ChevronDownIcon, ChevronLeftIcon, ChevronRightIcon, ChevronUpIcon } from "lucide-react"
 import { DayPicker } from "react-day-picker"
 import { cn } from "../../lib/cn"
-import { calendarFormatters } from "../../lib/localeDates"
+import { calendarFormatters, calendarLabels } from "../../lib/localeDates"
 import { useNajmFormatContext } from "../../format/provider"
 import { useNajmThemeMode } from "../../theme/provider"
 import { buttonVariants } from "../Button"
@@ -16,11 +16,15 @@ function Calendar(props: Record<string, any>) {
   const locale = useNajmFormatContext()?.locale
   const localeFormatters = React.useMemo(() => (locale ? calendarFormatters(locale) : undefined), [locale])
   const kitLabels = getNajmKitLabels(locale)
+  const localeLabels = React.useMemo(
+    () => (locale ? calendarLabels(locale, { today: kitLabels.today, selected: kitLabels.selected }) : undefined),
+    [locale, kitLabels.today, kitLabels.selected],
+  )
   return (
     <DayPicker
       mode={mode}
       formatters={{ ...localeFormatters, ...formatters }}
-      labels={{ labelPrevious: () => kitLabels.previousMonth, labelNext: () => kitLabels.nextMonth, ...labels }}
+      labels={{ labelPrevious: () => kitLabels.previousMonth, labelNext: () => kitLabels.nextMonth, ...localeLabels, ...labels }}
       classNames={{
         months: "flex flex-col gap-4",
         month: "flex flex-col gap-4",

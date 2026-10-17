@@ -15,6 +15,28 @@ export function formatCalendarDate(date: Date, locale: string): string {
  * date-fns, which is English unless a date-fns locale object is bundled.
  * The dates it hands over are local, so they are formatted in the host zone.
  */
+/**
+ * The calendar's screen-reader names in the active locale. DayPicker's own
+ * labels format with its English date library, so a French page announced
+ * "Monday, September 1st, 2025" under a "septembre 2025" caption.
+ */
+export function calendarLabels(locale: string, words: { today: string; selected: string }) {
+  const full = new Intl.DateTimeFormat(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  const caption = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" });
+  const weekday = new Intl.DateTimeFormat(locale, { weekday: "long" });
+
+  return {
+    labelDayButton: (date: Date, modifiers: { today?: boolean; selected?: boolean }) => {
+      let label = full.format(date);
+      if (modifiers.today) label = `${words.today}, ${label}`;
+      if (modifiers.selected) label = `${label}, ${words.selected}`;
+      return label;
+    },
+    labelGrid: (date: Date) => caption.format(date),
+    labelWeekday: (date: Date) => weekday.format(date),
+  };
+}
+
 export function calendarFormatters(locale: string) {
   const caption = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" });
   const month = new Intl.DateTimeFormat(locale, { month: "long" });

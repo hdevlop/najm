@@ -54,6 +54,15 @@ describe("najm-kit built-in labels", () => {
     expect(getByRole("button", { name: "Mois suivant" })).toBeTruthy();
   });
 
+  // Day buttons were announced in English ("Monday, June 1st, 2026") under a
+  // French caption: DayPicker formats its labels with its own English library.
+  test("name the calendar's days and grid in the active locale", () => {
+    const { getByRole, queryByRole } = render(inLocale("fr", <Calendar defaultMonth={new Date(2026, 5, 1)} />));
+    expect(getByRole("button", { name: "lundi 1 juin 2026" })).toBeTruthy();
+    expect(getByRole("grid", { name: "juin 2026" })).toBeTruthy();
+    expect(queryByRole("button", { name: /June/ })).toBeNull();
+  });
+
   test("spell the French and Spanish location labels with their accents", () => {
     expect(getNajmLocationLabels("fr").openMap).toBe("Sélectionner sur la carte");
     expect(getNajmLocationLabels("es").openMap).toBe("Seleccionar ubicación en el mapa");
