@@ -16,18 +16,24 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
   // local-midnight Date, and toISOString() shifts it to UTC (a day earlier in GMT+ zones).
   const toDateString = (date: Date | undefined) => (date ? format(date, "yyyy-MM-dd") : undefined);
   // Parse "yyyy-MM-dd" as a local date; native new Date() would read it as UTC midnight.
-  const toDate = (val: Date | string | undefined) => (typeof val === "string" ? parseISO(val) : val);
+  // An empty form value ("") or an unparseable one is no date, not Invalid Date,
+  // which the calendar cannot open on.
+  const toDate = (val: Date | string | undefined | null) => {
+    const date = typeof val === "string" ? (val ? parseISO(val) : undefined) : val ?? undefined;
+    return date && !Number.isNaN(date.getTime()) ? date : undefined;
+  };
   // The label follows the active locale; outside a format provider it keeps
   // date-fns' English "PPP".
   const locale = useNajmFormatContext()?.locale;
   const toLabel = (date: Date) => (locale ? formatCalendarDate(date, locale) : format(date, "PPP"));
   // A bound keeps the calendar to the days the form accepts, and opens it on
   // the first allowed month when today lies outside them.
-  const minDate = min ? parseISO(min) : undefined;
-  const maxDate = max ? parseISO(max) : undefined;
+  const minDate = toDate(min);
+  const maxDate = toDate(max);
   const disabled = [minDate && { before: minDate }, maxDate && { after: maxDate }].filter(Boolean) as Array<{ before: Date } | { after: Date }>;
   const today = new Date();
-  const openOn = toDate(value) ?? (minDate && today < minDate ? minDate : maxDate && today > maxDate ? maxDate : undefined);
+  const selected = toDate(value);
+  const openOn = selected ?? (minDate && today < minDate ? minDate : maxDate && today > maxDate ? maxDate : undefined);
 
   return (
     <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={className}>
@@ -40,13 +46,13 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
             when the calendar opens.
           */}
           <button type="button" aria-label={ariaLabel} className="w-full flex items-center cursor-pointer gap-2 justify-start text-left font-normal bg-transparent border-0 p-0 outline-none">
-            <span className={cn("flex-1 truncate text-sm cursor-pointer", value ? "text-foreground" : "text-muted-foreground")}>
-              {value ? toLabel(toDate(value)!) : placeholder}
+            <span className={cn("flex-1 truncate text-sm cursor-pointer", selected ? "text-foreground" : "text-muted-foreground")}>
+              {selected ? toLabel(selected) : placeholder}
             </span>
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={toDate(value)} onSelect={(date) => onChange(toDateString(date))} captionLayout="dropdown" disabled={disabled.length ? disabled : undefined} defaultMonth={openOn} startMonth={minDate} endMonth={maxDate} />
+          <Calendar mode="single" selected={selected} onSelect={(date) => onChange(toDateString(date))} captionLayout="dropdown" disabled={disabled.length ? disabled : undefined} defaultMonth={openOn} startMonth={minDate} endMonth={maxDate} />
         </PopoverContent>
       </Popover>
       {!icon && showIcon && <CalendarIcon className={iconProps.className} style={iconProps.style} />}

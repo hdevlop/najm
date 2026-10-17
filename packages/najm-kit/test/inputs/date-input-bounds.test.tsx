@@ -23,6 +23,13 @@ describe("DateInput bounds", () => {
     expect(day(21).disabled).toBe(true);
   });
 
+  // A form field holds "" when empty; parsed as a date it is Invalid Date,
+  // which opened the calendar on no month and crashed the page.
+  test("opens an empty form value on the last allowed month when today is past it", () => {
+    const calendar = open(<DateInput ariaLabel="Date" value={"" as never} onChange={() => {}} min="2020-06-01" max="2020-06-30" />);
+    expect(calendar.getByRole("grid", { name: "juin 2020" })).toBeTruthy();
+  });
+
   test("leaves every day open without bounds", () => {
     const calendar = open(<DateInput ariaLabel="Date" value={new Date(2026, 5, 15)} onChange={() => {}} />);
     expect((calendar.getByRole("button", { name: /^\S+ 1 juin 2026/ }) as HTMLButtonElement).disabled).toBe(false);
