@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.5.4 - 2026-10-17
+
+- A `FormInput` select with a form label and no placeholder is named by its
+  label; it was announced as "Select". A placeholder still names it, as
+  before, and an explicit `ariaLabel` still wins.
+- A select's chosen value is announced: the transparent trigger now carries
+  the selected label, which only the decorative box above it displayed.
+- The generic select name and the phone input's country button ("Country
+  selector" upstream) follow the active format locale.
+
 ## 3.5.3 - 2026-10-17
 
 - Icon-only controls are named in the active format locale (`en`, `fr`, `ar`,
