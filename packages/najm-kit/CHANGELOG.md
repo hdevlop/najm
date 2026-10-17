@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.5.5 - 2026-10-17
+
+- Calendar day buttons, the month grid and weekday headers are named in the
+  active format locale ("lundi 1 juin 2026", "juin 2026"); DayPicker's own
+  labels were English under a localized caption. "Today" and "selected" come
+  from the kit labels in `en`, `fr`, `ar` and `es`.
+
 ## 3.5.4 - 2026-10-17
 
 - A `FormInput` select with a form label and no placeholder is named by its
