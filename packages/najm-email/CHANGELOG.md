@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.2.0 - 2026-10-17
+
+- `passwordResetTemplate` and `accountInviteTemplate` accept `lang` and a
+  `copy` object (`PasswordResetEmailCopy`, `AccountInviteEmailCopy`) of
+  plain-text fields, already interpolated by the caller and escaped by the
+  template. A missing or empty field keeps the English default, so existing
+  calls render as before. These security emails were English only.
+- `lang` sets the document's `lang` and `dir`; `emailTextDirection` (also
+  exported) treats Arabic, Persian, Hebrew and Urdu as right to left.
+- The password reset email escapes its expiry text, as the invitation
+  already did.
+
 ## 3.1.1 - 2026-10-10
 
 - Resend attachments carry `content_disposition` and `content_id` from the
