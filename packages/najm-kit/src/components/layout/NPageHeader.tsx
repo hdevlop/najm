@@ -6,6 +6,7 @@ import { surfaceBorderClasses } from "../../theme/borders";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
 import { useNSidebar } from "../sidebar/NSidebarContext";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 
 interface PageHeaderSlotProps {
   children: ReactNode;
@@ -120,7 +121,7 @@ export function NPageHeader({
   top,
   mobileBreakpoint: mobileBreakpointProp,
   onSidebarOpen,
-  sidebarTriggerLabel = "Open sidebar",
+  sidebarTriggerLabel,
   sidebarTriggerClassName,
   search,
   children,
@@ -136,6 +137,7 @@ export function NPageHeader({
    * up, so a header nested anywhere in the page no longer has to be handed the
    * sidebar's opener. Explicit props still win.
    */
+  const labels = useNajmKitLabels();
   const sidebar = useNSidebar();
   const resolvedOnSidebarOpen = onSidebarOpen ?? sidebar?.openMobile;
   const mobileBreakpoint = mobileBreakpointProp ?? sidebar?.mobileBreakpoint ?? 'md';
@@ -222,7 +224,7 @@ export function NPageHeader({
             variant="ghost"
             size="icon"
             onClick={resolvedOnSidebarOpen}
-            aria-label={sidebarTriggerLabel}
+            aria-label={sidebarTriggerLabel ?? labels.openSidebar}
             data-slot="page-header-sidebar-trigger"
             className={cn(
               "col-start-1 row-start-1 justify-self-start",

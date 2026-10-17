@@ -6,18 +6,21 @@ import { calendarFormatters } from "../../lib/localeDates"
 import { useNajmFormatContext } from "../../format/provider"
 import { useNajmThemeMode } from "../../theme/provider"
 import { buttonVariants } from "../Button"
+import { getNajmKitLabels } from "../../lib/kitLabels"
 
 function Calendar(props: Record<string, any>) {
-  const { className, classNames, formatters, mode = "single", ...rest } = props
+  const { className, classNames, formatters, labels, mode = "single", ...rest } = props
   const themeMode = useNajmThemeMode()
   // Month, weekday and day labels follow the active locale when a format
   // provider is mounted; without one, react-day-picker keeps its English.
   const locale = useNajmFormatContext()?.locale
   const localeFormatters = React.useMemo(() => (locale ? calendarFormatters(locale) : undefined), [locale])
+  const kitLabels = getNajmKitLabels(locale)
   return (
     <DayPicker
       mode={mode}
       formatters={{ ...localeFormatters, ...formatters }}
+      labels={{ labelPrevious: () => kitLabels.previousMonth, labelNext: () => kitLabels.nextMonth, ...labels }}
       classNames={{
         months: "flex flex-col gap-4",
         month: "flex flex-col gap-4",

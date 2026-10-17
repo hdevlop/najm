@@ -12,6 +12,7 @@ import { NSidebarFooter } from "./NSidebarFooter";
 import { NSidebarMobile } from "./NSidebarMobile";
 import { useNSidebar } from "./NSidebarContext";
 import type { NavItem, NavItemGroup, SidebarLogo, SidebarProps, SidebarWidth } from "./types";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 
 export type { SidebarProps } from "./types";
 
@@ -141,10 +142,10 @@ export function NSidebar({
   defaultMobileOpen = false,
   onMobileOpenChange,
   closeOnNavigate = true,
-  hamburgerLabel = "Open sidebar",
-  closeLabel = "Close sidebar",
-  collapseLabel = "Collapse",
-  expandLabel = "Expand",
+  hamburgerLabel: hamburgerLabelProp,
+  closeLabel: closeLabelProp,
+  collapseLabel: collapseLabelProp,
+  expandLabel: expandLabelProp,
   hamburgerClassName,
   showHamburgerButton = false,
   onSettings,
@@ -154,6 +155,11 @@ export function NSidebar({
   widths,
 }: SidebarProps) {
   const recipe = useNajmComponentStyle("sidebar");
+  const labels = useNajmKitLabels();
+  const hamburgerLabel = hamburgerLabelProp ?? labels.openSidebar;
+  const closeLabel = closeLabelProp ?? labels.closeSidebar;
+  const collapseLabel = collapseLabelProp ?? labels.collapseSidebar;
+  const expandLabel = expandLabelProp ?? labels.expandSidebar;
   const [_mobileOpen, _setMobileOpen] = useState(defaultMobileOpen);
   const [_collapsed, _setCollapsed] = useState(defaultCollapsed);
 

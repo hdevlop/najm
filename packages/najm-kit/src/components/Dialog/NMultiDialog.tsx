@@ -12,6 +12,7 @@ import {
   useResponsivePadding,
   type DialogPadding,
 } from "./Dialog";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 import { Button } from "../Button";
 import { IconButton } from "../ui/icon-button";
 import { NajmScroll } from "../ui/scroll";
@@ -235,6 +236,7 @@ function DialogChrome({
   children,
 }: DialogChromeProps) {
   const resolvedPadding = useResponsivePadding(padding);
+  const labels = useNajmKitLabels();
   const noTitle = !title || title.trim() === "";
   const noDescription = !description || description.trim() === "";
   const noHeader = noTitle && noDescription;
@@ -259,7 +261,7 @@ function DialogChrome({
                 <>
                   {pageHeader.actions}
                   <DialogClose asChild>
-                    <IconButton aria-label="Close" variant="ghost" className={closeButtonClassName}>
+                    <IconButton aria-label={labels.close} variant="ghost" className={closeButtonClassName}>
                       <X className="h-4 w-4" />
                     </IconButton>
                   </DialogClose>
@@ -282,7 +284,7 @@ function DialogChrome({
           </div>
           <DialogClose asChild>
             <IconButton
-              aria-label="Close"
+              aria-label={labels.close}
               variant="ghost"
               size="sm"
               className={cn("border border-border bg-background text-foreground hover:bg-accent", closeButtonClassName)}

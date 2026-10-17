@@ -1,4 +1,6 @@
+import * as React from "react";
 import { cn } from "../../lib/cn";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 import { sidebarBorderClasses } from "../../theme/borders";
 import { Menu, X } from "lucide-react";
 import type { NSidebarMobileProps } from "./types";
@@ -9,13 +11,23 @@ export function NSidebarMobile({
   onClose,
   mobileBreakpoint = 'md',
   width = 240,
-  hamburgerLabel = "Open sidebar",
-  closeLabel = "Close sidebar",
+  hamburgerLabel: hamburgerLabelProp,
+  closeLabel: closeLabelProp,
   hamburgerClassName,
   showHamburgerButton = true,
   children,
   bordered,
 }: NSidebarMobileProps) {
+  const labels = useNajmKitLabels();
+  const hamburgerLabel = hamburgerLabelProp ?? labels.openSidebar;
+  const closeLabel = closeLabelProp ?? labels.closeSidebar;
+  // A closed drawer is only moved off-screen. Make it inert so its links leave
+  // the tab order and the accessibility tree until it opens. Set as a DOM
+  // property: React 18 and 19 disagree on how the `inert` attribute is passed.
+  const drawerRef = React.useRef<HTMLElement>(null);
+  React.useEffect(() => {
+    if (drawerRef.current) drawerRef.current.inert = !open;
+  }, [open]);
   const mobileClass = mobileBreakpoint === 'sm' ? 'sm:hidden'
     : mobileBreakpoint === 'lg' ? 'lg:hidden'
     : 'md:hidden';
@@ -46,6 +58,7 @@ export function NSidebarMobile({
         />
       )}
       <aside
+        ref={drawerRef}
         data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
         className={cn(
           "fixed inset-y-0 start-0 z-50 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-200",

@@ -4,6 +4,7 @@ import { XIcon } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useNPortalScope } from "./NSheet";
 import { NajmThemeContainerCtx } from "../../theme/provider";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 
 function Dialog({ ...props }: React.ComponentProps<typeof DialogPrimitive.Root>) {
   return <DialogPrimitive.Root data-slot="dialog" {...props} />;
@@ -89,6 +90,7 @@ function DialogContent({
 }: DialogContentProps) {
   const resolvedPadding = useResponsivePadding(padding);
   const portalClassName = useNPortalScope();
+  const labels = useNajmKitLabels();
 
   // The control that opened this dialog, so focus can be put back on it.
   //
@@ -151,7 +153,7 @@ function DialogContent({
           {!hideClose && (
             <DialogPrimitive.Close className="ring-offset-background cursor-pointer focus:ring-ring absolute top-4 end-4 rounded-xs text-muted-foreground hover:text-foreground transition-colors focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4">
               <XIcon />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">{labels.close}</span>
             </DialogPrimitive.Close>
           )}
         </DialogPrimitive.Content>

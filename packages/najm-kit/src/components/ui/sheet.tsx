@@ -4,6 +4,7 @@ import { cva, type VariantProps } from "class-variance-authority"
 import { X } from "lucide-react"
 import { cn } from "../../lib/cn"
 import { NajmThemeContainerCtx } from "../../theme/provider"
+import { useNajmKitLabels } from "../../lib/kitLabels"
 
 function Sheet({ ...props }: React.ComponentProps<typeof SheetPrimitive.Root>) {
   return <SheetPrimitive.Root data-slot="sheet" {...props} />
@@ -56,6 +57,7 @@ type SheetContentProps = React.ComponentProps<typeof SheetPrimitive.Content> &
   }
 
 function SheetContent({ className, portalClassName, side, children, ...props }: SheetContentProps) {
+  const labels = useNajmKitLabels()
   return (
     <SheetPortal>
       <div className={portalClassName}>
@@ -68,7 +70,7 @@ function SheetContent({ className, portalClassName, side, children, ...props }: 
           {children}
           <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 end-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
             <X className="size-4" />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{labels.close}</span>
           </SheetPrimitive.Close>
         </SheetPrimitive.Content>
       </div>
