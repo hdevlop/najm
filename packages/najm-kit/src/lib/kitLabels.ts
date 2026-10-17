@@ -14,6 +14,8 @@ export interface NajmKitLabels {
   expandSidebar: string;
   previousMonth: string;
   nextMonth: string;
+  select: string;
+  countrySelector: string;
 }
 
 export type NajmKitLabelLocale = "en" | "fr" | "ar" | "es";
@@ -27,6 +29,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     expandSidebar: "Expand",
     previousMonth: "Go to the previous month",
     nextMonth: "Go to the next month",
+    select: "Select",
+    countrySelector: "Country",
   }),
   fr: Object.freeze({
     close: "Fermer",
@@ -36,6 +40,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     expandSidebar: "Développer",
     previousMonth: "Mois précédent",
     nextMonth: "Mois suivant",
+    select: "Choisir",
+    countrySelector: "Pays",
   }),
   ar: Object.freeze({
     close: "إغلاق",
@@ -45,6 +51,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     expandSidebar: "توسيع",
     previousMonth: "الشهر السابق",
     nextMonth: "الشهر التالي",
+    select: "اختيار",
+    countrySelector: "البلد",
   }),
   es: Object.freeze({
     close: "Cerrar",
@@ -54,6 +62,8 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     expandSidebar: "Expandir",
     previousMonth: "Mes anterior",
     nextMonth: "Mes siguiente",
+    select: "Seleccionar",
+    countrySelector: "País",
   }),
 });
 

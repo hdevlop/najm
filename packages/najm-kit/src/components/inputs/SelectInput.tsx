@@ -4,6 +4,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger } from "../ui/select";
 import { BaseInput } from "./BaseInput";
 import { cn } from "../../lib/cn";
 import { getIconColorProps, resolveIcon } from "./utils";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 import type { SelectInputProps, SelectItemType } from "./types";
 
 const EMPTY_VALUE = "__najm_select_empty_value__";
@@ -40,6 +41,7 @@ export const SelectInput: React.FC<SelectInputProps> = ({ placeholder = "", aria
   const [open, setOpen] = React.useState(false);
   const triggerRef = React.useRef<HTMLButtonElement>(null);
   const pointerDismissedRef = React.useRef(false);
+  const labels = useNajmKitLabels();
 
   return (
     <div className={cn("group relative", className)}>
@@ -67,8 +69,12 @@ export const SelectInput: React.FC<SelectInputProps> = ({ placeholder = "", aria
           ref={triggerRef}
           className="absolute inset-0 h-full w-full opacity-0 focus-visible:border-transparent focus-visible:ring-0"
           disabled={disabled}
-          aria-label={ariaLabel || placeholder || "Select"}
-        />
+          aria-label={ariaLabel || placeholder || labels.select}
+        >
+          {/* The visible value is drawn by the decorative BaseInput above; the
+              transparent trigger carries it too, so it is announced as the value. */}
+          {displayLabel ? <span className="sr-only">{displayLabel}</span> : null}
+        </SelectTrigger>
         <SelectContent
           className={dropdownClassName}
           onPointerDownOutside={() => {

@@ -53,6 +53,8 @@ const nativeFieldTypes = new Set(["text", "number", "password", "textarea", "tim
 // `BaseInput` wrapper, so the placeholder was its only name. `select` is absent on
 // purpose: SelectInput already resolves `ariaLabel || placeholder`, and renaming it
 // from the label would break every consumer selecting it by placeholder today.
+// A select with no placeholder had only the generic fallback, so it takes the
+// label instead.
 const labelNamedCompositeTypes = new Set(["date", "combobox", "multiselect", "phone"]);
 
 export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, formDescription, required = false, disabled = false, readOnly = false, hidden = false, icon, iconColor, classNames, background, ...rest }) => {
@@ -78,7 +80,8 @@ export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, for
     ? preset.input?.replace(/\bh-\d+\b/g, "").trim()
     : preset.input;
   const isFillAvatar = type === "avatar" && inputRest.fill === true;
-  const compositeAriaLabel = labelNamedCompositeTypes.has(type) && typeof formLabel === "string"
+  const labelNamed = labelNamedCompositeTypes.has(type) || (type === "select" && !inputRest.placeholder);
+  const compositeAriaLabel = labelNamed && typeof formLabel === "string"
     ? { ariaLabel: inputRest.ariaLabel ?? formLabel }
     : {};
   const slot = {

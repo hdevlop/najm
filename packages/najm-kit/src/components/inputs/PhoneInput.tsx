@@ -2,7 +2,10 @@
 import { PhoneInput as BasePhoneInput, defaultCountries } from "react-international-phone";
 import { cn } from "../../lib/cn";
 import { BaseInput } from "./BaseInput";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 import type { PhoneInputProps } from "./types";
+
+const COUNTRY_BUTTON = ".react-international-phone-country-selector-button";
 
 export function PhoneInput({
   value = "",
@@ -40,8 +43,16 @@ export function PhoneInput({
     "--react-international-phone-dropdown-shadow": "0 16px 40px color-mix(in oklch, var(--background), transparent 55%)",
   } as React.CSSProperties;
 
+  // Upstream hard-codes the English name "Country selector" on its button and
+  // offers no prop for it; name it in the active locale after each render.
+  const { countrySelector } = useNajmKitLabels();
+  const rootRef = React.useRef<HTMLDivElement>(null);
+  React.useEffect(() => {
+    rootRef.current?.querySelector(COUNTRY_BUTTON)?.setAttribute("aria-label", countrySelector);
+  });
+
   return (
-    <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("gap-0 overflow-visible p-0!", className)} disabled={disabled}>
+    <BaseInput ref={rootRef} variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={cn("gap-0 overflow-visible p-0!", className)} disabled={disabled}>
       <BasePhoneInput
         className="w-full"
         defaultCountry={defaultCountry}
