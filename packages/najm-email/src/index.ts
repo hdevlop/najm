@@ -60,4 +60,6 @@ export {
   welcomeEmailTemplate,
   accountInviteTemplate,
   emailVerificationTemplate,
+  emailTextDirection,
 } from './templates';
+export type { PasswordResetEmailCopy, AccountInviteEmailCopy } from './templates';

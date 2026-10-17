@@ -17,28 +17,67 @@ export function escapeHtml(text: string): string {
     .replace(/'/g, '&#039;');
 }
 
+const RTL_LANGUAGES = new Set(['ar', 'fa', 'he', 'ur']);
+
+/** Text direction for a language tag such as `ar` or `ar-MA`. */
+export function emailTextDirection(lang: string): 'ltr' | 'rtl' {
+  return RTL_LANGUAGES.has(lang.trim().toLowerCase().split('-')[0]) ? 'rtl' : 'ltr';
+}
+
+/**
+ * The words of the password reset email. Every field is plain text, already
+ * interpolated by the caller, and escaped here. A missing field keeps the
+ * English default.
+ */
+export interface PasswordResetEmailCopy {
+  documentTitle: string;
+  heading: string;
+  greeting: string;
+  intro: string;
+  button: string;
+  expiry: string;
+  ignore: string;
+  singleUse: string;
+  fallback: string;
+}
+
 /**
  * Password reset email template
  *
- * @param params - Template parameters
+ * @param params - Template parameters; `copy` and `lang` localize it
  * @returns HTML email content
  */
 export function passwordResetTemplate(params: {
   resetLink: string;
   userName: string;
   expiryTime?: string;
+  lang?: string;
+  copy?: Partial<PasswordResetEmailCopy>;
 }): string {
-  const { resetLink, userName, expiryTime = '1 hour' } = params;
-  const safeName = escapeHtml(userName);
+  const { resetLink, userName, expiryTime = '1 hour', lang, copy = {} } = params;
   const safeLink = escapeHtml(resetLink);
+  const text: PasswordResetEmailCopy = {
+    documentTitle: 'Password Reset',
+    heading: 'Password Reset Request',
+    greeting: `Hello ${userName},`,
+    intro: 'We received a request to reset your password. Click the button below to create a new password:',
+    button: 'Reset Password',
+    expiry: `This link will expire in ${expiryTime} for security reasons.`,
+    ignore: "If you didn't request a password reset, you can safely ignore this email.",
+    singleUse: 'For security, this link can only be used once.',
+    fallback: "If the button doesn't work, copy and paste this link into your browser:",
+    ...Object.fromEntries(Object.entries(copy).filter(([, value]) => typeof value === 'string' && value)),
+  };
+  const t = (key: keyof PasswordResetEmailCopy) => escapeHtml(text[key]);
+  const langAttributes = lang ? ` lang="${escapeHtml(lang)}" dir="${emailTextDirection(lang)}"` : '';
 
   return `
 <!DOCTYPE html>
-<html>
+<html${langAttributes}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Password Reset</title>
+  <title>${t('documentTitle')}</title>
   <style>
     body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
     .container { max-width: 600px; margin: 0 auto; padding: 20px; }
@@ -51,20 +90,20 @@ export function passwordResetTemplate(params: {
 <body>
   <div class="container">
     <div class="header">
-      <h1>Password Reset Request</h1>
+      <h1>${t('heading')}</h1>
     </div>
     <div class="content">
-      <p>Hello ${safeName},</p>
-      <p>We received a request to reset your password. Click the button below to create a new password:</p>
+      <p>${t('greeting')}</p>
+      <p>${t('intro')}</p>
       <p style="text-align: center; margin: 30px 0;">
-        <a href="${safeLink}" class="button">Reset Password</a>
+        <a href="${safeLink}" class="button">${t('button')}</a>
       </p>
-      <p>This link will expire in ${expiryTime} for security reasons.</p>
-      <p>If you didn't request a password reset, you can safely ignore this email.</p>
-      <p>For security, this link can only be used once.</p>
+      <p>${t('expiry')}</p>
+      <p>${t('ignore')}</p>
+      <p>${t('singleUse')}</p>
     </div>
     <div class="footer">
-      <p>If the button doesn't work, copy and paste this link into your browser:</p>
+      <p>${t('fallback')}</p>
       <p style="word-break: break-all;">${safeLink}</p>
     </div>
   </div>
@@ -139,6 +178,28 @@ export function welcomeEmailTemplate(params: {
  * @param params - Template parameters
  * @returns HTML email content
  */
+/**
+ * The words of the account invitation email: plain text, already interpolated
+ * by the caller, escaped here. A missing field keeps the English default.
+ */
+export interface AccountInviteEmailCopy {
+  documentTitle: string;
+  preheader: string;
+  eyebrow: string;
+  heading: string;
+  greeting: string;
+  intro: string;
+  stepsTitle: string;
+  stepsBody: string;
+  button: string;
+  expiry: string;
+  expiryNote: string;
+  fallbackPrefix: string;
+  fallbackLink: string;
+  footerIgnore: string;
+  footerAutomated: string;
+}
+
 export function accountInviteTemplate(params: {
   inviteLink: string;
   userName: string;
@@ -147,6 +208,8 @@ export function accountInviteTemplate(params: {
   logoSrc?: string;
   logoAlt?: string;
   expiryTime?: string;
+  lang?: string;
+  copy?: Partial<AccountInviteEmailCopy>;
 }): string {
   const {
     inviteLink,
@@ -156,28 +219,53 @@ export function accountInviteTemplate(params: {
     logoSrc,
     logoAlt,
     expiryTime = '3 days',
+    lang = 'en',
+    copy = {},
   } = params;
-  const safeName = escapeHtml(userName);
   const safeLink = escapeHtml(inviteLink);
   const safeAppName = escapeHtml(appName);
   const safeLogoSrc = logoSrc ? escapeHtml(logoSrc) : '';
   const safeLogoAlt = escapeHtml(logoAlt?.trim() || appName);
-  const safeExpiryTime = escapeHtml(expiryTime);
   const normalizedAccountType = accountType?.trim();
   const safeAccountLabel = normalizedAccountType
     ? `${escapeHtml(normalizedAccountType)} account`
     : 'account';
   const currentYear = new Date().getFullYear();
+  const accountLabel = normalizedAccountType ? `${normalizedAccountType} account` : 'account';
+  const given = Object.fromEntries(Object.entries(copy).filter(([, value]) => typeof value === 'string' && value)) as Partial<AccountInviteEmailCopy>;
+  const text: AccountInviteEmailCopy = {
+    documentTitle: `Activate your ${accountLabel} | ${appName}`,
+    preheader: `Your ${appName} ${accountLabel} is ready. Confirm your email and choose your password.`,
+    eyebrow: 'Secure account invitation',
+    heading: `Activate your ${accountLabel}`,
+    greeting: `Hello ${userName},`,
+    intro: '',
+    stepsTitle: 'Email confirmation + password setup',
+    stepsBody: 'The secure button completes both steps with one single-use link.',
+    button: `Activate my ${accountLabel}`,
+    expiry: `This invitation expires in ${expiryTime}.`,
+    expiryNote: `It can be used only once. ${appName} will never ask you to email this link or your password to anyone.`,
+    fallbackPrefix: 'Button not working?',
+    fallbackLink: 'Open the secure account setup page',
+    footerIgnore: 'If you did not expect this invitation, no action is needed.',
+    footerAutomated: `${appName}. This is an automated account-security message.`,
+    ...given,
+  };
+  const t = (key: keyof AccountInviteEmailCopy) => escapeHtml(text[key]);
+  // The English intro emphasises the account label; a translated one is plain text.
+  const intro = given.intro
+    ? t('intro')
+    : `An administrator created a <strong style="color:#183226;">${safeAccountLabel}</strong> for you on ${safeAppName}. Confirm your email and choose a private password to activate your access.`;
 
   return `
 <!DOCTYPE html>
-<html lang="en">
+<html lang="${escapeHtml(lang)}" dir="${emailTextDirection(lang)}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="color-scheme" content="light">
   <meta name="supported-color-schemes" content="light">
-  <title>Activate your ${safeAccountLabel} | ${safeAppName}</title>
+  <title>${t('documentTitle')}</title>
   <style>
     @media only screen and (max-width: 620px) {
       .email-shell { padding: 20px 12px !important; }
@@ -190,7 +278,7 @@ export function accountInviteTemplate(params: {
 </head>
 <body style="margin:0; padding:0; background-color:#f3f7f4; color:#183226; font-family:Arial, Helvetica, sans-serif; -webkit-text-size-adjust:100%;">
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
-    Your ${safeAppName} ${safeAccountLabel} is ready. Confirm your email and choose your password.
+    ${t('preheader')}
   </div>
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; background-color:#f3f7f4;">
     <tr>
@@ -202,21 +290,21 @@ export function accountInviteTemplate(params: {
           <tr>
             <td class="email-header" style="padding:32px 40px 30px; background-color:#173d2a; color:#ffffff;">
               ${safeLogoSrc ? `<img src="${safeLogoSrc}" alt="${safeLogoAlt}" width="132" style="display:block; width:auto; max-width:132px; height:auto; max-height:52px; margin:0 0 24px; border:0; outline:none; text-decoration:none; object-fit:contain;" />` : `<p style="margin:0 0 24px; font-size:18px; line-height:24px; font-weight:800; letter-spacing:1.8px; color:#ffffff;">${safeAppName}</p>`}
-              <p style="margin:0 0 10px; font-size:12px; line-height:18px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#f3b184;">Secure account invitation</p>
-              <h1 class="email-title" style="margin:0; font-size:34px; line-height:41px; font-weight:700; letter-spacing:-0.4px; color:#ffffff;">Activate your ${safeAccountLabel}</h1>
+              <p style="margin:0 0 10px; font-size:12px; line-height:18px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#f3b184;">${t('eyebrow')}</p>
+              <h1 class="email-title" style="margin:0; font-size:34px; line-height:41px; font-weight:700; letter-spacing:-0.4px; color:#ffffff;">${t('heading')}</h1>
             </td>
           </tr>
           <tr>
             <td class="email-content" style="padding:36px 40px 18px;">
-              <p style="margin:0 0 18px; font-size:17px; line-height:27px; color:#183226;">Hello ${safeName},</p>
+              <p style="margin:0 0 18px; font-size:17px; line-height:27px; color:#183226;">${t('greeting')}</p>
               <p style="margin:0 0 24px; font-size:16px; line-height:26px; color:#40584b;">
-                An administrator created a <strong style="color:#183226;">${safeAccountLabel}</strong> for you on ${safeAppName}. Confirm your email and choose a private password to activate your access.
+                ${intro}
               </p>
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; margin:0 0 28px; background-color:#f4f8f5; border:1px solid #dce8df; border-radius:14px;">
                 <tr>
                   <td style="padding:18px 20px;">
-                    <p style="margin:0 0 4px; font-size:14px; line-height:20px; font-weight:700; color:#173d2a;">Email confirmation + password setup</p>
-                    <p style="margin:0; font-size:14px; line-height:21px; color:#5b6f63;">The secure button completes both steps with one single-use link.</p>
+                    <p style="margin:0 0 4px; font-size:14px; line-height:20px; font-weight:700; color:#173d2a;">${t('stepsTitle')}</p>
+                    <p style="margin:0; font-size:14px; line-height:21px; color:#5b6f63;">${t('stepsBody')}</p>
                   </td>
                 </tr>
               </table>
@@ -224,7 +312,7 @@ export function accountInviteTemplate(params: {
                 <tr>
                   <td align="center" bgcolor="#c9652f" style="background-color:#c9652f; border-radius:12px;">
                     <a class="email-button" href="${safeLink}" target="_blank" style="display:inline-block; padding:15px 28px; border:1px solid #c9652f; border-radius:12px; color:#ffffff !important; font-size:16px; line-height:20px; font-weight:700; text-decoration:none;">
-                      <span style="color:#ffffff;">Activate my ${safeAccountLabel}</span>
+                      <span style="color:#ffffff;">${t('button')}</span>
                     </a>
                   </td>
                 </tr>
@@ -232,20 +320,20 @@ export function accountInviteTemplate(params: {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; margin:0 0 24px; border-left:4px solid #dc7b3c; background-color:#fff8f3;">
                 <tr>
                   <td style="padding:14px 16px; font-size:14px; line-height:21px; color:#68422d;">
-                    <strong>This invitation expires in ${safeExpiryTime}.</strong> It can be used only once. ${safeAppName} will never ask you to email this link or your password to anyone.
+                    <strong>${t('expiry')}</strong> ${t('expiryNote')}
                   </td>
                 </tr>
               </table>
               <p style="margin:0; font-size:14px; line-height:22px; color:#687a70;">
-                Button not working? <a href="${safeLink}" target="_blank" style="color:#315f46; font-weight:700; text-decoration:underline;">Open the secure account setup page</a>.
+                ${t('fallbackPrefix')} <a href="${safeLink}" target="_blank" style="color:#315f46; font-weight:700; text-decoration:underline;">${t('fallbackLink')}</a>.
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding:24px 40px 32px;">
               <div style="height:1px; background-color:#e4ece7; font-size:0; line-height:0;">&nbsp;</div>
-              <p style="margin:22px 0 6px; font-size:13px; line-height:20px; color:#718078;">If you did not expect this invitation, no action is needed.</p>
-              <p style="margin:0; font-size:12px; line-height:19px; color:#8a978f;">&copy; ${currentYear} ${safeAppName}. This is an automated account-security message.</p>
+              <p style="margin:22px 0 6px; font-size:13px; line-height:20px; color:#718078;">${t('footerIgnore')}</p>
+              <p style="margin:0; font-size:12px; line-height:19px; color:#8a978f;">&copy; ${currentYear} ${t('footerAutomated')}</p>
             </td>
           </tr>
         </table>
