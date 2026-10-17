@@ -1,5 +1,14 @@
 # Changelog
 
+## 6.6.0 - 2026-10-17
+
+- `NajmAuthClient.setRequestHeaders(source)` adds headers to every request
+  the client sends, read as each one starts; a request's own headers still
+  win, and the call returns the unbind. Auth operations (forgot and reset
+  password, register, login) carried no page language, so a reset requested
+  from a sign-in page was answered and emailed in the server's default
+  language even when 6.5.0's translations existed.
+
 ## 6.5.0 - 2026-10-17
 
 - The password reset email (self-service and administrative) and the account
