@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.6.0 - 2026-10-17
+
+- `DateInput` (and `FormInput type="date"`) takes `min` and `max` as
+  "yyyy-MM-dd". Days outside them are disabled, the month and year dropdowns
+  stop at them, and the calendar opens on the first allowed month when today
+  lies outside.
+- The calendar opens on the selected value's month; it opened on the current
+  month whatever the value.
+
 ## 3.5.5 - 2026-10-17
 
 - Calendar day buttons, the month grid and weekday headers are named in the
