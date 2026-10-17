@@ -149,7 +149,8 @@
       "export { EMAIL_CONFIG, EMAIL_PROVIDER, EMAIL_SERVICE } from './tokens';",
       "export type { EmailAddress, EmailAttachment, EmailMessage, TemplateEmailMessage, TemplateVariables, SendResult, BulkSendResult, EmailProvider, SmtpConfig, ResendConfig, SendGridConfig, MailgunConfig, SesConfig, PostmarkConfig, ConsoleConfig, MemoryConfig, ProviderConfig, TemplateConfig, EmailConfig, EmailPluginConfig, EmailEvents, EmailEventHandler, } from './types';",
       "export { BaseProvider, SmtpProvider, ResendProvider, SendGridProvider, ConsoleProvider, MemoryProvider, } from './providers';",
-      "export { escapeHtml, passwordResetTemplate, welcomeEmailTemplate, accountInviteTemplate, emailVerificationTemplate, } from './templates';"
+      "export { escapeHtml, passwordResetTemplate, welcomeEmailTemplate, accountInviteTemplate, emailVerificationTemplate, emailTextDirection, } from './templates';",
+      "export type { PasswordResetEmailCopy, AccountInviteEmailCopy } from './templates';"
     ],
     "najm-event": [
       "export * from './types';",
