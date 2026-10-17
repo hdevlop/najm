@@ -1,5 +1,12 @@
 # Changelog
 
+## 3.6.1 - 2026-10-17
+
+- An empty `DateInput` value (a form field's `""`) no longer crashes the
+  page when the calendar opens. 3.6.0 opened the calendar on it as Invalid
+  Date and the caption threw "Invalid time value". Empty and unparseable
+  values, `min` and `max` included, read as no date.
+
 ## 3.6.0 - 2026-10-17
 
 - `DateInput` (and `FormInput type="date"`) takes `min` and `max` as
