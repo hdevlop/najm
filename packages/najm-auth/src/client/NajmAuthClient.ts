@@ -81,6 +81,7 @@ export class NajmAuthClient {
 
   private readonly prefix: string;
   private readonly threshold: number;
+  private requestHeaders: (() => Record<string, string> | undefined) | undefined;
 
   constructor(private config: AuthClientConfig) {
     this.prefix = config.authPrefix ?? '/auth';
@@ -93,6 +94,7 @@ export class NajmAuthClient {
       getToken: () => this.state.accessToken,
       onUnauthorized: () => this.handleUnauthorized(),
       retry: config.retry,
+      getHeaders: () => this.requestHeaders?.(),
     });
 
     // Init tab sync
@@ -100,6 +102,19 @@ export class NajmAuthClient {
       const name = config.channelName ?? 'najm-auth';
       this.tabSync = new TabSync(name, (msg) => this.handleTabMessage(msg));
     }
+  }
+
+  /**
+   * Headers every request of this client carries, read as each one starts —
+   * for example the page's language, so a password reset requested from a
+   * sign-in page is answered and emailed in it. A request's own headers still
+   * win. Returns the unbind.
+   */
+  setRequestHeaders(source: () => Record<string, string> | undefined): () => void {
+    this.requestHeaders = source;
+    return () => {
+      if (this.requestHeaders === source) this.requestHeaders = undefined;
+    };
   }
 
   // =========================================================================

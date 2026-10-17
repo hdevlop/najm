@@ -13,6 +13,8 @@ export interface FetchClientConfig {
   onUnauthorized?: () => Promise<string | null>;
   retry?: RetryConfig;
   defaultHeaders?: Record<string, string>;
+  /** Headers read as each request starts, after the defaults and before the request's own. */
+  getHeaders?: () => Record<string, string> | undefined;
 }
 
 function getBackoffDelay(attempt: number, config?: RetryConfig): number {
@@ -128,6 +130,7 @@ export class FetchClient {
     const headers: Record<string, string> = {
       'Accept': 'application/json',
       ...this.config.defaultHeaders,
+      ...this.config.getHeaders?.(),
       ...opts?.headers,
     };
 
