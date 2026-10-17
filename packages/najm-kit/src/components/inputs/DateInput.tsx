@@ -10,7 +10,7 @@ import { formatCalendarDate } from "../../lib/localeDates";
 import { useNajmFormatContext } from "../../format/provider";
 import type { DateInputProps } from "./types";
 
-export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placeholder = "Pick a date", className = "", icon, showIcon = true, iconColor, variant = "default", status = "default", bordered, borderColor, ariaLabel }) => {
+export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placeholder = "Pick a date", className = "", icon, showIcon = true, iconColor, variant = "default", status = "default", bordered, borderColor, ariaLabel, min, max }) => {
   const iconProps = getIconColorProps(iconColor, "h-4 w-4");
   // Serialize using local date parts, not toISOString() — the calendar returns a
   // local-midnight Date, and toISOString() shifts it to UTC (a day earlier in GMT+ zones).
@@ -21,6 +21,13 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
   // date-fns' English "PPP".
   const locale = useNajmFormatContext()?.locale;
   const toLabel = (date: Date) => (locale ? formatCalendarDate(date, locale) : format(date, "PPP"));
+  // A bound keeps the calendar to the days the form accepts, and opens it on
+  // the first allowed month when today lies outside them.
+  const minDate = min ? parseISO(min) : undefined;
+  const maxDate = max ? parseISO(max) : undefined;
+  const disabled = [minDate && { before: minDate }, maxDate && { after: maxDate }].filter(Boolean) as Array<{ before: Date } | { after: Date }>;
+  const today = new Date();
+  const openOn = toDate(value) ?? (minDate && today < minDate ? minDate : maxDate && today > maxDate ? maxDate : undefined);
 
   return (
     <BaseInput variant={variant} status={status} bordered={bordered} borderColor={borderColor} className={className}>
@@ -39,7 +46,7 @@ export const DateInput: React.FC<DateInputProps> = ({ value, onChange, placehold
           </button>
         </PopoverTrigger>
         <PopoverContent className="w-auto p-0" align="start">
-          <Calendar mode="single" selected={toDate(value)} onSelect={(date) => onChange(toDateString(date))} captionLayout="dropdown" />
+          <Calendar mode="single" selected={toDate(value)} onSelect={(date) => onChange(toDateString(date))} captionLayout="dropdown" disabled={disabled.length ? disabled : undefined} defaultMonth={openOn} startMonth={minDate} endMonth={maxDate} />
         </PopoverContent>
       </Popover>
       {!icon && showIcon && <CalendarIcon className={iconProps.className} style={iconProps.style} />}

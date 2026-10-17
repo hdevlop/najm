@@ -152,6 +152,10 @@ export interface DateInputProps extends BaseProps {
   icon?: InputIcon;
   showIcon?: boolean;
   ariaLabel?: string;
+  /** Earliest day the calendar offers, as "yyyy-MM-dd"; days before it are disabled. */
+  min?: string | null;
+  /** Latest day the calendar offers, as "yyyy-MM-dd"; days after it are disabled. */
+  max?: string | null;
 }
 
 export interface StarRatingInputProps extends BaseProps {
