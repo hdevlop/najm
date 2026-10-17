@@ -1,5 +1,20 @@
 # Changelog
 
+## 6.5.0 - 2026-10-17
+
+- The password reset email (self-service and administrative) and the account
+  invitation are written in the request's language. Their words come from
+  `emails.passwordReset.*` (`documentTitle`, `heading`, `greeting`, `intro`,
+  `button`, `expiry`, `ignore`, `singleUse`, `fallback`) and
+  `emails.accountInvite.*` (`documentTitle`, `preheader`, `eyebrow`,
+  `heading`, `greeting`, `intro`, `stepsTitle`, `stepsBody`, `button`,
+  `expiry`, `expiryNote`, `fallbackPrefix`, `fallbackLink`, `footerIgnore`,
+  `footerAutomated`), with `{{name}}`, `{{appName}}` and, for invitations,
+  `{{accountLabel}}`. Only the subject was translated before.
+- A field the app's catalog lacks keeps najm-email's English default, and the
+  email is still sent when the language cannot be resolved.
+- Requires najm-email 3.2.0.
+
 ## 6.4.1 - 2026-10-15
 
 - User reads (`UserService.getById`, `getAll` and the lookups built on the
