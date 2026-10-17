@@ -30,6 +30,17 @@ describe("DateInput bounds", () => {
     expect(calendar.getByRole("grid", { name: "juin 2020" })).toBeTruthy();
   });
 
+  test("opens an empty or unparseable value without bounds, showing the placeholder", () => {
+    for (const value of ["", "not-a-date"]) {
+      const view = render(<NajmFormatProvider locale="fr" timeZone="UTC"><DateInput ariaLabel="Vide" placeholder="Choisir" value={value as never} onChange={() => {}} /></NajmFormatProvider>);
+      const trigger = view.getByRole("button", { name: "Vide" });
+      expect(trigger.textContent).toBe("Choisir");
+      fireEvent.click(trigger);
+      expect(view.getByRole("grid")).toBeTruthy();
+      view.unmount();
+    }
+  });
+
   test("leaves every day open without bounds", () => {
     const calendar = open(<DateInput ariaLabel="Date" value={new Date(2026, 5, 15)} onChange={() => {}} />);
     expect((calendar.getByRole("button", { name: /^\S+ 1 juin 2026/ }) as HTMLButtonElement).disabled).toBe(false);
