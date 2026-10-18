@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.6.3 - 2026-10-18
+
+- A table filter that matches nothing shows the filtered-empty state
+  (`renderFilteredEmpty`, else the default "no results" state) in card and
+  table views. With the table's own search, text or select filters, cards
+  rendered an empty grid with "page 1 of 0" and the table a bare "No results."
+  row; only a caller passing `isFilteredEmpty` got the state. The filters
+  stay on screen to be cleared.
+- `WizardForm` keeps what was typed on a step when leaving it by Previous or
+  the step header. Only Next saved it, so going back and forward again
+  emptied the step. The draft is kept unvalidated: the step and the final
+  schema still refuse invalid values.
+
 ## 3.6.2 - 2026-10-18
 
 - Built-in control names follow the format provider's locale (en, fr, ar,
