@@ -7,9 +7,11 @@ import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { BaseInput } from "./BaseInput";
 import { getIconColorProps, resolveIcon } from "./utils";
 import type { ComboboxInputProps, SelectItemType } from "./types";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 
 export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Select...", searchPlaceholder = "Search...", emptyMessage = "No results found.", loading = false, loadingMessage = "Loading...", onSearchChange, shouldFilter = true, value, onChange, icon, showIcon = true, iconColor, items = [], className = "", variant = "default", status = "default", bordered, borderColor, disabled = false, allowFreeText = false, ariaLabel }) => {
   const [open, setOpen] = useState(false);
+  const labels = useNajmKitLabels();
   const triggerRef = React.useRef<HTMLDivElement>(null);
   const pointerDismissedRef = React.useRef(false);
   const [query, setQuery] = useState("");
@@ -83,7 +85,8 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
           bordered={bordered}
           borderColor={borderColor}
           role="combobox"
-          aria-label={ariaLabel}
+          // Named like SelectInput: a combobox table filter had no name at all.
+          aria-label={ariaLabel || placeholder || labels.select}
           tabIndex={disabled ? -1 : 0}
           aria-expanded={open}
           onKeyDown={(event) => {

@@ -4,6 +4,7 @@ import { Button } from "../Button";
 import { Trash2, Plus, ChevronDown } from "lucide-react";
 import { PrefixProvider } from "./PrefixContext";
 import { cn } from "../../lib/cn";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 
 export interface DynamicArrayProps {
   name: string;
@@ -30,6 +31,7 @@ function listErrorMessage(error: any): string | undefined {
 }
 
 const DynamicArray = ({ name, children, title, onAdd, className, collapsible = true, defaultCollapsed = false, addLabel = "Click to add item", emptyLabel = "No items added yet." }: DynamicArrayProps) => {
+  const kitLabels = useNajmKitLabels();
   const { control } = useFormContext();
   const { fields, append, remove, replace } = useFieldArray({ control, name });
   const { errors } = useFormState({ control, name });
@@ -104,7 +106,7 @@ const DynamicArray = ({ name, children, title, onAdd, className, collapsible = t
                 {collapsible && <ChevronDown className={cn("h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200", !isCollapsed && "rotate-180")} />}
                 <h3 className="truncate text-sm font-semibold text-foreground">{renderTitle(field, index)}</h3>
               </div>
-              <Button type="button" variant="ghost" size="sm" aria-label={`Remove ${renderTitle(field, index)}`} onClick={() => handleRemove(index)} className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+              <Button type="button" variant="ghost" size="sm" aria-label={`${kitLabels.remove} ${renderTitle(field, index)}`} onClick={() => handleRemove(index)} className="h-8 w-8 p-0 text-destructive hover:text-destructive hover:bg-destructive/10">
                 <Trash2 className="w-4 h-4" />
               </Button>
             </div>

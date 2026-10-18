@@ -441,7 +441,10 @@ function TableSettingsMenu() {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <BaseInput aria-label={copy.settings} title={inSettings ? copy.settings : undefined} className="w-auto cursor-pointer px-3" bordered={bordered}>
+        {/* Radix merges its trigger props onto this div, which gave it no role
+            and no tab stop: the view and column menu was out of keyboard reach.
+            The trigger opens itself on Enter, Space and ArrowDown. */}
+        <BaseInput role="button" tabIndex={0} aria-label={copy.settings} title={inSettings ? copy.settings : undefined} className="w-auto cursor-pointer px-3 outline-none" bordered={bordered}>
           <TriggerIcon className="h-4 w-4 shrink-0 text-muted-foreground" />
         </BaseInput>
       </DropdownMenuTrigger>

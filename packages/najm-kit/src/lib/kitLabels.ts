@@ -18,6 +18,14 @@ export interface NajmKitLabels {
   countrySelector: string;
   today: string;
   selected: string;
+  /** A date field's placeholder when the app passes none. */
+  pickDate: string;
+  /** A table's select-all checkbox. */
+  selectAllRows: string;
+  /** A row checkbox, followed by the row's id. */
+  selectRow: string;
+  /** A repeated form item's delete button, followed by the item's title. */
+  remove: string;
 }
 
 export type NajmKitLabelLocale = "en" | "fr" | "ar" | "es";
@@ -35,6 +43,10 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     countrySelector: "Country",
     today: "Today",
     selected: "selected",
+    pickDate: "Pick a date",
+    selectAllRows: "Select all rows",
+    selectRow: "Select row",
+    remove: "Remove",
   }),
   fr: Object.freeze({
     close: "Fermer",
@@ -48,6 +60,10 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     countrySelector: "Pays",
     today: "Aujourd’hui",
     selected: "sélectionné",
+    pickDate: "Choisir une date",
+    selectAllRows: "Sélectionner toutes les lignes",
+    selectRow: "Sélectionner la ligne",
+    remove: "Retirer",
   }),
   ar: Object.freeze({
     close: "إغلاق",
@@ -61,6 +77,10 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     countrySelector: "البلد",
     today: "اليوم",
     selected: "محدد",
+    pickDate: "اختر تاريخًا",
+    selectAllRows: "تحديد كل الصفوف",
+    selectRow: "تحديد الصف",
+    remove: "إزالة",
   }),
   es: Object.freeze({
     close: "Cerrar",
@@ -74,6 +94,10 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     countrySelector: "País",
     today: "Hoy",
     selected: "seleccionado",
+    pickDate: "Elegir una fecha",
+    selectAllRows: "Seleccionar todas las filas",
+    selectRow: "Seleccionar la fila",
+    remove: "Quitar",
   }),
 });
 

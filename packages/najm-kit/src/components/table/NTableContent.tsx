@@ -15,6 +15,7 @@ import { flexRender } from "@tanstack/react-table";
 import { ArrowUpDown, ArrowUp, ArrowDown, Loader2, ChevronRight, ChevronDown } from "lucide-react";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 import { useTableSurfaceAppearance } from "./tableSurface";
 import { resolveHiddenBelowClass } from "./responsiveColumns";
 import type { NTableColumnMeta, NTableEditorOption, NTableEditorType } from "./responsiveColumns";
@@ -260,6 +261,7 @@ export function EditableCell({ cell, onCellEdit }: { cell: any; onCellEdit: (row
 }
 
 export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
+  const kitLabels = useNajmKitLabels();
   const table = useTableStore.use.table();
   const storeIsTableView = useTableStore.use.isTableView();
   const columns = useTableStore.use.columns();
@@ -401,7 +403,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                   style={headerCellStyle}
                 >
                   <Checkbox
-                    aria-label="Select all rows"
+                    aria-label={kitLabels.selectAllRows}
                     checked={table.getIsAllPageRowsSelected()}
                     onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
                   />
@@ -464,7 +466,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                     {showCheckbox && (
                       <TableCell className="h-14 w-10 text-center">
                         <Checkbox
-                          aria-label={`Select row ${row.id}`}
+                          aria-label={`${kitLabels.selectRow} ${row.id}`}
                           checked={row.getIsSelected()}
                           onClick={(e) => e.stopPropagation()}
                           onCheckedChange={(value) => row.toggleSelected(!!value)}
