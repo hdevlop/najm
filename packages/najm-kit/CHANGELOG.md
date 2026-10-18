@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.6.2 - 2026-10-18
+
+- Built-in control names follow the format provider's locale (en, fr, ar,
+  es) instead of staying English: the table's select-all and row checkboxes,
+  a date field's placeholder when the app passes none ("Pick a date"), and a
+  repeated form item's delete button ("Remove …"). English is unchanged, and a
+  passed placeholder still wins.
+- The table settings trigger (view and column menu) is a focusable button
+  that Enter, Space and ArrowDown open; it had no role or tab stop.
+- `ComboboxInput` without `ariaLabel` is named by its placeholder, as
+  `SelectInput` already is.
+- Choosing a day in `DateInput` closes the calendar.
+
 ## 3.6.1 - 2026-10-17
 
 - An empty `DateInput` value (a form field's `""`) no longer crashes the
