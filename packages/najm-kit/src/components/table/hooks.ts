@@ -214,7 +214,7 @@ export function useDynamicPageSize(
   const error = useTableStore.use.error();
   const hasNoData = useTableStore.use.hasNoData();
   const hasDataRows = useTableStore.use.hasData();
-  const isFilteredEmpty = useTableStore.use.isFilteredEmpty();
+  const isFilteredEmpty = useTableStore.use.noFilterMatches();
   const syncWithProps = useTableStore.use.syncWithProps();
   const lastMeasurementRef = useRef("");
 
@@ -377,6 +377,7 @@ export function useTable(effectiveViewModeOverride?: TableState["viewMode"]) {
   const setExpanded = useTableStore.use.setExpanded();
   const userGetRowCanExpand = useTableStore.use.getRowCanExpand();
   const renderSubRow = useTableStore.use.renderSubRow();
+  const storedClientFilteredEmpty = useTableStore.use.isClientFilteredEmpty();
 
   const finalColumns = useMemo(() => {
     const responsiveColumns = filterResponsiveColumns(columns);
@@ -528,6 +529,18 @@ const handleSortingChange = useCallback((updaterOrValue: any) => {
     hasSeededTableRef.current = true;
     syncWithProps({ table });
   }
+
+  // A toolbar filter left uncontrolled runs here, on the client, so only this
+  // hook knows it matched nothing. A caller that filters for itself says so
+  // with `isFilteredEmpty`. Without this, cards rendered an empty grid and the
+  // table a bare row, and the caller's `renderFilteredEmpty` never appeared.
+  const isClientFilteredEmpty = data.length > 0
+    && (columnFilters.length > 0 || globalFilter !== "")
+    && table.getFilteredRowModel().rows.length === 0;
+  useLayoutEffect(() => {
+    if (storedClientFilteredEmpty !== isClientFilteredEmpty) syncWithProps({ isClientFilteredEmpty });
+  }, [isClientFilteredEmpty, storedClientFilteredEmpty, syncWithProps]);
+
   useLayoutEffect(() => {
     syncWithProps({ table });
   }, [table]); // table is stable; syncWithProps reference is stable

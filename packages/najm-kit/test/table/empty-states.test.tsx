@@ -1,6 +1,7 @@
 import { describe, test, expect } from "bun:test";
 import React from "react";
-import { render } from "@testing-library/react";
+import { render, act } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { ColumnDef } from "@tanstack/react-table";
 
 import { NTable, type NTableProps } from "../../src/components/table/NTable";
@@ -109,5 +110,57 @@ describe("empty-states.test.tsx", () => {
     const { container: c3 } = render(<TableWrapper loading={false} error={null} isFilteredEmpty={true} renderFilteredEmpty={CustomFilteredEmpty} isEmpty={true} />);
     await new Promise((r) => setTimeout(r, 100));
     expect(c3.querySelector("[data-testid=custom-filtered-empty]")).toBeTruthy();
+  });
+});
+
+describe("client filter with no matches", () => {
+  const rows: Row[] = [{ id: "1", name: "Amina", age: 9 }, { id: "2", name: "Youssef", age: 11 }];
+  function Card({ data }: { data: Row }) { return <div data-testid="card">{data.name}</div>; }
+  const settle = () => act(() => new Promise((r) => setTimeout(r, 50)));
+  const type = async (container: HTMLElement, value: string) => {
+    const input = Array.from(container.querySelectorAll("input")).find((i) => i.placeholder === "Search") as HTMLInputElement;
+    expect(input).toBeTruthy();
+    if (input.value) await userEvent.type(input, "{Backspace}".repeat(input.value.length));
+    if (value) await userEvent.type(input, value);
+    await settle();
+  };
+
+  // 2026-10-18, School /users, /staff, /teachers: a name matching nobody left
+  // the card grid blank (page 1 of 0) and never showed renderFilteredEmpty.
+  for (const viewMode of ["cards", "table"] as const) {
+    test(`${viewMode}: shows the filtered-empty renderer, and clearing restores the rows`, async () => {
+      const { container, queryAllByTestId, queryByTestId } = render(
+        <TableWrapper data={rows} mode={viewMode} renderCard={Card as any}
+          filters={[{ type: "search", name: "global", placeholder: "Search" }]}
+          renderEmpty={CustomEmpty} renderFilteredEmpty={CustomFilteredEmpty} />
+      );
+      await settle();
+      expect(queryAllByTestId("card").length).toBe(viewMode === "cards" ? 2 : 0);
+      expect(queryByTestId("custom-filtered-empty")).toBeNull();
+
+      await type(container, "zzz");
+      expect(queryByTestId("custom-filtered-empty")).toBeTruthy();
+      expect(queryByTestId("custom-empty")).toBeNull();
+      expect(queryAllByTestId("card").length).toBe(0);
+      expect(container.textContent).not.toContain("No results.");
+      // The filter that caused it stays on screen to be cleared.
+      expect(Array.from(container.querySelectorAll("input")).some((i) => i.placeholder === "Search")).toBe(true);
+
+      await type(container, "");
+      expect(queryByTestId("custom-filtered-empty")).toBeNull();
+      expect(container.textContent).toContain("Amina");
+    });
+  }
+
+  test("a filter that matches some rows shows just those rows", async () => {
+    const { container, queryByTestId } = render(
+      <TableWrapper data={rows} filters={[{ type: "search", name: "global", placeholder: "Search" }]}
+        renderEmpty={CustomEmpty} renderFilteredEmpty={CustomFilteredEmpty} />
+    );
+    await settle();
+    await type(container, "you");
+    expect(container.textContent).toContain("Youssef");
+    expect(container.textContent).not.toContain("Amina");
+    expect(queryByTestId("custom-filtered-empty")).toBeNull();
   });
 });

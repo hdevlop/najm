@@ -166,6 +166,10 @@ export interface TableState {
   // Empty states
   isEmpty: boolean | undefined;
   isFilteredEmpty: boolean;
+  /** A toolbar filter applied by the table itself left none of the supplied rows. Set by `useTable`. */
+  isClientFilteredEmpty: boolean;
+  /** Derived: the caller's `isFilteredEmpty` or the table's own client filter. What the layout reads. */
+  noFilterMatches: boolean;
   renderFilteredEmpty: (() => React.ReactNode) | null;
   // Row expansion
   expanded: ExpandedState;
@@ -182,7 +186,7 @@ export type TableStore = ReturnType<typeof createTableStore>;
 const computeFlags = (state: Partial<TableState>): Partial<TableState> => {
   const hasData = Array.isArray(state.data) && state.data.length > 0;
   const hasNoData = state.isEmpty ?? !hasData;
-  const isFilteredEmpty = Boolean(state.isFilteredEmpty);
+  const noFilterMatches = Boolean(state.isFilteredEmpty) || Boolean(state.isClientFilteredEmpty);
   const isTableView = state.viewMode === "table";
   const isCardView = state.viewMode === "cards";
   const isJsonView = state.viewMode === "json";
@@ -198,8 +202,8 @@ const computeFlags = (state: Partial<TableState>): Partial<TableState> => {
   // size correction, a filter change, a poll — look like a full navigation.
   // Keep the rows and mark the region busy; the skeleton is for an empty table.
   const isRefreshing = Boolean(state.isLoading) && hasData;
-  const showContent = !state.error && !hasNoData && !isFilteredEmpty && (!state.isLoading || hasData);
-  return { hasData, hasNoData, isTableView, isCardView, isJsonView, isFilesView, isCustomMode, hasActions, hasControls, isRefreshing, showContent,
+  const showContent = !state.error && !hasNoData && !noFilterMatches && (!state.isLoading || hasData);
+  return { hasData, hasNoData, isTableView, isCardView, isJsonView, isFilesView, isCustomMode, hasActions, hasControls, isRefreshing, showContent, noFilterMatches,
     // Rendered during a first load too, so the bar occupies its height while
     // the skeleton is up. Without it the body is one bar taller than it will be
     // once rows arrive, the measured page size is one row too many, and that
@@ -328,6 +332,8 @@ export const createTableStore = (seed?: Partial<TableState>) => {
     // Empty states
     isEmpty: undefined,
     isFilteredEmpty: false,
+    isClientFilteredEmpty: false,
+    noFilterMatches: false,
     renderFilteredEmpty: null,
     // Row expansion
     expanded: {} as ExpandedState,

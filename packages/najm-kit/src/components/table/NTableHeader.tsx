@@ -521,7 +521,7 @@ export function NTableHeader() {
   const isRefreshing = useTableStore.use.isRefreshing();
   const error = useTableStore.use.error();
   const hasNoData = useTableStore.use.hasNoData();
-  const isFilteredEmpty = useTableStore.use.isFilteredEmpty();
+  const isFilteredEmpty = useTableStore.use.noFilterMatches();
   const filters = useTableStore.use.filters();
   const headerSlot = useTableStore.use.headerSlot();
   const renderToolbar = useTableStore.use.renderToolbar();
