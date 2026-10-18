@@ -1,6 +1,7 @@
 import { describe, expect, mock, test } from "bun:test";
 import React from "react";
 import { act, fireEvent, render, waitFor } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { z } from "zod";
 import { WizardForm } from "../src/components/form";
 import type { StepConfig } from "../src/components/form";
@@ -231,4 +232,57 @@ describe("WizardForm", () => {
     expect(container.querySelector("input[aria-label='hourly rate']")).toBeTruthy();
     expect(onSubmit).not.toHaveBeenCalled();
   });
+});
+
+describe("WizardForm draft between steps", () => {
+  // 2026-10-18, School /teachers: salary and specialization typed on step 2
+  // were blank again after Previous then Next.
+  const identity = z.object({ name: z.string().min(1) });
+  const profession = z.object({ salary: z.coerce.number().positive(), specialization: z.string().min(3) });
+  const draftSteps: StepConfig[] = [
+    { id: "identity", title: "Identity", schema: identity, fields: ["name"],
+      render: ({ form }) => <input aria-label="name" {...form.register("name")} /> },
+    { id: "profession", title: "Profession", schema: profession, fields: ["salary", "specialization"],
+      render: ({ form }) => (
+        <>
+          <input aria-label="salary" {...form.register("salary")} />
+          <input aria-label="specialization" {...form.register("specialization")} />
+        </>
+      ) },
+  ];
+  const field = (container: HTMLElement, name: string) => container.querySelector(`input[aria-label='${name}']`) as HTMLInputElement;
+
+  for (const via of ["Previous", "the step header"] as const) {
+    test(`leaving step 2 by ${via} keeps its unsaved, even invalid, values`, async () => {
+      const onSubmit = mock();
+      const view = render(
+        <WizardForm steps={draftSteps} schema={identity.merge(profession)}
+          defaultValues={{ name: "", salary: "", specialization: "" }} onSubmit={onSubmit} />
+      );
+      await userEvent.type(field(view.container, "name"), "Hicham");
+      await act(async () => { fireEvent.click(view.getByText("Next")); });
+      await waitFor(() => expect(field(view.container, "salary")).toBeTruthy());
+
+      await userEvent.type(field(view.container, "salary"), "3000");
+      await userEvent.type(field(view.container, "specialization"), "Ma");
+      await act(async () => {
+        fireEvent.click(via === "Previous" ? view.getByText("Previous") : view.getByText("Identity"));
+      });
+      await waitFor(() => expect(field(view.container, "name")).toBeTruthy());
+      expect(field(view.container, "name").value).toBe("Hicham");
+
+      await act(async () => { fireEvent.click(view.getByText("Next")); });
+      await waitFor(() => expect(field(view.container, "salary")).toBeTruthy());
+      expect(field(view.container, "salary").value).toBe("3000");
+      expect(field(view.container, "specialization").value).toBe("Ma");
+
+      // Kept as a draft, not accepted: the step still refuses it.
+      await act(async () => { fireEvent.click(view.getByText("Submit")); });
+      expect(onSubmit).not.toHaveBeenCalled();
+      await userEvent.type(field(view.container, "specialization"), "ths");
+      await act(async () => { fireEvent.click(view.getByText("Submit")); });
+      await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+      expect(onSubmit.mock.calls[0][0]).toEqual({ name: "Hicham", salary: 3000, specialization: "Maths" });
+    });
+  }
 });

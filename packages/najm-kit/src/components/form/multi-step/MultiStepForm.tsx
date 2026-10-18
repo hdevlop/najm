@@ -158,6 +158,21 @@ export function WizardForm({
     });
   }, [nav.currentStep, currentStepConfig.id, form]);
 
+  // Leaving a step any way but Next must not lose what was typed on it. Its
+  // raw values join the ones Next collects, unvalidated: going back never
+  // requires a valid step, and the final schema still checks everything.
+  const keepDraft = () => {
+    formDataRef.current = { ...formDataRef.current, ...form.getValues() };
+  };
+  const handlePrevious = () => {
+    keepDraft();
+    nav.handlePrevious();
+  };
+  const goToStep = (step: number) => {
+    if (step !== nav.currentStep) keepDraft();
+    nav.goToStep(step);
+  };
+
   const handleSubmit = async (data: any) => {
     onStepComplete?.(nav.currentStep - 1, data);
     const result = await handleStepSubmit(data);
@@ -204,7 +219,7 @@ export function WizardForm({
           steps={nav.steps}
           currentStep={nav.currentStep}
           completedSteps={nav.completedSteps}
-          onStepClick={nav.goToStep}
+          onStepClick={goToStep}
           classNames={classNames}
         />
       )}
@@ -243,7 +258,7 @@ export function WizardForm({
         >
           <div>
             {!nav.isFirstStep && (
-              <Button type="button" variant="outline" onClick={nav.handlePrevious}>
+              <Button type="button" variant="outline" onClick={handlePrevious}>
                 {previousLabel}
               </Button>
             )}
