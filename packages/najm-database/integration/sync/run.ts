@@ -3,6 +3,8 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import postgres from 'postgres';
 import { drizzle } from 'drizzle-orm/postgres-js';
+import { migrate } from 'drizzle-orm/postgres-js/migrator';
+import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import { sealOperation, SyncError, type SyncContext, type SyncOperation } from '../../dist/sync/contracts.mjs';
 import { applyOperation, lookupOperation, CommandRefusal } from '../../dist/sync/server.mjs';
@@ -30,8 +32,10 @@ try {
   await admin.unsafe(`CREATE DATABASE "${database}"`); created = true;
   connection = postgres(proofUrl.toString(), { max: 8, prepare: false, onnotice: () => {} });
   const [identity] = await connection`select current_database() as name`; assert.equal(identity.name, database);
-  await connection.unsafe(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
+  await connection`create table proof_marker (run_id text primary key)`;
   await connection`insert into proof_marker values (${runId})`;
+  await migrate(drizzle(connection), { migrationsFolder: fileURLToPath(new URL('./.output/schema-generation', import.meta.url)) });
+  await connection.unsafe(await readFile(new URL('./schema.sql', import.meta.url), 'utf8'));
   await connection.unsafe(createCaptureSql({ installationId: context.installationId, tables: [
     { table: 'attendance', entity: 'attendance', keyColumn: 'id', yearColumn: 'academic_year_id', projection: { id: 'id', status: 'status', academicYearId: 'academic_year_id' } },
     { table: 'attendance_history', entity: 'attendance_history', keyColumn: 'id', projection: { id: 'id', attendanceId: 'attendance_id', oldStatus: 'old_status', newStatus: 'new_status' } },

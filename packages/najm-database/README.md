@@ -136,7 +136,11 @@ plugin-only teardown behavior.
 - `@Transaction` decorator requires database plugin to be registered first
 - Schema should use `authSchema` from `najm-auth` via spread, never duplicate auth tables
 
-## Opt-in synchronization, 2.3.0
+## Opt-in synchronization, 2.3.1
+
+Use 2.3.1 rather than 2.3.0 for schema composition: the patch expresses the
+bigint counter's SQL zero default without a native BigInt that Drizzle Kit
+cannot serialize. The schema-generation gate exercises the built public entry.
 
 These first-slice APIs are experimental. They do not mount an HTTP endpoint,
 grant access, install triggers, run migrations, download School data or enable
@@ -274,7 +278,7 @@ preserve/reconcile pending work under an explicit reviewed procedure.
 ## Verification
 
 `bun run test` covers legacy transactions and the portable/local primitives.
-Build then run `bun run test:sync:integration` with a loopback PostgreSQL admin
+Build, run `bun run test:sync:schema`, then `bun run test:sync:integration` with a loopback PostgreSQL admin
 URL in `OFFLINE_PROOF_ADMIN_URL`. The script rewrites it to `/postgres`, creates
 an unpredictable `najm_sync_proof_<uuid>` database, verifies its marker, and
 drops only that database. It never contacts the supplied URL's original

@@ -10,7 +10,7 @@ export const syncInstallations = pgTable('sync_installations', {
 });
 export const syncCounters = pgTable('sync_counters', {
   installationId: text('installation_id').primaryKey().references(() => syncInstallations.id),
-  position: bigint('position', { mode: 'bigint' }).notNull().default(0n),
+  position: bigint('position', { mode: 'bigint' }).notNull().default(sql`0`),
 });
 export const syncOperations = pgTable('sync_operations', {
   installationId: text('installation_id').notNull().references(() => syncInstallations.id),

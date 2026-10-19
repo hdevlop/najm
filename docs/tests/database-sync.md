@@ -1,6 +1,6 @@
 # Database synchronization first-slice primitives
 
-Date: 2026-10-19. Candidate `najm-database@2.3.0`. This is reusable-core
+Date: 2026-10-19. Candidate `najm-database@2.3.1`. This is reusable-core
 evidence, not School synchronization rollout or authenticated UI acceptance.
 
 The package adds separate portable contracts, browser replica, server operation
@@ -9,7 +9,7 @@ existing runtime dependencies. `beforeTransaction` is opt-in and runs inside
 the outermost transaction before domain work, once per attempt; nested calls
 reuse the transaction. Retry and rollback tests prove ordering and refusal.
 
-Full package suite: **141 passed, 368 assertions**. New portable/browser source
+Full package suite: **142 passed, 370 assertions**. New portable/browser source
 strict typecheck, declaration build and public API snapshot pass. Existing
 transaction integration remains in that suite. Pure canonical JSON rejects
 coercion/undefined/non-finite/cyclic payloads, unknown envelope fields, invalid
@@ -48,7 +48,15 @@ checks each against the built client and real PostgreSQL operation store:
 - A real dedicated worker opens the same fast-idb replica and sends queued work.
 - A stale revision becomes a durable reviewable conflict with original input.
 
-The browser import build rejects server/Node dependencies. Raw results are in
+The browser import build rejects server/Node dependencies. A real Drizzle Kit
+generation through the built entry creates seven additive tables; the PostgreSQL
+proof applies that generated migration rather than duplicating package DDL.
+The initial 2.3.0 publication used a native BigInt default that prevented School
+migration generation. Version 2.3.1 replaces it with a SQL zero expression and
+adds snapshot-default and actual migration-generation regression checks. No
+School migration had been applied when that issue was found.
+
+Raw results are in
 `packages/najm-database/integration/sync/.output/results.json`; they are copied
 to the School ledger separately at publication/adoption.
 

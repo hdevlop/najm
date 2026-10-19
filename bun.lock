@@ -401,8 +401,9 @@
     },
     "packages/najm-database": {
       "name": "najm-database",
-      "version": "2.3.0",
+      "version": "2.3.1",
       "devDependencies": {
+        "drizzle-kit": "0.31.10",
         "fake-indexeddb": "6.2.5",
         "fast-idb": "0.3.0",
         "najm-core": "workspace:*",

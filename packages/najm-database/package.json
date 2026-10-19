@@ -1,6 +1,6 @@
 {
   "name": "najm-database",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Database and transaction handling plugin for Najm API framework",
   "type": "module",
   "files": [
@@ -41,7 +41,8 @@
     "dev": "tsup --watch",
     "test": "bun test",
     "test:watch": "bun test --watch",
-    "test:sync:integration": "bun integration/sync/run.ts"
+    "test:sync:integration": "bun run test:sync:schema && bun integration/sync/run.ts",
+    "test:sync:schema": "drizzle-kit generate --config integration/sync/drizzle.config.ts"
   },
   "peerDependencies": {
     "najm-core": "^2.1.1 || ^3.0.2",
@@ -58,7 +59,8 @@
     "typescript": "^5.7.3",
     "tsup": "^8.0.0",
     "fast-idb": "0.3.0",
-    "fake-indexeddb": "6.2.5"
+    "fake-indexeddb": "6.2.5",
+    "drizzle-kit": "0.31.10"
   },
   "keywords": [
     "database",
