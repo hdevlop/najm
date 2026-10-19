@@ -23,6 +23,28 @@ describe('published surface', () => {
     expect(read('tsup.config.ts')).toContain("'src/identity/ma.ts'");
   });
 
+  test('cached offline access is an opt-in browser/worker-safe entry', async () => {
+    expect(packageJson.exports['./client/offline']).toEqual({
+      types: './dist/client/offline.d.ts',
+      import: './dist/client/offline.js',
+      default: './dist/client/offline.js',
+    });
+    const source = read('dist/client/offline.js');
+    expect(source).not.toMatch(/\bimport\s/);
+    expect(source).not.toContain('use client');
+    for (const forbidden of ['jsonwebtoken', 'next/', 'react', 'najm-core', 'localStorage', 'document.', 'window.', 'process.env']) {
+      expect(source).not.toContain(forbidden);
+    }
+    const entry = pathToFileURL(join(packageRoot, 'dist/client/offline.js')).href;
+    const result = Bun.spawnSync(['node', '--input-type=module', '--eval',
+      `Object.defineProperty(globalThis,'crypto',{value:undefined}); const m=await import(${JSON.stringify(entry)}); if(typeof m.createOfflineAccess!=='function')process.exit(1);`,
+    ]);
+    expect(result.exitCode).toBe(0);
+    expect(read('dist/client/offline.d.ts')).toContain('OfflineAccessStore');
+    expect(read('dist/client/index.d.ts')).not.toContain('createOfflineAccess');
+    expect(read('dist/index.d.ts')).not.toContain('createOfflineAccess');
+  });
+
   test('only dist is packed, so every export must resolve inside it', () => {
     expect(packageJson.files).toEqual(['dist']);
 

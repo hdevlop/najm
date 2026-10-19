@@ -1,6 +1,6 @@
 {
   "name": "najm-next",
-  "version": "0.12.0",
+  "version": "0.13.0",
   "license": "MIT",
   "type": "module",
   "description": "Strict, versioned Next.js configuration for Najm applications — monorepo root discovery, build isolation, service-worker headers, and dev-origin policy with no per-app options",
@@ -87,6 +87,11 @@
       "import": "./dist/pwaReact.js",
       "default": "./dist/pwaReact.js"
     },
+    "./pwa/client": {
+      "types": "./dist/pwaClient.d.ts",
+      "import": "./dist/pwaClient.js",
+      "default": "./dist/pwaClient.js"
+    },
     "./package.json": "./package.json",
     "./app/next": {
       "types": "./dist/app/next.d.ts",
@@ -105,6 +110,7 @@
     "test:next16": "bun run build && bun integration/csp-proxy/run.ts && bun integration/app-server/run.ts",
     "test:ui-runtime:browser": "node integration/ui-runtime/run.mjs",
     "test:pwa:browser": "node integration/pwa-navigation/run.mjs",
+    "test:pwa-updates:browser": "node integration/pwa-updates/run.mjs",
     "clean": "rimraf dist tsconfig.tsbuildinfo"
   },
   "keywords": [

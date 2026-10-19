@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.13.0 - 2026-10-19
+
+- Add opt-in staged public-shell updates with complete-manifest readiness,
+  temporary download caches, immutable asset validation, explicit all-window
+  activation consent, retained old assets and no forced document reload.
+- Add the browser/worker-safe `najm-next/pwa/client` lifecycle helper. Default
+  consumers keep immediate activation and cleanup. Data schema migration and
+  automatic old-build reclamation remain application concerns.
+- Prove failed downloads, evicted assets, dirty/unresponsive tabs, old lazy
+  assets and preserved IndexedDB pending work in three desktop engines.
+
 ## 0.12.0 - 2026-10-19
 
 - Add opt-in `navigationFallback` to `najm-next/pwa`: explicit document paths,

@@ -52,6 +52,7 @@ export default defineConfig([
       'instrumentation/client': 'src/instrumentation/client.ts',
       'location/server': 'src/location/server.ts',
       pwa: 'src/pwa.ts',
+      pwaClient: 'src/pwaClient.ts',
     },
     // esbuild strips module directives while bundling. Restore the client
     // boundary on the React leaves only; app/server and the pure app definition

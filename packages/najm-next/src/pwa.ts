@@ -1,3 +1,5 @@
+import { stagedWorkerSource } from './internal/stagedWorker';
+
 const WORKER_HEADERS = {
   'Cache-Control': 'no-cache, no-store, must-revalidate',
   'Content-Security-Policy': "default-src 'self'; script-src 'self'",
@@ -56,6 +58,8 @@ export interface NajmServiceWorkerOptions {
   precache?: readonly string[];
   /** Opt-in allowlisted shell fallback on network errors, timeout, or 502/503/504. Requires offlineUrl. */
   navigationFallback?: NajmNavigationFallbackOptions;
+  /** Wait for explicit all-client consent and retain old public assets. Default immediate. */
+  updatePolicy?: 'immediate' | 'staged';
   /** Optional reusable web-push behavior. */
   push?: NajmServiceWorkerPushOptions;
 }
@@ -218,6 +222,9 @@ function createWorkerSource(options: NajmServiceWorkerOptions): string {
   const inlineDocument = createOfflineDocument(options.offlineDocument);
   const pushWorkerSource = createPushWorkerSource(options.push);
   const navigation = options.navigationFallback;
+  const staged = options.updatePolicy === 'staged';
+  if (options.updatePolicy !== undefined && !['immediate', 'staged'].includes(options.updatePolicy)) throw new TypeError('[najm-next] Invalid updatePolicy.');
+  if (staged && (!offlineUrl || !options.cacheVersion)) throw new TypeError('[najm-next] Staged updates require offlineUrl and an explicit cacheVersion.');
   if (navigation !== undefined) {
     if (!offlineUrl) throw new TypeError('[najm-next] navigationFallback requires offlineUrl.');
     if (!navigation || !Array.isArray(navigation.paths) || !navigation.paths.length) {
@@ -241,11 +248,13 @@ const CACHE_NAME = CACHE_PREFIX + ${JSON.stringify(cacheVersion)};
 const OFFLINE_URL = ${JSON.stringify(offlineUrl)};
 const PRECACHE = ${JSON.stringify(precache)};
 const INLINE_OFFLINE_DOCUMENT = ${JSON.stringify(inlineDocument)};
+${staged ? stagedWorkerSource(cacheId, cacheVersion) : ''}
 ${navigation ? `const NAVIGATION_PATHS = ${JSON.stringify([...new Set(navigation.paths)])};
 const NAVIGATION_TIMEOUT_MS = ${JSON.stringify(navigation.timeoutMs ?? 10_000)};
 
 async function cachedShell() {
   try {
+    ${staged ? 'if (!await stagedReady()) return undefined;' : ''}
     return await (await caches.open(CACHE_NAME)).match(OFFLINE_URL);
   } catch {
     return undefined;
@@ -304,15 +313,18 @@ function inlineOfflineResponse() {
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
+    ${staged ? 'installStaged()' : `
     (PRECACHE.length
       ? caches.open(CACHE_NAME).then((cache) => cache.addAll(PRECACHE))
       : Promise.resolve()
     ).then(() => self.skipWaiting()),
+    `}
   );
 });
 
 self.addEventListener("activate", (event) => {
   event.waitUntil(
+    ${staged ? 'self.clients.claim()' : `
     caches.keys()
       .then((keys) => Promise.all(
         keys
@@ -320,6 +332,7 @@ self.addEventListener("activate", (event) => {
           .map((key) => caches.delete(key)),
       ))
       .then(() => self.clients.claim()),
+    `}
   );
 });
 
@@ -329,7 +342,7 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(request.url);
   if (requestUrl.origin !== self.location.origin) return;
-${navigation ? `
+${navigation || staged ? `
   // Framework payloads and API routes must never become shell HTML, even
   // when a broad document subtree was configured by the caller.
   if (requestUrl.pathname === "/api" || requestUrl.pathname.startsWith("/api/") ||
@@ -340,6 +353,12 @@ ${navigation ? `
 ` : ''}
 
   const requestPath = requestUrl.pathname + requestUrl.search;
+${staged ? `
+  if (request.mode !== "navigate") {
+    event.respondWith(retainedAsset(request, requestPath).then((cached) => cached || fetch(request)));
+    return;
+  }
+` : ''}
   if (PRECACHE.includes(requestPath) && request.mode !== "navigate") {
     event.respondWith(
       caches.open(CACHE_NAME)

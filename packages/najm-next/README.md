@@ -159,11 +159,50 @@ cache. When the shell is missing, gateway responses remain unchanged and a
 timed request keeps waiting for the network; a network rejection receives the
 generic inline 503 retry document.
 
-The option does not change immediate worker activation/cache cleanup, provide
+The navigation option does not change immediate worker activation/cache cleanup, provide
 offline authorization or persist application data. The shell must check its
 own account/coverage policy before showing protected records. Omitting the
 option retains the existing worker behavior. Run the package's
 `test:pwa:browser` script after its build for the three-engine fixture.
+
+For applications that retain drafts, also opt into `updatePolicy: 'staged'`.
+It requires an explicit `cacheVersion` and `offlineUrl`. Install downloads the
+entire explicit manifest into a temporary cache and publishes readiness last.
+A changed build needs a new version; static URLs shared by builds must contain
+identical bytes. Use content hashes for JavaScript, CSS and other assets. Only
+the shell document may change under the same URL across different versions.
+
+```ts
+import { connectNajmPwaClient } from 'najm-next/pwa/client';
+
+const updates = connectNajmPwaClient({
+  registration, cacheId: 'my-app', cacheVersion: 'build-123',
+  canActivate: () => !hasUnsavedInput() && !hasIncompatibleOperationInFlight(),
+});
+const available = await updates.getUpdate();
+// Invoke from an application-controlled update action.
+const result = await updates.activateUpdate();
+// On component/runtime teardown:
+updates.dispose();
+```
+
+Staged workers never call `skipWaiting` during installation, reload a page,
+delete an IndexedDB database, or automatically delete old asset caches. Explicit
+activation checks complete assets, asks every same-scope window client for
+consent, then checks assets again. A dirty or unresponsive client blocks it.
+Consent describes that instant; it does not freeze subsequent editing. Open
+documents stay mounted after activation and can fetch old immutable assets.
+Cached readiness is rechecked before a shell fallback; eviction fails closed.
+
+The conservative retention policy consumes storage across releases. Applications
+must budget for it and implement deliberate device removal/recovery; safe
+automatic old-build reclamation is not supplied by this API. Keep staged mode
+enabled for subsequent builds: switching to the legacy immediate policy restores
+its cleanup behavior. The helper owns no data schema/migration or auth policy.
+All controlled app windows must connect the helper to participate in updates.
+No browser globals are read on import. `test:pwa-updates:browser` exercises failed
+downloads, eviction, two-tab consent, old assets and retained pending data in
+Chromium, Firefox and WebKit.
 
 Web push is opt-in and configured by the application. The generated worker
 accepts only bounded `{ notificationId, title, body }` JSON, stores only the
