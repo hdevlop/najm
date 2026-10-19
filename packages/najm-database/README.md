@@ -286,3 +286,9 @@ database. The fixture exercises built package entries with real PostgreSQL and
 Chromium, Firefox and WebKit, including lost replies, concurrent copies, a real
 worker, two tabs, rollback and reviewable conflicts. This is a generic protocol
 fixture, not School authentication/domain/UI acceptance or an installed PWA.
+
+The built entries share one `SyncError` constructor, so errors thrown by the
+client, server or PostgreSQL entry can be checked against the contracts export.
+Keep the full published `dist` graph, including its shared `.mjs` chunks.
+The integration command checks this built-entry identity and treats generator
+stack traces as failures even when the CLI returns exit status zero.

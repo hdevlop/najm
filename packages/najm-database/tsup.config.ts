@@ -10,7 +10,9 @@ export default defineConfig({
       declarationMap: false,
     }
   },
-  splitting: false,
+  // Sync errors cross public entry boundaries. Keep one shared runtime class
+  // instead of embedding a different constructor in each bundled entry.
+  splitting: true,
   sourcemap: false,
   clean: true,
   outDir: 'dist',

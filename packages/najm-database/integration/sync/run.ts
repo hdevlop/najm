@@ -10,6 +10,7 @@ import { sealOperation, SyncError, type SyncContext, type SyncOperation } from '
 import { applyOperation, lookupOperation, CommandRefusal } from '../../dist/sync/server.mjs';
 import { createCaptureSql, createPostgresOperationStore, syncRows, type SyncSqlTransaction } from '../../dist/sync/pg.mjs';
 import { browserProof } from './browsers';
+import './surface';
 
 const runId = crypto.randomUUID();
 const database = 'najm_sync_proof_' + runId.replaceAll('-', '');
@@ -20,7 +21,7 @@ const admin = postgres(adminUrl.toString(), { max: 1, prepare: false, onnotice: 
 const proofUrl = new URL(adminUrl); proofUrl.pathname = '/' + database;
 let connection: ReturnType<typeof postgres> | undefined;
 let created = false;
-const report = { runId, database, date: new Date().toISOString(), productionDatabaseContacted: false, dropped: false, checks: [] as { name: string; status: string }[], browsers: [] as unknown[] };
+const report = { runId, database, date: new Date().toISOString(), builtErrorClassIdentity: 'PASS', productionDatabaseContacted: false, dropped: false, checks: [] as { name: string; status: string }[], browsers: [] as unknown[] };
 const context: SyncContext = { installationId: 'installation-1', installationEpoch: 'epoch-1', accountId: 'teacher-a',
   scope: { kind: 'year', yearLabel: '2026-2027' }, authorizationGeneration: 'generation-1', replicaSchemaVersion: 1 };
 const hashFormat = 'fixture-json-v1-sha256';
