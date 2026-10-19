@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.7.0 - 2026-10-19
+
+- Publish the validated `3.7.0-offline.0` UI runtime as a regular release through
+  npm's default channel. Runtime implementation is unchanged.
+
 ## 3.7.0-offline.0 - 2026-10-19
 
 - `NajmKitProvider` accepts `uiRuntime` with host language, theme and time-zone

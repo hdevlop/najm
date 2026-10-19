@@ -1,6 +1,6 @@
 {
   "name": "najm-next",
-  "version": "0.11.0-offline.0",
+  "version": "0.11.0",
   "license": "MIT",
   "type": "module",
   "description": "Strict, versioned Next.js configuration for Najm applications — monorepo root discovery, build isolation, service-worker headers, and dev-origin policy with no per-app options",
@@ -121,7 +121,7 @@
     "react": ">=18.2.0 <20",
     "najm-auth": "^4.0.4 || ^5.0.0 || ^6.0.0",
     "najm-i18n": "^2.1.2",
-    "najm-kit": "^2.15.0 || ^3.0.0 || ^3.7.0-offline.0",
+    "najm-kit": "^2.15.0 || ^3.0.0",
     "najm-theme": "^0.2.1 || ^0.3.0"
   },
   "devDependencies": {

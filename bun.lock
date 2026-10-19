@@ -488,7 +488,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "3.7.0-offline.0",
+      "version": "3.7.0",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",
@@ -625,7 +625,7 @@
     },
     "packages/najm-next": {
       "name": "najm-next",
-      "version": "0.11.0-offline.0",
+      "version": "0.11.0",
       "devDependencies": {
         "@tanstack/react-query": "^5",
         "@testing-library/react": "^16",

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.11.0 - 2026-10-19
+
+- Publish the validated `0.11.0-offline.0` provider integration as a regular
+  release through npm's default channel. The existing stable Kit peer range
+  accepts `najm-kit@3.7.0`; remove the prerelease-only peer alternative.
+
 ## 0.11.0-offline.0 - 2026-10-19
 
 - Support Kit's `uiRuntime` option through the existing `NajmAppProvider`

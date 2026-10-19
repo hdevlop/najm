@@ -1,13 +1,21 @@
-# Router-independent UI provider candidate
+# Router-independent UI provider release
 
 Date: 2026-10-19. Worktree: `school/offline-ui-runtime`, based on
 `eb8a0c5c1602ec84ee00d2e3ad4e69c03908d5a4`.
 
 Candidates are `najm-kit@3.7.0-offline.0` and
-`najm-next@0.11.0-offline.0`. They are not published. The change adds Kit's
+`najm-next@0.11.0-offline.0`. Both were published under `offline` after separate
+owner authorization; stable `latest` tags remain unchanged. The release source
+is `58bf499b82758cb28a1790f5c2c5d5ade6056796`. The change adds Kit's
 `uiRuntime` preference callbacks, used by the full Next application provider
 through its existing Kit prop forwarding. Omitting the option keeps the Next
 provider, preference endpoints and refresh behavior.
+
+The owner subsequently requested normal publication without a custom tag.
+Prepared `najm-kit@3.7.0` and `najm-next@0.11.0` with the same runtime source,
+removing the prerelease-only Kit peer alternative. Their publisher commands
+omit `--tag` and use npm's default `latest` channel. This promotion does not
+complete School's offline-access acceptance.
 
 School's generated-shell experiment reproduced `invariant expected app router
 to be mounted` against the existing published packages. The new option selects
@@ -26,6 +34,7 @@ no synthetic Next router context for this mode.
 | `bun run --cwd packages/najm-next test:next16` | PASS: CSP/proxy and application/server production fixtures |
 | `bun run --cwd packages/najm-kit test:next16` | PASS: UI bootstrap production fixture, including the existing preference route handlers |
 | `bun run api:check` | PASS |
+| Publication | PASS: owning publisher consumed the approved tarballs and reran its checks. Downloaded registry SHA-512/SHA-256 match both artifacts; metadata is in `packages/najm-next/integration/ui-runtime/.output/publication.json` |
 
 The browser command writes its raw report under
 `packages/najm-next/integration/ui-runtime/.output/results.json`. Build/test

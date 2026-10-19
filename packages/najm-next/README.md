@@ -326,7 +326,7 @@ settings and the full snapshot to one server render; the next request retries.
 
 ## Client provider composition
 
-With `najm-kit@3.7.0-offline.0` or later, pass `uiRuntime` to the existing
+With `najm-kit@3.7.0` or later, pass `uiRuntime` to the existing
 `NajmAppProvider` to mount its UI without a Next router. Supply the language,
 theme and time-zone persistence callbacks described in Kit's README. Keep
 that runtime for the application's mount lifetime, including reconnects;
