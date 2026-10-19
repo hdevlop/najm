@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.11.0-offline.0 - 2026-10-19
+
+- Support Kit's `uiRuntime` option through the existing `NajmAppProvider`
+  prop forwarding and accept `najm-kit@3.7.0-offline.0` as a peer. The provider
+  keeps one auth client and QueryClient when runtime callbacks change.
+- Add a built-entry browser fixture proving router-independent mounting,
+  local preference persistence while disconnected, and draft preservation in
+  Chromium, Firefox and WebKit. This does not implement offline authorization,
+  asset updates, data downloads or synchronization.
+
 ## 0.10.0 - 2026-10-10
 
 - Added `najm-next/env` with `isNextBuildPhase()`, true only while

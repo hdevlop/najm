@@ -9,6 +9,7 @@ import type { NBrandingInput } from '../components/branding';
 import { NajmFormatProvider } from '../format/provider';
 import { NajmNextUIProvider } from './next';
 import type { NajmNextUIProviderProps } from './next';
+import { NajmUIProvider, type NajmUIProviderProps } from '../providers/NajmUIProvider';
 import { FormDevToolsProvider } from '../components/form/FormDevToolsContext';
 import type { FormDevToolsOptions } from '../components/form/formFill';
 
@@ -89,11 +90,25 @@ export interface NajmKitSnapshot {
   branding: NBrandingInput;
 }
 
+/**
+ * Host-owned preference persistence for a UI that has no Next router.
+ * Choose this once at application mount, and keep it for both connected and
+ * disconnected use. The callbacks may persist locally or through the network;
+ * Najm still owns the active UI state and its existing error propagation.
+ */
+export interface NajmKitUiRuntime {
+  readonly onLanguageChange: (language: string) => void | Promise<void>;
+  readonly onThemeChange: NonNullable<NajmUIProviderProps['onThemeChange']>;
+  readonly onTimeZoneChange: NonNullable<NajmUIProviderProps['onTimeZoneChange']>;
+}
+
 export interface NajmKitProviderProps
   // `language` is derived here, not declared: this provider mounts the i18n
   // provider itself, so the active language is already known below it and a
   // second, static copy of it would only ever be wrong after a switch.
   extends Omit<NajmNextUIProviderProps, 't' | 'language'> {
+  /** Omit for existing Next persistence/refresh; supply to run without its router. */
+  uiRuntime?: NajmKitUiRuntime;
   /**
    * Standard public server snapshot. It seeds language, theme, time zone,
    * design, and branding without requiring applications to unpack each field.
@@ -232,6 +247,17 @@ type InnerProps = Omit<
   | 'formDevTools'
 >;
 
+function AppUiRuntime({ uiRuntime, endpoints, refreshOnChange, ...props }:
+  NajmNextUIProviderProps & { uiRuntime?: NajmKitUiRuntime }) {
+  if (uiRuntime) {
+    return <NajmUIProvider {...props}
+      onThemeChange={uiRuntime.onThemeChange}
+      onTimeZoneChange={uiRuntime.onTimeZoneChange}
+    />;
+  }
+  return <NajmNextUIProvider {...props} endpoints={endpoints} refreshOnChange={refreshOnChange} />;
+}
+
 /**
  * Reads the translator out of the `I18nProvider` this file just mounted.
  *
@@ -254,7 +280,7 @@ function NajmAppUI({
   const resolved = locale ?? locales?.[language] ?? language;
 
   return (
-    <NajmNextUIProvider t={t} language={language} {...props}>
+    <AppUiRuntime t={t} language={language} {...props}>
       <NBrandingStateProvider
         branding={branding}
         initialBranding={initialBranding}
@@ -267,7 +293,7 @@ function NajmAppUI({
           {children}
         </NajmFormatProvider>
       </NBrandingStateProvider>
-    </NajmNextUIProvider>
+    </AppUiRuntime>
   );
 }
 
@@ -284,7 +310,7 @@ function NajmAppNoI18n({
   return (
     // No catalog, so no `t` — but the packaged status labels still have a
     // language to answer in, and an application that declared a locale meant it.
-    <NajmNextUIProvider language={locale} {...props}>
+    <AppUiRuntime language={locale} {...props}>
       <NBrandingStateProvider
         branding={branding}
         initialBranding={initialBranding}
@@ -297,7 +323,7 @@ function NajmAppNoI18n({
           {children}
         </NajmFormatProvider>
       </NBrandingStateProvider>
-    </NajmNextUIProvider>
+    </AppUiRuntime>
   );
 }
 
@@ -322,6 +348,7 @@ function NajmAppNoI18n({
  */
 export function NajmKitProvider({
   snapshot,
+  uiRuntime,
   i18n,
   translations = i18n?.translations,
   initialLanguage = snapshot?.preferences.language,
@@ -339,6 +366,13 @@ export function NajmKitProvider({
   formDevTools,
   ...props
 }: NajmKitProviderProps) {
+  if (uiRuntime !== undefined && (uiRuntime === null || typeof uiRuntime !== 'object' ||
+    typeof uiRuntime.onLanguageChange !== 'function' ||
+    typeof uiRuntime.onThemeChange !== 'function' ||
+    typeof uiRuntime.onTimeZoneChange !== 'function'
+  )) {
+    throw new TypeError('najm-kit/app: uiRuntime must supply language, theme and time-zone persistence callbacks');
+  }
   // Derived, not inlined: `I18nProvider` keys its context value on
   // `getLanguageDirection`, so a fresh closure per render would re-render every
   // `useTranslation()` consumer in the tree.
@@ -371,6 +405,10 @@ export function NajmKitProvider({
 
   const persistLanguage = React.useCallback(
     async (language: string) => {
+      if (uiRuntime) {
+        await uiRuntime.onLanguageChange(language);
+        return;
+      }
       const response = await fetch(languageEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -384,7 +422,7 @@ export function NajmKitProvider({
         );
       }
     },
-    [languageEndpoint],
+    [languageEndpoint, uiRuntime],
   );
 
   // Spread second so an `appName` inside the payload still wins. Only read at
@@ -404,6 +442,7 @@ export function NajmKitProvider({
       <FormDevToolsProvider value={formDevTools}>
         <NajmAppNoI18n
           {...props}
+          uiRuntime={uiRuntime}
           currency={resolvedCurrency}
           locales={locales}
           initialBranding={seeded}
@@ -427,6 +466,7 @@ export function NajmKitProvider({
       >
         <NajmAppUI
           {...props}
+          uiRuntime={uiRuntime}
           currency={resolvedCurrency}
           locales={locales}
           initialBranding={seeded}

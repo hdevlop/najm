@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.7.0-offline.0 - 2026-10-19
+
+- `NajmKitProvider` accepts `uiRuntime` with host language, theme and time-zone
+  persistence callbacks. This mode mounts without a Next router while keeping
+  the same UI, i18n, formatting, branding and table state owners. Omitting the
+  option preserves Next preference endpoints and refresh behavior.
+- Runtime callback updates retain child drafts and preference state. Callback
+  failures reach their setter caller; this does not add rollback to the
+  existing optimistic preference updates.
+
 ## 3.6.3 - 2026-10-18
 
 - A table filter that matches nothing shows the filtered-empty state
