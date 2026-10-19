@@ -12,10 +12,19 @@ through its existing Kit prop forwarding. Omitting the option keeps the Next
 provider, preference endpoints and refresh behavior.
 
 The owner subsequently requested normal publication without a custom tag.
-Prepared `najm-kit@3.7.0` and `najm-next@0.11.0` with the same runtime source,
+Published `najm-kit@3.7.0` and `najm-next@0.11.0` from
+`ef5682ae298c60c878e619e342d3b2c9f3682cf7` with the same runtime source,
 removing the prerelease-only Kit peer alternative. Their publisher commands
-omit `--tag` and use npm's default `latest` channel. This promotion does not
-complete School's offline-access acceptance.
+omitted `--tag` and used npm's default `latest` channel. All 76 Kit and 33
+Next dist files match their validated prereleases byte for byte. The owning
+publisher reran package suites and API checks for packing and publication.
+This promotion does not complete School's offline-access acceptance.
+
+School then adopted exact regular-version pins from npm and passed its
+synthetic shell proof in all three desktop engines, root typecheck, 28
+boundary tests, 555 configuration tests, schema check, production build and
+normal Next sign-in/protected-route smoke. School retains the offline scope
+limitations below; its evidence ledger records these adoption results.
 
 School's generated-shell experiment reproduced `invariant expected app router
 to be mounted` against the existing published packages. The new option selects

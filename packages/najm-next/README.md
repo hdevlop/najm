@@ -126,6 +126,45 @@ to the configured `cacheId`; it never deletes unrelated caches on the origin.
 For apps deployed below a base path, pass matching `scriptUrl` and `scope` props
 to `NajmPwaRegistration`.
 
+For a generated public application shell, opt into bounded navigation fallback:
+
+```ts
+export const GET = createNajmServiceWorker({
+  cacheId: 'my-app',
+  cacheVersion: 'build-123',
+  offlineUrl: '/shell.html',
+  precache: ['/shell.js', '/shell.css'],
+  navigationFallback: {
+    paths: ['/attendance/students', '/students/*'],
+    timeoutMs: 10_000,
+  },
+});
+```
+
+Paths match exact URL pathnames or descendants of a trailing `/*`; query
+parameters do not affect matching. List only supported document routes, excluding
+sign-in screens and download URLs. `offlineUrl` is required. The cached shell
+can replace a network rejection, a 502/503/504 response, or a request that has
+not produced response headers before the deadline (default 10 seconds; an
+integer from 1 to 60,000 ms). Once the shell wins, the network request is aborted
+and cannot later replace the document. This deadline does not buffer or time
+out the body of an already-started streaming response.
+
+Real 401/403/404/500 responses, redirects and responses with
+`Content-Disposition` are preserved. API paths under `/api`, Next internals
+under `/_next`, RSC markers and non-navigation requests are excluded, even if
+a broad path pattern matches. Custom API prefixes must remain outside the
+configured document paths. No online document or API payload is added to a
+cache. When the shell is missing, gateway responses remain unchanged and a
+timed request keeps waiting for the network; a network rejection receives the
+generic inline 503 retry document.
+
+The option does not change immediate worker activation/cache cleanup, provide
+offline authorization or persist application data. The shell must check its
+own account/coverage policy before showing protected records. Omitting the
+option retains the existing worker behavior. Run the package's
+`test:pwa:browser` script after its build for the three-engine fixture.
+
 Web push is opt-in and configured by the application. The generated worker
 accepts only bounded `{ notificationId, title, body }` JSON, stores only the
 notification ID in notification data, and opens the configured same-origin

@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.12.0 - 2026-10-19
+
+- Add opt-in `navigationFallback` to `najm-next/pwa`: explicit document paths,
+  a default 10-second response-header deadline, and cached public-shell
+  fallback on rejection or gateway 502/503/504. Preserve domain errors,
+  redirects, downloads and API/RSC payloads. An unavailable shell retains the
+  network response; default consumers keep their previous behavior.
+- Add executable worker tests and a real Chromium/Firefox/WebKit fixture for
+  fallback, late responses, route isolation and redirect preservation.
+  Worker update lifecycle, offline authorization and storage remain separate.
+
 ## 0.11.0 - 2026-10-19
 
 - Publish the validated `0.11.0-offline.0` provider integration as a regular

@@ -36,6 +36,13 @@ export interface NajmServiceWorkerPushOptions {
   notificationPath: string;
 }
 
+export interface NajmNavigationFallbackOptions {
+  /** Exact document paths or subtree patterns ending in /*. Queries are ignored. */
+  paths: readonly string[];
+  /** Wait for network response headers, in milliseconds. Default 10000; range 1-60000. */
+  timeoutMs?: number;
+}
+
 export interface NajmServiceWorkerOptions {
   /** Isolates this app's caches from other apps on the same origin. */
   cacheId?: string;
@@ -47,6 +54,8 @@ export interface NajmServiceWorkerOptions {
   offlineUrl?: string;
   /** Same-origin static assets used by the offline document. */
   precache?: readonly string[];
+  /** Opt-in allowlisted shell fallback on network errors, timeout, or 502/503/504. Requires offlineUrl. */
+  navigationFallback?: NajmNavigationFallbackOptions;
   /** Optional reusable web-push behavior. */
   push?: NajmServiceWorkerPushOptions;
 }
@@ -208,12 +217,90 @@ function createWorkerSource(options: NajmServiceWorkerOptions): string {
   ])];
   const inlineDocument = createOfflineDocument(options.offlineDocument);
   const pushWorkerSource = createPushWorkerSource(options.push);
+  const navigation = options.navigationFallback;
+  if (navigation !== undefined) {
+    if (!offlineUrl) throw new TypeError('[najm-next] navigationFallback requires offlineUrl.');
+    if (!navigation || !Array.isArray(navigation.paths) || !navigation.paths.length) {
+      throw new TypeError('[najm-next] navigationFallback.paths must be a non-empty array.');
+    }
+    for (const path of navigation.paths) {
+      if (typeof path !== 'string' || !path.startsWith('/') || path.includes('//') || /[?#\\]/.test(path)
+        || path.slice(0, path.endsWith('/*') ? -2 : undefined).includes('*')
+        || new URL(path, 'https://najm.invalid').pathname !== path) {
+        throw new TypeError('[najm-next] navigationFallback.paths must contain canonical absolute paths or trailing /* patterns.');
+      }
+    }
+    const timeoutMs = navigation.timeoutMs ?? 10_000;
+    if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) {
+      throw new TypeError('[najm-next] navigationFallback.timeoutMs must be an integer from 1 to 60000.');
+    }
+  }
 
   return `const CACHE_PREFIX = ${JSON.stringify(`najm-pwa:${cacheId}:`)};
 const CACHE_NAME = CACHE_PREFIX + ${JSON.stringify(cacheVersion)};
 const OFFLINE_URL = ${JSON.stringify(offlineUrl)};
 const PRECACHE = ${JSON.stringify(precache)};
 const INLINE_OFFLINE_DOCUMENT = ${JSON.stringify(inlineDocument)};
+${navigation ? `const NAVIGATION_PATHS = ${JSON.stringify([...new Set(navigation.paths)])};
+const NAVIGATION_TIMEOUT_MS = ${JSON.stringify(navigation.timeoutMs ?? 10_000)};
+
+async function cachedShell() {
+  try {
+    return await (await caches.open(CACHE_NAME)).match(OFFLINE_URL);
+  } catch {
+    return undefined;
+  }
+}
+
+async function navigateWithFallback(request) {
+  const controller = new AbortController();
+  const cancel = () => controller.abort();
+  if (request.signal.aborted) cancel();
+  else request.signal.addEventListener("abort", cancel, { once: true });
+  let timer;
+  const network = fetch(request, { signal: controller.signal });
+  try {
+    const response = await Promise.race([
+      network,
+      new Promise((resolve) => { timer = setTimeout(() => resolve(null), NAVIGATION_TIMEOUT_MS); }),
+    ]);
+    if (response === null) {
+      const fallback = await cachedShell();
+      if (!fallback) return await network;
+      controller.abort();
+      return fallback;
+    }
+    // Redirects and downloads retain the browser's normal handling.
+    if (response.redirected || response.type === "opaqueredirect" || response.headers.has("Content-Disposition") ||
+        (response.headers.get("Content-Type") || "").toLowerCase().includes("text/x-component")) return response;
+    if ([502, 503, 504].includes(response.status)) {
+      const fallback = await cachedShell();
+      if (fallback) {
+        if (response.body) response.body.cancel().catch(() => {});
+        return fallback;
+      }
+    }
+    return response;
+  } catch (error) {
+    if (request.signal.aborted) throw error;
+    return await cachedShell() || inlineOfflineResponse();
+  } finally {
+    clearTimeout(timer);
+    request.signal.removeEventListener("abort", cancel);
+  }
+}
+` : ''}
+
+function inlineOfflineResponse() {
+  return new Response(INLINE_OFFLINE_DOCUMENT, {
+    status: 503,
+    headers: {
+      "Cache-Control": "no-store",
+      "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
+      "Content-Type": "text/html; charset=utf-8",
+    },
+  });
+}
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -242,6 +329,15 @@ self.addEventListener("fetch", (event) => {
 
   const requestUrl = new URL(request.url);
   if (requestUrl.origin !== self.location.origin) return;
+${navigation ? `
+  // Framework payloads and API routes must never become shell HTML, even
+  // when a broad document subtree was configured by the caller.
+  if (requestUrl.pathname === "/api" || requestUrl.pathname.startsWith("/api/") ||
+      requestUrl.pathname === "/_next" || requestUrl.pathname.startsWith("/_next/") ||
+      requestUrl.searchParams.has("_rsc") || request.headers.has("RSC") ||
+      request.headers.has("Next-Router-State-Tree") || request.headers.has("Next-Router-Prefetch") ||
+      (request.headers.get("Accept") || "").toLowerCase().includes("text/x-component")) return;
+` : ''}
 
   const requestPath = requestUrl.pathname + requestUrl.search;
   if (PRECACHE.includes(requestPath) && request.mode !== "navigate") {
@@ -253,9 +349,15 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Authenticated pages and API responses are always network-only. A failed
-  // document navigation receives only the explicit static or inline fallback.
+  // Online documents are never cached. A failed navigation receives only
+  // the explicit public shell or inline retry document.
   if (request.mode !== "navigate") return;
+${navigation ? `
+  if (!NAVIGATION_PATHS.some((path) => path.endsWith("/*")
+    ? requestUrl.pathname.startsWith(path.slice(0, -1))
+    : requestUrl.pathname === path)) return;
+  event.respondWith(navigateWithFallback(request));
+` : `
 
   event.respondWith(
     fetch(request).catch(async () => {
@@ -265,16 +367,10 @@ self.addEventListener("fetch", (event) => {
         if (fallback) return fallback;
       }
 
-      return new Response(INLINE_OFFLINE_DOCUMENT, {
-        status: 503,
-        headers: {
-          "Cache-Control": "no-store",
-          "Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'",
-          "Content-Type": "text/html; charset=utf-8",
-        },
-      });
+      return inlineOfflineResponse();
     }),
   );
+`}
 });
 ${pushWorkerSource}
 `;

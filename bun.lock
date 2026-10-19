@@ -625,7 +625,7 @@
     },
     "packages/najm-next": {
       "name": "najm-next",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "devDependencies": {
         "@tanstack/react-query": "^5",
         "@testing-library/react": "^16",

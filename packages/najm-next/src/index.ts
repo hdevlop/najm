@@ -16,6 +16,7 @@ export { SERVICE_WORKER_FILES, detectServiceWorkers, serviceWorkerHeaders } from
 export { findWorkspaceRoot } from './internal/workspaceRoot';
 export { createNajmServiceWorker } from './pwa';
 export type {
+  NajmNavigationFallbackOptions,
   NajmOfflineDocumentOptions,
   NajmServiceWorkerOptions,
   NajmServiceWorkerPushOptions,
