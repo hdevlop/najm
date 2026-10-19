@@ -2,8 +2,8 @@ import { createAlsToken, Err, Scan, ScannerService, ScanType } from 'najm-core';
 import { LoggerService } from 'najm-core';
 import { Container, DI, Inject, Meta, Service, type Constructor } from 'najm-core';
 import { DatabaseService } from './DatabaseService';
-import type { TransactionalOptions, TransactionInjection } from './types';
-import { TRANSACTION_DEPTH, TRANSACTIONS } from './tokens';
+import type { TransactionalOptions, TransactionInjection, DatabasePluginOptions } from './types';
+import { DATABASE_OPTIONS, TRANSACTION_DEPTH, TRANSACTIONS } from './tokens';
 import { getTransactionalMethods } from './decorator';
 
 const TRANSACTION_WRAPPER = Symbol('najm:transaction-wrapper');
@@ -35,6 +35,7 @@ export class TransactionService {
    @Scan() private scanner!: ScannerService;
    @Inject(DatabaseService) private databaseService!: DatabaseService;
    @Inject(LoggerService) private log!: LoggerService;
+   @Inject(DATABASE_OPTIONS) private databaseOptions?: DatabasePluginOptions;
 
    // ============================================================================
    // LIFECYCLE: SCAN
@@ -375,7 +376,10 @@ export class TransactionService {
                transactionCommitCallbacks: commitCallbacks,
                transactionRollbackCallbacks: rollbackHooks,
             },
-            async () => await fn(trx)
+            async () => {
+               await this.databaseOptions?.beforeTransaction?.(trx, dbName);
+               return await fn(trx);
+            }
          );
       };
 
@@ -435,7 +439,10 @@ export class TransactionService {
                   transactionCommitCallbacks: commitCallbacks,
                   transactionRollbackCallbacks: rollbackCallbacks,
                },
-               async () => await fn(db)
+               async () => {
+                  await this.databaseOptions?.beforeTransaction?.(db, dbName);
+                  return await fn(db);
+               }
             );
 
             client.exec('COMMIT');
