@@ -388,6 +388,44 @@ describe('provisioning with a required password setup', () => {
     expect(sent[0]?.html).not.toContain('Our App');
   });
 
+  test('an invitation takes its colors and logo plate from the configured theme', async () => {
+    const sent: any[] = [];
+    const service = new AuthService(
+      { generateInviteToken: async () => ({ token: 'invite-token' }) } as never,
+      { create: async (data: any) => ({ id: 'user-1', name: data.name, email: data.email }) } as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {} as never,
+      {
+        send: async (message: any) => {
+          sent.push(message);
+          return { success: true };
+        },
+      } as never,
+    );
+    (service as any).config = {
+      appName: 'School',
+      accountInviteLogo: {
+        alt: 'School',
+        contentBase64: 'c2Nob29s',
+        contentType: 'image/png',
+        filename: 'school.png',
+      },
+      accountInviteTheme: { headerBackground: '#1e3a5f', logoBackground: '#ffffff', logoHeight: 84 },
+      frontendUrl: 'https://school.example.test',
+    };
+    (service as any).t = (key: string) => key;
+    (service as any).logger = { error() { }, warn() { } };
+
+    await service.provisionUser({ email: 'teacher@example.ma', name: 'Amal' });
+
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.html).toContain('background-color:#1e3a5f');
+    expect(sent[0]?.html).toContain('border-radius:18px; padding:12px 16px;');
+    expect(sent[0]?.html).toContain('height="84"');
+  });
+
   test('rejects a password and a temporary credential in the same call', async () => {
     const { service, created, marked } = provisioningService();
 

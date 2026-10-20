@@ -5,7 +5,7 @@
 import type { ValidationPluginConfig } from 'najm-validation';
 import type { RateLimitPluginConfig } from 'najm-rate';
 import type { CachePluginConfig } from 'najm-cache';
-import type { EmailPluginConfig } from 'najm-email';
+import type { AccountInviteEmailTheme, EmailPluginConfig } from 'najm-email';
 import type { IdentityConfig, ResolvedIdentityConfig } from './identity/types';
 import type {
   CredentialSetupConfig,
@@ -152,6 +152,8 @@ export interface AuthConfig {
     contentType: string;
     filename: string;
   };
+  /** Optional colors and logo treatment of account invitation emails. */
+  accountInviteTheme?: Partial<AccountInviteEmailTheme>;
   /** Registration mode: 'active' auto-activates, 'pending' requires admin approval (default: 'active') */
   registrationMode: 'active' | 'pending';
   /** Whether the unauthenticated POST /auth/register route is mounted. */
@@ -230,6 +232,12 @@ export type AuthPluginConfig = {
     contentType: string;
     filename: string;
   };
+  /**
+   * Colors and logo treatment of account invitation emails; a field left out
+   * keeps najm-email's default. Set `logoBackground` when the logo is drawn
+   * for a light background and the header is dark.
+   */
+  accountInviteTheme?: Partial<AccountInviteEmailTheme>;
   /** Registration mode: 'active' auto-activates new users, 'pending' requires admin approval (default: 'active') */
   registrationMode?: 'active' | 'pending';
   /**

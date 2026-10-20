@@ -62,4 +62,4 @@ export {
   emailVerificationTemplate,
   emailTextDirection,
 } from './templates';
-export type { PasswordResetEmailCopy, AccountInviteEmailCopy } from './templates';
+export type { PasswordResetEmailCopy, AccountInviteEmailCopy, AccountInviteEmailTheme } from './templates';

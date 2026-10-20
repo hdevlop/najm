@@ -282,6 +282,7 @@ export class AuthService {
           inviteLink,
           logoAlt: logo?.alt,
           logoSrc: logoCid ? `cid:${logoCid}` : undefined,
+          theme: this.config.accountInviteTheme,
           userName: userName || email,
           lang: this.emailLanguage(),
           copy: this.emailCopy('accountInvite', ACCOUNT_INVITE_COPY_FIELDS, {

@@ -174,6 +174,7 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
     frontendUrl: config?.frontendUrl ?? process.env.FRONTEND_URL ?? 'http://localhost:3000',
     appName: resolveAppName(config?.appName),
     accountInviteLogo: config?.accountInviteLogo,
+    accountInviteTheme: config?.accountInviteTheme,
     registrationMode: config?.registrationMode ?? 'active',
     publicRegistration: config?.publicRegistration ?? true,
     requireVerifiedEmail: config?.requireVerifiedEmail ?? false,
