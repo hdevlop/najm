@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 6.8.0 - 2026-10-20
 
 - Cached account access accepts an opt-in `mode: 'automatic-read'` enrollment
   after authenticated sign-in with `read:offline` and each domain `read:*`

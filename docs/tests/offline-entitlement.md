@@ -8,7 +8,7 @@ tests (6 skipped), source typecheck, strict checks for the new source/tests,
 declaration build, public API snapshot and all three native-browser runs. The
 29 focused offline-policy tests are included in that package total.
 
-## Unreleased automatic-read extension - 2026-10-20
+## Automatic-read extension - 2026-10-20, `najm-auth@6.8.0` candidate
 
 The isolated source worktree adds `mode: 'automatic-read'` for read-only cached
 policy after an ordinary online sign-in. It requires `read:offline`, every
