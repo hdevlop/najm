@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+- Cached account access accepts an opt-in `mode: 'automatic-read'` enrollment
+  after authenticated sign-in with `read:offline` and each domain `read:*`
+  grant. It cannot enroll a write capability or replace an available command
+  entitlement. Existing explicit-consent `use:offline` enrollment is unchanged.
+  Wildcard role grants follow the client's normal permission matching.
+
 ## 6.6.0 - 2026-10-17
 
 - `NajmAuthClient.setRequestHeaders(source)` adds headers to every request

@@ -113,8 +113,23 @@ try {
       });
       assert.deepEqual(await a.evaluate(() => fixture.access.authorize(fixture.request)), { allowed: false, reason: 'clock-rollback' });
       result.checks.persistedClockRollback = 'PASS';
+      await a.evaluate(async () => {
+        const input = { ...fixture.input, mode: 'automatic-read', issuedAt: 1020002, validUntil: 1030002,
+          online: { authenticated: true, accountId: 'teacher-a', permissions: ['read:offline', 'read:classes'] },
+          scopes: [{ id: 'classes', academicYear: '2026-2027', capabilities: ['read:classes'] }] };
+        delete input.consent;
+        await fixture.access.enroll(await fixture.access.capture(), input);
+      });
+      const readRequest = { accountId: 'teacher-a', installationId: 'synthetic-school', installationEpoch: 'epoch-1',
+        scopeId: 'classes', academicYear: '2026-2027', capability: 'read:classes' };
+      assert.equal((await a.evaluate(request => fixture.access.authorize(request), readRequest)).allowed, true);
+      assert.equal((await a.evaluate(request => fixture.access.authorize({ ...request, capability: 'mark:attendance' }), readRequest)).allowed, false);
+      await a.reload(); await a.waitForFunction(() => document.body.dataset.ready);
+      await a.evaluate(() => fixture.setClock(20000));
+      assert.equal((await a.evaluate(request => fixture.access.authorize(request), readRequest)).allowed, true);
+      result.checks.automaticReadColdReopenWithoutWriteGrant = 'PASS';
       assert.deepEqual(result.errors, []); result.status = 'PASS';
-      console.log(`${engine} ${result.version}: cached entitlement, transactional two tabs, real worker logout, cold reopen, account isolation, expiry PASS`);
+      console.log(`${engine} ${result.version}: cached entitlement, automatic read cold reopen, transactional two tabs, worker logout, account isolation, expiry PASS`);
     } catch (error) { failed = true; result.failure = error.stack; console.error(result.failure); }
     finally { await context.close(); await browser.close(); }
   }

@@ -28,9 +28,13 @@ Existing auth clients/providers remain unchanged.
 
 Use `createOfflineAccess({ store })` with a transactional IndexedDB
 `read`/`compareAndSwap` adapter. Capture a token **before** online enrollment,
-then call `enroll(token, policy)` only with successful online authentication,
-explicit device-storage consent, `use:offline`, and the domain permissions for
-every scope capability. The policy identifies account, installation/epoch,
+then call `enroll(token, policy)` only with successful online authentication
+and the domain permissions for every scope capability. Explicit command
+enrollment retains `consent: true` and `use:offline`. A host can instead use
+`mode: 'automatic-read'` without consent after ordinary sign-in when the
+account has `read:offline`; every enrolled capability must be a `read:*`
+permission. Neither mode grants a server credential or bypasses domain reads.
+The policy identifies account, installation/epoch,
 authorization generation, academic-year scopes and a bounded server-time
 expiry. Repeated or older grants cannot extend their lifetime.
 

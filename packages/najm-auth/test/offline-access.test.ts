@@ -38,6 +38,58 @@ function fixture() {
 }
 
 describe('cached offline access is separate from online authentication', () => {
+  test('automatic reading after online sign-in needs no consent and cannot grant a command', async () => {
+    const f = fixture();
+    const { consent: _consent, online: _online, scopes: _scopes, ...base } = f.input;
+    const reading: OfflineEnrollment = {
+      ...base, mode: 'automatic-read',
+      scopes: [{ id: 'classes', academicYear: '2026-2027', capabilities: ['read:classes'] }],
+      online: { authenticated: true, accountId: 'teacher-a', permissions: ['read:offline', 'read:classes'] },
+    };
+    expect((await f.access.enroll(await f.access.capture(), reading)).applied).toBe(true);
+    expect((await f.access.authorize({ ...f.request, scopeId: 'classes', capability: 'read:classes' })).allowed).toBe(true);
+    expect((await f.access.authorize({ ...f.request, scopeId: 'classes', capability: 'mark:attendance' })).allowed).toBe(false);
+    expect(f.record()).not.toHaveProperty('online');
+    expect(f.record()).not.toHaveProperty('consent');
+  });
+
+  test.each([
+    ['missing read grant', { online: { authenticated: true, accountId: 'teacher-a', permissions: ['read:classes'] } }],
+    ['write capability', { scopes: [{ id: 'classes', academicYear: '2026-2027', capabilities: ['mark:attendance'] }],
+      online: { authenticated: true, accountId: 'teacher-a', permissions: ['read:offline', 'mark:attendance'] } }],
+    ['forged consent', { consent: true }],
+  ])('automatic reading rejects %s', async (_name, patch) => {
+    const f = fixture();
+    const { consent: _consent, online: _online, scopes: _scopes, ...base } = f.input;
+    const reading = {
+      ...base, mode: 'automatic-read',
+      scopes: [{ id: 'classes', academicYear: '2026-2027', capabilities: ['read:classes'] }],
+      online: { authenticated: true, accountId: 'teacher-a', permissions: ['read:offline', 'read:classes'] },
+      ...patch,
+    };
+    await expect(f.access.enroll(await f.access.capture(), reading as OfflineEnrollment)).rejects.toThrow();
+    expect(f.record()).toBeNull();
+  });
+
+  test('automatic reading does not replace an existing command entitlement', async () => {
+    const f = fixture(); await f.enroll();
+    const { consent: _consent, online: _online, scopes: _scopes, ...base } = f.input;
+    const reading: OfflineEnrollment = { ...base, mode: 'automatic-read', issuedAt: f.input.issuedAt + 1,
+      scopes: [{ id: 'classes', academicYear: '2026-2027', capabilities: ['read:classes'] }],
+      online: { authenticated: true, accountId: 'teacher-a', permissions: ['read:offline', 'read:classes'] } };
+    await expect(f.access.enroll(await f.access.capture(), reading)).rejects.toThrow(/cannot replace/);
+    expect((await f.access.authorize(f.request)).allowed).toBe(true);
+  });
+
+  test('administrator wildcard grants allow read-only enrollment', async () => {
+    const f = fixture();
+    const { consent: _consent, online: _online, scopes: _scopes, ...base } = f.input;
+    const reading: OfflineEnrollment = { ...base, mode: 'automatic-read',
+      scopes: [{ id: 'classes', academicYear: '2026-2027', capabilities: ['read:classes'] }],
+      online: { authenticated: true, accountId: 'teacher-a', permissions: ['*:*'] } };
+    expect((await f.access.enroll(await f.access.capture(), reading)).applied).toBe(true);
+  });
+
   test('starts closed, enrolls an exact account/install/year scope, never exposes a session', async () => {
     const f = fixture();
     expect(f.access.getSnapshot()).toEqual({ status: 'locked', reason: 'not-loaded' });

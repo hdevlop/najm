@@ -8,6 +8,19 @@ tests (6 skipped), source typecheck, strict checks for the new source/tests,
 declaration build, public API snapshot and all three native-browser runs. The
 29 focused offline-policy tests are included in that package total.
 
+## Unreleased automatic-read extension - 2026-10-20
+
+The isolated source worktree adds `mode: 'automatic-read'` for read-only cached
+policy after an ordinary online sign-in. It requires `read:offline`, every
+declared domain `read:*` permission, a bounded server policy, and no consent
+field. It rejects write capabilities and cannot replace an available command
+entitlement. The existing explicit-consent command enrollment remains the
+default. Package build, 700 package tests (19 skipped), 13 React-server tests
+(6 skipped), and Chromium/Firefox/WebKit native-browser policy checks pass;
+the browser checks include automatic-read cold reopen and command refusal.
+Publication, School pin adoption, live grants and School cold-route acceptance
+remain open.
+
 ## Contract
 
 `najm-auth/client/offline` exports `createOfflineAccess` and its policy/storage
@@ -27,7 +40,7 @@ import { createOfflineAccess } from 'najm-auth/client/offline';
 
 const cached = createOfflineAccess({ store, maxOfflineDurationMs: 7 * 86400000 });
 const beforeRequest = await cached.capture();
-// Authenticate online, obtain current grants/authorized scopes, and ask consent.
+// For command enrollment, authenticate online, obtain current grants/authorized scopes, and ask consent.
 const result = await cached.enroll(beforeRequest, {
   accountId: 'teacher-a', installationId: 'school-1', installationEpoch: 'epoch-1',
   authorizationGeneration: 'policy-8', issuedAt: serverIssuedAt,
@@ -38,7 +51,7 @@ const result = await cached.enroll(beforeRequest, {
 // `applied:false` means a stale callback/grant; it must not unlock the screen.
 ```
 
-Consent must be explicit. Enrollment requires `use:offline` and every declared
+Command enrollment requires explicit consent. It requires `use:offline` and every declared
 scope capability in the online grants. The exact capability names and scope
 membership are host policy; enrollment permission alone grants no domain access.
 The host must obtain this response through existing authenticated transport,

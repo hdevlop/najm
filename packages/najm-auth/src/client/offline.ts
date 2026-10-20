@@ -1,3 +1,5 @@
+import { matchPermission } from './permissions';
+
 /** Cached-device policy only. These records are never server authentication. */
 export interface OfflineScope {
   id: string;
@@ -55,11 +57,15 @@ export interface OfflineAccessSnapshot {
   validUntil?: number;
 }
 
-export interface OfflineEnrollment extends OfflineEntitlement {
-  consent: true;
+export type OfflineEnrollment = OfflineEntitlement & {
   /** Supplied ONLY after successful online authentication/authorization. */
   online: { authenticated: true; accountId: string; permissions: readonly string[] };
-}
+} & (
+  /** Existing explicit enrollment contract for offline commands. */
+  | { consent: true; mode?: 'explicit' }
+  /** Automatic read-only caching after ordinary online sign-in. */
+  | { mode: 'automatic-read'; consent?: never }
+);
 
 export interface OfflineAccessRequest {
   accountId: string;
@@ -227,12 +233,17 @@ export function createOfflineAccess(options: OfflineAccessOptions): OfflineAcces
     async refresh() { await current(); return snapshot; },
     async capture() { return tokenOf(await current()); },
     async enroll(token, input) {
-      if (!validEntitlement(input) || input.consent !== true || input.online?.authenticated !== true
+      const automaticRead = input.mode === 'automatic-read';
+      const explicit = (input.mode === undefined || input.mode === 'explicit') && input.consent === true;
+      const permissions = Array.isArray(input.online?.permissions) ? [...input.online.permissions] : [];
+      if (!validEntitlement(input) || (!explicit && !automaticRead) || (automaticRead && input.consent !== undefined)
+        || input.online?.authenticated !== true
         || input.online.accountId !== input.accountId || !Array.isArray(input.online.permissions)
-        || !input.online.permissions.includes('use:offline')
-        || input.scopes.some(scope => scope.capabilities.some(capability => !input.online.permissions.includes(capability)))
+        || !matchPermission(permissions, automaticRead ? 'read:offline' : 'use:offline')
+        || input.scopes.some(scope => scope.capabilities.some(capability =>
+          (automaticRead && !/^read:[^\s:]+$/.test(capability)) || !matchPermission(permissions, capability)))
         || input.validUntil - input.issuedAt > maxDuration) {
-        throw new TypeError('Offline enrollment requires consent, current online permission, scope capabilities and a bounded valid policy');
+        throw new TypeError('Offline enrollment requires an authorized explicit or automatic-read mode, scope capabilities and a bounded valid policy');
       }
       for (let attempt = 0; attempt < 32; attempt++) {
         const record = await current();
@@ -240,6 +251,10 @@ export function createOfflineAccess(options: OfflineAccessOptions): OfflineAcces
         // Switching accounts first requires an explicit lock. Nothing deletes A's queue.
         if (record?.status === 'available' && record.entitlement!.accountId !== input.accountId) {
           throw new Error('Lock the previous account before enrolling another account');
+        }
+        if (automaticRead && record?.status === 'available' && record.entitlement?.scopes.some(scope =>
+          scope.capabilities.some(capability => !/^read:[^\s:]+$/.test(capability)))) {
+          throw new Error('Automatic reading cannot replace an enrolled offline command policy');
         }
         if (record?.entitlement?.accountId === input.accountId
           && record.entitlement.installationId === input.installationId
