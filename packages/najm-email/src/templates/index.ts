@@ -200,6 +200,93 @@ export interface AccountInviteEmailCopy {
   footerAutomated: string;
 }
 
+/**
+ * The colors and logo treatment of the account invitation email. Every field
+ * is optional and a missing or unusable one keeps the default green and orange
+ * look, so existing calls render as before.
+ *
+ * A color is a hex value, `rgb()`/`rgba()` or a color name, written into
+ * inline styles; anything else is ignored rather than escaped into the markup.
+ * Hex is the safest in mail clients.
+ */
+export interface AccountInviteEmailTheme {
+  /** Page behind the card. */
+  pageBackground: string;
+  /** Card outline, the steps panel outline and the footer rule. */
+  border: string;
+  headerBackground: string;
+  /** The heading in the header. */
+  headerText: string;
+  /** The small label above the heading. */
+  eyebrow: string;
+  /** The bar on top of the card and the edge of the expiry note. */
+  accent: string;
+  button: string;
+  buttonText: string;
+  /** The greeting. */
+  ink: string;
+  /** The introduction. */
+  text: string;
+  /** The "button not working" line. */
+  muted: string;
+  /** The fallback link. */
+  link: string;
+  panelBackground: string;
+  panelTitle: string;
+  panelText: string;
+  noteBackground: string;
+  noteText: string;
+  /**
+   * A plate behind the logo. Set it when the logo is drawn for a light
+   * background, so it stays readable on a dark header. Default: no plate.
+   */
+  logoBackground: string;
+  /** Logo height in pixels, 16 to 200. Default 52. */
+  logoHeight: number;
+}
+
+const ACCOUNT_INVITE_THEME: AccountInviteEmailTheme = {
+  pageBackground: '#f3f7f4',
+  border: '#dce8df',
+  headerBackground: '#173d2a',
+  headerText: '#ffffff',
+  eyebrow: '#f3b184',
+  accent: '#dc7b3c',
+  button: '#c9652f',
+  buttonText: '#ffffff',
+  ink: '#183226',
+  text: '#40584b',
+  muted: '#687a70',
+  link: '#315f46',
+  panelBackground: '#f4f8f5',
+  panelTitle: '#173d2a',
+  panelText: '#5b6f63',
+  noteBackground: '#fff8f3',
+  noteText: '#68422d',
+  logoBackground: '',
+  logoHeight: 52,
+};
+
+const SAFE_COLOR = /^(#[0-9a-f]{3,8}|[a-z]+|rgba?\(\s*[\d.]+%?\s*(,\s*[\d.]+%?\s*){2,3}\))$/i;
+
+function resolveAccountInviteTheme(given: Partial<AccountInviteEmailTheme> = {}) {
+  const colors = { ...ACCOUNT_INVITE_THEME } as Record<string, string | number>;
+  for (const key of Object.keys(ACCOUNT_INVITE_THEME) as (keyof AccountInviteEmailTheme)[]) {
+    if (key === 'logoHeight') continue;
+    const value = given[key];
+    if (typeof value === 'string' && SAFE_COLOR.test(value.trim())) colors[key] = value.trim();
+  }
+  const height = Number(given.logoHeight);
+  const custom = Number.isFinite(height) && height > 0;
+  colors.logoHeight = custom ? Math.min(200, Math.max(16, Math.round(height))) : ACCOUNT_INVITE_THEME.logoHeight;
+  return {
+    ...(colors as unknown as AccountInviteEmailTheme),
+    // The footer rule keeps its own tint unless the caller names a border.
+    divider: typeof given.border === 'string' && SAFE_COLOR.test(given.border.trim()) ? given.border.trim() : '#e4ece7',
+    customLogoSize: custom,
+  };
+}
+
 export function accountInviteTemplate(params: {
   inviteLink: string;
   userName: string;
@@ -210,6 +297,7 @@ export function accountInviteTemplate(params: {
   expiryTime?: string;
   lang?: string;
   copy?: Partial<AccountInviteEmailCopy>;
+  theme?: Partial<AccountInviteEmailTheme>;
 }): string {
   const {
     inviteLink,
@@ -221,7 +309,9 @@ export function accountInviteTemplate(params: {
     expiryTime = '3 days',
     lang = 'en',
     copy = {},
+    theme,
   } = params;
+  const c = resolveAccountInviteTheme(theme);
   const safeLink = escapeHtml(inviteLink);
   const safeAppName = escapeHtml(appName);
   const safeLogoSrc = logoSrc ? escapeHtml(logoSrc) : '';
@@ -255,7 +345,19 @@ export function accountInviteTemplate(params: {
   // The English intro emphasises the account label; a translated one is plain text.
   const intro = given.intro
     ? t('intro')
-    : `An administrator created a <strong style="color:#183226;">${safeAccountLabel}</strong> for you on ${safeAppName}. Confirm your email and choose a private password to activate your access.`;
+    : `An administrator created a <strong style="color:${c.ink};">${safeAccountLabel}</strong> for you on ${safeAppName}. Confirm your email and choose a private password to activate your access.`;
+
+  const logoMaxWidth = Math.round((c.logoHeight * 132) / 52);
+  const logoSize = c.customLogoSize
+    ? `height="${c.logoHeight}" style="display:block; width:auto; max-width:${logoMaxWidth}px; height:${c.logoHeight}px;`
+    : `width="${logoMaxWidth}" style="display:block; width:auto; max-width:${logoMaxWidth}px; height:auto; max-height:${c.logoHeight}px;`;
+  const plated = Boolean(c.logoBackground);
+  const logoImage = `<img src="${safeLogoSrc}" alt="${safeLogoAlt}" ${logoSize} margin:${plated ? '0' : '0 0 24px'}; border:0; outline:none; text-decoration:none; object-fit:contain;" />`;
+  const logo = !safeLogoSrc
+    ? `<p style="margin:0 0 24px; font-size:18px; line-height:24px; font-weight:800; letter-spacing:1.8px; color:${c.headerText};">${safeAppName}</p>`
+    : plated
+      ? `<table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 0 24px;"><tr><td style="background-color:${c.logoBackground}; border-radius:18px; padding:12px 16px;">${logoImage}</td></tr></table>`
+      : logoImage;
 
   return `
 <!DOCTYPE html>
@@ -276,62 +378,62 @@ export function accountInviteTemplate(params: {
     }
   </style>
 </head>
-<body style="margin:0; padding:0; background-color:#f3f7f4; color:#183226; font-family:Arial, Helvetica, sans-serif; -webkit-text-size-adjust:100%;">
+<body style="margin:0; padding:0; background-color:${c.pageBackground}; color:${c.ink}; font-family:Arial, Helvetica, sans-serif; -webkit-text-size-adjust:100%;">
   <div style="display:none; max-height:0; overflow:hidden; opacity:0; color:transparent;">
     ${t('preheader')}
   </div>
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; background-color:#f3f7f4;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; background-color:${c.pageBackground};">
     <tr>
       <td class="email-shell" align="center" style="padding:40px 16px;">
-        <table role="presentation" class="email-card" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border:1px solid #dce8df; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(24,50,38,0.08);">
+        <table role="presentation" class="email-card" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; max-width:600px; background-color:#ffffff; border:1px solid ${c.border}; border-radius:24px; overflow:hidden; box-shadow:0 12px 32px rgba(24,50,38,0.08);">
           <tr>
-            <td style="height:6px; background-color:#dc7b3c; font-size:0; line-height:0;">&nbsp;</td>
+            <td style="height:6px; background-color:${c.accent}; font-size:0; line-height:0;">&nbsp;</td>
           </tr>
           <tr>
-            <td class="email-header" style="padding:32px 40px 30px; background-color:#173d2a; color:#ffffff;">
-              ${safeLogoSrc ? `<img src="${safeLogoSrc}" alt="${safeLogoAlt}" width="132" style="display:block; width:auto; max-width:132px; height:auto; max-height:52px; margin:0 0 24px; border:0; outline:none; text-decoration:none; object-fit:contain;" />` : `<p style="margin:0 0 24px; font-size:18px; line-height:24px; font-weight:800; letter-spacing:1.8px; color:#ffffff;">${safeAppName}</p>`}
-              <p style="margin:0 0 10px; font-size:12px; line-height:18px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#f3b184;">${t('eyebrow')}</p>
-              <h1 class="email-title" style="margin:0; font-size:34px; line-height:41px; font-weight:700; letter-spacing:-0.4px; color:#ffffff;">${t('heading')}</h1>
+            <td class="email-header" style="padding:32px 40px 30px; background-color:${c.headerBackground}; color:${c.headerText};">
+              ${logo}
+              <p style="margin:0 0 10px; font-size:12px; line-height:18px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:${c.eyebrow};">${t('eyebrow')}</p>
+              <h1 class="email-title" style="margin:0; font-size:34px; line-height:41px; font-weight:700; letter-spacing:-0.4px; color:${c.headerText};">${t('heading')}</h1>
             </td>
           </tr>
           <tr>
             <td class="email-content" style="padding:36px 40px 18px;">
-              <p style="margin:0 0 18px; font-size:17px; line-height:27px; color:#183226;">${t('greeting')}</p>
-              <p style="margin:0 0 24px; font-size:16px; line-height:26px; color:#40584b;">
+              <p style="margin:0 0 18px; font-size:17px; line-height:27px; color:${c.ink};">${t('greeting')}</p>
+              <p style="margin:0 0 24px; font-size:16px; line-height:26px; color:${c.text};">
                 ${intro}
               </p>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; margin:0 0 28px; background-color:#f4f8f5; border:1px solid #dce8df; border-radius:14px;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; margin:0 0 28px; background-color:${c.panelBackground}; border:1px solid ${c.border}; border-radius:14px;">
                 <tr>
                   <td style="padding:18px 20px;">
-                    <p style="margin:0 0 4px; font-size:14px; line-height:20px; font-weight:700; color:#173d2a;">${t('stepsTitle')}</p>
-                    <p style="margin:0; font-size:14px; line-height:21px; color:#5b6f63;">${t('stepsBody')}</p>
+                    <p style="margin:0 0 4px; font-size:14px; line-height:20px; font-weight:700; color:${c.panelTitle};">${t('stepsTitle')}</p>
+                    <p style="margin:0; font-size:14px; line-height:21px; color:${c.panelText};">${t('stepsBody')}</p>
                   </td>
                 </tr>
               </table>
               <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin:0 auto 28px;">
                 <tr>
-                  <td align="center" bgcolor="#c9652f" style="background-color:#c9652f; border-radius:12px;">
-                    <a class="email-button" href="${safeLink}" target="_blank" style="display:inline-block; padding:15px 28px; border:1px solid #c9652f; border-radius:12px; color:#ffffff !important; font-size:16px; line-height:20px; font-weight:700; text-decoration:none;">
-                      <span style="color:#ffffff;">${t('button')}</span>
+                  <td align="center" bgcolor="${c.button}" style="background-color:${c.button}; border-radius:12px;">
+                    <a class="email-button" href="${safeLink}" target="_blank" style="display:inline-block; padding:15px 28px; border:1px solid ${c.button}; border-radius:12px; color:${c.buttonText} !important; font-size:16px; line-height:20px; font-weight:700; text-decoration:none;">
+                      <span style="color:${c.buttonText};">${t('button')}</span>
                     </a>
                   </td>
                 </tr>
               </table>
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; margin:0 0 24px; border-left:4px solid #dc7b3c; background-color:#fff8f3;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0" style="width:100%; margin:0 0 24px; border-left:4px solid ${c.accent}; background-color:${c.noteBackground};">
                 <tr>
-                  <td style="padding:14px 16px; font-size:14px; line-height:21px; color:#68422d;">
+                  <td style="padding:14px 16px; font-size:14px; line-height:21px; color:${c.noteText};">
                     <strong>${t('expiry')}</strong> ${t('expiryNote')}
                   </td>
                 </tr>
               </table>
-              <p style="margin:0; font-size:14px; line-height:22px; color:#687a70;">
-                ${t('fallbackPrefix')} <a href="${safeLink}" target="_blank" style="color:#315f46; font-weight:700; text-decoration:underline;">${t('fallbackLink')}</a>.
+              <p style="margin:0; font-size:14px; line-height:22px; color:${c.muted};">
+                ${t('fallbackPrefix')} <a href="${safeLink}" target="_blank" style="color:${c.link}; font-weight:700; text-decoration:underline;">${t('fallbackLink')}</a>.
               </p>
             </td>
           </tr>
           <tr>
             <td style="padding:24px 40px 32px;">
-              <div style="height:1px; background-color:#e4ece7; font-size:0; line-height:0;">&nbsp;</div>
+              <div style="height:1px; background-color:${c.divider}; font-size:0; line-height:0;">&nbsp;</div>
               <p style="margin:22px 0 6px; font-size:13px; line-height:20px; color:#718078;">${t('footerIgnore')}</p>
               <p style="margin:0; font-size:12px; line-height:19px; color:#8a978f;">&copy; ${currentYear} ${t('footerAutomated')}</p>
             </td>
