@@ -147,6 +147,7 @@ auth({
     contentType: string
     filename: string
   }
+  accountInviteTheme?: Partial<AccountInviteEmailTheme> // Optional invitation colors and logo plate
 
   // Login identifier normalization (see "Identity presets")
   identity?: {
@@ -1263,6 +1264,28 @@ For a branded mark that works in email clients without a public asset URL, set
 `accountInviteLogo` to base64 content plus its MIME type and filename. Najm
 attaches it inline and points the shared template at a stable CID; when omitted,
 the template renders `appName` as text.
+
+`accountInviteTheme` restyles the invitation card; a field left out keeps the
+default green and orange look. It takes page, header, button, panel and note
+colors, a `logoBackground` plate and a `logoHeight` (16 to 200 pixels). Set the
+plate when the logo is drawn for a light background, because the header is dark
+and a dark logo on a transparent background disappears into it. The fields are
+`AccountInviteEmailTheme` from `najm-email`; a value that is not a color is
+ignored.
+
+```typescript
+auth({
+  appName: 'School',
+  accountInviteLogo: { contentBase64, contentType: 'image/png', filename: 'logo.png' },
+  accountInviteTheme: {
+    headerBackground: '#1e3a5f',
+    button: '#cc434d',
+    accent: '#cc434d',
+    logoBackground: '#ffffff',
+    logoHeight: 84,
+  },
+});
+```
 
 The built-in memory and Redis drivers implement the required atomic primitive.
 A custom cache driver may omit `compareAndDelete()` for compatibility with

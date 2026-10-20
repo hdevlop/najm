@@ -217,6 +217,14 @@ describe('public registration policy', () => {
       .toBe(accountInviteLogo);
   });
 
+  test('passes an optional invitation theme to the resolved config', () => {
+    const accountInviteTheme = { headerBackground: '#1e3a5f', logoBackground: '#ffffff', logoHeight: 84 };
+
+    expect(resolveAuthConfig({ jwt }).accountInviteTheme).toBeUndefined();
+    expect(resolveAuthConfig({ jwt, accountInviteTheme }).accountInviteTheme)
+      .toBe(accountInviteTheme);
+  });
+
   test('registration remains mounted by default for backwards compatibility', () => {
     const plugin = auth({ jwt, email: { provider: 'console' } });
 
