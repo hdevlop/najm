@@ -1,5 +1,16 @@
 # Changelog
 
+## 3.3.0 - 2026-10-21
+
+- `accountInviteTemplate` accepts a `theme` (`AccountInviteEmailTheme`, also
+  exported): page, header, button, panel and note colors, a `logoBackground`
+  plate and a `logoHeight` of 16 to 200 pixels. A logo drawn for a light
+  background disappeared into the dark green header; the plate keeps it
+  readable and the height lets it be large enough to read.
+- A color left out keeps its default, so a call without a theme renders byte for
+  byte as before. A value that is not a color (a hex value, `rgb()`/`rgba()` or
+  a color name) is ignored instead of being written into the markup's styles.
+
 ## 3.2.0 - 2026-10-17
 
 - `passwordResetTemplate` and `accountInviteTemplate` accept `lang` and a
