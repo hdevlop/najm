@@ -1,5 +1,11 @@
 # Changelog
 
+## 3.7.1 - 2026-10-22
+
+- Stop warning when importing PostgreSQL chatbot tables from `najm-chatbot/pg`.
+  The entry point still owns chatbot settings and sessions; RAG compatibility
+  tables remain available without changes to the schema.
+
 ## 3.7.0 - 2026-10-13
 
 - On phones (a touch screen or a window 640px wide or less) the panel fills the

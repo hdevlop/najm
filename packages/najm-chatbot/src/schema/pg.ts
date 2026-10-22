@@ -8,10 +8,6 @@ import {
   chatbotRoutingSettingsTable,
 } from 'najm-rag/pg';
 
-if (process.env.NAJM_NO_DEPRECATION_WARNINGS !== '1') {
-  console.warn('[najm-chatbot deprecation] Importing RAG tables from "najm-chatbot/pg" is deprecated. Import from "najm-rag/pg" instead and spread ragSchema.');
-}
-
 export const aiSettingsTable = pgTable('ai_settings', {
   id: text('id').primaryKey().$defaultFn(() => nanoid(8)),
   provider: text('provider').notNull().default('ollama'),
