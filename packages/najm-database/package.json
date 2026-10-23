@@ -1,10 +1,11 @@
 {
   "name": "najm-database",
-  "version": "2.2.1",
+  "version": "2.3.2",
   "description": "Database and transaction handling plugin for Najm API framework",
   "type": "module",
   "files": [
-    "dist"
+    "dist",
+    "README.md"
   ],
   "main": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -13,19 +14,42 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "default": "./dist/index.mjs"
+    },
+    "./sync/contracts": {
+      "types": "./dist/sync/contracts.d.ts",
+      "import": "./dist/sync/contracts.mjs",
+      "default": "./dist/sync/contracts.mjs"
+    },
+    "./sync/client": {
+      "types": "./dist/sync/client.d.ts",
+      "import": "./dist/sync/client.mjs",
+      "default": "./dist/sync/client.mjs"
+    },
+    "./sync/server": {
+      "types": "./dist/sync/server.d.ts",
+      "import": "./dist/sync/server.mjs",
+      "default": "./dist/sync/server.mjs"
+    },
+    "./sync/pg": {
+      "types": "./dist/sync/pg.d.ts",
+      "import": "./dist/sync/pg.mjs",
+      "default": "./dist/sync/pg.mjs"
     }
   },
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "bun test",
-    "test:watch": "bun test --watch"
+    "test:watch": "bun test --watch",
+    "test:sync:integration": "bun run test:sync:schema && bun integration/sync/run.ts",
+    "test:sync:schema": "bun integration/sync/generateSchema.ts"
   },
   "peerDependencies": {
     "najm-core": "^2.1.1 || ^3.0.2",
     "reflect-metadata": "^0.2.0",
     "drizzle-orm": ">=0.36.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "fast-idb": "0.3.0"
   },
   "devDependencies": {
     "najm-core": "workspace:*",
@@ -33,7 +57,10 @@
     "pg": "8.22.0",
     "postgres": "3.4.8",
     "typescript": "^5.7.3",
-    "tsup": "^8.0.0"
+    "tsup": "^8.0.0",
+    "fast-idb": "0.3.0",
+    "fake-indexeddb": "6.2.5",
+    "drizzle-kit": "0.31.10"
   },
   "keywords": [
     "database",
@@ -45,5 +72,10 @@
     "framework"
   ],
   "author": "Hicham Jebara",
-  "license": "MIT"
+  "license": "MIT",
+  "peerDependenciesMeta": {
+    "fast-idb": {
+      "optional": true
+    }
+  }
 }

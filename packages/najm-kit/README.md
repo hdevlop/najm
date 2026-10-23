@@ -2,6 +2,36 @@
 
 Reusable React component library for Najm applications. Provides themed UI primitives, hooks, and form components.
 
+## UI without a Next router
+
+`NajmKitProvider` from `najm-kit/app` accepts a `uiRuntime`. The full
+`NajmAppProvider` from `najm-next/app/client` forwards the same option.
+In this mode the host supplies all three persistence callbacks, and the
+provider keeps ownership of language, theme, time zone, design, branding,
+formatting and table defaults:
+
+```tsx
+import type { NajmKitUiRuntime } from 'najm-kit/app';
+
+const uiRuntime: NajmKitUiRuntime = {
+  onLanguageChange: async value => { localStorage.setItem('ui-language', value); },
+  onThemeChange: async value => { localStorage.setItem('ui-theme', value); },
+  onTimeZoneChange: async value => { localStorage.setItem('ui-time-zone', value); },
+};
+
+<NajmKitProvider snapshot={publicSnapshot} i18n={i18n} uiRuntime={uiRuntime}>
+  {children}
+</NajmKitProvider>
+```
+
+Choose this runtime when the application mounts and use it while connected
+and disconnected; changing callback objects preserves state. Switching
+between this mode and the omitted option changes the provider branch and may
+remount children. Omitting it retains the existing Next router, cookie
+endpoints and refresh behavior. Callback failures propagate to the caller;
+the existing optimistic preference state is not rolled back automatically.
+This option supplies UI persistence, not offline sign-in or data access.
+
 ## Install
 
 ```bash

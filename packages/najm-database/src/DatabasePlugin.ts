@@ -22,6 +22,9 @@ export const database = (config?: DatabaseConfig, options?: DatabasePluginOption
       }
    }
    const resolvedOptions = { ...inlineOptions, ...options };
+   if (resolvedOptions.beforeTransaction !== undefined && typeof resolvedOptions.beforeTransaction !== 'function') {
+      throw Err.invalidConfig('database', 'beforeTransaction must be a function');
+   }
    if (resolvedOptions.close !== undefined && typeof resolvedOptions.close !== 'boolean' && typeof resolvedOptions.close !== 'function') {
       throw Err.invalidConfig('database', 'close must be a boolean or a function');
    }

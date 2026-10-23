@@ -19,6 +19,41 @@ Production-ready authentication and authorization library for the Najm framework
 
 ---
 
+## Cached offline account access
+
+`najm-auth/client/offline` is an optional browser/worker-safe policy gate. It
+distinguishes a permitted cached account from an online authenticated session;
+it never creates a JWT, restores an expired session, or grants server access.
+Existing auth clients/providers remain unchanged.
+
+Use `createOfflineAccess({ store })` with a transactional IndexedDB
+`read`/`compareAndSwap` adapter. Capture a token **before** online enrollment,
+then call `enroll(token, policy)` only with successful online authentication
+and the domain permissions for every scope capability. Explicit command
+enrollment retains `consent: true` and `use:offline`. A host can instead use
+`mode: 'automatic-read'` without consent after ordinary sign-in when the
+account has `read:offline`; every enrolled capability must be a `read:*`
+permission. Neither mode grants a server credential or bypasses domain reads.
+The policy identifies account, installation/epoch,
+authorization generation, academic-year scopes and a bounded server-time
+expiry. Repeated or older grants cannot extend their lifetime.
+
+Call `authorize` before exposing a cached account/scope/command. Logout, account
+switch, known disablement and revocation must call `lock` with the captured
+account token. A lock invalidates old callbacks and retains pending work;
+the host app chooses synchronization, locked retention, or explicit discard.
+Call `refresh` after cross-tab notifications, and check the policy fence inside
+the same IndexedDB transaction as a local data/outbox commit. An async
+`isCurrent` check alone cannot protect a later transaction.
+
+This gate provides application isolation on a trusted device, without encrypting
+browser storage or verifying a server-signed entitlement. The host must supply
+an authoritative online policy, enforce current server guards on reconnect,
+and partition all queries, forms, attachments and queues by account/year.
+See [the contract and evidence](../../docs/tests/offline-entitlement.md).
+
+---
+
 ## Installation
 
 ```bash

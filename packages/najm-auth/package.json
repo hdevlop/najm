@@ -1,6 +1,6 @@
 {
   "name": "najm-auth",
-  "version": "6.6.0",
+  "version": "6.9.0",
   "description": "Authentication and authorization library for najm framework",
   "type": "module",
   "files": [
@@ -23,6 +23,11 @@
       "types": "./dist/client/edge.d.ts",
       "import": "./dist/client/edge.js",
       "default": "./dist/client/edge.js"
+    },
+    "./client/offline": {
+      "types": "./dist/client/offline.d.ts",
+      "import": "./dist/client/offline.js",
+      "default": "./dist/client/offline.js"
     },
     "./client/react": {
       "types": "./dist/client/react/index.d.ts",
@@ -62,6 +67,7 @@
     "test": "bun test && bun run test:rsc",
     "test:real-infra": "bun test test/real-postgres-redis-security.test.ts",
     "test:rsc": "bun test --conditions react-server test/react-server-auth.test.ts",
+    "test:offline:browser": "node test/offline-access.browser.mjs",
     "test:next16": "bun run build && bun integration/next16-proxy/run.ts",
     "test:watch": "bun test --watch",
     "start": "bun --watch src/main.ts",

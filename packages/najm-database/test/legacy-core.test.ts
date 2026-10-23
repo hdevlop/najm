@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
-import { copyFile, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
 import { dirname, basename, join, resolve } from 'node:path';
 import { tmpdir } from 'node:os';
 
@@ -11,7 +11,7 @@ test('built database plugin preserves shared pools and closes owned pools on Cor
     import { Database } from 'bun:sqlite';
     import 'reflect-metadata';
     const { Server, Service, Meta, plugin } = await import('najm-core');
-    const { database, DB } = await import('./database.mjs');
+    const { database, DB } = await import('./dist/index.mjs');
     const sqlite = new Database(':memory:');
     const db = { $client: sqlite, query: () => sqlite.query('select 1 as one').all() };
     const shared = new Server({ isolated: true, silent: true }).use(database({ default: db }));
@@ -49,7 +49,7 @@ test('built database plugin preserves shared pools and closes owned pools on Cor
       const packageRoot = source.startsWith('najm-core') ? dirname(dirname(entry)) : dirname(entry);
       await symlink(packageRoot, join(root, 'node_modules', name), 'junction');
     }
-    await copyFile(fileURLToPath(new URL('../dist/index.mjs', import.meta.url)), join(root, 'database.mjs'));
+    await cp(fileURLToPath(new URL('../dist', import.meta.url)), join(root, 'dist'), { recursive: true });
     const child = Bun.spawn({
       cmd: [process.execPath, 'run', '-'],
       cwd: root,

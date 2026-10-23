@@ -47,6 +47,8 @@ export type TDb<T = any> = T;
 export type DatabaseConfig =  any;
 
 export interface DatabasePluginOptions {
+   /** Runs once per outer transaction attempt, before domain work, in its active context. */
+   beforeTransaction?: (transaction: any, database: string) => void | Promise<void>;
    /**
     * What happens to the connections when the server stops.
     *

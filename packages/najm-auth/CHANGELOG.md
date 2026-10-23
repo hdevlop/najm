@@ -1,5 +1,22 @@
 # Changelog
 
+## 6.9.0 - 2026-10-21
+
+- `auth({ accountInviteTheme })` passes najm-email's `AccountInviteEmailTheme`
+  to the account invitation email, next to `accountInviteLogo`: page, header,
+  button, panel and note colors, a `logoBackground` plate and a `logoHeight`.
+  A dark logo on a transparent background disappeared into the dark green
+  header; the plate keeps it readable. Omitted, the invitation is unchanged.
+- Requires najm-email 3.3.0.
+
+## 6.8.0 - 2026-10-20
+
+- Cached account access accepts an opt-in `mode: 'automatic-read'` enrollment
+  after authenticated sign-in with `read:offline` and each domain `read:*`
+  grant. It cannot enroll a write capability or replace an available command
+  entitlement. Existing explicit-consent `use:offline` enrollment is unchanged.
+  Wildcard role grants follow the client's normal permission matching.
+
 ## 6.6.0 - 2026-10-17
 
 - `NajmAuthClient.setRequestHeaders(source)` adds headers to every request

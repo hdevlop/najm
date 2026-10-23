@@ -8,6 +8,7 @@ export default defineConfig({
     'src/schema/sqlite.ts',
     'src/client/index.ts',
     'src/client/edge.ts',
+    'src/client/offline.ts',
     'src/client/react/index.ts',
     'src/client/server/index.ts',
     'src/client/server/react.ts',

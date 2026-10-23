@@ -1,5 +1,43 @@
 # Changelog
 
+## 0.13.0 - 2026-10-19
+
+- Add opt-in staged public-shell updates with complete-manifest readiness,
+  temporary download caches, immutable asset validation, explicit all-window
+  activation consent, retained old assets and no forced document reload.
+- Add the browser/worker-safe `najm-next/pwa/client` lifecycle helper. Default
+  consumers keep immediate activation and cleanup. Data schema migration and
+  automatic old-build reclamation remain application concerns.
+- Prove failed downloads, evicted assets, dirty/unresponsive tabs, old lazy
+  assets and preserved IndexedDB pending work in three desktop engines.
+
+## 0.12.0 - 2026-10-19
+
+- Add opt-in `navigationFallback` to `najm-next/pwa`: explicit document paths,
+  a default 10-second response-header deadline, and cached public-shell
+  fallback on rejection or gateway 502/503/504. Preserve domain errors,
+  redirects, downloads and API/RSC payloads. An unavailable shell retains the
+  network response; default consumers keep their previous behavior.
+- Add executable worker tests and a real Chromium/Firefox/WebKit fixture for
+  fallback, late responses, route isolation and redirect preservation.
+  Worker update lifecycle, offline authorization and storage remain separate.
+
+## 0.11.0 - 2026-10-19
+
+- Publish the validated `0.11.0-offline.0` provider integration as a regular
+  release through npm's default channel. The existing stable Kit peer range
+  accepts `najm-kit@3.7.0`; remove the prerelease-only peer alternative.
+
+## 0.11.0-offline.0 - 2026-10-19
+
+- Support Kit's `uiRuntime` option through the existing `NajmAppProvider`
+  prop forwarding and accept `najm-kit@3.7.0-offline.0` as a peer. The provider
+  keeps one auth client and QueryClient when runtime callbacks change.
+- Add a built-entry browser fixture proving router-independent mounting,
+  local preference persistence while disconnected, and draft preservation in
+  Chromium, Firefox and WebKit. This does not implement offline authorization,
+  asset updates, data downloads or synchronization.
+
 ## 0.10.0 - 2026-10-10
 
 - Added `najm-next/env` with `isNextBuildPhase()`, true only while
