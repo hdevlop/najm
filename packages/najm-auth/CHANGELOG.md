@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.10.0 - 2026-10-24
+
+- `sessionExpired` now carries a `SessionExpiredEvent` (exported from
+  `najm-auth/client`) instead of `null`: `reason` is `'refused'` when the
+  server answered the refresh with 401 or 403, `'rate-limited'` for 429 and
+  `'unavailable'` when refreshes kept failing without either (network errors,
+  5xx), with the last response's `status` when there was one. An app keeping
+  data for offline use can revoke that access when the server refuses the
+  session, and keep it when the device only lost its connection. Listeners
+  that ignore the payload are unaffected.
+
 ## 6.9.0 - 2026-10-21
 
 - `auth({ accountInviteTheme })` passes najm-email's `AccountInviteEmailTheme`
