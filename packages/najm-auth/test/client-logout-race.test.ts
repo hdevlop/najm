@@ -122,8 +122,8 @@ describe('NajmAuthClient logout/refresh race', () => {
     // clears its own cookies when a 401 is final, so nothing is left to clean.
     const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
     const calls: string[] = [];
-    let expired = 0;
-    client.on('sessionExpired', () => { expired += 1; });
+    const expired: unknown[] = [];
+    client.on('sessionExpired', event => { expired.push(event); });
     client.api = {
       blockAuthenticatedRequests: () => undefined,
       allowAuthenticatedRequests: () => undefined,
@@ -136,7 +136,7 @@ describe('NajmAuthClient logout/refresh race', () => {
     await expect(client.refresh()).rejects.toThrow('Session expired');
 
     expect(calls).toEqual(['/auth/refresh']);
-    expect(expired).toBe(1);
+    expect(expired).toEqual([{ reason: 'refused', status: 401 }]);
     expect(client.getState()).toMatchObject({ accessToken: null, isAuthenticated: false });
     client.destroy();
   });
@@ -169,5 +169,31 @@ describe('NajmAuthClient logout/refresh race', () => {
       isAuthenticated: false,
     });
     client.destroy();
+  });
+
+  test('sessionExpired says whether the server refused the session or could not be reached', async () => {
+    const cases: [string, () => Error, number, unknown][] = [
+      ['403', () => new AuthError(403, 'Forbidden'), 1, { reason: 'refused', status: 403 }],
+      ['429', () => new AuthError(429, 'Too many requests'), 1, { reason: 'rate-limited', status: 429 }],
+      ['503', () => new AuthError(503, 'Unavailable'), 3, { reason: 'unavailable', status: 503 }],
+      ['network', () => new TypeError('Failed to fetch'), 3, { reason: 'unavailable' }],
+    ];
+    for (const [name, failure, attempts, event] of cases) {
+      const client = new NajmAuthClient({ baseURL: '/api', tabSync: false });
+      const expired: unknown[] = [];
+      client.on('sessionExpired', payload => { expired.push(payload); });
+      client.api = {
+        blockAuthenticatedRequests: () => undefined,
+        allowAuthenticatedRequests: () => undefined,
+        post: async (path: string) => {
+          if (path === '/auth/refresh') throw failure();
+          return { data: null };
+        },
+      } as any;
+      // A failure without an answer from the server opens the circuit only on the third.
+      for (let attempt = 1; attempt <= attempts; attempt++) await client.refresh().catch(() => undefined);
+      expect([name, expired]).toEqual([name, [event]]);
+      client.destroy();
+    }
   });
 });

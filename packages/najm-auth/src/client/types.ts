@@ -129,6 +129,22 @@ export interface OAuthLoginOptions {
 }
 
 /**
+ * Why the client gave up refreshing the session. Only `refused` means the
+ * server rejected it: an app keeping data for offline use can revoke that
+ * access then, but keep it when the server was merely unreachable.
+ */
+export interface SessionExpiredEvent {
+  /**
+   * `refused`: the refresh was answered 401 or 403. `rate-limited`: 429.
+   * `unavailable`: refreshes kept failing without either, such as network
+   * errors or 5xx responses.
+   */
+  reason: 'refused' | 'rate-limited' | 'unavailable';
+  /** Status of the last refresh response, when the server answered. */
+  status?: number;
+}
+
+/**
  * Auth event types
  */
 export interface AuthEventMap {
@@ -137,7 +153,7 @@ export interface AuthEventMap {
   /** Emitted when server-side logout invalidation fails (state was already cleared) */
   logoutError: unknown;
   tokenRefresh: null;
-  sessionExpired: null;
+  sessionExpired: SessionExpiredEvent;
   stateChange: AuthState;
   userUpdated: AuthUser;
 }

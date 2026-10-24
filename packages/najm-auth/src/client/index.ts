@@ -18,6 +18,7 @@ export type {
   AuthUser,
   AuthEvent,
   AuthEventHandler,
+  SessionExpiredEvent,
   DecodedToken,
   ServerResponse,
   TokenPair,

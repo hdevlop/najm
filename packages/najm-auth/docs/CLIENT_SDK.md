@@ -374,9 +374,23 @@ auth.off('login', handler);  // Unsubscribe
 | `login` | `AuthUser` | After successful login |
 | `logout` | `null` | After logout (local or from another tab) |
 | `tokenRefresh` | `null` | After successful token refresh |
-| `sessionExpired` | `null` | When refresh fails (token expired) |
+| `sessionExpired` | `SessionExpiredEvent` | When the client gives up refreshing the session (see below) |
 | `userUpdated` | `AuthUser` | After `fetchUser()` completes |
 | `stateChange` | `AuthState` | Fires on any of the above events |
+
+`sessionExpired` says why the client gave up. `reason` is `'refused'` when the
+server answered the refresh with 401 or 403, `'rate-limited'` for 429, and
+`'unavailable'` when refreshes kept failing without either (network errors,
+5xx); `status` is the last refresh response's status, when the server
+answered. A sign-in redirect fits every reason. Revoke access to data kept for
+offline use only on `'refused'`: a device that merely lost its connection keeps
+it.
+
+```ts
+auth.on('sessionExpired', ({ reason }) => {
+  if (reason === 'refused') revokeOfflineAccess();
+});
+```
 
 ### Subscribe
 
@@ -907,7 +921,7 @@ Login → Store access token in memory → Decode JWT for roles/permissions
 
 401 Response → Attempt refresh (single promise, concurrent callers share it)
              → If refresh succeeds: retry original request
-             → If refresh fails: emit 'sessionExpired', clear state
+             → If refresh fails: clear state, emit 'sessionExpired' with its reason
 
 Proactive Timer → Fires before token expires → Calls refresh()
                 → Reschedules on success → Clears on failure

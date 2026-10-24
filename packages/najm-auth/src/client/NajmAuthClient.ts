@@ -22,9 +22,18 @@ import type {
   CredentialSetupPending,
   LoginCredentials,
   LoginResult,
+  SessionExpiredEvent,
 } from './types';
 import { AuthError } from './types';
 import { normalizeLocalRedirectPath } from './redirectPath';
+
+/** The refresh failure that opened the circuit, as `sessionExpired` reports it. */
+function sessionExpiry(err: unknown): SessionExpiredEvent {
+  if (!(err instanceof AuthError)) return { reason: 'unavailable' };
+  if (err.status === 401 || err.status === 403) return { reason: 'refused', status: err.status };
+  if (err.status === 429) return { reason: 'rate-limited', status: err.status };
+  return { reason: 'unavailable', status: err.status };
+}
 
 /**
  * Najm answers a pending setup either at the top level or inside the standard
@@ -478,7 +487,7 @@ export class NajmAuthClient {
           await this.requestServerLogout().catch(() => undefined);
         }
         this.resetState();
-        this.emit('sessionExpired', null);
+        this.emit('sessionExpired', sessionExpiry(err));
         if (err instanceof AuthError && err.status === 401) {
           throw new Error('Session expired');
         }
