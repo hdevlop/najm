@@ -69,3 +69,11 @@ direct-year/simple-ID tables; parent-derived-year/cascade projections and
 initial revision backfill still need reviewed School adapters. Schema composition
 does not run a migration or enable capture. Production migration, permissions,
 enrollment and deployment remain separate steps.
+
+## fast-idb 0.3.1 (2026-10-24)
+
+The browser entry's exact optional peer moved to `fast-idb@0.3.1` (atomic
+migrations with a bounded upgrade phase, serialized `putIfNewer`, commit
+notification after a late callback failure). The full package suite passes on
+it: 142 tests, with the surface test pinning the new peer. The PostgreSQL
+integration script was not rerun for this peer change.

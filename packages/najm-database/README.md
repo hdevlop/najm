@@ -154,7 +154,7 @@ projection allowlist, current command permissions and disclosure checks.
 | `najm-database/sync/server` | Operation deduplication and uncertainty lookup through a transactional store; domain refusal savepoints |
 | `najm-database/sync/pg` | Server-only Drizzle schema, ordered PostgreSQL operation store and reviewed capture-migration SQL generation |
 
-The browser entry requires the optional exact peer `fast-idb@0.3.0`. No browser
+The browser entry requires the optional exact peer `fast-idb@0.3.1`. No browser
 global is touched on import; opening is explicit. Other entries do not import
 fast-idb, and the existing root entry imports none of these sync entries.
 

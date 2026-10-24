@@ -10,6 +10,6 @@ test('sync entrypoints are separate; legacy root does not load browser persisten
   }
   const root = await readFile(new URL('../src/index.ts', import.meta.url), 'utf8');
   expect(root).not.toContain('./sync');
-  expect(metadata.peerDependencies['fast-idb']).toBe('0.3.0');
+  expect(metadata.peerDependencies['fast-idb']).toBe('0.3.1');
   expect(metadata.peerDependenciesMeta['fast-idb'].optional).toBe(true);
 });
