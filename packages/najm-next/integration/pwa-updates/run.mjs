@@ -49,13 +49,28 @@ for(const [engine,type]of Object.entries({chromium,firefox,webkit})){
     await a.getByLabel('Unsent draft').fill('New pending mark survives');
     const cacheNames=await a.evaluate(()=>caches.keys());assert(cacheNames.includes('najm-pwa:updates-fixture:v1'));assert(cacheNames.includes('najm-pwa:updates-fixture:v3'));assert(cacheNames.includes('unrelated-fixture'));
     result.checks.activationDoesNotReloadOrDeleteOldAssets='PASS';
+    // Repeated update checks of a broken build, including any the browser adds
+    // itself after a failure (Firefox does), stop downloading at the budget;
+    // the active build keeps answering and serving its documents.
+    const hits=async()=>(await a.request.get(origin+'/stats')).json();
+    const settled=()=>until(()=>a.evaluate(async()=>{const reg=await navigator.serviceWorker.getRegistration();return !reg.installing&&!reg.waiting;}));
+    await control('v4',true);
+    for(let check=0;check<5;check++){await a.evaluate(()=>window.update()).catch(()=>{});await settled();}
+    assert.equal((await hits())['/v4.js'],3);
+    assert.equal(await a.evaluate(()=>window.pwa.getUpdate()),null);
+    const active=await a.evaluate(()=>new Promise(resolveStatus=>{const channel=new MessageChannel();channel.port1.onmessage=event=>resolveStatus(event.data);navigator.serviceWorker.controller.postMessage({type:'NAJM_PWA_STATUS',protocol:1,cacheId:'updates-fixture'},[channel.port2]);}));
+    assert.equal(active.cacheVersion,'v3');assert.equal(active.ready,true);
+    result.checks.installBudgetBoundsUpdateChecks='PASS';
+    await control('v5');await a.evaluate(()=>window.update());await waitWaiting(a);
+    await until(()=>a.evaluate(async()=>{const value=await window.pwa.getUpdate();return value?.cacheVersion==='v5'&&value.ready;}));
+    result.checks.newVersionHasItsOwnBudget='PASS';
     await new Promise(resolveExit=>{child.once('exit',resolveExit);child.kill();});
     const asset=await a.evaluate(async()=>{const response=await fetch('/v1.js');return{status:response.status,text:await response.text()};});assert.equal(asset.status,200);assert(asset.text.includes('/v1.js'));
     const c=await context.newPage();observe(c);await c.goto(origin+'/app');await c.waitForFunction(()=>window.fixtureReady);assert.equal(await c.locator('h1').innerText(),'Build v3');
     assert.equal(await a.getByLabel('Unsent draft').inputValue(),'New pending mark survives');
     const pending=await a.evaluate(()=>new Promise((resolveDone,reject)=>{const request=indexedDB.open('pending-update-fixture',1);request.onerror=()=>reject(request.error);request.onsuccess=()=>{const db=request.result;const tx=db.transaction('outbox');const read=tx.objectStore('outbox').get('operation-1');read.onsuccess=()=>resolveDone(read.result);tx.oncomplete=()=>db.close();};}));assert.deepEqual(pending,{status:'pending',mark:'absent'});
     result.checks.oldLazyAssetAndNewOfflineShell='PASS';result.checks.indexedDbPendingWorkRetained='PASS';
-    assert.deepEqual(result.errors,[]);console.log(`${engine} ${result.version}: staged updates, two-tab consent, asset retention and pending work PASS`);
+    assert.deepEqual(result.errors,[]);console.log(`${engine} ${result.version}: staged updates, two-tab consent, install budget, asset retention and pending work PASS`);
   }catch(error){failed=true;result.failure=error.stack;console.error(`${engine}: ${error.stack}`);}
   finally{await context.close();await browser.close();if(child.exitCode===null&&child.signalCode===null)await new Promise(resolveExit=>{child.once('exit',resolveExit);child.kill();});}
 }

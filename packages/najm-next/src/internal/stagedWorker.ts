@@ -1,10 +1,59 @@
 /** Public-asset-only update protocol. Generated inside a service worker. */
-export function stagedWorkerSource(cacheId: string, cacheVersion: string): string {
+export function stagedWorkerSource(cacheId: string, cacheVersion: string,
+  budget?: { attempts: number; windowMs: number }): string {
   return `
 const UPDATE_CACHE_ID = ${JSON.stringify(cacheId)};
 const UPDATE_VERSION = ${JSON.stringify(cacheVersion)};
 const MANIFEST_KEY = new URL(".najm-pwa-manifest/" + UPDATE_CACHE_ID, self.registration.scope).href;
 const EXPECTED_MANIFEST = { version: UPDATE_VERSION, paths: PRECACHE };
+const INSTALL_BUDGET = ${JSON.stringify(budget ?? null)};
+const BUDGET_DATABASE = "najm-pwa-install-budget:" + UPDATE_CACHE_ID;
+
+// One readwrite transaction per change: atomic across tabs, registrations and
+// the browser's own update checks. Not the Cache API: WebKit discards every
+// cache write made by an install that then fails.
+function budgetTransaction(change) {
+  return new Promise((resolve, reject) => {
+    const open = indexedDB.open(BUDGET_DATABASE, 1);
+    open.onupgradeneeded = () => open.result.createObjectStore("attempts");
+    open.onerror = () => reject(open.error);
+    open.onsuccess = () => {
+      const database = open.result;
+      let refusal;
+      try {
+        const transaction = database.transaction("attempts", "readwrite");
+        transaction.oncomplete = () => { database.close(); resolve(); };
+        transaction.onabort = () => { database.close(); reject(refusal || transaction.error || new Error("Install budget unavailable")); };
+        change(transaction.objectStore("attempts"), (error) => { refusal = error; transaction.abort(); });
+      } catch (error) { database.close(); reject(error); }
+    };
+  });
+}
+
+// Reserve before any asset request, so an install killed mid-download still
+// counts. No tab, app opening or reconnect resets it: attempts expire after
+// the window, a new version has its own budget, a completed install clears it.
+// Unavailable storage refuses the install rather than download without a bound.
+async function reserveInstall() {
+  if (!INSTALL_BUDGET) return;
+  await budgetTransaction((store, refuse) => {
+    const read = store.get(UPDATE_VERSION);
+    read.onsuccess = () => {
+      const now = Date.now();
+      // A clock moved far back must not keep a version blocked indefinitely.
+      const attempts = (Array.isArray(read.result?.attempts) ? read.result.attempts : [])
+        .filter((time) => Number.isFinite(time) && Math.abs(now - time) < INSTALL_BUDGET.windowMs);
+      if (attempts.length >= INSTALL_BUDGET.attempts) refuse(new Error("Install attempts for this cacheVersion are exhausted"));
+      else store.put({ attempts: [...attempts, now] }, UPDATE_VERSION);
+    };
+  });
+}
+
+async function releaseInstall() {
+  if (!INSTALL_BUDGET) return;
+  // A completed download proves the origin serves a complete build again.
+  try { await budgetTransaction((store) => { store.clear(); }); } catch {}
+}
 
 async function readManifest(cache) {
   const response = await cache.match(MANIFEST_KEY);
@@ -22,6 +71,7 @@ async function installStaged() {
   if (previous && JSON.stringify(previous) !== JSON.stringify(EXPECTED_MANIFEST)) {
     throw new Error("A changed shell must use a new cacheVersion");
   }
+  await reserveInstall();
   // Download into an unpublished cache: a failed/mutable reinstall must never
   // overwrite assets still used by an active document with this version.
   const stagingName = CACHE_NAME + ":install:" + Date.now() + ":" + Math.random();
@@ -46,6 +96,7 @@ async function installStaged() {
   for (const path of PRECACHE) await cache.put(path, await candidate.match(path));
   await cache.put(MANIFEST_KEY, new Response(JSON.stringify(EXPECTED_MANIFEST), { headers: { "Content-Type": "application/json" } }));
   } finally { await caches.delete(stagingName); }
+  await releaseInstall();
 }
 
 async function stagedReady() {

@@ -159,6 +159,16 @@ cache. When the shell is missing, gateway responses remain unchanged and a
 timed request keeps waiting for the network; a network rejection receives the
 generic inline 503 retry document.
 
+By default every same-origin document outside `paths` is left to the browser,
+which shows its own error page when the connection fails. Set
+`otherDocuments: 'offlineDocument'` to answer an actual connection failure on
+those documents (sign-in screens, public pages, any unlisted URL) with the
+inline `offlineDocument` instead. Only a rejected request is replaced: their
+HTTP responses, including 401/403/404/5xx, redirects and downloads, are kept,
+and a slow document has no deadline. They never receive the cached shell, so
+an incomplete or evicted shell does not change their answer. The `/api`,
+`/_next`, RSC and non-navigation exclusions above still apply.
+
 The navigation option does not change immediate worker activation/cache cleanup, provide
 offline authorization or persist application data. The shell must check its
 own account/coverage policy before showing protected records. Omitting the
@@ -193,6 +203,28 @@ consent, then checks assets again. A dirty or unresponsive client blocks it.
 Consent describes that instant; it does not freeze subsequent editing. Open
 documents stay mounted after activation and can fetch old immutable assets.
 Cached readiness is rechecked before a shell fallback; eviction fails closed.
+
+A failing build is otherwise downloaded again on every browser update check,
+whatever the application schedules. Bound it with `installBudget`:
+
+```ts
+export const GET = createNajmServiceWorker({
+  // ...staged options
+  updatePolicy: 'staged',
+  installBudget: { attempts: 3, windowMs: 86_400_000 },
+});
+```
+
+At most `attempts` downloads of one `cacheVersion` can fail within the sliding
+`windowMs` (default one day), across tabs, app openings and the browser's own
+update checks. Each install reserves its attempt in IndexedDB before any asset
+request, so an install killed mid-download still counts; once the budget is
+spent, installation fails before downloading and the active worker keeps
+serving, answering status and consent messages. Nothing resets it per tab or
+reconnect: an attempt expires after the window, a new `cacheVersion` has its
+own budget, and a completed install clears the recorded attempts. A slow
+download is never counted as failed by a timer. If the budget cannot be
+recorded, installation is refused rather than downloading without a bound.
 
 The conservative retention policy consumes storage across releases. Applications
 must budget for it and implement deliberate device removal/recovery; safe

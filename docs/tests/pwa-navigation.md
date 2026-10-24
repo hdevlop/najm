@@ -50,3 +50,22 @@ synthetic shell evidence, not protected offline access or synchronization.
 Redirect behavior is exercised in native navigations, including the browser's
 opaque redirect response handling. See the [respondWith response restrictions](https://developer.mozilla.org/en-US/docs/Web/API/FetchEvent/respondWith)
 and [Request redirect modes](https://developer.mozilla.org/en-US/docs/Web/API/Request/redirect).
+
+## Offline document for unlisted documents
+
+Date: 2026-10-24. Candidate after `najm-next@0.13.0`; not yet released.
+
+`navigationFallback.otherDocuments: 'offlineDocument'` (default `'browser'`)
+answers an actual connection failure on any same-origin document outside
+`paths` with the inline `offlineDocument`. The cached shell is never used for
+those documents, they have no deadline, and every server response is kept.
+
+| Check | Result |
+| --- | --- |
+| Generated-worker cases | PASS: 35 navigation cases. Rejection on `/`, `/welcome`, sign-in/recovery and arbitrary paths answers the inline 503 document with `no-store`, never the cached shell, including with the shell missing; 200/302/307/401/403/404/500/502/503/504, downloads, opaque redirects and Flight content are kept; a response slower than the shell deadline is not replaced; `/api`, `/_next`, RSC headers, non-navigation, writes and other origins stay unhandled; caller cancellation propagates; invalid values are rejected; `'browser'` and omission keep unlisted documents unhandled |
+| Built-worker browser fixture | PASS: Chromium 156.0.8078.4, Firefox 157.0, Playwright WebKit 27.2 (`bun run --cwd packages/najm-next test:pwa:browser` after the build). Online, unlisted 200/401/503/404 and a 1.5 s document are unchanged. With the origin process stopped and browser connectivity on, `/`, `/welcome`, `/login`, `/reset-password` and an arbitrary path load and reload the branded offline document from the worker; `/api` and `/_next` still fail as browser errors. After evicting the cached shell, an unlisted and an allowlisted document both get the offline document |
+
+Chromium (Playwright 1.64.1) never settles `page.close()` after two
+consecutive browser error pages in a worker-controlled context, with or
+without this option, so each excluded `/api` and `/_next` navigation now uses
+its own page. Harness correction only; it does not change classification.

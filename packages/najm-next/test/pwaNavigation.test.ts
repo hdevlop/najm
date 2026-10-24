@@ -128,6 +128,11 @@ describe('opt-in navigation fallback', () => {
     expect((await rejected('/anywhere'))!.status).toBe(503);
   });
 
+  test('leaves unlisted documents to the browser by default', async () => {
+    const navigate = await worker({ config: { ...options, navigationFallback: { ...options.navigationFallback!, otherDocuments: 'browser' } } });
+    for (const path of ['/', '/login', '/students']) expect(navigate(path)).toBeUndefined();
+  });
+
   test('rejects invalid policy before generating a worker', () => {
     expect(() => createNajmServiceWorker({ navigationFallback: { paths: ['/students'] } })).toThrow('requires offlineUrl');
     for (const paths of [[], ['students'], ['//other/app'], ['/students?query'], ['/students#hash'], ['/students/../login'], ['/stu*dents'], ['/students\\other']]) {
@@ -136,5 +141,74 @@ describe('opt-in navigation fallback', () => {
     for (const timeoutMs of [0, -1, 1.5, NaN, Infinity, 60_001]) {
       expect(() => createNajmServiceWorker({ ...options, navigationFallback: { paths: ['/students'], timeoutMs } })).toThrow('timeoutMs');
     }
+    for (const otherDocuments of ['shell', '', null]) {
+      expect(() => createNajmServiceWorker({ ...options, navigationFallback: { paths: ['/students'], otherDocuments: otherDocuments as never } })).toThrow('otherDocuments');
+    }
+  });
+});
+
+describe('offline document for unlisted documents', () => {
+  const config: NajmServiceWorkerOptions = { ...options, navigationFallback: { ...options.navigationFallback!, otherDocuments: 'offlineDocument' } };
+  const offline = async () => { throw new TypeError('Network unavailable'); };
+
+  test('answers a connection failure with the inline document, never the cached shell', async () => {
+    const navigate = await worker({ config, network: offline });
+    for (const path of ['/', '/welcome', '/login?next=%2Fstudents', '/reset-password', '/students', '/students-extra/aya', '/any/unlisted/page']) {
+      const response = await navigate(path);
+      expect(response!.status).toBe(503);
+      expect(response!.headers.get('Cache-Control')).toBe('no-store');
+      expect(await response!.text()).toContain('You are offline');
+    }
+    expect(await (await navigate('/students/aya'))!.text()).toBe('public fixture shell');
+    // A missing or evicted shell does not change the unlisted answer.
+    const evicted = await worker({ config, network: offline, cached: false });
+    expect(await (await evicted('/welcome'))!.text()).toContain('You are offline');
+  });
+
+  test.each([200, 302, 307, 401, 403, 404, 500, 502, 503, 504])('keeps the actual %s response', async status => {
+    const navigate = await worker({ config, network: async () => new Response('original', { status }) });
+    const response = await navigate('/login');
+    expect(response!.status).toBe(status);
+    expect(await response!.text()).toBe('original');
+  });
+
+  test('keeps redirects, downloads, payloads and slow pages without the shell deadline', async () => {
+    const download = new Response('download', { headers: { 'Content-Disposition': 'attachment; filename=report.csv' } });
+    const opaque = new Response(null);
+    Object.defineProperty(opaque, 'type', { value: 'opaqueredirect' });
+    const flight = new Response('flight payload', { headers: { 'Content-Type': 'text/x-component' } });
+    for (const original of [download, opaque, flight]) {
+      const navigate = await worker({ config, network: async () => original });
+      expect(await navigate('/reports/export')).toBe(original);
+    }
+    let aborted = false;
+    const slow = await worker({ config, network: async (_, init) => {
+      init?.signal?.addEventListener('abort', () => { aborted = true; });
+      await Bun.sleep(30);
+      return new Response('late unlisted page');
+    } });
+    expect(await (await slow('/welcome'))!.text()).toBe('late unlisted page');
+    expect(aborted).toBe(false);
+  });
+
+  test('keeps API, framework, payload, write and external requests out', async () => {
+    const navigate = await worker({ config, network: offline });
+    for (const path of ['/api', '/api/auth/session', '/_next/static/app.js', '/welcome?_rsc=payload']) expect(navigate(path)).toBeUndefined();
+    for (const headers of [{ RSC: '1' }, { 'Next-Router-State-Tree': 'tree' }, { 'Next-Router-Prefetch': '1' }, { Accept: 'text/x-component' }]) {
+      expect(navigate('/welcome', { headers: new Headers(headers) })).toBeUndefined();
+    }
+    for (const overrides of [{ mode: 'cors' }, { mode: 'no-cors' }, { method: 'POST' }, { url: 'https://external.example/welcome' }]) {
+      expect(navigate('/welcome', overrides)).toBeUndefined();
+    }
+  });
+
+  test('preserves caller cancellation', async () => {
+    const caller = new AbortController();
+    const navigate = await worker({ config, network: async () => new Promise((_, reject) => {
+      caller.signal.addEventListener('abort', () => reject(new DOMException('Cancelled', 'AbortError')));
+    }) });
+    const response = navigate('/welcome', { signal: caller.signal });
+    caller.abort();
+    await expect(response).rejects.toThrow('Cancelled');
   });
 });

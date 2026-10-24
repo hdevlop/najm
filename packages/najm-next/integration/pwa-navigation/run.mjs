@@ -61,6 +61,17 @@ try {
         await page.getByRole('heading', { name: `Network status ${status}` }).waitFor();
       }
       result.checks.preserveAuthRedirect = 'PASS';
+      // Unlisted documents keep every actual response and have no deadline.
+      for (const [path, status, heading] of [['/welcome', 200, 'Public document'], ['/login?code=401', 401, 'Network status 401'], ['/login?code=503', 503, 'Network status 503']]) {
+        const response = await page.goto(origin + path);
+        assert.equal(response.status(), status);
+        await page.getByRole('heading', { name: heading, exact: true }).waitFor();
+      }
+      assert.equal((await page.goto(origin + '/unlisted/page')).status(), 404);
+      assert.equal(await page.locator('body').innerText(), 'Unlisted fixture route');
+      await page.goto(origin + '/unlisted/late');
+      await page.getByRole('heading', { name: 'Late unlisted document', exact: true }).waitFor();
+      result.checks.unlistedResponsesPreserved = 'PASS';
       for (const path of ['/api/data', '/_next/data', '/allowed/status?code=503&_rsc=payload']) {
         assert.equal((await page.goto(origin + path)).status(), 503);
         assert(!(await page.content()).includes('Synthetic shell'));
@@ -101,10 +112,29 @@ try {
       await stop();
       await page.goto(origin + '/allowed/cold?view=local');
       await page.getByRole('heading', { name: 'Synthetic shell', exact: true }).waitFor();
+      // With the origin process stopped, an unlisted document gets the public
+      // offline document, not the shell or a browser error.
+      const offlineDocument = async (target, path) => {
+        const response = await target.goto(origin + path);
+        assert.equal(response.status(), 503, path);
+        assert(response.fromServiceWorker(), path);
+        await target.getByRole('heading', { name: 'Fixture is offline', exact: true }).waitFor();
+        assert(!(await target.content()).includes('Synthetic shell'), path);
+      };
       const unlisted = await context.newPage();
-      try { await assert.rejects(unlisted.goto(origin + '/login', { timeout: 5_000 })); }
-      finally { await unlisted.close(); }
-      result.checks.rejectionAndUnlistedRoute = 'PASS';
+      try {
+        for (const path of ['/', '/welcome', '/login', '/reset-password?token=fixture', '/unlisted/arbitrary?view=1']) await offlineDocument(unlisted, path);
+        await unlisted.reload();
+        await unlisted.getByRole('heading', { name: 'Fixture is offline', exact: true }).waitFor();
+      } finally { await unlisted.close(); }
+      // One failed navigation per page: in a worker-controlled Chromium context,
+      // closing a page after two consecutive browser error pages never settles.
+      for (const path of ['/api/data', '/_next/data']) {
+        const excluded = await context.newPage();
+        try { await assert.rejects(excluded.goto(origin + path, { timeout: 5_000 }), path); }
+        finally { await excluded.close(); }
+      }
+      result.checks.rejectionAndUnlistedOfflineDocument = 'PASS';
       await start();
       await page.goto(origin + '/allowed/status?code=503');
       await page.evaluate(async () => (await caches.open('najm-pwa:navigation-fixture:v1')).delete('/shell.html'));
@@ -112,8 +142,12 @@ try {
       await page.goto(origin + '/allowed/late');
       await page.getByRole('heading', { name: 'Late network document' }).waitFor();
       result.checks.missingShellPreservesNetwork = 'PASS';
+      await stop();
+      await offlineDocument(page, '/welcome');
+      await offlineDocument(page, '/allowed/cold');
+      result.checks.evictedShellOfflineDocument = 'PASS';
       assert.deepEqual(result.errors, []);
-      console.log(`${engine} ${result.version}: gateway, deadline, late response, exclusions and redirects PASS`);
+      console.log(`${engine} ${result.version}: gateway, deadline, late response, exclusions, redirects and unlisted offline document PASS`);
     } catch (error) {
       failed = true;
       result.failure = error.stack;

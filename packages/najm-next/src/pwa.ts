@@ -43,6 +43,20 @@ export interface NajmNavigationFallbackOptions {
   paths: readonly string[];
   /** Wait for network response headers, in milliseconds. Default 10000; range 1-60000. */
   timeoutMs?: number;
+  /**
+   * Same-origin documents outside `paths`. `'browser'` (default) leaves them to
+   * the browser. `'offlineDocument'` answers only an actual connection failure
+   * with the inline offline document: their responses, redirects and slow loads
+   * are kept, and the cached shell is never used for them.
+   */
+  otherDocuments?: 'browser' | 'offlineDocument';
+}
+
+export interface NajmInstallBudgetOptions {
+  /** Failed asset downloads allowed per `cacheVersion` within `windowMs`. Integer 1-20. */
+  attempts: number;
+  /** Sliding window in milliseconds. Default 86400000 (one day); range 60000-2592000000. */
+  windowMs?: number;
 }
 
 export interface NajmServiceWorkerOptions {
@@ -60,6 +74,12 @@ export interface NajmServiceWorkerOptions {
   navigationFallback?: NajmNavigationFallbackOptions;
   /** Wait for explicit all-client consent and retain old public assets. Default immediate. */
   updatePolicy?: 'immediate' | 'staged';
+  /**
+   * Staged only: bound failed asset downloads per version across tabs, app
+   * openings and the browser's own update checks. An attempt is reserved
+   * before any asset request and released only by a completed install.
+   */
+  installBudget?: NajmInstallBudgetOptions;
   /** Optional reusable web-push behavior. */
   push?: NajmServiceWorkerPushOptions;
 }
@@ -241,6 +261,21 @@ function createWorkerSource(options: NajmServiceWorkerOptions): string {
     if (!Number.isInteger(timeoutMs) || timeoutMs < 1 || timeoutMs > 60_000) {
       throw new TypeError('[najm-next] navigationFallback.timeoutMs must be an integer from 1 to 60000.');
     }
+    if (navigation.otherDocuments !== undefined && !['browser', 'offlineDocument'].includes(navigation.otherDocuments)) {
+      throw new TypeError("[najm-next] navigationFallback.otherDocuments must be 'browser' or 'offlineDocument'.");
+    }
+  }
+  const otherDocuments = navigation?.otherDocuments === 'offlineDocument';
+  const budget = options.installBudget;
+  if (budget !== undefined) {
+    if (!staged) throw new TypeError("[najm-next] installBudget requires updatePolicy: 'staged'.");
+    if (!budget || !Number.isInteger(budget.attempts) || budget.attempts < 1 || budget.attempts > 20) {
+      throw new TypeError('[najm-next] installBudget.attempts must be an integer from 1 to 20.');
+    }
+    const windowMs = budget.windowMs ?? 86_400_000;
+    if (!Number.isInteger(windowMs) || windowMs < 60_000 || windowMs > 2_592_000_000) {
+      throw new TypeError('[najm-next] installBudget.windowMs must be an integer from 60000 to 2592000000.');
+    }
   }
 
   return `const CACHE_PREFIX = ${JSON.stringify(`najm-pwa:${cacheId}:`)};
@@ -248,7 +283,7 @@ const CACHE_NAME = CACHE_PREFIX + ${JSON.stringify(cacheVersion)};
 const OFFLINE_URL = ${JSON.stringify(offlineUrl)};
 const PRECACHE = ${JSON.stringify(precache)};
 const INLINE_OFFLINE_DOCUMENT = ${JSON.stringify(inlineDocument)};
-${staged ? stagedWorkerSource(cacheId, cacheVersion) : ''}
+${staged ? stagedWorkerSource(cacheId, cacheVersion, budget && { attempts: budget.attempts, windowMs: budget.windowMs ?? 86_400_000 }) : ''}
 ${navigation ? `const NAVIGATION_PATHS = ${JSON.stringify([...new Set(navigation.paths)])};
 const NAVIGATION_TIMEOUT_MS = ${JSON.stringify(navigation.timeoutMs ?? 10_000)};
 
@@ -298,7 +333,18 @@ async function navigateWithFallback(request) {
     request.signal.removeEventListener("abort", cancel);
   }
 }
-` : ''}
+${otherDocuments ? `
+// Unlisted documents keep every server response and have no deadline: only a
+// connection failure becomes the public offline document, never the shell.
+async function navigateWithOfflineDocument(request) {
+  try {
+    return await fetch(request);
+  } catch (error) {
+    if (request.signal.aborted) throw error;
+    return inlineOfflineResponse();
+  }
+}
+` : ''}` : ''}
 
 function inlineOfflineResponse() {
   return new Response(INLINE_OFFLINE_DOCUMENT, {
@@ -374,7 +420,10 @@ ${staged ? `
 ${navigation ? `
   if (!NAVIGATION_PATHS.some((path) => path.endsWith("/*")
     ? requestUrl.pathname.startsWith(path.slice(0, -1))
-    : requestUrl.pathname === path)) return;
+    : requestUrl.pathname === path)) {${otherDocuments ? `
+    event.respondWith(navigateWithOfflineDocument(request));` : ''}
+    return;
+  }
   event.respondWith(navigateWithFallback(request));
 ` : `
 

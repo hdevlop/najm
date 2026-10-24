@@ -3,7 +3,8 @@ import { createNajmServiceWorker } from '../../dist/pwa.js';
 const worker = createNajmServiceWorker({
   cacheId: 'navigation-fixture', cacheVersion: 'v1', offlineUrl: '/shell.html', precache: ['/asset.js'],
   // Deliberately include API/framework paths to prove the hard exclusions.
-  navigationFallback: { paths: ['/allowed/*', '/api/*', '/_next/*'], timeoutMs: 500 },
+  navigationFallback: { paths: ['/allowed/*', '/api/*', '/_next/*'], timeoutMs: 500, otherDocuments: 'offlineDocument' },
+  offlineDocument: { title: 'Fixture is offline', retryLabel: 'Retry fixture' },
 });
 const html = heading => new Response(`<!doctype html><h1>${heading}</h1>`, { headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' } });
 const server = Bun.serve({
@@ -19,6 +20,11 @@ const server = Bun.serve({
         document.getElementById('ready').textContent = 'Ready';
       });</script>`, { headers: { 'Content-Type': 'text/html' } });
     if (url.pathname === '/allowed/hang') return new Promise(() => {});
+    if (url.pathname === '/welcome' || url.pathname === '/') return html('Public document');
+    if (url.pathname === '/unlisted/late') {
+      await Bun.sleep(1_500);
+      return html('Late unlisted document');
+    }
     if (url.pathname === '/allowed/late') {
       await Bun.sleep(1_500);
       return html('Late network document');
