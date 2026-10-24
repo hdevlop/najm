@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.15.0 - 2026-10-24
+
+- Add `offlineDocument.languages`: the inline offline document shows its
+  notice in several languages, stacked, each in its own direction. The
+  worker puts first the language the app last recorded with the new
+  `rememberNajmOfflineLanguage()` from `najm-next/pwa/client` (a region tag
+  matches its language); the document stays script-free. An unknown or
+  unreadable record keeps the configured order. `languages` replaces the
+  single-language `language`, `direction`, `title`, `description` and
+  `retryLabel`, which are unchanged when it is omitted.
+- `offlineDocument.direction` is validated: anything but `ltr`, `rtl` or
+  `auto` throws instead of reaching the document.
+- Prove the recorded-language order in Chromium, Firefox and WebKit.
+
 ## 0.14.0 - 2026-10-24
 
 - Add `navigationFallback.otherDocuments: 'offlineDocument'`: a same-origin
