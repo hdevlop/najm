@@ -211,6 +211,9 @@ describe('offline document for unlisted documents', () => {
     expect(html).toContain('<html lang="fr" dir="auto">');
     expect(order(html)).toEqual(['fr auto 1', 'ar rtl 2', 'en auto 2']);
     expect(html).toContain('Reconnect, then &lt;try&gt; again &amp; again.');
+    // Taller than a small screen, the stack keeps clear of its edges; one notice is unchanged.
+    expect(html).toContain('main{padding:2rem 0}');
+    expect(await (await (await worker({ config, network: offline }))('/welcome'))!.text()).not.toContain('main{padding');
     expect(await rememberNajmOfflineLanguage({ cacheId: 'app', language: 'ar', indexedDB: database })).toBe(true);
     html = await page();
     expect(html).toContain('<html lang="ar" dir="rtl">');

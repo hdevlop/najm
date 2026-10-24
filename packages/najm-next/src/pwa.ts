@@ -211,8 +211,10 @@ function createOfflineDocuments(options: NajmOfflineDocumentOptions = {}): [stri
     seen.add(text.language.toLowerCase());
     return text;
   });
-  // The first language leads; the others follow it, smaller, each in its own direction.
+  // The first language leads; the others follow it, smaller, each in its own
+  // direction. Taller than a small screen, the stack keeps clear of its edges.
   const stacked = `
+      main{padding:2rem 0}
       h2{margin:0 0 .25rem;font-size:1.125rem}
       section+section{margin-top:1.75rem;padding-top:1.5rem;border-top:1px solid ${mutedColor}}
       section+section a{margin-top:.5rem;padding:.5rem .9rem;border:1px solid ${mutedColor};background:none;color:${foregroundColor}}`;
