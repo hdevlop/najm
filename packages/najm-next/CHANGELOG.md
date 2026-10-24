@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.14.0 - 2026-10-24
+
+- Add `navigationFallback.otherDocuments: 'offlineDocument'`: a same-origin
+  document outside `paths` gets the inline offline document on an actual
+  connection failure. Its responses, redirects, downloads and slow loads are
+  kept, and it never receives the cached shell. The default `'browser'` keeps
+  the previous behavior.
+- Add staged-only `installBudget: { attempts, windowMs }`: failed asset
+  downloads of one `cacheVersion` are bounded within a sliding window across
+  tabs, app openings and browser update checks. Each install reserves its
+  attempt in IndexedDB before any asset request; a spent budget fails the
+  install before downloading and keeps the active worker. A completed
+  install clears the record. Opt-in.
+- Prove both in Chromium, Firefox and WebKit.
+
 ## 0.13.0 - 2026-10-19
 
 - Add opt-in staged public-shell updates with complete-manifest readiness,
