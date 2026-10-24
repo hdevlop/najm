@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.15.1 - 2026-10-24
+
+- The stacked offline document (`offlineDocument.languages`) pads its content:
+  taller than a small phone screen, its first heading touched the top edge.
+  A single-language document is unchanged.
+
 ## 0.15.0 - 2026-10-24
 
 - Add `offlineDocument.languages`: the inline offline document shows its
