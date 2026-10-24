@@ -169,6 +169,37 @@ and a slow document has no deadline. They never receive the cached shell, so
 an incomplete or evicted shell does not change their answer. The `/api`,
 `/_next`, RSC and non-navigation exclusions above still apply.
 
+The inline document can show its notice in several languages, stacked, led by
+the language the app last displayed:
+
+```ts
+export const GET = createNajmServiceWorker({
+  cacheId: 'my-app',
+  // ...
+  offlineDocument: {
+    languages: [
+      { language: 'fr', title: 'Hors ligne', description: 'Reconnectez-vous, puis réessayez.', retryLabel: 'Réessayer' },
+      { language: 'ar', direction: 'rtl', title: 'غير متصل', description: 'أعد الاتصال، ثم حاول مجددًا.', retryLabel: 'إعادة المحاولة' },
+      { language: 'en', title: 'Offline', description: 'Reconnect, then try again.', retryLabel: 'Try again' },
+    ],
+  },
+});
+```
+
+```ts
+import { rememberNajmOfflineLanguage } from 'najm-next/pwa/client';
+
+// On each page and whenever the user changes language.
+await rememberNajmOfflineLanguage({ cacheId: 'my-app', language: document.documentElement.lang });
+```
+
+The worker reads that record from IndexedDB when it answers, so the document
+itself stays script-free. A recorded language comes first when it is listed (a
+region tag such as `fr-MA` matches `fr`), the others follow in the configured
+order, and an unknown or unreadable record keeps that order. `languages`
+replaces `language`, `direction`, `title`, `description` and `retryLabel`;
+each entry needs all three texts, and a language may appear once.
+
 The navigation option does not change immediate worker activation/cache cleanup, provide
 offline authorization or persist application data. The shell must check its
 own account/coverage policy before showing protected records. Omitting the

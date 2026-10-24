@@ -1,5 +1,24 @@
 import { expect, test } from 'bun:test';
-import { connectNajmPwaClient } from '../src/pwaClient';
+import { IDBFactory } from 'fake-indexeddb';
+import { connectNajmPwaClient, rememberNajmOfflineLanguage } from '../src/pwaClient';
+
+test('records the displayed language per app, refusing invalid input and reporting unavailable storage', async () => {
+  const database = new IDBFactory();
+  expect(await rememberNajmOfflineLanguage({ cacheId: 'school', language: 'ar', indexedDB: database })).toBe(true);
+  expect(await rememberNajmOfflineLanguage({ cacheId: 'school', language: 'fr-MA', indexedDB: database })).toBe(true);
+  const stored = await new Promise(resolve => {
+    const open = database.open('najm-pwa-offline-language:school');
+    open.onsuccess = () => {
+      const read = open.result.transaction('values').objectStore('values').get('language');
+      read.onsuccess = () => { open.result.close(); resolve(read.result); };
+    };
+  });
+  expect(stored).toBe('fr-MA');
+  await expect(rememberNajmOfflineLanguage({ cacheId: 'school app', language: 'ar', indexedDB: database })).rejects.toThrow('cacheId');
+  await expect(rememberNajmOfflineLanguage({ cacheId: 'school', language: 'ar"><', indexedDB: database })).rejects.toThrow('language');
+  const denied = { open() { throw new DOMException('Denied', 'SecurityError'); } } as unknown as IDBFactory;
+  expect(await rememberNajmOfflineLanguage({ cacheId: 'school', language: 'ar', indexedDB: denied })).toBe(false);
+});
 
 function fixture(scope = 'https://school.example/app/') {
   const messages: string[] = [];

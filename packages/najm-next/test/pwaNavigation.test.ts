@@ -1,5 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import { createNajmServiceWorker, type NajmServiceWorkerOptions } from '../src/pwa';
+import { IDBFactory } from 'fake-indexeddb';
+import { createNajmServiceWorker, type NajmOfflineDocumentOptions, type NajmOfflineDocumentText,
+  type NajmServiceWorkerOptions } from '../src/pwa';
+import { rememberNajmOfflineLanguage } from '../src/pwaClient';
 
 const origin = 'https://app.example';
 const options: NajmServiceWorkerOptions = {
@@ -7,14 +10,15 @@ const options: NajmServiceWorkerOptions = {
   navigationFallback: { paths: ['/attendance/students', '/students/*'], timeoutMs: 15 },
 };
 
-async function worker({ config = options, network = async () => new Response('online'), cached = true }:
-  { config?: NajmServiceWorkerOptions; network?: (request: any, init?: RequestInit) => Promise<Response>; cached?: boolean } = {}) {
+async function worker({ config = options, network = async () => new Response('online'), cached = true, database }:
+  { config?: NajmServiceWorkerOptions; network?: (request: any, init?: RequestInit) => Promise<Response>; cached?: boolean;
+    database?: IDBFactory } = {}) {
   const handlers = new Map<string, (event: any) => void>();
   const source = await createNajmServiceWorker(config)().text();
   const shell = new Response('public fixture shell', { headers: { 'Content-Type': 'text/html' } });
-  new Function('self', 'caches', 'fetch', source)(
+  new Function('self', 'caches', 'fetch', 'indexedDB', source)(
     { location: { origin }, addEventListener: (type: string, handler: (event: any) => void) => handlers.set(type, handler) },
-    { open: async () => ({ match: async () => cached ? shell.clone() : undefined }) }, network,
+    { open: async () => ({ match: async () => cached ? shell.clone() : undefined }) }, network, database,
   );
   return (path: string, overrides: Record<string, unknown> = {}) => {
     let response: Promise<Response> | undefined;
@@ -189,6 +193,51 @@ describe('offline document for unlisted documents', () => {
     } });
     expect(await (await slow('/welcome'))!.text()).toBe('late unlisted page');
     expect(aborted).toBe(false);
+  });
+
+  const languages: NajmOfflineDocumentText[] = [
+    { language: 'fr', title: 'MyScolAI est hors ligne', description: 'Reconnectez-vous, puis réessayez.', retryLabel: 'Réessayer' },
+    { language: 'ar', direction: 'rtl', title: 'MyScolAI غير متصل', description: 'أعد الاتصال، ثم حاول مجددًا.', retryLabel: 'إعادة المحاولة' },
+    { language: 'en', title: 'MyScolAI is offline', description: 'Reconnect, then <try> again & again.', retryLabel: 'Try again' },
+  ];
+  const stacked: NajmServiceWorkerOptions = { ...config, offlineDocument: { languages } };
+  const order = (html: string) => [...html.matchAll(/<section lang="([^"]+)" dir="([^"]+)"><h([12])>/g)].map(match => match.slice(1).join(' '));
+
+  test('stacks every language, leading with the one the app last recorded', async () => {
+    const database = new IDBFactory();
+    const navigate = await worker({ config: stacked, network: offline, database });
+    const page = async () => (await navigate('/welcome'))!.text();
+    let html = await page();
+    expect(html).toContain('<html lang="fr" dir="auto">');
+    expect(order(html)).toEqual(['fr auto 1', 'ar rtl 2', 'en auto 2']);
+    expect(html).toContain('Reconnect, then &lt;try&gt; again &amp; again.');
+    expect(await rememberNajmOfflineLanguage({ cacheId: 'app', language: 'ar', indexedDB: database })).toBe(true);
+    html = await page();
+    expect(html).toContain('<html lang="ar" dir="rtl">');
+    expect(html).toContain('<title>MyScolAI غير متصل</title>');
+    expect(order(html)).toEqual(['ar rtl 1', 'fr auto 2', 'en auto 2']);
+    // A region tag matches its language; a language without a text, or another app's record, keeps the order.
+    await rememberNajmOfflineLanguage({ cacheId: 'app', language: 'en-GB', indexedDB: database });
+    expect(order(await page())).toEqual(['en auto 1', 'fr auto 2', 'ar rtl 2']);
+    await rememberNajmOfflineLanguage({ cacheId: 'app', language: 'es', indexedDB: database });
+    expect(order(await page())).toEqual(['fr auto 1', 'ar rtl 2', 'en auto 2']);
+    await rememberNajmOfflineLanguage({ cacheId: 'other-app', language: 'ar', indexedDB: database });
+    expect(order(await page())).toEqual(['fr auto 1', 'ar rtl 2', 'en auto 2']);
+    // Without IndexedDB the document still answers, in the configured order.
+    const unavailable = await worker({ config: stacked, network: offline });
+    expect(order(await (await unavailable('/welcome'))!.text())).toEqual(['fr auto 1', 'ar rtl 2', 'en auto 2']);
+  });
+
+  test('rejects ambiguous or invalid stacked languages', () => {
+    const build = (offlineDocument: NajmOfflineDocumentOptions) => () => createNajmServiceWorker({ ...config, offlineDocument });
+    expect(build({ languages, title: 'Offline' })).toThrow('offlineDocument.languages replaces offlineDocument.title');
+    expect(build({ languages, direction: 'rtl' })).toThrow('replaces offlineDocument.direction');
+    expect(build({ languages: [] })).toThrow('non-empty array');
+    expect(build({ languages: [{ ...languages[0]!, language: 'fr_FR' }] })).toThrow('languages[0].language must be a valid language tag');
+    expect(build({ languages: [languages[0]!, { ...languages[2]!, language: 'FR' }] })).toThrow('languages[1].language repeats FR');
+    expect(build({ languages: [{ ...languages[0]!, title: ' ' }] })).toThrow('languages[0].title must be a non-empty string');
+    expect(build({ languages: [{ ...languages[0]!, direction: 'up' as never }] })).toThrow("must be 'ltr', 'rtl' or 'auto'");
+    expect(build({ direction: '"><script>' as never })).toThrow("offlineDocument.direction must be 'ltr', 'rtl' or 'auto'");
   });
 
   test('keeps API, framework, payload, write and external requests out', async () => {

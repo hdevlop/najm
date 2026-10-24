@@ -1,4 +1,6 @@
 import { stagedWorkerSource } from './internal/stagedWorker';
+import { CACHE_TOKEN, LANGUAGE_TAG, OFFLINE_LANGUAGE_DATABASE_PREFIX, OFFLINE_LANGUAGE_KEY,
+  OFFLINE_LANGUAGE_STORE } from './internal/offlineLanguage';
 
 const WORKER_HEADERS = {
   'Cache-Control': 'no-cache, no-store, must-revalidate',
@@ -8,12 +10,20 @@ const WORKER_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
 } as const;
 
-const CACHE_TOKEN = /^[a-z0-9][a-z0-9._-]*$/i;
 const HEX_COLOR = /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i;
-const LANGUAGE_TAG = /^[a-z]{2,3}(?:-[a-z0-9]{2,8})*$/i;
 const MAX_PUSH_NOTIFICATION_ID_LENGTH = 100;
 const MAX_PUSH_TITLE_LENGTH = 120;
 const MAX_PUSH_BODY_LENGTH = 300;
+
+/** The offline notice in one language. */
+export interface NajmOfflineDocumentText {
+  /** BCP 47 language tag; each language appears once. */
+  language: string;
+  direction?: 'ltr' | 'rtl' | 'auto';
+  title: string;
+  description: string;
+  retryLabel: string;
+}
 
 export interface NajmOfflineDocumentOptions {
   backgroundColor?: string;
@@ -21,6 +31,14 @@ export interface NajmOfflineDocumentOptions {
   direction?: 'ltr' | 'rtl' | 'auto';
   foregroundColor?: string;
   language?: string;
+  /**
+   * The notice in several languages, stacked in one document. The language the
+   * app last recorded with `rememberNajmOfflineLanguage()` comes first when it
+   * is listed (a region tag matches its language), then the others in this
+   * order. Replaces `language`, `direction`, `title`, `description` and
+   * `retryLabel`.
+   */
+  languages?: readonly NajmOfflineDocumentText[];
   mutedColor?: string;
   retryLabel?: string;
   themeColor?: string;
@@ -117,40 +135,92 @@ function escapeHtml(value: string): string {
     .replaceAll("'", '&#039;');
 }
 
-function createOfflineDocument(options: NajmOfflineDocumentOptions = {}): string {
-  const language = options.language ?? 'en';
-  if (!LANGUAGE_TAG.test(language)) {
-    throw new TypeError('[najm-next] offlineDocument.language must be a valid language tag.');
-  }
+type OfflineText = { language: string; direction: string; title: string; description: string; retryLabel: string };
 
-  const direction = options.direction ?? 'auto';
+/** One language's notice, validated and escaped. Stacked texts must not be empty. */
+function offlineText(value: Partial<NajmOfflineDocumentText>, name: string, stacked: boolean): OfflineText {
+  const { language, direction = 'auto' } = value;
+  if (typeof language !== 'string' || !LANGUAGE_TAG.test(language)) {
+    throw new TypeError(`[najm-next] ${name}.language must be a valid language tag.`);
+  }
+  if (!['ltr', 'rtl', 'auto'].includes(direction)) {
+    throw new TypeError(`[najm-next] ${name}.direction must be 'ltr', 'rtl' or 'auto'.`);
+  }
+  const text = (field: 'title' | 'description' | 'retryLabel') => {
+    const content = value[field];
+    if (typeof content !== 'string' || (stacked && !content.trim())) {
+      throw new TypeError(`[najm-next] ${name}.${field} must be a ${stacked ? 'non-empty ' : ''}string.`);
+    }
+    return escapeHtml(content);
+  };
+  return { language, direction, title: text('title'), description: text('description'), retryLabel: text('retryLabel') };
+}
+
+/**
+ * The inline offline document as [language, html] pairs, one for each
+ * language that can come first. The worker serves the pair of the language
+ * the app last recorded, else the first.
+ */
+function createOfflineDocuments(options: NajmOfflineDocumentOptions = {}): [string, string][] {
   const backgroundColor = color(options.backgroundColor, '#f8fafc', 'offlineDocument.backgroundColor');
   const foregroundColor = color(options.foregroundColor, '#0f172a', 'offlineDocument.foregroundColor');
   const mutedColor = color(options.mutedColor, '#475569', 'offlineDocument.mutedColor');
   const themeColor = color(options.themeColor, backgroundColor, 'offlineDocument.themeColor');
-  const title = escapeHtml(options.title ?? 'You are offline');
-  const description = escapeHtml(
-    options.description ?? 'Reconnect to the internet, then try loading this page again.',
-  );
-  const retryLabel = escapeHtml(options.retryLabel ?? 'Try again');
-
-  return `<!doctype html>
-<html lang="${language}" dir="${direction}">
+  const page = (first: OfflineText, body: string, style = '') => `<!doctype html>
+<html lang="${first.language}" dir="${first.direction}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="theme-color" content="${themeColor}">
-    <title>${title}</title>
+    <title>${first.title}</title>
     <style>
       :root{color-scheme:light dark;font-family:system-ui,sans-serif}
       body{min-height:100vh;margin:0;display:grid;place-items:center;background:${backgroundColor};color:${foregroundColor}}
       main{width:min(30rem,calc(100% - 3rem));text-align:center}
       h1{margin:0 0 .5rem}p{line-height:1.6;color:${mutedColor}}
-      a{display:inline-block;margin-top:1rem;border-radius:.75rem;padding:.8rem 1.2rem;background:${foregroundColor};color:${backgroundColor};font-weight:700;text-decoration:none}
+      a{display:inline-block;margin-top:1rem;border-radius:.75rem;padding:.8rem 1.2rem;background:${foregroundColor};color:${backgroundColor};font-weight:700;text-decoration:none}${style}
     </style>
   </head>
-  <body><main><h1>${title}</h1><p>${description}</p><a href="">${retryLabel}</a></main></body>
+  <body><main>${body}</main></body>
 </html>`;
+
+  if (options.languages === undefined) {
+    const text = offlineText({
+      language: options.language ?? 'en',
+      direction: options.direction,
+      title: options.title ?? 'You are offline',
+      description: options.description ?? 'Reconnect to the internet, then try loading this page again.',
+      retryLabel: options.retryLabel ?? 'Try again',
+    }, 'offlineDocument', false);
+    return [[text.language, page(text, `<h1>${text.title}</h1><p>${text.description}</p><a href="">${text.retryLabel}</a>`)]];
+  }
+
+  for (const field of ['language', 'direction', 'title', 'description', 'retryLabel'] as const) {
+    if (options[field] !== undefined) {
+      throw new TypeError(`[najm-next] offlineDocument.languages replaces offlineDocument.${field}.`);
+    }
+  }
+  if (!Array.isArray(options.languages) || !options.languages.length) {
+    throw new TypeError('[najm-next] offlineDocument.languages must be a non-empty array.');
+  }
+  const seen = new Set<string>();
+  const texts = options.languages.map((value, index) => {
+    const name = `offlineDocument.languages[${index}]`;
+    const text = offlineText(value ?? {}, name, true);
+    if (seen.has(text.language.toLowerCase())) throw new TypeError(`[najm-next] ${name}.language repeats ${text.language}.`);
+    seen.add(text.language.toLowerCase());
+    return text;
+  });
+  // The first language leads; the others follow it, smaller, each in its own direction.
+  const stacked = `
+      h2{margin:0 0 .25rem;font-size:1.125rem}
+      section+section{margin-top:1.75rem;padding-top:1.5rem;border-top:1px solid ${mutedColor}}
+      section+section a{margin-top:.5rem;padding:.5rem .9rem;border:1px solid ${mutedColor};background:none;color:${foregroundColor}}`;
+  return texts.map((first): [string, string] => [first.language, page(first, [first, ...texts.filter(text => text !== first)]
+    .map((text, index) => {
+      const heading = index ? 'h2' : 'h1';
+      return `<section lang="${text.language}" dir="${text.direction}"><${heading}>${text.title}</${heading}><p>${text.description}</p><a href="">${text.retryLabel}</a></section>`;
+    }).join(''), stacked)]);
 }
 
 function createPushWorkerSource(options: NajmServiceWorkerPushOptions | undefined): string {
@@ -239,7 +309,7 @@ function createWorkerSource(options: NajmServiceWorkerOptions): string {
     ...(offlineUrl ? [offlineUrl] : []),
     ...(options.precache ?? []).map((path, index) => assertPath(path, `precache[${index}]`)),
   ])];
-  const inlineDocument = createOfflineDocument(options.offlineDocument);
+  const inlineDocuments = createOfflineDocuments(options.offlineDocument);
   const pushWorkerSource = createPushWorkerSource(options.push);
   const navigation = options.navigationFallback;
   const staged = options.updatePolicy === 'staged';
@@ -282,7 +352,8 @@ function createWorkerSource(options: NajmServiceWorkerOptions): string {
 const CACHE_NAME = CACHE_PREFIX + ${JSON.stringify(cacheVersion)};
 const OFFLINE_URL = ${JSON.stringify(offlineUrl)};
 const PRECACHE = ${JSON.stringify(precache)};
-const INLINE_OFFLINE_DOCUMENT = ${JSON.stringify(inlineDocument)};
+const INLINE_OFFLINE_DOCUMENTS = ${JSON.stringify(inlineDocuments)};
+const OFFLINE_LANGUAGE_DATABASE = ${JSON.stringify(OFFLINE_LANGUAGE_DATABASE_PREFIX + cacheId)};
 ${staged ? stagedWorkerSource(cacheId, cacheVersion, budget && { attempts: budget.attempts, windowMs: budget.windowMs ?? 86_400_000 }) : ''}
 ${navigation ? `const NAVIGATION_PATHS = ${JSON.stringify([...new Set(navigation.paths)])};
 const NAVIGATION_TIMEOUT_MS = ${JSON.stringify(navigation.timeoutMs ?? 10_000)};
@@ -346,8 +417,36 @@ async function navigateWithOfflineDocument(request) {
 }
 ` : ''}` : ''}
 
-function inlineOfflineResponse() {
-  return new Response(INLINE_OFFLINE_DOCUMENT, {
+// The language rememberNajmOfflineLanguage() last recorded, or null. Read only
+// when there is a choice, and never for longer than a second.
+function rememberedLanguage() {
+  if (INLINE_OFFLINE_DOCUMENTS.length < 2 || typeof indexedDB === "undefined") return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => resolve(null), 1000);
+    const done = (language) => { clearTimeout(timer); resolve(typeof language === "string" ? language : null); };
+    try {
+      const open = indexedDB.open(OFFLINE_LANGUAGE_DATABASE, 1);
+      open.onupgradeneeded = () => open.result.createObjectStore(${JSON.stringify(OFFLINE_LANGUAGE_STORE)});
+      open.onerror = () => done(null);
+      open.onsuccess = () => {
+        const database = open.result;
+        try {
+          const read = database.transaction(${JSON.stringify(OFFLINE_LANGUAGE_STORE)})
+            .objectStore(${JSON.stringify(OFFLINE_LANGUAGE_STORE)}).get(${JSON.stringify(OFFLINE_LANGUAGE_KEY)});
+          read.onsuccess = () => { database.close(); done(read.result); };
+          read.onerror = () => { database.close(); done(null); };
+        } catch { database.close(); done(null); }
+      };
+    } catch { done(null); }
+  });
+}
+
+async function inlineOfflineResponse() {
+  const remembered = ((await rememberedLanguage()) || "").toLowerCase();
+  const [, html] = INLINE_OFFLINE_DOCUMENTS.find(([language]) => language.toLowerCase() === remembered)
+    || INLINE_OFFLINE_DOCUMENTS.find(([language]) => language.split("-")[0].toLowerCase() === remembered.split("-")[0])
+    || INLINE_OFFLINE_DOCUMENTS[0];
+  return new Response(html, {
     status: 503,
     headers: {
       "Cache-Control": "no-store",

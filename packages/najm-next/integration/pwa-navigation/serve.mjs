@@ -1,10 +1,15 @@
 import { createNajmServiceWorker } from '../../dist/pwa.js';
 
+const dist = new URL('../../dist/', import.meta.url);
 const worker = createNajmServiceWorker({
   cacheId: 'navigation-fixture', cacheVersion: 'v1', offlineUrl: '/shell.html', precache: ['/asset.js'],
   // Deliberately include API/framework paths to prove the hard exclusions.
   navigationFallback: { paths: ['/allowed/*', '/api/*', '/_next/*'], timeoutMs: 500, otherDocuments: 'offlineDocument' },
-  offlineDocument: { title: 'Fixture is offline', retryLabel: 'Retry fixture' },
+  offlineDocument: { languages: [
+    { language: 'en', title: 'Fixture is offline', description: 'Reconnect, then retry the fixture.', retryLabel: 'Retry fixture' },
+    { language: 'fr', title: 'La démo est hors ligne', description: 'Reconnectez-vous, puis réessayez.', retryLabel: 'Réessayer' },
+    { language: 'ar', direction: 'rtl', title: 'العرض غير متصل', description: 'أعد الاتصال، ثم حاول مجددًا.', retryLabel: 'إعادة المحاولة' },
+  ] },
 });
 const html = heading => new Response(`<!doctype html><h1>${heading}</h1>`, { headers: { 'Content-Type': 'text/html', 'Cache-Control': 'no-store' } });
 const server = Bun.serve({
@@ -14,6 +19,10 @@ const server = Bun.serve({
     if (url.pathname === '/sw.js') return worker();
     if (url.pathname === '/shell.html') return html('Synthetic shell');
     if (url.pathname === '/asset.js') return new Response('// public fixture asset');
+    // The built browser client, so a page can record its language as an app would.
+    if (/^\/dist\/[\w.-]+\.js$/.test(url.pathname)) {
+      return new Response(Bun.file(new URL(url.pathname.slice('/dist/'.length), dist)), { headers: { 'Content-Type': 'text/javascript' } });
+    }
     if (url.pathname === '/start') return new Response(`<!doctype html><h1>Navigation fixture</h1><output id="ready">Preparing</output><script>
       navigator.serviceWorker.register('/sw.js').then(() => navigator.serviceWorker.ready).then(async () => {
         if (!navigator.serviceWorker.controller) await new Promise(resolve => navigator.serviceWorker.addEventListener('controllerchange', resolve, {once:true}));

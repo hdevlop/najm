@@ -114,11 +114,13 @@ try {
       await page.getByRole('heading', { name: 'Synthetic shell', exact: true }).waitFor();
       // With the origin process stopped, an unlisted document gets the public
       // offline document, not the shell or a browser error.
-      const offlineDocument = async (target, path) => {
+      // Every language is stacked; the one the app last recorded leads (none yet: the configured first).
+      const offlineDocument = async (target, path, lead = ['en', 'Fixture is offline']) => {
         const response = await target.goto(origin + path);
         assert.equal(response.status(), 503, path);
         assert(response.fromServiceWorker(), path);
         await target.getByRole('heading', { name: 'Fixture is offline', exact: true }).waitFor();
+        assert.deepEqual([await target.locator('html').getAttribute('lang'), await target.locator('h1').textContent()], lead, path);
         assert(!(await target.content()).includes('Synthetic shell'), path);
       };
       const unlisted = await context.newPage();
@@ -142,12 +144,18 @@ try {
       await page.goto(origin + '/allowed/late');
       await page.getByRole('heading', { name: 'Late network document' }).waitFor();
       result.checks.missingShellPreservesNetwork = 'PASS';
+      // The page records its language through the published client, as an app does.
+      assert.equal(await page.evaluate(() => import('/dist/pwaClient.js').then(client =>
+        client.rememberNajmOfflineLanguage({ cacheId: 'navigation-fixture', language: 'ar' }))), true);
       await stop();
-      await offlineDocument(page, '/welcome');
-      await offlineDocument(page, '/allowed/cold');
+      const arabic = ['ar', 'العرض غير متصل'];
+      await offlineDocument(page, '/welcome', arabic);
+      assert.equal(await page.locator('html').getAttribute('dir'), 'rtl');
+      await offlineDocument(page, '/allowed/cold', arabic);
       result.checks.evictedShellOfflineDocument = 'PASS';
+      result.checks.recordedLanguageLeads = 'PASS';
       assert.deepEqual(result.errors, []);
-      console.log(`${engine} ${result.version}: gateway, deadline, late response, exclusions, redirects and unlisted offline document PASS`);
+      console.log(`${engine} ${result.version}: gateway, deadline, late response, exclusions, redirects, unlisted offline document and recorded-language order PASS`);
     } catch (error) {
       failed = true;
       result.failure = error.stack;

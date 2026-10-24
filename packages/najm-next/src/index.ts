@@ -19,6 +19,7 @@ export type {
   NajmInstallBudgetOptions,
   NajmNavigationFallbackOptions,
   NajmOfflineDocumentOptions,
+  NajmOfflineDocumentText,
   NajmServiceWorkerOptions,
   NajmServiceWorkerPushOptions,
   NajmServiceWorkerRoute,
