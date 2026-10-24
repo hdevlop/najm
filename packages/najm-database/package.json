@@ -1,6 +1,6 @@
 {
   "name": "najm-database",
-  "version": "2.3.2",
+  "version": "2.3.3",
   "description": "Database and transaction handling plugin for Najm API framework",
   "type": "module",
   "files": [

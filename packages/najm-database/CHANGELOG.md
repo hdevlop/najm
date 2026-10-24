@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.3.3 - 2026-10-24
+
+- The browser sync entry requires the exact optional peer `fast-idb@0.3.1`:
+  migrations stay atomic across awaits with a bounded upgrade phase,
+  concurrent `putIfNewer` calls are serialized per key, and commits are
+  reported after a late callback failure. No API change.
+
 ## 2.2.1 - 2026-10-06
 
 ### Fixed
