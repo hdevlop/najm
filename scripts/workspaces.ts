@@ -30,6 +30,9 @@ export const PACKAGE_TARGETS: PackageTarget[] = [
   // Dependency-free: it only reads the consumer's filesystem and environment,
   // so its position here is publish convenience, not an ordering constraint.
   { name: 'najm-next', workspace: 'packages/najm-next' },
+  // After najm-next, najm-database and najm-auth: it builds on their published
+  // PWA, replica and offline-access entries.
+  { name: 'najm-offline', workspace: 'packages/najm-offline' },
 ];
 
 export const TEST_TARGETS: PackageTarget[] = [

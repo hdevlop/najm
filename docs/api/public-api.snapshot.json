@@ -370,6 +370,23 @@
       "export type { NajmInstallBudgetOptions, NajmNavigationFallbackOptions, NajmOfflineDocumentOptions, NajmOfflineDocumentText, NajmServiceWorkerOptions, NajmServiceWorkerPushOptions, NajmServiceWorkerRoute, } from './pwa';",
       "export type { EnvRecord, HeaderRule, NajmNextConfigOverrides, NextConfig } from './internal/types';"
     ],
+    "najm-offline": [
+      "export const OFFLINE_PROTOCOL = 1;",
+      "export const OFFLINE_SCHEMA = 1;",
+      "export const OFFLINE_DURATION_MS = 8 * 60 * 60 * 1000;",
+      "export const OFFLINE_RENEWAL_MS = 15 * 60 * 1000;",
+      "export const OFFLINE_SHARED_YEAR = 'shared';",
+      "export function offlineHash(namespace: string) { return `${namespace}-read-v1`; } /** An installation turns offline use off with `<SWITCH>=off`, read at request time. */ export function offlineEnabled(value: string | undefined) { return value?.trim().toLowerCase() !== 'off'; } export type OfflineInstallation = { installationId: string; installationEpoch: string };",
+      "export type OfflineGrantScope = { id: string; academicYear: string; capabilities: string[] };",
+      "export type OfflineGrant = OfflineInstallation & { protocol: 1;",
+      "export type ReadProjection = { path: string;",
+      "export type OfflineRoute = { path: string; shared: boolean; capability: string };",
+      "export type OfflineRouteResolver = (path: string) => OfflineRoute | null;",
+      "export function offlinePath(path: string): string | null { if (!path.startsWith('/') || path.startsWith('//') || /[?#%\\\\]/.test(path)) return null;",
+      "export function createWriteMatcher(prefixes: readonly string[]) { return (path: string) => prefixes.some(prefix => path === prefix || path.startsWith(prefix + '/') || path.startsWith(prefix + '?'));",
+      "export function projectionId(language: string, path: string) { return JSON.stringify([language, path]); } /** The replica context one granted scope is stored under. */ export function scopeContext(grant: Pick<OfflineGrant, 'installationId' | 'installationEpoch' | 'accountId' | 'authorizationGeneration'>, scope: Pick<OfflineGrantScope, 'id' | 'academicYear'>): SyncContext { return { installationId: grant.installationId, installationEpoch: grant.installationEpoch, accountId: grant.accountId, authorizationGeneration: grant.authorizationGeneration, replicaSchemaVersion: OFFLINE_SCHEMA, scope: scope.id === 'shared' ? { kind: 'shared' } : { kind: 'year', yearLabel: scope.academicYear } };",
+      "export class OfflineUnavailableError extends Error { readonly code = 'OFFLINE_DATA_UNAVAILABLE';"
+    ],
     "najm-rag": [
       "export { rag } from './plugin';",
       "export * from './queryRewrites';",
