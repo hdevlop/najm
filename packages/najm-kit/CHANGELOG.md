@@ -1,5 +1,10 @@
 # Changelog
 
+## 3.7.1 - 2026-10-26
+
+- NTable's default rows-per-page choices now include 100, 200 and 500 alongside
+  10, 20, 30, 40 and 50. Explicit `pageSizeOptions` still override the defaults.
+
 ## 3.7.0 - 2026-10-19
 
 - Publish the validated `3.7.0-offline.0` UI runtime as a regular release through

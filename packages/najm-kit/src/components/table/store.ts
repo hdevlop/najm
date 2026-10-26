@@ -241,7 +241,7 @@ export const createTableStore = (seed?: Partial<TableState>) => {
     onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
     CardComponent: null, CardSkeletonComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,
     noResultsText: "No results.", filterPlaceholder: "", loadingText: "Loading...", noDataText: "No data available", addButtonText: "",
-    pageSizeOptions: [10, 20, 30, 40, 50], calculatedPageSize: 10, calculatedCardPageSize: 0, hasMeasuredLayout: false, skeletonRowCount: 6, maxHeight: null,
+    pageSizeOptions: [10, 20, 30, 40, 50, 100, 200, 500], calculatedPageSize: 10, calculatedCardPageSize: 0, hasMeasuredLayout: false, skeletonRowCount: 6, maxHeight: null,
     paginationVariant: "numbered" as NTablePaginationVariant, paginationLabels: {},
     bodyWidth: 0, bodyHeight: 0, tableHeaderHeight: 48, cardColumnCount: 1, cardRowHeight: 0, cardGap: 12,
     // JSON mode

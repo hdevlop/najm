@@ -650,7 +650,7 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
     noDataText: props.noDataText ?? "No data available",
     loadingText: props.loadingText ?? "Loading...",
     addButtonText: props.addButtonText ?? "",
-    pageSizeOptions: props.pageSizeOptions ?? [10, 20, 30, 40, 50],
+    pageSizeOptions: props.pageSizeOptions ?? [10, 20, 30, 40, 50, 100, 200, 500],
     // JSON mode
     jsonValue: props.jsonValue,
     jsonColors: props.jsonColors ?? null,
