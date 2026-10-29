@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.8.0 - 2026-10-29
+
+- `DateRangeInput`: a popover calendar showing two months side by side
+  (stacked on a narrow screen). The first click anchors the range, hovering
+  previews it, and the second click commits `{ from, to }` as `"yyyy-MM-dd"`
+  with the earlier day first; closing after one click keeps the stored range.
+  `min`/`max` bound it as in `DateInput`; `numberOfMonths` defaults to 2.
+- NForm `FormInput type="dateRange"` binds it and names the trigger from its
+  form label.
+- `Calendar` in range mode fills the two ends on a tinted band, rounded at a
+  week's edge. Single mode is unchanged.
+- New `pickDateRange` kit label in en, fr, ar and es.
+
 ## 3.7.1 - 2026-10-26
 
 - NTable's default rows-per-page choices now include 100, 200 and 500 alongside
