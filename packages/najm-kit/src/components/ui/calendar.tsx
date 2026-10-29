@@ -8,6 +8,25 @@ import { useNajmThemeMode } from "../../theme/provider"
 import { buttonVariants } from "../Button"
 import { getNajmKitLabels } from "../../lib/kitLabels"
 
+// Every day inside a range is aria-selected, so the single-mode rule that
+// fills a selected day would paint the whole range solid. In a range the two
+// ends are filled and the days between sit on a tinted band that the ends'
+// cells continue under their rounded corners, rounded again at a week's edge.
+const rangeClassNames = {
+  months: "relative flex flex-col gap-4 sm:flex-row",
+  // Several months share one nav; pin its arrows beside the first and last captions.
+  button_previous: cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute left-1 top-0 z-10"),
+  button_next: cn(buttonVariants({ variant: "ghost", size: "icon" }), "size-7 bg-transparent p-0 opacity-50 hover:opacity-100 absolute right-1 top-0 z-10"),
+  day: "relative p-0 text-center text-sm focus-within:relative focus-within:z-20",
+  day_button: "size-8 cursor-pointer rounded-md p-0 font-normal disabled:cursor-not-allowed",
+  selected: "",
+  range_start: "rounded-l-md bg-primary/15 [&>button]:bg-primary [&>button]:text-primary-foreground",
+  range_end: "rounded-r-md bg-primary/15 [&>button]:bg-primary [&>button]:text-primary-foreground",
+  range_middle: "bg-primary/15 text-foreground first:rounded-l-md last:rounded-r-md",
+  // A fill or text color would compete with the band and the ends.
+  today: "font-semibold [&>button]:underline [&>button]:underline-offset-4",
+}
+
 function Calendar(props: Record<string, any>) {
   const { className, classNames, formatters, labels, mode = "single", ...rest } = props
   const themeMode = useNajmThemeMode()
@@ -53,6 +72,7 @@ function Calendar(props: Record<string, any>) {
         outside: "text-muted-foreground opacity-50",
         disabled: "text-muted-foreground opacity-50",
         hidden: "invisible",
+        ...(mode === "range" ? rangeClassNames : undefined),
         ...classNames,
       }}
       components={{

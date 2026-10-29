@@ -13,6 +13,7 @@ import {
   RadioGroupInput,
   SwitchInput,
   DateInput,
+  DateRangeInput,
   TimeInput,
   TimeZoneInput,
   PhoneInput,
@@ -28,6 +29,7 @@ import {
   NSlider,
   LangInput,
 } from 'najm-kit';
+import type { DateRangeValue } from 'najm-kit';
 import { ComponentPage } from '../ComponentPage';
 import { Example } from '../Example';
 
@@ -577,8 +579,7 @@ function SwitchInputSection() {
 
 function DateInputSection() {
   const [date, setDate] = useState<any>(undefined);
-  const [startDate, setStartDate] = useState<any>(undefined);
-  const [endDate, setEndDate] = useState<any>(undefined);
+  const [range, setRange] = useState<DateRangeValue>({ from: '2026-06-14', to: '2026-06-21' });
   const [reviewDate, setReviewDate] = useState<any>('2026-06-15');
 
   return (
@@ -592,19 +593,17 @@ function DateInputSection() {
         </PreviewBox>
       </Example>
 
-      <Example title="Date Range Composition" center={false} previewHeight="h-56" code={`<DateInput value={startDate} onChange={setStartDate}
-  placeholder="Start" />
+      <Example title="Date Range" center={false} previewHeight="h-[26rem]" code={`const [range, setRange] = useState<DateRangeValue>({});
 
-<DateInput value={endDate} onChange={setEndDate}
-  placeholder="End" />`}>
-        <PreviewGrid>
-          <Field label="Start date">
-            <DateInput value={startDate} onChange={setStartDate} placeholder="Start" />
+<DateRangeInput value={range} onChange={setRange} />
+
+// In NForm, the field holds { from, to } as "yyyy-MM-dd":
+<FormInput name="period" type="dateRange" formLabel="Period" />`}>
+        <PreviewBox>
+          <Field label="Period">
+            <DateRangeInput value={range} onChange={setRange} />
           </Field>
-          <Field label="End date">
-            <DateInput value={endDate} onChange={setEndDate} placeholder="End" />
-          </Field>
-        </PreviewGrid>
+        </PreviewBox>
       </Example>
 
       <Example title="Prefilled And Error" center={false} previewHeight="h-56" code={`<DateInput value={reviewDate} onChange={setReviewDate}

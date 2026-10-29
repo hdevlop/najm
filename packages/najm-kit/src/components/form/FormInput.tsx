@@ -1,6 +1,6 @@
 import React from "react";
 import { FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
-import { TextInput, NumberInput, PasswordInput, OtpInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, SwitchInput, CheckboxInput, CheckboxGroupInput, FileInput, ImageInput, AvatarInput, DateInput, StarRatingInput, ColorArrayInput, EmojiInput, LangInput, PhoneInput, TimeInput, TimeZoneInput, SliderInput } from "../inputs";
+import { TextInput, NumberInput, PasswordInput, OtpInput, TextAreaInput, SelectInput, ComboboxInput, MultiSelectInput, RadioGroupInput, SwitchInput, CheckboxInput, CheckboxGroupInput, FileInput, ImageInput, AvatarInput, DateInput, DateRangeInput, StarRatingInput, ColorArrayInput, EmojiInput, LangInput, PhoneInput, TimeInput, TimeZoneInput, SliderInput } from "../inputs";
 import { useFormContext } from "react-hook-form";
 import { usePrefix } from "./PrefixContext";
 import { useVariantPreset, useBordered } from "./VariantContext";
@@ -26,6 +26,7 @@ const Inputs: Record<string, React.ComponentType<any>> = {
   otp: OtpInput,
   textarea: TextAreaInput,
   date: DateInput,
+  dateRange: DateRangeInput,
   file: FileInput,
   image: ImageInput,
   avatar: AvatarInput,
@@ -55,7 +56,7 @@ const nativeFieldTypes = new Set(["text", "number", "password", "textarea", "tim
 // from the label would break every consumer selecting it by placeholder today.
 // A select with no placeholder had only the generic fallback, so it takes the
 // label instead.
-const labelNamedCompositeTypes = new Set(["date", "combobox", "multiselect", "phone"]);
+const labelNamedCompositeTypes = new Set(["date", "dateRange", "combobox", "multiselect", "phone"]);
 
 export const FormInput: React.FC<FormInputProps> = ({ name, type, formLabel, formDescription, required = false, disabled = false, readOnly = false, hidden = false, icon, iconColor, classNames, background, ...rest }) => {
   const InputComponent = Inputs[type];

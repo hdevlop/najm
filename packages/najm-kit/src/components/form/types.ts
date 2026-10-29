@@ -1,6 +1,6 @@
 import type { SubmitHandler, UseFormProps, UseFormReturn } from "react-hook-form";
 import type { TypeOf, ZodTypeAny } from "zod";
-import type { TextInputProps, NumberInputProps, PasswordInputProps, OtpInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, AvatarInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeZoneInputProps, SliderInputProps } from "../inputs/types";
+import type { TextInputProps, NumberInputProps, PasswordInputProps, OtpInputProps, TextAreaInputProps, SelectInputProps, MultiSelectInputProps, RadioGroupInputProps, SwitchInputProps, CheckboxInputProps, CheckboxGroupInputProps, FileInputProps, DateInputProps, DateRangeInputProps, StarRatingInputProps, ColorArrayInputProps, TimeInputProps, ComboboxInputProps, ImageInputProps, AvatarInputProps, EmojiInputProps, LangInputProps, PhoneInputProps, TimeZoneInputProps, SliderInputProps } from "../inputs/types";
 import type { FormSlotClassNames, FormVariant } from "./VariantContext";
 import type { NIconSource } from "../Icon";
 import type { FormDevTools } from "./formFill";
@@ -57,6 +57,7 @@ type InputTypeMap = {
   image: FormImageInputProps;
   avatar: FormAvatarInputProps;
   date: FormInputSpecificProps<DateInputProps>;
+  dateRange: FormInputSpecificProps<DateRangeInputProps>;
   starRating: FormInputSpecificProps<StarRatingInputProps>;
   colorArray: FormInputSpecificProps<ColorArrayInputProps>;
   emoji: FormInputSpecificProps<EmojiInputProps>;

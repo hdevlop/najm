@@ -158,6 +158,29 @@ export interface DateInputProps extends BaseProps {
   max?: string | null;
 }
 
+/** A chosen range of calendar days, each as "yyyy-MM-dd"; `to` is never before `from`. */
+export interface DateRangeValue {
+  from?: string;
+  to?: string;
+}
+
+export interface DateRangeInputProps extends BaseProps {
+  /** Either end may be a "yyyy-MM-dd" string or a `Date`; an empty form value ("" or null) is no range. */
+  value: { from?: Date | string | null; to?: Date | string | null } | "" | null | undefined;
+  /** Called once both ends are chosen, with the earlier day as `from`. */
+  onChange: (range: DateRangeValue) => void;
+  placeholder?: string;
+  icon?: InputIcon;
+  showIcon?: boolean;
+  ariaLabel?: string;
+  /** Earliest day the calendar offers, as "yyyy-MM-dd"; days before it are disabled. */
+  min?: string | null;
+  /** Latest day the calendar offers, as "yyyy-MM-dd"; days after it are disabled. */
+  max?: string | null;
+  /** Months shown side by side (stacked on a narrow screen). Two by default. */
+  numberOfMonths?: number;
+}
+
 export interface StarRatingInputProps extends BaseProps {
   value: number;
   onChange: (starNumber: number | undefined) => void;

@@ -20,6 +20,8 @@ export interface NajmKitLabels {
   selected: string;
   /** A date field's placeholder when the app passes none. */
   pickDate: string;
+  /** A date range field's placeholder when the app passes none. */
+  pickDateRange: string;
   /** A table's select-all checkbox. */
   selectAllRows: string;
   /** A row checkbox, followed by the row's id. */
@@ -44,6 +46,7 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     today: "Today",
     selected: "selected",
     pickDate: "Pick a date",
+    pickDateRange: "Pick a date range",
     selectAllRows: "Select all rows",
     selectRow: "Select row",
     remove: "Remove",
@@ -61,6 +64,7 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     today: "Aujourd’hui",
     selected: "sélectionné",
     pickDate: "Choisir une date",
+    pickDateRange: "Choisir une période",
     selectAllRows: "Sélectionner toutes les lignes",
     selectRow: "Sélectionner la ligne",
     remove: "Retirer",
@@ -78,6 +82,7 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     today: "اليوم",
     selected: "محدد",
     pickDate: "اختر تاريخًا",
+    pickDateRange: "اختر فترة",
     selectAllRows: "تحديد كل الصفوف",
     selectRow: "تحديد الصف",
     remove: "إزالة",
@@ -95,6 +100,7 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     today: "Hoy",
     selected: "seleccionado",
     pickDate: "Elegir una fecha",
+    pickDateRange: "Elegir un período",
     selectAllRows: "Seleccionar todas las filas",
     selectRow: "Seleccionar la fila",
     remove: "Quitar",

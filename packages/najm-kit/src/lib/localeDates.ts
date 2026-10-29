@@ -5,9 +5,9 @@
  * local-midnight `Date`; reading its local parts and formatting them as UTC
  * gives the same day on the server and in every browser zone.
  */
-export function formatCalendarDate(date: Date, locale: string): string {
+export function formatCalendarDate(date: Date, locale: string, dateStyle: "long" | "medium" = "long"): string {
   const utc = Date.UTC(date.getFullYear(), date.getMonth(), date.getDate());
-  return new Intl.DateTimeFormat(locale, { dateStyle: "long", timeZone: "UTC" }).format(utc);
+  return new Intl.DateTimeFormat(locale, { dateStyle, timeZone: "UTC" }).format(utc);
 }
 
 /**

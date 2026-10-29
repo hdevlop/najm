@@ -12,6 +12,7 @@ export { CheckboxInput } from "./CheckboxInput";
 export { CheckboxGroupInput } from "./CheckboxGroupInput";
 export { SwitchInput } from "./SwitchInput";
 export { DateInput } from "./DateInput";
+export { DateRangeInput } from "./DateRangeInput";
 export { FileInput } from "./FileInput";
 export { NUploader } from "./NUploader";
 export { ImageInput } from "./ImageInput";
@@ -42,6 +43,8 @@ export type {
   CheckboxGroupInputProps,
   SwitchInputProps,
   DateInputProps,
+  DateRangeInputProps,
+  DateRangeValue,
   FileInputProps,
   ImageInputProps,
   ImageInputPreviewError,
