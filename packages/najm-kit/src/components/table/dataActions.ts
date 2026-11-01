@@ -78,15 +78,23 @@ export function tableFileName(title: string | undefined, extension: string): str
   return base.toLowerCase().endsWith(`.${extension}`) ? base : `${base}.${extension}`;
 }
 
+/**
+ * How long a download's object URL outlives the click. Chrome reads the blob,
+ * and the `download` name with it, after the click returns; revoked sooner,
+ * a larger file such as a workbook saves under the blob's UUID with no extension.
+ */
+export const DOWNLOAD_URL_LIFETIME_MS = 40_000;
+
 function downloadBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
   link.download = filename;
+  link.rel = "noopener";
   document.body.append(link);
   link.click();
   link.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 0);
+  setTimeout(() => URL.revokeObjectURL(url), DOWNLOAD_URL_LIFETIME_MS);
 }
 
 export function downloadTable(snapshot: TableDataSnapshot, title?: string) {

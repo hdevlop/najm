@@ -4,7 +4,7 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { createTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { NTable } from "../../src/components/table/NTable";
 import { NTableDefaultsProvider } from "../../src/components/table/TableDefaults";
-import { downloadTable, parseTableImport, printTable, readTableImportFile, tableCsv, tableDataSnapshot, tableFileName, tableXlsx } from "../../src/components/table/dataActions";
+import { DOWNLOAD_URL_LIFETIME_MS, downloadTable, parseTableImport, printTable, readTableImportFile, tableCsv, tableDataSnapshot, tableFileName, tableXlsx } from "../../src/components/table/dataActions";
 import { Xlsx } from "xlsx-manager";
 
 const data = [{ id: "1", name: "Alice" }];
@@ -215,15 +215,21 @@ describe("table data formats", () => {
     const createUrl = spyOn(URL, "createObjectURL").mockImplementation(value => { blob = value as Blob; return "blob:table-test"; });
     const revokeUrl = spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
     const click = spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { expect(this.download).toBe("table.csv"); });
+    const timers: { run: () => void; delay?: number }[] = [];
+    const timeout = spyOn(globalThis, "setTimeout").mockImplementation(((run: () => void, delay?: number) => { timers.push({ run, delay }); return 0; }) as unknown as typeof setTimeout);
     try {
       downloadTable({ headers: ["name"], rows: [["Alice"]] });
+      timeout.mockRestore();
       expect(click).toHaveBeenCalledTimes(1);
       expect(blob.type).toBe("text/csv;charset=utf-8");
       expect(await blob.text()).toContain('"Alice"');
-      await new Promise(resolve => setTimeout(resolve, 10));
-      expect(revokeUrl).toHaveBeenCalledWith("blob:table-test");
       expect(document.querySelector('a[download="table.csv"]')).toBeNull();
-    } finally { createUrl.mockRestore(); revokeUrl.mockRestore(); click.mockRestore(); }
+      // Revoking right after the click made Chrome save larger files under the blob's UUID.
+      expect(revokeUrl).not.toHaveBeenCalled();
+      expect(timers.map(timer => timer.delay)).toEqual([DOWNLOAD_URL_LIFETIME_MS]);
+      timers[0].run();
+      expect(revokeUrl).toHaveBeenCalledWith("blob:table-test");
+    } finally { timeout.mockRestore(); createUrl.mockRestore(); revokeUrl.mockRestore(); click.mockRestore(); }
   });
 
   test("print builds a separate table with escaped text and cleans up after printing", () => {
