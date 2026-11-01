@@ -1,5 +1,28 @@
 # Changelog
 
+## 3.9.0 - 2026-11-01
+
+- NTable Export offers Excel (.xlsx) and CSV (.csv). The workbook is written
+  with `xlsx-manager`, loaded only when someone exports. It has a bold, frozen,
+  filterable header row, typed numbers, booleans and dates, fitted column
+  widths, and a right-to-left sheet on an RTL page. Text is stored as text, so
+  no formula can run.
+- `exportFormats` picks the offered formats (default `["xlsx", "csv"]`); one
+  format exports directly without a menu. `onExport` still replaces the whole
+  workflow.
+- `exportTitle` names the file, the sheet and the printed heading. Files were
+  always `table.csv`.
+- XLSX and print use column labels (`meta.exportHeader`, else a string
+  `header`). CSV keeps field names so Import reads it back.
+- Column `meta.export: false` leaves a column out, and
+  `meta.exportValue(value, row)` sets what it exports, in every format.
+- Print keeps the page's `dir` and `lang`, and shows dates in the reader's
+  language.
+- New `exportXlsx` and `exportCsv` toolbar labels (`common.table.exportXlsx`,
+  `common.table.exportCsv`).
+- Fixed: CSV dates are ISO text, not quoted JSON. A download's object URL now
+  lives 40s, so Chrome no longer saves a workbook under the blob's UUID.
+
 ## 3.8.0 - 2026-10-29
 
 - `DateRangeInput`: a popover calendar showing two months side by side
