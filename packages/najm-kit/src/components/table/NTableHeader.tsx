@@ -12,6 +12,9 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from "../ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { SlidersHorizontal, Settings, List, LayoutGrid, Code, FolderOpen, Plus, Eye, Columns3, Search, Filter, MoreHorizontal, type LucideIcon } from "lucide-react";
@@ -281,6 +284,7 @@ function TableToolbarActions({ mobile = false }: { mobile?: boolean }) {
   const display = useTableStore.use.toolbarActionDisplay();
   const hasHeaderMenu = useTableStore.use.hasHeaderMenu();
   const openHeaderMenu = useTableStore.use.openHeaderMenu();
+  const openActionMenu = useTableStore.use.openActionMenu();
   const isLoading = useTableStore.use.isLoading();
   const isRefreshing = useTableStore.use.isRefreshing();
   const copy = useToolbarCopy();
@@ -296,7 +300,15 @@ function TableToolbarActions({ mobile = false }: { mobile?: boolean }) {
 
   return <>
     {display !== "menu" && actions.map((action, index) => (
-      <TableIconButton key={index} mobile={mobile} label={action.label} icon={action.icon!} disabled={disabled} onClick={() => action.onSelect?.()} />
+      <TableIconButton
+        key={index}
+        mobile={mobile}
+        label={action.label}
+        icon={action.icon!}
+        disabled={disabled}
+        menu={Boolean(action.submenu)}
+        onClick={event => action.submenu ? openActionMenu?.(event, action.submenu) : action.onSelect?.()}
+      />
     ))}
     {hasHeaderMenu && <TableIconButton mobile={mobile} label={copy.tableActions} icon={MoreHorizontal} disabled={disabled} menu onClick={openHeaderMenu ?? undefined} />}
   </>;
@@ -488,6 +500,25 @@ function TableSettingsMenu() {
         {actions.length > 0 && hasViewOrColumns && <DropdownMenuSeparator />}
         {actions.map((action, index) => {
           const Icon = action.icon;
+          if (action.submenu) return (
+            <DropdownMenuSub key={index}>
+              <DropdownMenuSubTrigger>
+                {Icon && <Icon className="h-4 w-4" />}
+                <span>{action.label}</span>
+              </DropdownMenuSubTrigger>
+              <DropdownMenuSubContent className="bg-card">
+                {action.submenu.map((item, itemIndex) => {
+                  const ItemIcon = item.icon;
+                  return (
+                    <DropdownMenuItem key={itemIndex} onSelect={() => { setTimeout(() => item.onSelect?.(), 0); }}>
+                      {ItemIcon && <ItemIcon className="h-4 w-4" />}
+                      <span>{item.label}</span>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuSubContent>
+            </DropdownMenuSub>
+          );
           return (
             <DropdownMenuItem
               key={index}

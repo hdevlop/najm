@@ -21,6 +21,8 @@ export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
   | `${Prefix}.create`
   | `${Prefix}.tableActions`
   | `${Prefix}.export`
+  | `${Prefix}.exportXlsx`
+  | `${Prefix}.exportCsv`
   | `${Prefix}.import`
   | `${Prefix}.print`
   | `${Prefix}.importDescription`
@@ -82,6 +84,8 @@ export function buildToolbarLabels<
     create: t(`${scope}.create`),
     tableActions: optional(`${scope}.tableActions`),
     export: optional(`${scope}.export`),
+    exportXlsx: optional(`${scope}.exportXlsx`),
+    exportCsv: optional(`${scope}.exportCsv`),
     import: optional(`${scope}.import`),
     print: optional(`${scope}.print`),
     importDescription: optional(`${scope}.importDescription`),

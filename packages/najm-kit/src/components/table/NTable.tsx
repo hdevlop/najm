@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
 import { useNTableDefaults, useResolvedToolbarLabels } from "./TableDefaults";
 import { rowActionCopy } from "./rowActionLabels";
-import { Download, Eye, Inbox, Pencil, Plus, Printer, SearchX, Trash2, Upload } from "lucide-react";
+import { Download, Eye, FileSpreadsheet, FileText, Inbox, Pencil, Plus, Printer, SearchX, Trash2, Upload } from "lucide-react";
 import type { ColumnDef, Row, SortingState, ColumnFiltersState, VisibilityState, RowSelectionState, ExpandedState } from "@tanstack/react-table";
 import { TableStoreContext } from "./TableContext";
 import { useContextMenu, type ContextMenuItem } from "../data-display/useContextMenu";
@@ -13,7 +13,7 @@ import { NTablePagination } from "./NTablePagination";
 import { NTableHeader } from "./NTableHeader";
 import { NTableJson } from "./NTableJson";
 import { NTableImport } from "./NTableImport";
-import { downloadTable, printTable, tableDataSnapshot } from "./dataActions";
+import { documentContext, downloadTable, downloadTableXlsx, printTable, tableDataSnapshot, type NTableExportFormat } from "./dataActions";
 import type { Table } from "@tanstack/react-table";
 import { NTableCardsLoadingSkeleton, NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
 import { cn } from "../../lib/cn";
@@ -37,6 +37,9 @@ export type { TableHeaderColor } from "./tableColors";
 export type { NTableColumnDef, NTableColumnMeta, NTableColumnBreakpoint, NTableEditorType, NTableEditorOption } from "./responsiveColumns";
 export type { NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagination, NTablePaginationVariant, NTablePaginationLabels } from "./paginationContract";
 export type { NTableToolbarLabels } from "./toolbarContract";
+export type { NTableExportFormat } from "./dataActions";
+
+const DEFAULT_EXPORT_FORMATS: readonly NTableExportFormat[] = ["xlsx", "csv"];
 
 export interface NTableState {
   sorting: SortingState;
@@ -69,13 +72,23 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   error?: any;
   getRowId?: (row: T) => string;
   onCreate?: () => void;
-  /** Enable default CSV export, XLSX/CSV/JSON import, and printing. Inherits provider defaults; otherwise false. */
+  /** Enable default XLSX/CSV export, XLSX/CSV/JSON import, and printing. Inherits provider defaults; otherwise false. */
   dataActions?: boolean;
+  /**
+   * Formats the built-in Export offers, in menu order. Defaults to
+   * `["xlsx", "csv"]`; one format exports directly without a menu.
+   */
+  exportFormats?: readonly NTableExportFormat[];
+  /**
+   * Name of the exported file (without extension), the XLSX sheet and the
+   * printed heading. Defaults to a file named `table`, no heading.
+   */
+  exportTitle?: string;
   /** Receive imported rows instead of replacing the table's local data. Can save them through an API. */
   onDataChange?: (rows: T[]) => void | Promise<unknown>;
   /** Field names the import accepts, shown as chips in the import dialog until a file is chosen. */
   importColumns?: readonly string[];
-  /** Override the default CSV export workflow. Also enables Export on its own. */
+  /** Override the default export workflow with one Export action. Also enables Export on its own. */
   onExport?: () => void;
   /** Override the default XLSX/CSV/JSON import workflow. Also enables Import on its own. */
   onImport?: () => void;
@@ -456,12 +469,17 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
   // Parent-supplied data remains authoritative after a refetch or other update.
   useEffect(() => { setImportedData(null); }, [props.data]);
   const dataTable = useRef<Table<T> | null>(null);
-  const defaultExport = useCallback(() => {
-    if (dataTable.current) downloadTable(tableDataSnapshot(dataTable.current));
-  }, []);
+  const { exportTitle } = props;
+  const defaultExport = useCallback((format: NTableExportFormat) => {
+    const table = dataTable.current;
+    if (!table) return;
+    if (format === "csv") { downloadTable(tableDataSnapshot(table), exportTitle); return; }
+    downloadTableXlsx(tableDataSnapshot(table, { labels: true }), { title: exportTitle, ...documentContext() })
+      .catch(error => { console.error("NTable could not export the XLSX file.", error); });
+  }, [exportTitle]);
   const defaultPrint = useCallback(() => {
-    if (dataTable.current) printTable(tableDataSnapshot(dataTable.current));
-  }, []);
+    if (dataTable.current) printTable(tableDataSnapshot(dataTable.current, { labels: true }), { title: exportTitle, ...documentContext() });
+  }, [exportTitle]);
   const defaultImport = useCallback(() => { setImportOpen(true); }, []);
   const importedRowId = useCallback((_row: T, index: number) => String(index), []);
   const recipeBordered = Boolean(recipe?.borderColor || recipe?.borderWidth);
@@ -516,13 +534,21 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
   const showPrintButton = props.showPrintButton ?? Boolean(dataActions || props.onPrint);
   // An open menu contains a snapshot of its items. Drop it when visibility changes.
   useEffect(() => { ctx.close(); }, [showExportButton, showImportButton, showPrintButton, ctx.close]);
+  const exportFormats = props.exportFormats ?? DEFAULT_EXPORT_FORMATS;
+  const exportFormatKey = exportFormats.join(",");
   const toolbarActions = useMemo(() => {
     const items: ContextMenuItem[] = [];
-    if (showExportButton) items.push({ label: resolvedToolbarLabels.export ?? "Export", icon: Download, onSelect: props.onExport ?? defaultExport });
+    const exportLabel = resolvedToolbarLabels.export ?? "Export";
+    const formats: ContextMenuItem[] = exportFormatKey.split(",").filter(Boolean).map(format => format === "csv"
+      ? { label: resolvedToolbarLabels.exportCsv ?? "CSV (.csv)", icon: FileText, onSelect: () => defaultExport("csv") }
+      : { label: resolvedToolbarLabels.exportXlsx ?? "Excel (.xlsx)", icon: FileSpreadsheet, onSelect: () => defaultExport("xlsx") });
+    if (showExportButton && props.onExport) items.push({ label: exportLabel, icon: Download, onSelect: props.onExport });
+    else if (showExportButton && formats.length === 1) items.push({ ...formats[0], label: exportLabel, icon: Download });
+    else if (showExportButton && formats.length) items.push({ label: exportLabel, icon: Download, submenu: formats });
     if (showImportButton) items.push({ label: resolvedToolbarLabels.import ?? "Import", icon: Upload, onSelect: props.onImport ?? defaultImport });
     if (showPrintButton) items.push({ label: resolvedToolbarLabels.print ?? "Print", icon: Printer, onSelect: props.onPrint ?? defaultPrint });
     return items;
-  }, [showExportButton, showImportButton, showPrintButton, props.onExport, props.onImport, props.onPrint, defaultExport, defaultImport, defaultPrint, resolvedToolbarLabels]);
+  }, [showExportButton, showImportButton, showPrintButton, exportFormatKey, props.onExport, props.onImport, props.onPrint, defaultExport, defaultImport, defaultPrint, resolvedToolbarLabels]);
   const toolbarActionDisplay = props.toolbarActionDisplay ?? "both";
   const hasHeaderMenu = toolbarActionDisplay !== "buttons" && Boolean(toolbarActions.length || normalizedMenu.header);
 
@@ -586,6 +612,11 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
     ctx.open({ clientX: rect.left, clientY: rect.bottom }, normalizedMenu.header?.() ?? toolbarActions);
   }, [props.error, props.loading, data, normalizedMenu.header, toolbarActions, ctx]);
 
+  const handleOpenActionMenu = useCallback((e: React.MouseEvent, items: ContextMenuItem[]) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    ctx.open({ clientX: rect.left, clientY: rect.bottom }, items);
+  }, [ctx]);
+
   const handleManualRowMenu = useCallback(
     (e: React.MouseEvent, row: T) => {
       onRowContextMenu?.(e, row);
@@ -623,6 +654,7 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
     hasHeaderMenu,
     onHeaderContextMenu: hasHeaderMenu ? handleHeaderContextMenu : null,
     openHeaderMenu: hasHeaderMenu ? handleOpenHeaderMenu : null,
+    openActionMenu: handleOpenActionMenu,
     onView: props.onView ?? null,
     onEdit: props.onEdit ?? null,
     onDelete: props.onDelete ?? null,

@@ -4,7 +4,8 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { createTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { NTable } from "../../src/components/table/NTable";
 import { NTableDefaultsProvider } from "../../src/components/table/TableDefaults";
-import { downloadTable, parseTableImport, printTable, readTableImportFile, tableCsv, tableDataSnapshot } from "../../src/components/table/dataActions";
+import { downloadTable, parseTableImport, printTable, readTableImportFile, tableCsv, tableDataSnapshot, tableFileName, tableXlsx } from "../../src/components/table/dataActions";
+import { Xlsx } from "xlsx-manager";
 
 const data = [{ id: "1", name: "Alice" }];
 const columns = [{ accessorKey: "name", header: "Name" }];
@@ -275,5 +276,140 @@ describe("table data formats", () => {
       getCoreRowModel: getCoreRowModel(), getFilteredRowModel: getFilteredRowModel(), getSortedRowModel: getSortedRowModel(),
     });
     expect(tableDataSnapshot(table)).toEqual({ headers: ["name"], rows: [["Alice"], ["Bob"]] });
+  });
+
+  test("labels come from exportHeader or a string header; exportValue and export:false apply to every format", () => {
+    const table = createTable({
+      data: [{ name: "Alice", status: "active", photo: "a.png", code: 7 }],
+      columns: [
+        { accessorKey: "name", header: "Nom" },
+        { accessorKey: "status", header: () => "Statut", meta: { exportHeader: "Statut", exportValue: (value: string, row: { name: string }) => `${value === "active" ? "Actif" : value} (${row.name})` } },
+        { accessorKey: "photo", header: "Photo", meta: { export: false } },
+        { accessorKey: "code", header: () => null },
+      ],
+      state: { columnVisibility: {}, sorting: [], columnFilters: [], globalFilter: "" },
+      onStateChange: () => {}, renderFallbackValue: null,
+      getCoreRowModel: getCoreRowModel(),
+    });
+    expect(tableDataSnapshot(table, { labels: true })).toEqual({ headers: ["Nom", "Statut", "code"], rows: [["Alice", "Actif (Alice)", 7]] });
+    expect(tableDataSnapshot(table)).toEqual({ headers: ["name", "status", "code"], rows: [["Alice", "Actif (Alice)", 7]] });
+  });
+
+  test("file names drop characters file systems reject and keep one extension", () => {
+    expect(tableFileName(undefined, "csv")).toBe("table.csv");
+    expect(tableFileName('Élèves 2026/27: "6A"', "xlsx")).toBe("Élèves 2026 27 6A.xlsx");
+    expect(tableFileName("report.XLSX", "xlsx")).toBe("report.XLSX");
+    expect(tableFileName("  ...  ", "csv")).toBe("table.csv");
+  });
+
+  test("CSV writes dates as ISO text rather than quoted JSON", () => {
+    expect(tableCsv({ headers: ["at"], rows: [[new Date("2026-01-02T00:00:00.000Z")], [new Date("nope")]] })).toBe('﻿"at"\r\n"2026-01-02T00:00:00.000Z"\r\n""');
+  });
+
+  test("XLSX keeps labels, types, Arabic text and right-to-left layout, and never writes formulas", async () => {
+    const blob = await tableXlsx({
+      headers: ["الاسم", "Amount", "Active", "Born", "Note"],
+      rows: [["أحمد", 12.5, true, new Date("2020-01-01T00:00:00.000Z"), '=HYPERLINK("x")'], ["Sara", null, false, null, { a: 1 }]],
+    }, { title: "Élèves: 6A/B", dir: "rtl" });
+    expect(blob.type).toBe("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+    const file = new File([await blob.arrayBuffer()], "export.xlsx");
+    const workbook = new Xlsx();
+    await workbook.loadWorksheet(file);
+    const sheet = workbook.worksheet;
+    expect(sheet.name).toBe("Élèves 6A B");
+    expect(sheet.views[0]).toMatchObject({ rightToLeft: true, state: "frozen", ySplit: 1 });
+    expect(sheet.getRow(1).values).toEqual([undefined, "الاسم", "Amount", "Active", "Born", "Note"]);
+    expect(sheet.getRow(1).font?.bold).toBe(true);
+    expect(sheet.getCell("A2").value).toBe("أحمد");
+    expect(sheet.getCell("B2").value).toBe(12.5);
+    expect(sheet.getCell("C2").value).toBe(true);
+    expect((sheet.getCell("D2").value as Date).toISOString()).toBe("2020-01-01T00:00:00.000Z");
+    expect(sheet.getCell("D2").numFmt).toBe("yyyy-mm-dd");
+    expect(sheet.getCell("E2").value).toBe('=HYPERLINK("x")');
+    expect(sheet.getCell("E2").formula).toBeUndefined();
+    expect(sheet.getCell("E3").value).toBe('{"a":1}');
+    expect(sheet.getCell("B3").value).toBeNull();
+    expect(sheet.getColumn(1).width).toBeGreaterThanOrEqual(8);
+    expect(sheet.autoFilter).toBeTruthy();
+    // The exported workbook is one Import accepts back.
+    expect(await readTableImportFile(file)).toHaveLength(2);
+  });
+
+  test("print uses the page's direction and language, a title heading and localized dates", () => {
+    const frame = document.createElement("iframe");
+    const print = mock();
+    const append = document.body.append.bind(document.body);
+    const appendSpy = spyOn(document.body, "append").mockImplementation((...nodes) => {
+      append(...nodes);
+      if (nodes.includes(frame)) Object.defineProperty(frame.contentWindow!, "print", { configurable: true, value: print });
+    });
+    const createElement = document.createElement.bind(document);
+    const create = spyOn(document, "createElement").mockImplementation(((tag: string) => tag === "iframe" ? frame : createElement(tag)) as typeof document.createElement);
+    try {
+      const born = new Date("2020-01-15T00:00:00.000Z");
+      printTable({ headers: ["الاسم", "Born"], rows: [["أحمد", born]] }, { title: "Élèves", dir: "rtl", lang: "ar" });
+      const doc = frame.contentDocument!;
+      expect(doc.documentElement.dir).toBe("rtl");
+      expect(doc.documentElement.lang).toBe("ar");
+      expect(doc.title).toBe("Élèves");
+      expect(doc.querySelector("h1")!.textContent).toBe("Élèves");
+      expect(doc.querySelectorAll("td")[1].textContent).toBe(born.toLocaleDateString("ar"));
+    } finally { create.mockRestore(); appendSpy.mockRestore(); frame.remove(); }
+  });
+});
+
+describe("export toolbar", () => {
+  const capture = () => {
+    const files: { name: string; blob: Blob }[] = [];
+    let pending: Blob | undefined;
+    const createUrl = spyOn(URL, "createObjectURL").mockImplementation(value => { pending = value as Blob; return "blob:table-test"; });
+    const revokeUrl = spyOn(URL, "revokeObjectURL").mockImplementation(() => {});
+    const click = spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) { files.push({ name: this.download, blob: pending! }); });
+    return { files, restore: () => { createUrl.mockRestore(); revokeUrl.mockRestore(); click.mockRestore(); } };
+  };
+  const labelled = [{ accessorKey: "name", header: "Nom" }];
+
+  test("Export opens a format menu; Excel downloads a labelled workbook named after exportTitle", async () => {
+    const download = capture();
+    try {
+      const view = render(<NTable {...base} columns={labelled} dataActions exportTitle="Élèves" />);
+      const button = view.container.querySelector('[aria-label="Export"]')!;
+      expect(button.getAttribute("aria-haspopup")).toBe("menu");
+      fireEvent.click(button);
+      fireEvent.click(await view.findByText("Excel (.xlsx)"));
+      await waitFor(() => expect(download.files).toHaveLength(1));
+      expect(download.files[0].name).toBe("Élèves.xlsx");
+      const workbook = new Xlsx();
+      await workbook.loadWorksheet(new File([await download.files[0].blob.arrayBuffer()], "x.xlsx"));
+      expect(workbook.worksheet.getRow(1).values).toEqual([undefined, "Nom"]);
+      expect(workbook.worksheet.getCell("A2").value).toBe("Alice");
+    } finally { download.restore(); }
+  });
+
+  test("CSV keeps field names so Import reads it back", async () => {
+    const download = capture();
+    try {
+      const view = render(<NTable {...base} columns={labelled} dataActions />);
+      fireEvent.click(view.container.querySelector('[aria-label="Export"]')!);
+      fireEvent.click(await view.findByText("CSV (.csv)"));
+      expect(download.files[0].name).toBe("table.csv");
+      expect(await download.files[0].blob.text()).toBe('﻿"name"\r\n"Alice"');
+    } finally { download.restore(); }
+  });
+
+  test("one export format exports directly; labels come from toolbarLabels; onExport still overrides", async () => {
+    const download = capture();
+    try {
+      const view = render(<NTable {...base} columns={labelled} dataActions exportFormats={["csv"]} toolbarLabels={{ export: "Exporter" }} />);
+      const button = view.container.querySelector('[aria-label="Exporter"]')!;
+      expect(button.getAttribute("aria-haspopup")).toBeNull();
+      fireEvent.click(button);
+      expect(download.files.map(file => file.name)).toEqual(["table.csv"]);
+      const onExport = mock();
+      view.rerender(<NTable {...base} columns={labelled} dataActions onExport={onExport} toolbarLabels={{ exportXlsx: "Classeur" }} />);
+      fireEvent.click(view.container.querySelector('[aria-label="Export"]')!);
+      expect(onExport).toHaveBeenCalledTimes(1);
+      expect(view.queryByText("Classeur")).toBeNull();
+    } finally { download.restore(); }
   });
 });

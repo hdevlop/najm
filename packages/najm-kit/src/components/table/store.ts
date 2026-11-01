@@ -71,6 +71,8 @@ export interface TableState {
   hasHeaderMenu: boolean;
   onHeaderContextMenu: ((e: ReactMouseEvent) => void) | null;
   openHeaderMenu: ((e: ReactMouseEvent) => void) | null;
+  /** Opens a toolbar action's submenu (such as the export formats) under its button. */
+  openActionMenu: ((e: ReactMouseEvent, items: ContextMenuItem[]) => void) | null;
   onView: any;
   onEdit: any;
   onDelete: any;
@@ -235,7 +237,7 @@ export const createTableStore = (seed?: Partial<TableState>) => {
   const store = create<TableState>((set, get) => {
     const defaults = ({
     table: null, data: [], columns: [], filters: [], isLoading: false, error: null, viewMode: "table" as ViewMode,
-    toolbarActions: [], toolbarActionDisplay: "both", hasHeaderMenu: false, onHeaderContextMenu: null, openHeaderMenu: null,
+    toolbarActions: [], toolbarActionDisplay: "both", hasHeaderMenu: false, onHeaderContextMenu: null, openHeaderMenu: null, openActionMenu: null,
     showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: {}, dynamicHeight: true,
     showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true, isRefreshing: false,
     onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,

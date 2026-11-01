@@ -1,21 +1,60 @@
-import type { Table } from "@tanstack/react-table";
+import type { Column, Table } from "@tanstack/react-table";
+import type { NTableColumnMeta } from "./responsiveColumns";
 
 export interface TableDataSnapshot {
   headers: string[];
   rows: unknown[][];
 }
 
-/** Accessor columns only, honoring column eligibility, visibility, filters and sorting. */
-export function tableDataSnapshot(table: Table<any>): TableDataSnapshot {
-  const columns = table.getVisibleLeafColumns().filter(column => column.accessorFn);
+/** Built-in export formats. XLSX and print are for people; CSV keeps field names so Import reads it back. */
+export type NTableExportFormat = "xlsx" | "csv";
+
+export interface TableSnapshotOptions {
+  /** Column labels (`meta.exportHeader`, else a string `header`) instead of field names. */
+  labels?: boolean;
+}
+
+/** Where an exported or printed table is read: its title, writing direction and language. */
+export interface TableDocumentOptions {
+  /** File name without extension, sheet name and printed heading. */
+  title?: string;
+  dir?: "ltr" | "rtl";
+  lang?: string;
+}
+
+const columnMeta = (column: Column<any, unknown>) => column.columnDef.meta as NTableColumnMeta | undefined;
+const columnKey = (column: Column<any, unknown>) => (column.columnDef as { accessorKey?: string }).accessorKey ?? column.id;
+
+function columnLabel(column: Column<any, unknown>): string {
+  const label = columnMeta(column)?.exportHeader ?? column.columnDef.header;
+  return typeof label === "string" && label.trim() ? label : columnKey(column);
+}
+
+/** Accessor columns only, honoring column eligibility, visibility, `meta.export`, filters and sorting. */
+export function tableDataSnapshot(table: Table<any>, { labels = false }: TableSnapshotOptions = {}): TableDataSnapshot {
+  const columns = table.getVisibleLeafColumns().filter(column => column.accessorFn && columnMeta(column)?.export !== false);
   return {
-    headers: columns.map(column => (column.columnDef as { accessorKey?: string }).accessorKey ?? column.id),
-    rows: table.getPrePaginationRowModel().rows.map(row => columns.map(column => row.getValue(column.id))),
+    headers: columns.map(column => labels ? columnLabel(column) : columnKey(column)),
+    rows: table.getPrePaginationRowModel().rows.map(row => columns.map(column => {
+      const value = row.getValue(column.id);
+      const exportValue = columnMeta(column)?.exportValue;
+      return exportValue ? exportValue(value, row.original) : value;
+    })),
   };
 }
 
+/** The page's own direction and language, which an exported or printed copy keeps. */
+export function documentContext(): Pick<TableDocumentOptions, "dir" | "lang"> {
+  if (typeof document === "undefined") return {};
+  const root = document.documentElement;
+  return { dir: root.getAttribute("dir") === "rtl" ? "rtl" : "ltr", lang: root.lang || undefined };
+}
+
+const validDate = (value: unknown): value is Date => value instanceof Date && !Number.isNaN(value.getTime());
+
 export function dataCellText(value: unknown): string {
   if (value == null) return "";
+  if (value instanceof Date) return validDate(value) ? value.toISOString() : "";
   if (typeof value === "object") {
     try { return JSON.stringify(value) ?? String(value); } catch { return String(value); }
   }
@@ -32,29 +71,124 @@ export function tableCsv(snapshot: TableDataSnapshot): string {
   return "\uFEFF" + [snapshot.headers, ...snapshot.rows].map(row => row.map(encode).join(",")).join("\r\n");
 }
 
-export function downloadTable(snapshot: TableDataSnapshot) {
-  const url = URL.createObjectURL(new Blob([tableCsv(snapshot)], { type: "text/csv;charset=utf-8" }));
+/** A name every file system accepts, with the format's extension. */
+export function tableFileName(title: string | undefined, extension: string): string {
+  // eslint-disable-next-line no-control-regex
+  const base = (title ?? "").replace(/[\u0000-\u001f<>:"/\\|?*]+/g, " ").replace(/\s+/g, " ").trim().replace(/[. ]+$/, "") || "table";
+  return base.toLowerCase().endsWith(`.${extension}`) ? base : `${base}.${extension}`;
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  link.download = "table.csv";
+  link.download = filename;
   document.body.append(link);
   link.click();
   link.remove();
   setTimeout(() => URL.revokeObjectURL(url), 0);
 }
 
-export function printTable(snapshot: TableDataSnapshot) {
+export function downloadTable(snapshot: TableDataSnapshot, title?: string) {
+  downloadBlob(new Blob([tableCsv(snapshot)], { type: "text/csv;charset=utf-8" }), tableFileName(title, "csv"));
+}
+
+/** Excel limits sheet names to 31 characters and forbids a few. */
+function sheetName(title: string | undefined): string {
+  return (title ?? "").replace(/[[\]:*?/\\]+/g, " ").replace(/\s+/g, " ").trim().slice(0, 31).trim() || "Sheet1";
+}
+
+function xlsxValue(value: unknown): string | number | boolean | Date | null {
+  if (value == null) return null;
+  if (value instanceof Date) return validDate(value) ? value : null;
+  if (typeof value === "number") return Number.isFinite(value) ? value : null;
+  if (typeof value === "boolean") return value;
+  // Workbook strings are stored as text, never as formulas, so no escaping is needed.
+  return dataCellText(value);
+}
+
+const MIN_COLUMN_WIDTH = 8;
+const MAX_COLUMN_WIDTH = 60;
+const WIDTH_SAMPLE_ROWS = 500;
+
+/**
+ * One worksheet with a bold, frozen and filterable header row, typed cells
+ * (numbers, booleans and dates stay sortable in Excel), widths fitted to the
+ * content, and right-to-left layout for an RTL page. The writer is loaded only
+ * when someone exports.
+ */
+export async function tableXlsx(snapshot: TableDataSnapshot, options: TableDocumentOptions = {}): Promise<Blob> {
+  const { Xlsx } = await import("xlsx-manager");
+  // xlsx-manager edits loaded workbooks; a subclass gives it a new, empty sheet.
+  class TableWorkbook extends Xlsx {
+    constructor() {
+      super();
+      this.worksheet = this.workbook.addWorksheet(sheetName(options.title), {
+        views: [{ state: "frozen", ySplit: 1, rightToLeft: options.dir === "rtl" }],
+      });
+    }
+  }
+  const workbook = new TableWorkbook();
+  const sheet = workbook.worksheet;
+  const header = sheet.addRow(snapshot.headers);
+  header.font = { bold: true };
+  header.eachCell(cell => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE5E7EB" } };
+    cell.border = { bottom: { style: "thin", color: { argb: "FF9CA3AF" } } };
+  });
+  for (const values of snapshot.rows) {
+    sheet.addRow(values.map(xlsxValue)).eachCell(cell => {
+      if (!(cell.value instanceof Date)) return;
+      const date = cell.value;
+      const midnight = !date.getUTCHours() && !date.getUTCMinutes() && !date.getUTCSeconds();
+      cell.numFmt = midnight ? "yyyy-mm-dd" : "yyyy-mm-dd hh:mm";
+    });
+  }
+  snapshot.headers.forEach((label, index) => {
+    const sample = snapshot.rows.slice(0, WIDTH_SAMPLE_ROWS).map(values => {
+      const value = values[index];
+      return validDate(value) ? 16 : Math.max(...dataCellText(value).split("\n").map(line => line.length));
+    });
+    const width = Math.max(label.length, ...sample) + 2;
+    sheet.getColumn(index + 1).width = Math.min(MAX_COLUMN_WIDTH, Math.max(MIN_COLUMN_WIDTH, width));
+  });
+  if (snapshot.headers.length) {
+    sheet.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: snapshot.headers.length } };
+  }
+  return new Blob([await workbook.writeBuffer()], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+}
+
+export async function downloadTableXlsx(snapshot: TableDataSnapshot, options: TableDocumentOptions = {}) {
+  downloadBlob(await tableXlsx(snapshot, options), tableFileName(options.title, "xlsx"));
+}
+
+/** Dates in the reader's language; everything else as exported. */
+function printCellText(value: unknown, lang: string | undefined): string {
+  if (!validDate(value)) return dataCellText(value);
+  try { return value.toLocaleDateString(lang); } catch { return value.toLocaleDateString(); }
+}
+
+export function printTable(snapshot: TableDataSnapshot, options: TableDocumentOptions = {}) {
   const frame = document.createElement("iframe");
-  frame.title = "Print table";
+  frame.title = options.title || "Print table";
   frame.setAttribute("aria-hidden", "true");
   frame.style.cssText = "position:fixed;width:0;height:0;border:0";
   document.body.append(frame);
   const doc = frame.contentDocument;
   const view = frame.contentWindow;
   if (!doc || !view) { frame.remove(); return; }
+  // The copy keeps the page's direction, so an Arabic table starts on the right.
+  doc.documentElement.dir = options.dir ?? "ltr";
+  if (options.lang) doc.documentElement.lang = options.lang;
+  if (options.title) doc.title = options.title;
   const style = doc.createElement("style");
-  style.textContent = "body{font:12px sans-serif}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:start;white-space:pre-wrap}thead{display:table-header-group}tr{break-inside:avoid}";
+  style.textContent = "body{font:12px sans-serif}h1{font-size:16px;margin:0 0 12px}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccc;padding:6px;text-align:start;white-space:pre-wrap}th{background:#f3f4f6}thead{display:table-header-group}tr{break-inside:avoid}";
   doc.head.append(style);
+  if (options.title) {
+    const heading = doc.createElement("h1");
+    heading.textContent = options.title;
+    doc.body.append(heading);
+  }
   const table = doc.createElement("table");
   const head = table.createTHead().insertRow();
   snapshot.headers.forEach(value => {
@@ -65,7 +199,7 @@ export function printTable(snapshot: TableDataSnapshot) {
   const body = table.createTBody();
   snapshot.rows.forEach(values => {
     const row = body.insertRow();
-    values.forEach(value => { row.insertCell().textContent = dataCellText(value); });
+    values.forEach(value => { row.insertCell().textContent = printCellText(value, options.lang); });
   });
   doc.body.append(table);
   const cleanup = () => { clearTimeout(timeout); frame.remove(); };

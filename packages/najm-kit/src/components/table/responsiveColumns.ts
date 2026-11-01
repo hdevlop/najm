@@ -38,6 +38,20 @@ export interface NTableColumnMeta<TData = any, TValue = any> {
   max?: NTableEditorResolver<TData, number | undefined>;
   /** Numeric editor step. Defaults to `any`. */
   step?: number | string;
+  /** Set `false` to leave this column out of every export and print. Defaults to true. */
+  export?: boolean;
+  /**
+   * Column title in XLSX exports and print. Defaults to `header` when it is a
+   * string, else the field name. CSV always uses the field name, so Import can
+   * read the file back.
+   */
+  exportHeader?: string;
+  /**
+   * What this column exports and prints instead of its raw accessor value, in
+   * every format: a translated status, a formatted amount, a name for an ID.
+   * Return a number, boolean or `Date` to keep the XLSX cell typed.
+   */
+  exportValue?: (value: TValue, row: TData) => unknown;
 }
 
 /** TanStack `ColumnDef` plus Najm's responsive and inline-editing metadata. */

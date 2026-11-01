@@ -42,6 +42,10 @@ export interface NTableToolbarLabels {
   tableActions?: string;
   /** Export action label and tooltip. Defaults to "Export". */
   export?: string;
+  /** Export menu item for an Excel workbook. Defaults to "Excel (.xlsx)". */
+  exportXlsx?: string;
+  /** Export menu item for a CSV file. Defaults to "CSV (.csv)". */
+  exportCsv?: string;
   /** Import action label and tooltip. Defaults to "Import". */
   import?: string;
   /** Print action label and tooltip. Defaults to "Print". */
