@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.10.0 - 2026-11-01
+
+- NTable Export offers JSON (.json) beside Excel and CSV; the default
+  `exportFormats` is now `["xlsx", "csv", "json"]`. Like CSV it keeps field
+  names and each column's `exportValue`, writing one object per row with dotted
+  fields nested, so the table's own JSON import reads it back.
+- New `exportJson` toolbar label (`common.table.exportJson`).
+
 ## 3.9.0 - 2026-11-01
 
 - NTable Export offers Excel (.xlsx) and CSV (.csv). The workbook is written
