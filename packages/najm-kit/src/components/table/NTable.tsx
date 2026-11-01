@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useLayoutEffect, useState, useCallback, useMemo } from "react";
 import { useNTableDefaults, useResolvedToolbarLabels } from "./TableDefaults";
 import { rowActionCopy } from "./rowActionLabels";
-import { Download, Eye, FileSpreadsheet, FileText, Inbox, Pencil, Plus, Printer, SearchX, Trash2, Upload } from "lucide-react";
+import { Download, Eye, FileJson, FileSpreadsheet, FileText, Inbox, Pencil, Plus, Printer, SearchX, Trash2, Upload } from "lucide-react";
 import type { ColumnDef, Row, SortingState, ColumnFiltersState, VisibilityState, RowSelectionState, ExpandedState } from "@tanstack/react-table";
 import { TableStoreContext } from "./TableContext";
 import { useContextMenu, type ContextMenuItem } from "../data-display/useContextMenu";
@@ -13,7 +13,7 @@ import { NTablePagination } from "./NTablePagination";
 import { NTableHeader } from "./NTableHeader";
 import { NTableJson } from "./NTableJson";
 import { NTableImport } from "./NTableImport";
-import { documentContext, downloadTable, downloadTableXlsx, printTable, tableDataSnapshot, type NTableExportFormat } from "./dataActions";
+import { documentContext, downloadTable, downloadTableJson, downloadTableXlsx, printTable, tableDataSnapshot, type NTableExportFormat } from "./dataActions";
 import type { Table } from "@tanstack/react-table";
 import { NTableCardsLoadingSkeleton, NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
 import { cn } from "../../lib/cn";
@@ -39,7 +39,7 @@ export type { NTableCardPagination, NTableLoadMorePagination, NTableInfinitePagi
 export type { NTableToolbarLabels } from "./toolbarContract";
 export type { NTableExportFormat } from "./dataActions";
 
-const DEFAULT_EXPORT_FORMATS: readonly NTableExportFormat[] = ["xlsx", "csv"];
+const DEFAULT_EXPORT_FORMATS: readonly NTableExportFormat[] = ["xlsx", "csv", "json"];
 
 export interface NTableState {
   sorting: SortingState;
@@ -72,11 +72,11 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   error?: any;
   getRowId?: (row: T) => string;
   onCreate?: () => void;
-  /** Enable default XLSX/CSV export, XLSX/CSV/JSON import, and printing. Inherits provider defaults; otherwise false. */
+  /** Enable default XLSX/CSV/JSON export, XLSX/CSV/JSON import, and printing. Inherits provider defaults; otherwise false. */
   dataActions?: boolean;
   /**
    * Formats the built-in Export offers, in menu order. Defaults to
-   * `["xlsx", "csv"]`; one format exports directly without a menu.
+   * `["xlsx", "csv", "json"]`; one format exports directly without a menu.
    */
   exportFormats?: readonly NTableExportFormat[];
   /**
@@ -474,6 +474,7 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
     const table = dataTable.current;
     if (!table) return;
     if (format === "csv") { downloadTable(tableDataSnapshot(table), exportTitle); return; }
+    if (format === "json") { downloadTableJson(tableDataSnapshot(table), exportTitle); return; }
     downloadTableXlsx(tableDataSnapshot(table, { labels: true }), { title: exportTitle, ...documentContext() })
       .catch(error => { console.error("NTable could not export the XLSX file.", error); });
   }, [exportTitle]);
@@ -539,9 +540,12 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
   const toolbarActions = useMemo(() => {
     const items: ContextMenuItem[] = [];
     const exportLabel = resolvedToolbarLabels.export ?? "Export";
-    const formats: ContextMenuItem[] = exportFormatKey.split(",").filter(Boolean).map(format => format === "csv"
-      ? { label: resolvedToolbarLabels.exportCsv ?? "CSV (.csv)", icon: FileText, onSelect: () => defaultExport("csv") }
-      : { label: resolvedToolbarLabels.exportXlsx ?? "Excel (.xlsx)", icon: FileSpreadsheet, onSelect: () => defaultExport("xlsx") });
+    const formatItems: Record<NTableExportFormat, ContextMenuItem> = {
+      xlsx: { label: resolvedToolbarLabels.exportXlsx ?? "Excel (.xlsx)", icon: FileSpreadsheet, onSelect: () => defaultExport("xlsx") },
+      csv: { label: resolvedToolbarLabels.exportCsv ?? "CSV (.csv)", icon: FileText, onSelect: () => defaultExport("csv") },
+      json: { label: resolvedToolbarLabels.exportJson ?? "JSON (.json)", icon: FileJson, onSelect: () => defaultExport("json") },
+    };
+    const formats = exportFormatKey.split(",").flatMap(format => formatItems[format as NTableExportFormat] ?? []);
     if (showExportButton && props.onExport) items.push({ label: exportLabel, icon: Download, onSelect: props.onExport });
     else if (showExportButton && formats.length === 1) items.push({ ...formats[0], label: exportLabel, icon: Download });
     else if (showExportButton && formats.length) items.push({ label: exportLabel, icon: Download, submenu: formats });

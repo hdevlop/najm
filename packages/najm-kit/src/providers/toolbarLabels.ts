@@ -23,6 +23,7 @@ export type ToolbarKey<Prefix extends string = DefaultToolbarPrefix> =
   | `${Prefix}.export`
   | `${Prefix}.exportXlsx`
   | `${Prefix}.exportCsv`
+  | `${Prefix}.exportJson`
   | `${Prefix}.import`
   | `${Prefix}.print`
   | `${Prefix}.importDescription`
@@ -86,6 +87,7 @@ export function buildToolbarLabels<
     export: optional(`${scope}.export`),
     exportXlsx: optional(`${scope}.exportXlsx`),
     exportCsv: optional(`${scope}.exportCsv`),
+    exportJson: optional(`${scope}.exportJson`),
     import: optional(`${scope}.import`),
     print: optional(`${scope}.print`),
     importDescription: optional(`${scope}.importDescription`),

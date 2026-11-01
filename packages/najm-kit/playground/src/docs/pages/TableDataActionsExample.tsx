@@ -42,7 +42,7 @@ function MemberCard({ data }: { data: Member }) {
   return <div className="space-y-1 p-3"><p className="font-medium">{data.name}</p><p className="text-sm text-muted-foreground">{data.email}</p><p className="text-sm">{data.status}</p></div>;
 }
 
-const FORMAT_CHOICES: Record<string, readonly NTableExportFormat[]> = { both: ['xlsx', 'csv'], xlsx: ['xlsx'], csv: ['csv'] };
+const FORMAT_CHOICES: Record<string, readonly NTableExportFormat[]> = { all: ['xlsx', 'csv', 'json'], xlsx: ['xlsx'], csv: ['csv'], json: ['json'] };
 
 export function TableDataActionsExample() {
   const [showExport, setShowExport] = useState(true);
@@ -51,7 +51,7 @@ export function TableDataActionsExample() {
   const [isEmpty, setIsEmpty] = useState(false);
   const [loading, setLoading] = useState(false);
   const [arabic, setArabic] = useState(false);
-  const [formats, setFormats] = useState<keyof typeof FORMAT_CHOICES>('both');
+  const [formats, setFormats] = useState<keyof typeof FORMAT_CHOICES>('all');
   const [display, setDisplay] = useState<'buttons' | 'menu' | 'both' | 'settings'>('both');
   const lang = arabic ? 'ar' : 'en';
   const exportTitle = arabic ? 'قائمة الأعضاء' : 'Members 2026';
@@ -72,7 +72,7 @@ export function TableDataActionsExample() {
   const formatList = FORMAT_CHOICES[formats].map(format => `"${format}"`).join(', ');
   const code = `<NTable\n  data={members}\n  columns={columns}\n  dataActions\n  exportTitle="${exportTitle}"\n  exportFormats={[${formatList}]}\n  showExportButton={${showExport}}\n  showImportButton={${showImport}}\n  showPrintButton={${showPrint}}\n  toolbarActionDisplay="${display}"\n/>\n\n// Columns choose what they export\n{ accessorKey: 'status', meta: { exportValue: value => labels[value] } }\n{ accessorKey: 'photo', meta: { export: false } }`;
   return (
-    <Example title="Export, import, and print" description="Export to Excel or CSV, import XLSX/CSV/JSON, or print. Excel and print use the column titles, keep dates and numbers typed, and follow the page's direction; CSV keeps field names so Import reads it back. Imports replace displayed rows after confirmation." code={code} lang="tsx" previewHeight="h-[600px]" center={false} noPad>
+    <Example title="Export, import, and print" description="Export to Excel, CSV or JSON, import XLSX/CSV/JSON, or print. Excel and print use the column titles, keep dates and numbers typed, and follow the page's direction; CSV and JSON keep field names so Import reads them back. Imports replace displayed rows after confirmation." code={code} lang="tsx" previewHeight="h-[600px]" center={false} noPad>
       <div data-testid="ntable-data-actions-demo" className="flex h-full min-w-0 flex-col gap-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
           <label className="flex items-center gap-2"><Switch aria-label="Show Export" checked={showExport} onCheckedChange={setShowExport} />Export</label>
@@ -82,7 +82,7 @@ export function TableDataActionsExample() {
           <label className="flex items-center gap-2"><Switch aria-label="Loading table" checked={loading} onCheckedChange={setLoading} />Loading</label>
           <label className="flex items-center gap-2"><Switch aria-label="Arabic, right to left" checked={arabic} onCheckedChange={setArabic} />Arabic (RTL)</label>
           <select aria-label="Export formats" value={formats} onChange={event => setFormats(event.target.value as keyof typeof FORMAT_CHOICES)} className="rounded-md border border-input bg-card px-2 py-1 text-foreground">
-            <option value="both">Excel and CSV</option><option value="xlsx">Excel only</option><option value="csv">CSV only</option>
+            <option value="all">Excel, CSV and JSON</option><option value="xlsx">Excel only</option><option value="csv">CSV only</option><option value="json">JSON only</option>
           </select>
           <select aria-label="Action presentation" value={display} onChange={event => setDisplay(event.target.value as typeof display)} className="rounded-md border border-input bg-card px-2 py-1 text-foreground">
             <option value="both">Buttons and menu</option><option value="buttons">Buttons only</option><option value="menu">Menu only</option><option value="settings">Settings menu</option>

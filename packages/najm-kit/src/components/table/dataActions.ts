@@ -6,8 +6,8 @@ export interface TableDataSnapshot {
   rows: unknown[][];
 }
 
-/** Built-in export formats. XLSX and print are for people; CSV keeps field names so Import reads it back. */
-export type NTableExportFormat = "xlsx" | "csv";
+/** Built-in export formats. XLSX and print are for people; CSV and JSON keep field names so Import reads them back. */
+export type NTableExportFormat = "xlsx" | "csv" | "json";
 
 export interface TableSnapshotOptions {
   /** Column labels (`meta.exportHeader`, else a string `header`) instead of field names. */
@@ -99,6 +99,32 @@ function downloadBlob(blob: Blob, filename: string) {
 
 export function downloadTable(snapshot: TableDataSnapshot, title?: string) {
   downloadBlob(new Blob([tableCsv(snapshot)], { type: "text/csv;charset=utf-8" }), tableFileName(title, "csv"));
+}
+
+/**
+ * One object per row, keyed by field name, the shape JSON import reads back:
+ * dotted fields (`user.name`) become nested objects and values keep their
+ * types (dates as ISO text).
+ */
+export function tableJson(snapshot: TableDataSnapshot): string {
+  const rows = snapshot.rows.map(values => {
+    const row: Record<string, unknown> = {};
+    snapshot.headers.forEach((key, index) => {
+      const path = key.split(".");
+      let target = row;
+      for (const part of path.slice(0, -1)) {
+        const next = target[part];
+        target = (next && typeof next === "object" && !Array.isArray(next) ? next : (target[part] = {})) as Record<string, unknown>;
+      }
+      target[path[path.length - 1]] = values[index] ?? null;
+    });
+    return row;
+  });
+  return JSON.stringify(rows, null, 2);
+}
+
+export function downloadTableJson(snapshot: TableDataSnapshot, title?: string) {
+  downloadBlob(new Blob([tableJson(snapshot)], { type: "application/json;charset=utf-8" }), tableFileName(title, "json"));
 }
 
 /** Excel limits sheet names to 31 characters and forbids a few. */

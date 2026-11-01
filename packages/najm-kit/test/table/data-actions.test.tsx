@@ -4,7 +4,7 @@ import { act, fireEvent, render, waitFor } from "@testing-library/react";
 import { createTable, getCoreRowModel, getFilteredRowModel, getSortedRowModel } from "@tanstack/react-table";
 import { NTable } from "../../src/components/table/NTable";
 import { NTableDefaultsProvider } from "../../src/components/table/TableDefaults";
-import { DOWNLOAD_URL_LIFETIME_MS, downloadTable, parseTableImport, printTable, readTableImportFile, tableCsv, tableDataSnapshot, tableFileName, tableXlsx } from "../../src/components/table/dataActions";
+import { DOWNLOAD_URL_LIFETIME_MS, downloadTable, parseTableImport, printTable, readTableImportFile, tableCsv, tableDataSnapshot, tableFileName, tableJson, tableXlsx } from "../../src/components/table/dataActions";
 import { Xlsx } from "xlsx-manager";
 
 const data = [{ id: "1", name: "Alice" }];
@@ -301,6 +301,12 @@ describe("table data formats", () => {
     expect(tableDataSnapshot(table)).toEqual({ headers: ["name", "status", "code"], rows: [["Alice", "Actif (Alice)", 7]] });
   });
 
+  test("JSON nests dotted fields, keeps types and writes missing values as null", () => {
+    const born = new Date("2020-01-02T00:00:00.000Z");
+    const rows = JSON.parse(tableJson({ headers: ["id", "user.name", "user.phone", "amount", "active", "born"], rows: [["001", "Bob", undefined, 12.5, true, born]] }));
+    expect(rows).toEqual([{ id: "001", user: { name: "Bob", phone: null }, amount: 12.5, active: true, born: "2020-01-02T00:00:00.000Z" }]);
+  });
+
   test("file names drop characters file systems reject and keep one extension", () => {
     expect(tableFileName(undefined, "csv")).toBe("table.csv");
     expect(tableFileName('Élèves 2026/27: "6A"', "xlsx")).toBe("Élèves 2026 27 6A.xlsx");
@@ -400,6 +406,20 @@ describe("export toolbar", () => {
       fireEvent.click(await view.findByText("CSV (.csv)"));
       expect(download.files[0].name).toBe("table.csv");
       expect(await download.files[0].blob.text()).toBe('﻿"name"\r\n"Alice"');
+    } finally { download.restore(); }
+  });
+
+  test("JSON exports row objects that Import reads back", async () => {
+    const download = capture();
+    try {
+      const view = render(<NTable {...base} columns={labelled} dataActions exportTitle="Members" />);
+      fireEvent.click(view.container.querySelector('[aria-label="Export"]')!);
+      fireEvent.click(await view.findByText("JSON (.json)"));
+      expect(download.files[0].name).toBe("Members.json");
+      expect(download.files[0].blob.type).toBe("application/json;charset=utf-8");
+      const text = await download.files[0].blob.text();
+      expect(JSON.parse(text)).toEqual([{ name: "Alice" }]);
+      expect(parseTableImport(text, "Members.json")).toEqual([{ name: "Alice" }]);
     } finally { download.restore(); }
   });
 

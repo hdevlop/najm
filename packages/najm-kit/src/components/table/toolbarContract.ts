@@ -46,6 +46,8 @@ export interface NTableToolbarLabels {
   exportXlsx?: string;
   /** Export menu item for a CSV file. Defaults to "CSV (.csv)". */
   exportCsv?: string;
+  /** Export menu item for a JSON file. Defaults to "JSON (.json)". */
+  exportJson?: string;
   /** Import action label and tooltip. Defaults to "Import". */
   import?: string;
   /** Print action label and tooltip. Defaults to "Print". */
