@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.11.0 - 2026-11-02
+
+- `WizardForm` takes `freeNavigation`: every step opens from the header, for a
+  form whose values are already complete, such as an edit. Off by default.
+  Steps skipped this way are checked by the full `schema` on submit, which
+  reopens the first step with an error, so that schema must hold every rule
+  the step schemas do.
+
 ## 3.10.0 - 2026-11-01
 
 - NTable Export offers JSON (.json) beside Excel and CSV; the default
