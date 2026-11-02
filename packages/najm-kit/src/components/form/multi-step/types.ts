@@ -31,6 +31,12 @@ export interface WizardFormProps {
   currentStep?: number;
   onCurrentStepChange?: (step: number) => void;
   onStepComplete?: (stepIndex: number, data: Record<string, any>) => void;
+  /**
+   * Every step opens from the header, for a form whose values are already
+   * complete, such as an edit. Steps skipped this way are only checked by the
+   * full `schema` on submit, so it must hold every rule the step schemas do.
+   */
+  freeNavigation?: boolean;
   showHeader?: boolean;
   showFooter?: boolean;
   nextLabel?: string;

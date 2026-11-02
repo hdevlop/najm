@@ -5,6 +5,7 @@ interface UseStepNavigationOptions {
   steps: StepConfig[];
   currentStep?: number;
   onCurrentStepChange?: (step: number) => void;
+  freeNavigation?: boolean;
 }
 
 interface StepNavState {
@@ -26,6 +27,7 @@ export function useStepNavigation({
   steps,
   currentStep: controlledStep,
   onCurrentStepChange,
+  freeNavigation = false,
 }: UseStepNavigationOptions): StepNavState {
   const [internalStep, setInternalStep] = useState(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set());
@@ -69,12 +71,12 @@ export function useStepNavigation({
   const goToStep = useCallback(
     (step: number) => {
       if (step >= 1 && step <= totalSteps) {
-        if (step === 1 || completedSteps.has(step - 1)) {
+        if (freeNavigation || step === 1 || completedSteps.has(step - 1)) {
           setCurrentStep(step);
         }
       }
     },
-    [totalSteps, completedSteps, setCurrentStep]
+    [totalSteps, completedSteps, freeNavigation, setCurrentStep]
   );
 
   const reset = useCallback(() => {

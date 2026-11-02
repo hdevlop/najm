@@ -286,3 +286,68 @@ describe("WizardForm draft between steps", () => {
     });
   }
 });
+
+describe("WizardForm freeNavigation", () => {
+  // 2026-11-02, School staff edit: a saved record's later steps could not be
+  // opened from the header until Next had been pressed through each one.
+  const identity = z.object({ name: z.string().min(1) });
+  const pay = z.object({ salary: z.coerce.number().positive() });
+  const review = z.object({ notes: z.string().optional() });
+  const steps: StepConfig[] = [
+    { id: "identity", title: "Identity", schema: identity, fields: ["name"],
+      render: ({ form }) => <input aria-label="name" {...form.register("name")} /> },
+    { id: "pay", title: "Pay", schema: pay, fields: ["salary"],
+      render: ({ form }) => (
+        <>
+          <input aria-label="salary" {...form.register("salary")} />
+          {errorText(form, "salary")}
+        </>
+      ) },
+    { id: "review", title: "Review", schema: review, fields: ["notes"],
+      render: ({ form }) => <input aria-label="notes" {...form.register("notes")} /> },
+  ];
+  const schema = identity.merge(pay).merge(review);
+  const field = (container: HTMLElement, name: string) => container.querySelector(`input[aria-label='${name}']`) as HTMLInputElement;
+  const saved = { name: "Hicham", salary: 3000, notes: "" };
+
+  test("stays off by default: a step not reached yet does not open", async () => {
+    const view = render(<WizardForm steps={steps} schema={schema} defaultValues={saved} onSubmit={mock()} />);
+    await act(async () => { fireEvent.click(view.getByText("Review")); });
+    expect(field(view.container, "name")).toBeTruthy();
+    expect(field(view.container, "notes")).toBeNull();
+    view.unmount();
+  });
+
+  test("opens any step from the header, shows its saved value and keeps a draft", async () => {
+    const onSubmit = mock();
+    const view = render(<WizardForm steps={steps} schema={schema} defaultValues={saved} onSubmit={onSubmit} freeNavigation />);
+    await userEvent.clear(field(view.container, "name"));
+    await userEvent.type(field(view.container, "name"), "Bazi");
+
+    await act(async () => { fireEvent.click(view.getByText("Pay")); });
+    await waitFor(() => expect(field(view.container, "salary")).toBeTruthy());
+    expect(field(view.container, "salary").value).toBe("3000");
+
+    await act(async () => { fireEvent.click(view.getByText("Review")); });
+    await waitFor(() => expect(field(view.container, "notes")).toBeTruthy());
+    await act(async () => { fireEvent.click(view.getByText("Submit")); });
+    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(onSubmit.mock.calls[0][0]).toEqual({ name: "Bazi", salary: 3000, notes: "" });
+    view.unmount();
+  });
+
+  test("a skipped invalid step is still refused on submit and reopened with its error", async () => {
+    const onSubmit = mock();
+    const view = render(
+      <WizardForm steps={steps} schema={schema} defaultValues={{ ...saved, salary: -1 }} onSubmit={onSubmit} freeNavigation />
+    );
+    await act(async () => { fireEvent.click(view.getByText("Review")); });
+    await waitFor(() => expect(field(view.container, "notes")).toBeTruthy());
+    await act(async () => { fireEvent.click(view.getByText("Submit")); });
+
+    await waitFor(() => expect(field(view.container, "salary")).toBeTruthy());
+    await waitFor(() => expect(view.getByRole("alert")).toBeTruthy());
+    expect(onSubmit).not.toHaveBeenCalled();
+    view.unmount();
+  });
+});

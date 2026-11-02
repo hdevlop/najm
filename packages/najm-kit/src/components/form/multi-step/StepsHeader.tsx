@@ -8,6 +8,7 @@ export interface StepsHeaderProps {
   steps: StepMeta[];
   currentStep: number;
   completedSteps?: Set<number>;
+  freeNavigation?: boolean;
   onStepClick?: (step: number) => void;
   className?: string;
   classNames?: WizardClassNames;
@@ -17,6 +18,7 @@ export function StepsHeader({
   steps,
   currentStep,
   completedSteps,
+  freeNavigation,
   onStepClick,
   className,
   classNames,
@@ -31,6 +33,7 @@ export function StepsHeader({
           title={step.title}
           currentStep={currentStep}
           completedSteps={completedSteps}
+          freeNavigation={freeNavigation}
           onClick={onStepClick}
           className={classNames?.indicator}
         />

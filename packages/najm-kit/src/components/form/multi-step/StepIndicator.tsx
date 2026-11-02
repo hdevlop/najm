@@ -42,6 +42,7 @@ export interface StepIndicatorProps {
   title: string;
   currentStep: number;
   completedSteps?: Set<number>;
+  freeNavigation?: boolean;
   onClick?: (step: number) => void;
   className?: string;
 }
@@ -51,12 +52,13 @@ export function StepIndicator({
   title,
   currentStep,
   completedSteps,
+  freeNavigation,
   onClick,
   className,
 }: StepIndicatorProps) {
   const state = getStepState(stepNumber, currentStep, completedSteps);
   const isCompleted = state === "completed";
-  const isClickable = onClick && (stepNumber === 1 || completedSteps?.has(stepNumber - 1));
+  const isClickable = onClick && (freeNavigation || stepNumber === 1 || completedSteps?.has(stepNumber - 1));
 
   return (
     <div

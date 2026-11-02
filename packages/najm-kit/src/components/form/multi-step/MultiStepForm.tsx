@@ -40,6 +40,7 @@ export function WizardForm({
   currentStep: controlledStep,
   onCurrentStepChange,
   onStepComplete,
+  freeNavigation = false,
   showHeader = true,
   showFooter = true,
   nextLabel = "Next",
@@ -59,6 +60,7 @@ export function WizardForm({
     steps,
     currentStep: controlledStep,
     onCurrentStepChange,
+    freeNavigation,
   });
 
   const { formDataRef, handleStepSubmit, getStepDefaultValues } = useFormSubmission({
@@ -219,6 +221,7 @@ export function WizardForm({
           steps={nav.steps}
           currentStep={nav.currentStep}
           completedSteps={nav.completedSteps}
+          freeNavigation={freeNavigation}
           onStepClick={goToStep}
           classNames={classNames}
         />
