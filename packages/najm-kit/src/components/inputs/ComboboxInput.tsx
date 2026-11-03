@@ -87,7 +87,10 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
           role="combobox"
           // Named like SelectInput: a combobox table filter had no name at all.
           aria-label={ariaLabel || placeholder || labels.select}
-          tabIndex={disabled ? -1 : 0}
+          // No tabIndex at all when disabled: -1 still takes focus on a click,
+          // and the focus ring made a locked field look like it had opened.
+          tabIndex={disabled ? undefined : 0}
+          aria-disabled={disabled || undefined}
           aria-expanded={open}
           onKeyDown={(event) => {
             if (disabled || (event.key !== "Enter" && event.key !== " ")) return;
@@ -95,7 +98,8 @@ export const ComboboxInput: React.FC<ComboboxInputProps> = ({ placeholder = "Sel
             setOpen(true);
           }}
           className={cn(
-            "cursor-pointer outline-none data-[state=open]:border-ring",
+            disabled ? "cursor-not-allowed opacity-50" : "cursor-pointer",
+            "outline-none data-[state=open]:border-ring",
             className,
           )}
         >
