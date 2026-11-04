@@ -155,6 +155,26 @@ describe('hot path scope regressions', () => {
     });
   });
 
+  test('a header parameter is found whatever case its name is written in', async () => {
+    class HeaderCaseController {
+      show(mixed: string, lower: string, missing: string | undefined) {
+        return { mixed, lower, missing: missing ?? null };
+      }
+    }
+    decorateParam(HeaderCaseController.prototype, 'show', 0, Headers('X-Language'));
+    decorateParam(HeaderCaseController.prototype, 'show', 1, Headers('x-language'));
+    decorateParam(HeaderCaseController.prototype, 'show', 2, Headers('X-Absent'));
+    decorateMethod(HeaderCaseController.prototype, 'show', Get('/items'));
+    decorateClass(HeaderCaseController, Controller('/header-case'));
+
+    const server = await initServer(HeaderCaseController);
+    const response = await server.fetch(new Request('http://localhost/header-case/items', {
+      headers: { 'X-Language': 'fr' },
+    }));
+
+    expect(await response.json()).toEqual({ mixed: 'fr', lower: 'fr', missing: null });
+  });
+
   test('mixed decorated and legacy parameters still resolve through the legacy path', async () => {
     class MixedController {
       show(id: string, ctx: any) {

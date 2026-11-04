@@ -205,9 +205,9 @@ export class ParamResolver {
             if (validated !== undefined) {
                return propertyKey ? validated?.[propertyKey] : validated;
             }
-            // Fallback to raw headers
+            // Fallback to raw headers, whose keys are lowercase
             const requestData = getRequestData();
-            return propertyKey ? requestData.headers?.[propertyKey] : requestData.headers;
+            return propertyKey ? requestData.headers?.[propertyKey.toLowerCase()] : requestData.headers;
          }
          case 'contentType': {
             const requestData = getRequestData();
@@ -410,8 +410,9 @@ export class ParamResolver {
                   return propertyKey ? validated?.[propertyKey] : validated;
                }
 
+               // Header names are case-insensitive; the Fetch API lowercases these keys.
                return propertyKey
-                  ? this.extractHeaders(context)?.[propertyKey]
+                  ? this.extractHeaders(context)?.[propertyKey.toLowerCase()]
                   : this.extractHeaders(context);
             };
             break;
