@@ -1,5 +1,6 @@
 import React from 'react';
 import { cn } from "../../lib/cn";
+import { NCard } from "../Card/Card";
 
 interface SkeletonProps extends React.ComponentProps<"div"> {}
 
@@ -15,16 +16,46 @@ export function NSkeleton({ className, ...props }: SkeletonProps) {
 
 export { NSkeleton as Skeleton };
 
-export function NStatCardSkeleton() {
+/**
+ * One line of text's height: a non-breaking space in the line's own type sets
+ * it, so the bar takes exactly the room the text will, whatever the font.
+ */
+function SkeletonTextLine({ className, barClassName }: { className: string; barClassName: string }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4 flex items-start gap-3">
-      <NSkeleton className="w-9 h-9 rounded-lg shrink-0" />
-      <div className="min-w-0 flex-1">
-        <NSkeleton className="h-3 w-16 mb-2" />
-        <NSkeleton className="h-6 w-12 mb-1" />
-        <NSkeleton className="h-3 w-20" />
-      </div>
+    <div data-skeleton-line="" aria-hidden="true" className={cn("relative", className)}>
+      {" "}
+      <NSkeleton className={cn("absolute inset-y-[15%] start-0 max-w-full", barClassName)} />
     </div>
+  );
+}
+
+export interface NStatCardSkeletonProps {
+  /** The card it stands in for shows `subtext` under its value. */
+  subtext?: boolean;
+  bordered?: boolean;
+  className?: string;
+}
+
+/**
+ * `NStatCard`'s loading shape, built from the same card surface, padding, icon
+ * box and type at every breakpoint, so a row of stat cards keeps its height
+ * when the figures arrive.
+ */
+export function NStatCardSkeleton({ subtext = false, bordered, className }: NStatCardSkeletonProps = {}) {
+  return (
+    <NCard
+      noPadding
+      bordered={bordered}
+      className={cn("p-2 lg:p-3 2xl:p-4", className)}
+      classNames={{ content: "flex-row items-center gap-2 lg:gap-3 xl:gap-3 2xl:gap-4" }}
+    >
+      <NSkeleton className="h-8 w-8 shrink-0 rounded-xl lg:h-9 lg:w-9 2xl:h-10 2xl:w-10" />
+      <div className="flex min-w-0 flex-1 flex-col gap-0 2xl:gap-1">
+        <SkeletonTextLine className="text-xs" barClassName="w-16" />
+        <SkeletonTextLine className="text-sm font-semibold leading-none lg:text-base xl:text-base 2xl:text-xl" barClassName="inset-y-0 w-20" />
+        {subtext && <SkeletonTextLine className="text-[10px]" barClassName="w-24" />}
+      </div>
+    </NCard>
   );
 }
 

@@ -283,7 +283,10 @@ export function NStatCard(props: NStatCardProps) {
   if (props.loading) {
     return (
       <div aria-busy="true" aria-label={props.loadingLabel ?? "Loading"} className={props.className} role="status">
-        <NStatCardSkeleton />
+        <NStatCardSkeleton
+          bordered={props.bordered}
+          subtext={(props.variant ?? "default") === "default" && !!(props as DefaultProps).subtext}
+        />
       </div>
     );
   }
