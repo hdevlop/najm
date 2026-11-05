@@ -1,5 +1,14 @@
 # Changelog
 
+## 3.12.0 - 2026-11-05
+
+- `NStatCardSkeleton` has the shape of the `NStatCard` it stands in for: the
+  same card surface, padding (p-2, p-3, p-4 by breakpoint), icon box and line
+  type. It was a padded three-line card about twice as tall, so a row of stat
+  cards shrank when its figures arrived. It takes `subtext` for a card with a
+  hint line, and `bordered` and `className`; a loading `NStatCard` passes its
+  own `subtext` and `bordered`.
+
 ## 3.11.1 - 2026-11-05
 
 - `NAvatar` no longer sets `aria-busy` while its image loads. The image loads
