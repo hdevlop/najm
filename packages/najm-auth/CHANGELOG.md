@@ -1,5 +1,20 @@
 # Changelog
 
+## 6.11.0 - 2026-11-05
+
+- `bootRefreshScript({ url })` (`najm-auth/client`) returns an inline script
+  that starts a signed-in page's first `POST {auth}/refresh` while the HTML is
+  still being read. The client sent it only after all of its JavaScript had
+  loaded and run, and every data request waited behind it: 1.3 to 1.9 seconds
+  into a phone's page load. The client's first refresh now takes that answer
+  instead of sending its own, so the refresh token still turns once per load.
+  A request that got no answer, or a 5xx, falls back to an ordinary refresh; a
+  401, 403 or 429 is final as before; an answer for another endpoint or older
+  than a minute is dropped. Render the script, with the page's CSP nonce, only
+  on pages whose client is hydrated signed in without an access token.
+- `FetchClient.read(response)` reads the answer to a request the client did
+  not send as it reads its own.
+
 ## 6.10.0 - 2026-10-24
 
 - `sessionExpired` now carries a `SessionExpiredEvent` (exported from
