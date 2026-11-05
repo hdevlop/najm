@@ -54,7 +54,7 @@ describe("NAvatar image lifecycle", () => {
 
       const second = render(<NAvatar src="/cached.png" fallback="FM" />);
       expect(img(second.container)?.className).not.toContain("opacity-0");
-      expect(second.container.querySelector("[data-slot=avatar]")?.getAttribute("aria-busy")).toBe("false");
+      expect(second.container.querySelector("[data-slot=avatar]")?.hasAttribute("aria-busy")).toBe(false);
       expect(initials(second.container)).toBeNull();
     } finally {
       Object.defineProperty(prototype, "complete", complete);
@@ -86,7 +86,10 @@ describe("NAvatar image lifecycle", () => {
       "https://example.com/fahd.png",
     );
     expect(initials(container)).toBeNull();
-    expect(container.querySelector("[data-slot=avatar]")?.getAttribute("aria-busy")).toBe("true");
+    // A lazy image below the screen is never requested until scrolled to, so a
+    // busy mark here stayed on for good and a finished list read as loading.
+    expect(container.querySelector("[data-slot=avatar]")?.hasAttribute("aria-busy")).toBe(false);
+    expect(img(container)?.getAttribute("loading")).toBe("lazy");
     expect(img(container)?.className).toContain("opacity-0");
     expect(img(container)?.className).toContain("absolute");
   });
@@ -103,7 +106,7 @@ describe("NAvatar image lifecycle", () => {
     expect(initials(container)).toBeNull();
     expect(img(container)).not.toBeNull();
     expect(img(container)?.className).not.toContain("opacity-0");
-    expect(container.querySelector("[data-slot=avatar]")?.getAttribute("aria-busy")).toBe("false");
+    expect(container.querySelector("[data-slot=avatar]")?.hasAttribute("aria-busy")).toBe(false);
   });
 
   test("brings initials back when the only source fails, with no broken image left behind", () => {

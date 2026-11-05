@@ -184,8 +184,12 @@ export function NAvatar({
 
   return (
     <div className={cn("flex items-center gap-3", classNames?.root, className)}>
+      {/* No aria-busy while the image loads. The image loads lazily, so one
+          below the screen is not requested until it is scrolled to: the mark
+          stayed on for good, telling assistive technology (and page-ready
+          checks) that a list which had finished was still loading. The
+          neutral box is the visual cue; the image's alt names the person. */}
       <AvatarPrimitive
-        aria-busy={showImage && !chain.loaded}
         className={cn(SIZE_CLASSES[size], shapeClass, "flex justify-center items-center overflow-hidden bg-muted", classNames?.avatar)}
       >
         {showImage && (
