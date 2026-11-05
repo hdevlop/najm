@@ -1,5 +1,13 @@
 # Changelog
 
+## 3.11.1 - 2026-11-05
+
+- `NAvatar` no longer sets `aria-busy` while its image loads. The image loads
+  lazily, so a photo below the screen is not requested until it is scrolled
+  to, and the mark stayed on for good: assistive technology was told a
+  finished list was still loading, and page-ready checks never settled. The
+  neutral box is the visual cue; the image's alt names the person.
+
 ## 3.11.0 - 2026-11-02
 
 - `WizardForm` takes `freeNavigation`: every step opens from the header, for a
