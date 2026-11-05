@@ -72,6 +72,21 @@ export class FetchClient {
     return this.request<T>('DELETE', path, opts);
   }
 
+  /**
+   * Read the answer to a request this client did not send (the page's early
+   * refresh) as it reads its own: the parsed body, or an AuthError for a
+   * refusal. Nothing is retried; the request is not this client's to repeat.
+   */
+  async read<T>(response: Promise<Response>): Promise<T> {
+    const res = await response;
+    const body = await this.parseBody(res);
+    if (!res.ok) {
+      const msg = (body as any)?.message ?? res.statusText;
+      throw new AuthError(res.status, msg, body);
+    }
+    return body as T;
+  }
+
   private async request<T>(method: string, path: string, opts?: RequestOptions): Promise<T> {
     return this.execute<T>(method, path, opts, 0);
   }

@@ -6,6 +6,7 @@
 
 export { NajmAuthClient, createAuthClient, type HydrateSession } from './NajmAuthClient';
 export { FetchClient } from './FetchClient';
+export { bootRefreshScript, BOOT_REFRESH_KEY, type BootRefreshScriptOptions } from './bootRefresh';
 export { decodeToken, isTokenExpired, getTokenTTL } from './tokenDecoder';
 export { matchPermission, hasRole, hasAnyRole } from './permissions';
 export { TabSync } from './tabSync';

@@ -3,6 +3,7 @@
 // ============================================================================
 
 import { FetchClient } from './FetchClient';
+import { takeBootRefresh } from './bootRefresh';
 import { decodeToken, getTokenTTL } from './tokenDecoder';
 import { matchPermission, hasRole as checkRole, hasAnyRole as checkAnyRole } from './permissions';
 import { TabSync } from './tabSync';
@@ -498,15 +499,31 @@ export class NajmAuthClient {
   }
 
   private async _doRefresh(generation: number, signal: AbortSignal): Promise<boolean> {
-    const res = await this.api.post<ServerResponse<TokenPair>>(
-      `${this.prefix}/refresh`,
-      { skipAuth: true, signal },
-    );
+    const path = `${this.prefix}/refresh`;
+    const res = await this.readBootRefresh(path)
+      ?? await this.api.post<ServerResponse<TokenPair>>(path, { skipAuth: true, signal });
     if (generation !== this.authGeneration) return false;
     this.applyTokens(res.data);
     this.tabSync?.broadcastSync(this.getSyncPayload());
     this.emit('tokenRefresh', null);
     return true;
+  }
+
+  /**
+   * The answer to the page's early refresh (`bootRefreshScript`), when it sent
+   * one to this endpoint: it stands in for this client's first refresh. A
+   * request that got no answer, or a server failure, falls through to an
+   * ordinary refresh; a refusal is final, as an ordinary one is.
+   */
+  private async readBootRefresh(path: string): Promise<ServerResponse<TokenPair> | null> {
+    const response = takeBootRefresh(`${this.config.baseURL}${path}`);
+    if (!response) return null;
+    try {
+      return await this.api.read<ServerResponse<TokenPair>>(response);
+    } catch (err) {
+      if (err instanceof AuthError && err.status < 500) throw err;
+      return null;
+    }
   }
 
   private async handleUnauthorized(): Promise<string | null> {
