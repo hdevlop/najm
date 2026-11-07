@@ -274,6 +274,13 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
   const resolvedHeaderColor = resolveTableColor(headerColor, DEFAULT_TABLE_HEADER_COLOR);
   const resolvedHeaderTextColor = resolveTableColor(headerTextColor, DEFAULT_TABLE_HEADER_TEXT_COLOR);
   const resolvedBorderColor = resolveTableColor(tableBorderColor, DEFAULT_TABLE_BORDER_COLOR);
+  // TanStack gives every column a default size (150), so the size a column
+  // was defined with is read from the definitions, not from the resolved column.
+  const definedSizes = new Map<string, number>();
+  for (const def of (table?.options.columns ?? []) as Array<{ id?: string; accessorKey?: unknown; size?: number }>) {
+    const id = def.id ?? (typeof def.accessorKey === "string" ? def.accessorKey.replace(/\./g, "_") : undefined);
+    if (id && typeof def.size === "number") definedSizes.set(id, def.size);
+  }
   const headerCellStyle: React.CSSProperties = {
     backgroundColor: resolvedHeaderColor,
     color: resolvedHeaderTextColor,
@@ -426,7 +433,10 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                     // over-long one is clipped rather than allowed to spill
                     // into its neighbour.
                     className={cn("text-foreground h-12 overflow-hidden text-ellipsis", responsiveClass)}
-                    style={headerCellStyle}
+                    // Under the fixed layout the header row sets every column's
+                    // width: a column defined with `size` keeps it, as the
+                    // skeleton does; the rest share what is left.
+                    style={definedSizes.has(header.column.id) ? { ...headerCellStyle, width: definedSizes.get(header.column.id) } : headerCellStyle}
                   >
                     {header.isPlaceholder ? null : (
                       <div className={cn("flex items-center gap-2", header.column.getCanSort() && showSorting && "cursor-pointer select-none")} onClick={header.column.getToggleSortingHandler()}>

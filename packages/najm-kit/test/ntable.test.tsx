@@ -64,6 +64,15 @@ describe("NTable", () => {
     expect(queryText(container, "Charlie")).toBeTruthy();
   });
 
+  test("gives a column with size that width, leaving the others to share the rest", () => {
+    const { container } = render(
+      <TableWrapper columns={[{ accessorKey: "name", header: "Name", size: 320 }, { accessorKey: "age", header: "Age" }]} />
+    );
+    const headers = [...container.querySelectorAll("th")] as HTMLElement[];
+    expect(headers.find(th => th.textContent === "Name")?.style.width).toBe("320px");
+    expect(headers.find(th => th.textContent === "Age")?.style.width).toBe("");
+  });
+
   test("renders column headers", () => {
     const { container } = render(<TableWrapper />);
     expect(queryText(container, "Name")).toBeTruthy();
