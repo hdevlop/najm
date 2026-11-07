@@ -22,6 +22,13 @@ export interface NajmKitLabels {
   pickDate: string;
   /** A date range field's placeholder when the app passes none. */
   pickDateRange: string;
+  /** A time range field: its placeholder, its two lists, its clear button and its length units. */
+  pickTimeRange: string;
+  timeFrom: string;
+  timeTo: string;
+  noTime: string;
+  hourShort: string;
+  minuteShort: string;
   /** A table's select-all checkbox. */
   selectAllRows: string;
   /** A row checkbox, followed by the row's id. */
@@ -47,6 +54,12 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     selected: "selected",
     pickDate: "Pick a date",
     pickDateRange: "Pick a date range",
+    pickTimeRange: "Pick a time",
+    timeFrom: "From",
+    timeTo: "To",
+    noTime: "No time",
+    hourShort: "h",
+    minuteShort: "min",
     selectAllRows: "Select all rows",
     selectRow: "Select row",
     remove: "Remove",
@@ -65,6 +78,12 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     selected: "sélectionné",
     pickDate: "Choisir une date",
     pickDateRange: "Choisir une période",
+    pickTimeRange: "Choisir un horaire",
+    timeFrom: "De",
+    timeTo: "À",
+    noTime: "Sans heure",
+    hourShort: "h",
+    minuteShort: "min",
     selectAllRows: "Sélectionner toutes les lignes",
     selectRow: "Sélectionner la ligne",
     remove: "Retirer",
@@ -83,6 +102,12 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     selected: "محدد",
     pickDate: "اختر تاريخًا",
     pickDateRange: "اختر فترة",
+    pickTimeRange: "اختر الوقت",
+    timeFrom: "من",
+    timeTo: "إلى",
+    noTime: "بدون وقت",
+    hourShort: "س",
+    minuteShort: "د",
     selectAllRows: "تحديد كل الصفوف",
     selectRow: "تحديد الصف",
     remove: "إزالة",
@@ -101,6 +126,12 @@ export const NAJM_KIT_LABELS: Readonly<Record<NajmKitLabelLocale, NajmKitLabels>
     selected: "seleccionado",
     pickDate: "Elegir una fecha",
     pickDateRange: "Elegir un período",
+    pickTimeRange: "Elegir un horario",
+    timeFrom: "Desde",
+    timeTo: "Hasta",
+    noTime: "Sin hora",
+    hourShort: "h",
+    minuteShort: "min",
     selectAllRows: "Seleccionar todas las filas",
     selectRow: "Seleccionar la fila",
     remove: "Quitar",

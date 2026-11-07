@@ -204,6 +204,35 @@ export interface ColorPickerInputProps extends ColorArrayInputProps {
   hideSwatches?: boolean;
 }
 
+export interface TimeRangeValue {
+  from?: string;
+  to?: string;
+}
+
+export interface TimeRangeInputProps extends BaseProps {
+  /** "HH:MM" times (a stored "HH:MM:SS" reads as "HH:MM"); an empty form value ("" or null) is no range. */
+  value: { from?: string | null; to?: string | null } | "" | null | undefined;
+  /** Both times with the end after the start, or `{}` when cleared. */
+  onChange: (range: TimeRangeValue) => void;
+  placeholder?: string;
+  icon?: InputIcon;
+  showIcon?: boolean;
+  ariaLabel?: string;
+  disabled?: boolean;
+  /** Minutes between the times offered; 15 by default. */
+  step?: number;
+  /** Earliest time offered, "HH:MM"; "07:00" by default. */
+  min?: string;
+  /** Latest time offered, "HH:MM"; "19:00" by default. */
+  max?: string;
+  /** Lengths offered as one click, in minutes; 30, 45, 60, 90 and 120 by default. */
+  durations?: number[];
+  /** The length a newly picked start gets when the end is not already later; 60 by default. */
+  defaultDuration?: number;
+  /** Offers clearing both times; true by default. */
+  clearable?: boolean;
+}
+
 export interface TimeInputProps extends BaseProps, Omit<InputHTMLAttributes<HTMLInputElement>, "className" | "onChange" | "placeholder" | "type" | "value"> {
   value?: string;
   onChange: (value: string) => void;
