@@ -1,5 +1,21 @@
 # Changelog
 
+## 3.13.0 - 2026-11-07
+
+- `TimeRangeInput` (and `FormInput type="timeRange"`): a start and an end time
+  in one field. The trigger reads "08:30 – 09:30" with the length beside it;
+  its popover lists the start and end times side by side, offers the usual
+  lengths as one click (`durations`), and clears both (`clearable`). A new
+  start keeps a later end or sets one `defaultDuration` after, so the value
+  holds both times or neither; ends at or before the start are disabled.
+  `step`, `min` and `max` set the times offered. A stored "08:30:00" reads as
+  "08:30". `formatTimeRangeDuration` writes a length as "1h30" or "45 min".
+  Its labels follow the format locale (English, French, Arabic, Spanish).
+- `NTable` honours a column's defined `size` in the loaded table, not only in
+  its skeleton: the header cell takes that width under the fixed layout, and
+  columns without one share the rest. Before, every column shared the width
+  equally and the columns jumped when the rows arrived.
+
 ## 3.12.0 - 2026-11-05
 
 - `NStatCardSkeleton` has the shape of the `NStatCard` it stands in for: the
