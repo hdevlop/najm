@@ -29,6 +29,7 @@ import {
   DEFAULT_CREDENTIAL_SETUP_TTL_MS,
 } from './credentialSetup/CredentialSetupService';
 import { defaultCredentialSetupPasswordSchema } from './credentialSetup/CredentialSetupDto';
+import { defaultPasswordSchema } from './users/UserDto';
 import type { ResolvedCredentialSetupConfig } from './credentialSetup/types';
 import { createIdentityResolver } from './identity/resolver';
 
@@ -194,6 +195,7 @@ export const resolveAuthConfig = (config?: AuthPluginConfig): AuthConfig => {
       // CookieManager falls back to jwt.accessSecret when this is undefined.
       secret: config?.session?.secret ?? process.env.NAJM_SESSION_SECRET,
     },
+    passwordSchema: config?.passwordSchema ?? defaultPasswordSchema,
     credentialSetup: resolveCredentialSetupConfig(config),
     oauth: {
       google: resolveGoogleConfig(config),

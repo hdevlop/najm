@@ -21,7 +21,9 @@ test('password change accepts an existing credential without applying new-passwo
     .toBe(false);
   expect(changePasswordDto.safeParse({ currentPassword: 'x'.repeat(73), newPassword: 'NewPassword123' }).success)
     .toBe(false);
-  expect(changePasswordDto.safeParse({ currentPassword: 'legacy-pass', newPassword: 'weak' }).success)
+  // The new password's policy is the configured one, applied in the service
+  // (password-policy.test.ts); the body only bounds it.
+  expect(changePasswordDto.safeParse({ currentPassword: 'legacy-pass', newPassword: '' }).success)
     .toBe(false);
 });
 

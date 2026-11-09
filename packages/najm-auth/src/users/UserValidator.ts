@@ -1,9 +1,12 @@
-import { Injectable } from 'najm-core';
+import { Inject, Injectable } from 'najm-core';
 import { Err } from 'najm-core';
 import { I18n, type TFn } from 'najm-i18n';
 import { UserRepository } from './UserRepository';
 import { EncryptionService } from '../auth/EncryptionService';
 import { isMissingIdentityViolation, isUniqueViolation } from '../shared/uniqueViolation';
+import { AUTH_CONFIG } from '../auth.tokens';
+import type { AuthConfig } from '../types';
+import { defaultPasswordSchema } from './UserDto';
 
 /**
  * UserValidator - Business validation for user operations
@@ -13,6 +16,8 @@ import { isMissingIdentityViolation, isUniqueViolation } from '../shared/uniqueV
 @Injectable()
 export class UserValidator {
    @I18n("users") private t!: TFn;
+   // Absent when a test builds the validator by hand: the default policy applies.
+   @Inject(AUTH_CONFIG) private config?: AuthConfig;
 
    constructor(
       private userRepository: UserRepository,
@@ -150,12 +155,10 @@ export class UserValidator {
    }
 
    /**
-    * Validate password strength and complexity
-    * Enforces:
-    * - Minimum 8 characters
-    * - At least one uppercase letter
-    * - At least one lowercase letter
-    * - At least one number
+    * Validate a new password against the configured policy:
+    * `auth({ passwordSchema })`, or `defaultPasswordSchema` (8 characters, an
+    * uppercase letter, a lowercase letter and a number). bcrypt's 72-byte
+    * limit applies whatever the policy.
     */
    validatePasswordStrength(password: string): void {
       if (!password) {
@@ -164,25 +167,9 @@ export class UserValidator {
 
       this.validatePasswordLength(password);
 
-      const minLength = 8;
-      const hasUppercase = /[A-Z]/.test(password);
-      const hasLowercase = /[a-z]/.test(password);
-      const hasNumber = /\d/.test(password);
-
-      if (password.length < minLength) {
-         Err(`Password must be at least ${minLength} characters long`, 400);
-      }
-
-      if (!hasUppercase) {
-         Err('Password must contain at least one uppercase letter', 400);
-      }
-
-      if (!hasLowercase) {
-         Err('Password must contain at least one lowercase letter', 400);
-      }
-
-      if (!hasNumber) {
-         Err('Password must contain at least one number', 400);
+      const parsed = (this.config?.passwordSchema ?? defaultPasswordSchema).safeParse(password);
+      if (!parsed.success) {
+         Err(parsed.error.issues[0]?.message ?? 'Password does not meet the password policy', 400);
       }
    }
 

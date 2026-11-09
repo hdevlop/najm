@@ -2,6 +2,7 @@
 // types.ts - Auth Plugin Type Definitions
 // ============================================================================
 
+import type { ZodType } from 'zod';
 import type { ValidationPluginConfig } from 'najm-validation';
 import type { RateLimitPluginConfig } from 'najm-rate';
 import type { CachePluginConfig } from 'najm-cache';
@@ -170,6 +171,8 @@ export interface AuthConfig {
   identity: ResolvedIdentityConfig;
   /** Session cookie cache settings */
   session: SessionCookieConfig;
+  /** Policy every new password must meet (invitation, reset, change, admin-created). */
+  passwordSchema: ZodType<string>;
   /** Resolved credential-setup policy for the built-in `password` flow. */
   credentialSetup: ResolvedCredentialSetupConfig;
   /** Resolved external identity-provider configuration. */
@@ -263,6 +266,15 @@ export type AuthPluginConfig = {
    * identifiers.
    */
   identity?: IdentityConfig;
+  /**
+   * Policy for every new password: invitation and reset links, change
+   * password, registration and admin-created accounts. Defaults to
+   * `defaultPasswordSchema` (8 characters, an uppercase letter, a lowercase
+   * letter and a number). bcrypt's 72-byte limit applies whatever the policy.
+   * The first-login replacement of a temporary credential keeps its own
+   * `credentialSetup.password.passwordSchema`.
+   */
+  passwordSchema?: ZodType<string>;
   /**
    * Policy overrides for the built-in credential-setup flow. The flow itself
    * is always mounted — there is no activation switch — and does nothing until

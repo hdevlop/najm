@@ -2,19 +2,32 @@ import { z } from 'zod';
 
 // Field validations
 const emailField = z.string().email('Invalid email format');
-// Complexity mirrors UserValidator.validatePasswordStrength so weak passwords
-// are rejected uniformly at the edge (422) instead of deep in the service.
-const passwordField = z
+// bcrypt silently truncates at 72 bytes, so anything past that is not just
+// ignored — two distinct long passwords sharing a 72-byte prefix would verify
+// interchangeably. Cap on byte length (not char count) to keep the whole
+// password significant.
+const withinBcryptBytes = (v: string) => new TextEncoder().encode(v).length <= 72;
+
+/**
+ * Default password policy: at least 8 characters, an uppercase letter, a
+ * lowercase letter and a number. An application replaces it with
+ * `auth({ passwordSchema })`; UserValidator.validatePasswordStrength applies
+ * whichever is configured.
+ */
+export const defaultPasswordSchema = z
   .string()
   .min(8, 'Password must be at least 8 characters')
-  // bcrypt silently truncates at 72 bytes, so anything past that is not just
-  // ignored — two distinct long passwords sharing a 72-byte prefix would verify
-  // interchangeably. Cap on byte length (not char count) to keep the whole
-  // password significant.
-  .refine((v) => new TextEncoder().encode(v).length <= 72, 'Password must be at most 72 bytes')
+  .refine(withinBcryptBytes, 'Password must be at most 72 bytes')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
   .regex(/\d/, 'Password must contain at least one number');
+
+// Edge shape only: bounds, not policy. The policy comes from
+// `auth({ passwordSchema })`, so the service applies it.
+const passwordField = z
+  .string()
+  .min(1, 'A password is required')
+  .refine(withinBcryptBytes, 'Password must be at most 72 bytes');
 const optionalDateField = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format').nullable().optional();
 
 // DTOs for user operations

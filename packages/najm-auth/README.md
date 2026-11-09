@@ -172,6 +172,8 @@ auth({
   defaultRole?: string | null              // Auto-assign role to new users
   publicRegistration?: boolean             // Default: true; mounts POST /auth/register
   bcryptRounds?: number                    // Default: 10 (valid: 4-31)
+  passwordSchema?: ZodType<string>         // Every new password (invite, reset, change, register, admin-created).
+                                           // Default: defaultPasswordSchema: 8+, upper, lower, digit; 72-byte cap always
 
   // Frontend
   frontendUrl?: string                     // Password reset link base URL

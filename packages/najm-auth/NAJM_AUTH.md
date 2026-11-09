@@ -50,6 +50,7 @@ auth({
   defaultRole: 'user' | null,             // auto-assigned on /auth/register
   registrationMode: 'active' | 'pending',
   bcryptRounds: 10,                       // bcrypt cost, valid range 4-31
+  passwordSchema: defaultPasswordSchema,  // new-password policy; 8+, upper, lower, digit
   lockout: { maxAttempts: 5, duration: '15m' },
   session: {
     name: 'najm.session',                 // signed session cache cookie
