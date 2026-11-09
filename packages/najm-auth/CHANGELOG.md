@@ -1,5 +1,19 @@
 # Changelog
 
+## 6.12.0 - 2026-11-09
+
+- `auth({ passwordSchema })` sets the policy every new password must meet:
+  invitation and reset links, change password, registration, admin-created
+  accounts and the admin seed. The default, `defaultPasswordSchema` (exported),
+  keeps the previous rule: 8 characters, an uppercase letter, a lowercase
+  letter and a number. bcrypt's 72-byte limit applies whatever the policy. The
+  first-login replacement of a temporary credential keeps its own
+  `credentialSetup.password.passwordSchema`.
+- Request bodies carrying a new password now check bounds only (not empty, at
+  most 72 bytes); the policy is applied by `UserValidator.validatePasswordStrength`,
+  so a password the policy refuses answers 400 with the rule's message instead
+  of a 422 validation error.
+
 ## 6.11.0 - 2026-11-05
 
 - `bootRefreshScript({ url })` (`najm-auth/client`) returns an inline script
