@@ -1,5 +1,16 @@
 # Changelog
 
+## 6.13.0 - 2026-11-10
+
+- An invited account that has not set its password yet accepts its invitation
+  by signing in with Google or GitHub under the invited email: it becomes
+  active with a verified email, and the emailed link is used up. Only a live
+  invitation counts (not expired, not replaced by a reset or a newer link,
+  issued for the current credential), so a self-registered account waiting for
+  approval stays pending and is still refused with `oauth_account_inactive`.
+- `TokenService.consumeLiveInvitation(userId)` accepts that invitation for a
+  sign-in that verified the email another way.
+
 ## 6.12.0 - 2026-11-09
 
 - `auth({ passwordSchema })` sets the policy every new password must meet:
