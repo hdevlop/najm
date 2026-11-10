@@ -91,6 +91,14 @@ export class TokenService {
     return 'auth:reset:';
   }
 
+  /**
+   * Which set-password link was an invitation. A reset and an invitation share
+   * one live slot per user, and the slot holds only the link's `jti`.
+   */
+  private get invitationPrefix(): string {
+    return 'auth:invite:';
+  }
+
   private sessionVersionKey(userId: string): string {
     return this.invalidation.sessionVersionKey(userId);
   }
@@ -930,6 +938,9 @@ export class TokenService {
 
     // Cache TTL mirrors the token expiry so a consumed/expired token can't be reused.
     await this.cache.set(`${this.resetTokenPrefix}${userId}`, jti, timestring(expiresIn, 'ms'));
+    if (type === 'invite') {
+      await this.cache.set(`${this.invitationPrefix}${userId}`, JSON.stringify({ jti, credentialState }), timestring(expiresIn, 'ms'));
+    }
 
     const current = await this.tokenRepository.getCredentialState(userId);
     if (!current || credentialFingerprint(this.config.jwt.refreshSecret, current) !== credentialState) {
@@ -956,6 +967,40 @@ export class TokenService {
    */
   async generateInviteToken(userId: string, expectedEmail?: string): Promise<SetPasswordToken> {
     return this.generateSetPasswordToken(userId, 'invite', '3d', expectedEmail);
+  }
+
+  /**
+   * Accept the invitation a user was sent without its link, for a sign-in that
+   * has proven the invited email another way (a provider-verified email).
+   *
+   * True only when the invitation is still the user's live set-password link —
+   * not expired, not used, not superseded by a reset or a newer link — and
+   * the account's credential is still the one it was issued for. The link is
+   * consumed exactly as accepting it would, so it cannot be used afterwards.
+   */
+  async consumeLiveInvitation(userId: string): Promise<boolean> {
+    const invitationKey = `${this.invitationPrefix}${userId}`;
+    const stored = await this.cache.get(invitationKey);
+    if (!stored) return false;
+    let invitation: { jti?: unknown; credentialState?: unknown };
+    try {
+      invitation = JSON.parse(stored);
+    } catch {
+      return false;
+    }
+    if (typeof invitation?.jti !== 'string' || typeof invitation.credentialState !== 'string') return false;
+
+    const current = await this.tokenRepository.getCredentialState(userId);
+    if (!current || credentialFingerprint(this.config.jwt.refreshSecret, current) !== invitation.credentialState) {
+      return false;
+    }
+    const consume = (this.cache as Partial<CacheService>).compareAndDelete;
+    if (typeof consume !== 'function') {
+      Err.invalidOperation('Accepting an invitation requires a cache with atomic compare-and-delete');
+    }
+    if (!(await consume.call(this.cache, `${this.resetTokenPrefix}${userId}`, invitation.jti))) return false;
+    await this.cache.del(invitationKey);
+    return true;
   }
 
   /**

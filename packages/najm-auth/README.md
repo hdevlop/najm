@@ -405,6 +405,14 @@ user has the same email but is not linked, sign-in fails with
 `client.linkOAuthAccount('google')` to prove control of both accounts. Setting
 `autoLinkVerifiedEmail: true` opts into verified-email linking.
 
+An invited account that has not set its password yet (`status: 'pending'`)
+accepts its invitation by signing in with the provider under the invited
+email: the account becomes active with a verified email and the emailed link
+is used up, exactly as accepting it would. Only a live invitation counts — not
+expired, not replaced by a reset or a newer link, and issued for the current
+credential — so an account waiting for approval after self-registration stays
+pending and is refused with `oauth_account_inactive`.
+
 ### GitHub Sign-In
 
 Enable GitHub with `oauth: { github: true }`. Credentials come from

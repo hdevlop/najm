@@ -146,10 +146,11 @@ export class OAuthService {
         }
         await this.accounts.linkUser(attempt.userId, identity);
       } else {
-        const user = await this.accounts.resolveForLogin(identity);
+        let user = await this.accounts.resolveForLogin(identity);
         if (await this.requirements?.isRequired(user.id, PASSWORD_SETUP_PURPOSE)) {
           throw new OAuthFlowError(CREDENTIAL_SETUP_CODES.OAUTH_BLOCKED, 403);
         }
+        if (user.status === 'pending') user = await this.acceptInvitation(user, identity.email);
         await this.sessions.establish(user);
       }
 
@@ -159,6 +160,21 @@ export class OAuthService {
       this.logger.warn('OAuth callback failed', { provider, code });
       return this.frontendErrorUrl(provider, code);
     }
+  }
+
+  /**
+   * An invited account still waiting for its password: the provider has
+   * verified the invited email, which is what the invitation link proves, so
+   * the sign-in accepts the invitation — the account becomes active with a
+   * verified email, and the link is used up. Only a live invitation to this
+   * very email counts; a self-registered account waiting for approval, or one
+   * whose invitation expired or was replaced, stays pending and is refused.
+   */
+  private async acceptInvitation<T extends { id: string; email?: string | null }>(user: T, verifiedEmail: string): Promise<T> {
+    if ((user.email ?? '').trim().toLowerCase() !== verifiedEmail.trim().toLowerCase()) return user;
+    if (!(await this.tokens.consumeLiveInvitation(user.id))) return user;
+    await this.users.update(user.id, { status: 'active', emailVerified: true });
+    return await this.users.getById(user.id) as unknown as T;
   }
 
   private frontendSuccessUrl(
