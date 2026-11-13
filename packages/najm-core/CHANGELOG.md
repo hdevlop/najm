@@ -23,6 +23,11 @@
   instead of failing the request with a URIError.
 - `@Headers('X-Language')` finds a header whatever case its name is written
   in, for raw headers and for headers validated by a route schema.
+- `requestLogging` and the graceful-shutdown in-flight counter run ahead of
+  plugin middleware. A CORS preflight or a rate-limited 429 used to be missing
+  from the request log, logged durations left out earlier middleware, and
+  `stop()` did not wait for a request still inside one. Middleware added with
+  `.middleware()` keeps its place after plugin middleware.
 
 ## 3.1.0 - 2026-10-10
 

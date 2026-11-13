@@ -11,6 +11,8 @@ import {
   ResCreated,
   ResNoContent,
   Server,
+  Service,
+  Use,
   created,
 } from '../dist/index.mjs';
 
@@ -218,5 +220,82 @@ describe('validated headers', () => {
       headers: { 'x-language': 'ignored-raw' },
     }));
     expect(await response.json()).toEqual({ language: 'ar' });
+  });
+});
+
+describe('server-owned middleware runs ahead of plugin middleware', () => {
+  // Stands in for a plugin middleware such as CORS (order 10) that can answer
+  // a request itself or hold it before the route runs.
+  function earlyMiddlewareService(hold?: Promise<void>) {
+    class EarlyMiddleware {
+      early = async (ctx: any, next: () => Promise<void>) => {
+        if (ctx.req.method === 'OPTIONS') return ctx.body(null, 204);
+        if (hold) await hold;
+        await next();
+      };
+    }
+    Use({ order: 10 })(EarlyMiddleware.prototype, 'early');
+    decorateClass(EarlyMiddleware, Service());
+    return EarlyMiddleware;
+  }
+
+  class OkController {
+    ok() {
+      return { ok: true };
+    }
+  }
+  decorateMethod(OkController.prototype, 'ok', Get('/'));
+  decorateClass(OkController, Controller('/ok'));
+
+  test('requestLogging records a request an earlier middleware answered', async () => {
+    const originalLog = console.log;
+    const logs: string[] = [];
+    console.log = (message?: unknown) => {
+      logs.push(String(message));
+    };
+
+    try {
+      const server = track(new Server({
+        isolated: true,
+        requestLogging: true,
+        logger: { format: 'json', includeTimestamp: false, includeRequestId: false },
+      }).load(OkController, earlyMiddlewareService()));
+
+      const preflight = await server.fetch(new Request('http://localhost/ok', { method: 'OPTIONS' }));
+      expect(preflight.status).toBe(204);
+      await server.stop();
+    } finally {
+      console.log = originalLog;
+    }
+
+    const completed = logs
+      .flatMap((line) => { try { return [JSON.parse(line)]; } catch { return []; } })
+      .filter((entry) => entry.message === 'Request completed');
+    expect(completed.map((entry) => entry.context)).toContainEqual(
+      expect.objectContaining({ method: 'OPTIONS', path: '/ok', status: 204 }),
+    );
+  });
+
+  test('shutdown waits for a request still inside an earlier middleware', async () => {
+    let release!: () => void;
+    const hold = new Promise<void>((resolve) => { release = resolve; });
+
+    const server = track(new Server({ isolated: true, silent: true, shutdownTimeout: 5_000 })
+      .load(OkController, earlyMiddlewareService(hold)));
+    await server.init();
+
+    const pending = server.fetch(new Request('http://localhost/ok'));
+    await new Promise((resolve) => setTimeout(resolve, 20));
+
+    let stopped = false;
+    const stopping = server.stop().then(() => { stopped = true; });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(stopped).toBe(false);
+
+    release();
+    const response = await pending;
+    expect(response.status).toBe(200);
+    await stopping;
+    expect(stopped).toBe(true);
   });
 });

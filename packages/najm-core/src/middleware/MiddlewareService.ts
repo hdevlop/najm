@@ -2,7 +2,7 @@ import { Context, Hono, MiddlewareHandler, Next } from 'hono';
 import { randomUUID } from 'node:crypto';
 import { Service, Meta, DI, Inject, Container, Constructor } from 'diject';
 import { Scan, ScannerService, ScanType, INJECTION_TYPES } from '../scanner';
-import { APP, LOGGER } from '../server/tokens';
+import { APP, LOGGER, SERVER_MIDDLEWARE } from '../server/tokens';
 import type { LoggerService } from '../logging';
 import { MIDDLEWARE_CONFIG } from './tokens';
 import {
@@ -118,6 +118,22 @@ export class MiddlewareService {
          name: 'request-context',
          order: 1,
          handler: this.createRequestContextMiddleware(),
+      });
+
+      // Server-owned middleware sits inside the request context (its request
+      // cleanup must finish before the drain counter drops) but ahead of every
+      // plugin middleware, the earliest of which is CORS at order 10.
+      const serverMiddleware = this.container.has(SERVER_MIDDLEWARE)
+         ? this.container.get(SERVER_MIDDLEWARE) as MiddlewareHandler[]
+         : [];
+      serverMiddleware.forEach((handler, i) => {
+         this.container.setInjection({
+            type: INJECTION_TYPES.MIDDLEWARE,
+            scope: 'global',
+            name: `server-middleware-${i}`,
+            order: 2 + i,
+            handler,
+         });
       });
    }
 

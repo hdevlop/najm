@@ -7,3 +7,9 @@ export const DECLARED_CONTROLLERS = Symbol.for('najm:declared-controllers');
 export const DECLARED_PLUGIN_SERVICES = Symbol.for('najm:declared-plugin-services');
 export const DECLARED_PLUGIN_BOOT_SERVICES = Symbol.for('najm:declared-plugin-boot-services');
 export const DECLARED_APP_SERVICES = Symbol.for('najm:declared-app-services');
+/**
+ * Server-owned middleware (request logging, in-flight drain counter), in
+ * mount order. Mounted right inside the request context, ahead of plugin
+ * middleware such as CORS or rate limiting that can answer a request itself.
+ */
+export const SERVER_MIDDLEWARE = Symbol.for('najm:server-middleware');

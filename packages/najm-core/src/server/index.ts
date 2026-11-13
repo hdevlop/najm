@@ -14,7 +14,7 @@ import { ScannerService } from '../scanner';
 import { router } from '../router';
 import { params } from '../params';
 import { middleware } from '../middleware';
-import { APP, BASE_PATH, SERVER_OPTS, LOGGER, DECLARED_CONTROLLERS, DECLARED_PLUGIN_SERVICES, DECLARED_PLUGIN_BOOT_SERVICES, DECLARED_APP_SERVICES } from './tokens';
+import { APP, BASE_PATH, SERVER_OPTS, LOGGER, DECLARED_CONTROLLERS, DECLARED_PLUGIN_SERVICES, DECLARED_PLUGIN_BOOT_SERVICES, DECLARED_APP_SERVICES, SERVER_MIDDLEWARE } from './tokens';
 import { PluginRegistry } from './PluginRegistry';
 import { createListener, type ServerHandle } from './listener';
 import { collectInjectables, loadInjectablesFromRoots } from './moduleLoader';
@@ -79,6 +79,7 @@ export class Server {
    private logger: LoggerService;
    private readonly registry = new PluginRegistry();
    private readonly middlewareHandlers: MiddlewareHandler[] = [];
+   private readonly serverMiddleware: MiddlewareHandler[] = [];
    private readonly scanRoots = new Set<string>();
    private readonly startupLogs = new StartupLogBuffer();
    private readonly appServices = new Set<Constructor>();
@@ -102,12 +103,14 @@ export class Server {
       this.container = opts.isolated ? new Container() : container;
       this.logger = createLogger(opts.logger, opts.silent);
 
+      // Not `.middleware()`: those mount after every plugin middleware, so a
+      // CORS preflight or a 429 would be neither logged nor counted in flight.
       if (opts.requestLogging) {
-         this.middleware(this.createRequestLoggingMiddleware());
+         this.serverMiddleware.push(this.createRequestLoggingMiddleware());
       }
 
       if (this.isDrainEnabled()) {
-         this.middleware(this.createInFlightMiddleware());
+         this.serverMiddleware.push(this.createInFlightMiddleware());
       }
 
       this.app.onError((error) => Err.handle(error));
@@ -450,6 +453,7 @@ export class Server {
             .set(SERVER_OPTS, this.opts)
             .set(APP, this.app)
             .set(BASE_PATH, this.basePath)
+            .set(SERVER_MIDDLEWARE, [...this.serverMiddleware])
             .set(coreServices)
             .alias(LOGGER, LoggerService)
             .set(DECLARED_PLUGIN_SERVICES, new Set(pluginServices))
