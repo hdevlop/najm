@@ -13,6 +13,9 @@ import {
   type WrappedResponse 
 } from './response';
 
+/** Statuses whose responses must not have a body (Fetch `Response` throws otherwise). */
+const NULL_BODY_STATUSES = new Set([101, 204, 205, 304]);
+
 export class ResponseFormatter {
   private translator?: (key: string) => string;
   private config: ResponseConfig;
@@ -57,9 +60,13 @@ export class ResponseFormatter {
 
     // Handle strings (HTML or text)
     if (typeof response === 'string') {
+      const status = this.declaredStatus();
+      if (NULL_BODY_STATUSES.has(status)) {
+        return this.context.body(null, status as any);
+      }
       return bufferedResponse(this.isHtmlContent(response)
-        ? this.context.html(response)
-        : this.context.text(response));
+        ? this.context.html(response, status as any)
+        : this.context.text(response, status as any));
     }
 
     // Handle objects
@@ -96,8 +103,21 @@ export class ResponseFormatter {
       return this.wrapResponse(response);
     }
 
-    // Default: return as-is
-    return this.context.json(response);
+    // Default: return as-is, still honouring @ResCreated/@ResMsg({ status })
+    return this.json(response, this.declaredStatus());
+  }
+
+  /** Status declared by @ResMsg/@ResCreated/@ResNoContent, else 200. */
+  private declaredStatus(): number {
+    return this.messageOptions?.status ?? 200;
+  }
+
+  /** JSON response that drops the body for statuses that cannot carry one. */
+  private json(body: unknown, status: number): Response {
+    if (NULL_BODY_STATUSES.has(status)) {
+      return this.context.body(null, status as any);
+    }
+    return this.context.json(body as any, status as any);
   }
 
   /**
@@ -139,8 +159,8 @@ export class ResponseFormatter {
    */
   private wrapResponse(data: any): Response {
     const message = this.resolveMessageText();
-    const status = this.messageOptions?.status ?? 200;
-    
+    const status = this.declaredStatus();
+
     const wrapped: WrappedResponse = {
       data,
       status: this.messageOptions?.statusText ?? this.config.defaultStatus ?? 'success',
@@ -154,15 +174,18 @@ export class ResponseFormatter {
       wrapped.timestamp = new Date().toISOString();
     }
 
-    return this.context.json(wrapped, status as any);
+    return this.json(wrapped, status);
   }
 
   /**
-   * Finalize an already wrapped response (add message if missing)
+   * Finalize an already wrapped response (add message if missing).
+   * A `statusCode` from a helper such as `created()` is the per-call status:
+   * it wins over the decorator and is removed from the payload.
    */
-  private finalizeResponse(response: WrappedResponse): Response {
+  private finalizeResponse(input: WrappedResponse & { statusCode?: unknown }): Response {
+    const { statusCode, ...response } = input;
     const message = this.resolveMessageText();
-    
+
     if (message && !response.message) {
       response.message = message;
     }
@@ -171,8 +194,8 @@ export class ResponseFormatter {
       response.timestamp = new Date().toISOString();
     }
 
-    const status = this.messageOptions?.status ?? 200;
-    return this.context.json(response, status as any);
+    const status = typeof statusCode === 'number' ? statusCode : this.declaredStatus();
+    return this.json(response, status);
   }
 
   /**

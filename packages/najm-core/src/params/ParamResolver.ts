@@ -10,6 +10,17 @@ import { Err } from '../errors';
 import { getParameterMetadata, getParameterCount } from './metadata';
 import { getRequestData, getRequestParser } from './requestContext';
 import { resolveCustomParam } from './customParams';
+import { parseCookieHeader } from '../router/RequestParser';
+
+/**
+ * Validated headers are the schema output over the lowercase raw header map,
+ * so `@Headers('X-Language')` must also find `x-language`.
+ */
+function readHeader(headers: Record<string, unknown> | null | undefined, name: string): unknown {
+   if (!headers) return undefined;
+   if (name in headers) return headers[name];
+   return headers[name.toLowerCase()];
+}
 
 const USER = createAlsToken<any>('user');
 const ROLE = createAlsToken<string>('role');
@@ -203,7 +214,7 @@ export class ParamResolver {
             // Try validated data from ALS first
             const validated = this.container.get(VALIDATED_HEADERS);
             if (validated !== undefined) {
-               return propertyKey ? validated?.[propertyKey] : validated;
+               return propertyKey ? readHeader(validated, propertyKey) : validated;
             }
             // Fallback to raw headers, whose keys are lowercase
             const requestData = getRequestData();
@@ -407,7 +418,7 @@ export class ParamResolver {
             extract = (context) => {
                const validated = this.container.get(VALIDATED_HEADERS);
                if (validated !== undefined) {
-                  return propertyKey ? validated?.[propertyKey] : validated;
+                  return propertyKey ? readHeader(validated, propertyKey) : validated;
                }
 
                // Header names are case-insensitive; the Fetch API lowercases these keys.
@@ -640,17 +651,7 @@ export class ParamResolver {
    }
 
    private parseCookies(context: Context): Record<string, string> {
-      const cookieHeader = context.req.header('cookie');
-      if (!cookieHeader) return {};
-
-      const cookies: Record<string, string> = {};
-      for (const cookie of cookieHeader.split(';')) {
-         const [name, ...rest] = cookie.trim().split('=');
-         if (name && rest.length > 0) {
-            cookies[name] = decodeURIComponent(rest.join('='));
-         }
-      }
-      return cookies;
+      return parseCookieHeader(context.req.header('cookie'));
    }
 
    private extractClientIP(context: Context): string {

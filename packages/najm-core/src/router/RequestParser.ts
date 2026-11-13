@@ -23,6 +23,29 @@ const NUMBER_REGEX = /^-?\d+\.?\d*([eE][+-]?\d+)?$/;
 const LEADING_ZERO_REGEX = /^0\d+/;
 
 /**
+ * Parse a Cookie header. A value that is not valid percent-encoding (often a
+ * cookie set by another app on the same domain) is kept as-is instead of
+ * failing the whole request with a URIError.
+ */
+export function parseCookieHeader(cookieHeader: string | undefined | null): Record<string, string> {
+   if (!cookieHeader) return {};
+
+   const cookies: Record<string, string> = {};
+   for (const cookie of cookieHeader.split(';')) {
+      const [name, ...rest] = cookie.trim().split('=');
+      if (name && rest.length > 0) {
+         const raw = rest.join('=');
+         try {
+            cookies[name] = decodeURIComponent(raw);
+         } catch {
+            cookies[name] = raw;
+         }
+      }
+   }
+   return cookies;
+}
+
+/**
  * Lazy request parser - only parses data when accessed
  */
 export class RequestParser {
@@ -200,17 +223,7 @@ export class RequestParser {
    // ============================================
 
    private parseCookies(): Record<string, string> {
-      const cookieHeader = this.context.req.header('cookie');
-      if (!cookieHeader) return {};
-
-      const cookies: Record<string, string> = {};
-      for (const cookie of cookieHeader.split(';')) {
-         const [name, ...rest] = cookie.trim().split('=');
-         if (name && rest.length > 0) {
-            cookies[name] = decodeURIComponent(rest.join('='));
-         }
-      }
-      return cookies;
+      return parseCookieHeader(this.context.req.header('cookie'));
    }
 
    // ============================================

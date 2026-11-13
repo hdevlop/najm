@@ -30,7 +30,10 @@ export async function afterResponse(
    }
 
    const response = context.res;
-   const body = response.body;
+   // Hono answers HEAD with `new Response(null, await dispatch(GET))`, so the
+   // runtime never reads, cancels or aborts this body. Waiting on it would
+   // leave request cleanup and the drain counter pending forever.
+   const body = context.req.raw.method === 'HEAD' ? null : response.body;
    if (run && (!body || bufferedBodies.has(body))) {
       await callback();
       return;

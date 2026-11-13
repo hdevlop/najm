@@ -2,7 +2,7 @@
 // Middleware Decorators
 // ============================================================================
 
-import { MetaHelper, SERVICE, container, Scope } from 'diject';
+import { MetaHelper, SERVICE, container, Scope, mergeMetadata, setClassType, setInjectable, setScope } from 'diject';
 import { MIDDLEWARE_LAYER, MIDDLEWARE_META, MIDDLEWARE_USE_META } from './tokens';
 import type { MiddlewareDecoratorOptions, UseDecoratorOptions } from './types';
 
@@ -25,13 +25,20 @@ export function Middleware(options: MiddlewareDecoratorOptions = {}): ClassDecor
       MetaHelper.define(SERVICE, true, target);
       MetaHelper.define(MIDDLEWARE_LAYER, 'middleware', target);
 
+      // The container type must live on the class, not only on the global
+      // registration below: Server re-registers loaded classes (into an
+      // isolated container, or over the global entry) and derives the type
+      // from this metadata. `.load(moduleObject)` also needs INJECTABLE.
+      const metadata = { type: 'middleware', ...normalizedOptions };
+      setInjectable(target, true);
+      setScope(target, Scope.SINGLETON);
+      setClassType(target, 'middleware');
+      mergeMetadata(target, metadata);
+
       // Register in container with proper metadata (like @Controller and @Service do)
       container.set(target, {
          scope: Scope.SINGLETON,
-         metadata: { 
-            type: 'middleware',
-            ...normalizedOptions
-         }
+         metadata,
       });
 
       return target;
