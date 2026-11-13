@@ -1,5 +1,29 @@
 # najm-core
 
+## 3.1.1 - 2026-11-13
+
+### Fixed
+
+- HEAD requests finish. Hono answers HEAD by discarding the GET response body,
+  so a raw or streamed body was never read and its request never completed:
+  request-scope cleanup did not run and, with `gracefulShutdown` or
+  `shutdownTimeout`, every later `stop()` waited out the full timeout.
+- `@Middleware()` classes run when loaded with `.load(Class)` or
+  `.load(moduleObject)`, including on an isolated server. They used to be
+  registered as plain services and their `use()` was never called. A
+  middleware class that was silently inactive starts running on upgrade.
+- `created()` responds 201, and its `statusCode` field no longer appears in the
+  response body.
+- `@ResCreated()`, `@ResNoContent()` and `@ResMsg({ status })` set the status
+  when the response is not wrapped (no message and `autoWrap` off), and for
+  string results. Such routes answered 200 before. 101, 204, 205 and 304
+  responses are sent without a body, so `@ResNoContent()` with `autoWrap`
+  no longer fails.
+- A cookie whose value is not valid percent-encoding keeps its raw value
+  instead of failing the request with a URIError.
+- `@Headers('X-Language')` finds a header whatever case its name is written
+  in, for raw headers and for headers validated by a route schema.
+
 ## 3.1.0 - 2026-10-10
 
 ### Added
