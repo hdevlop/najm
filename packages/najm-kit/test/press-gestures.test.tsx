@@ -71,12 +71,39 @@ describe("usePressGestures", () => {
     expect(onLongPress).not.toHaveBeenCalled();
   });
 
-  test("Android's own long-press menu is suppressed under a press", () => {
+  test("Android's own long-press menu is suppressed, and is the long press when it comes first", () => {
     const onLongPress = mock();
-    const { getByTestId } = render(<Box onLongPress={onLongPress} />);
+    const onClick = mock();
+    const { getByTestId } = render(<Box onLongPress={onLongPress} onClick={onClick} />);
     fireEvent.pointerDown(getByTestId("text"), touch());
     const notCancelled = fireEvent.contextMenu(getByTestId("text"));
     expect(notCancelled).toBe(false);
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    fireEvent.pointerUp(getByTestId("text"), touch());
+    fireEvent.click(getByTestId("text"));
+    expect(onClick).not.toHaveBeenCalled();
+  });
+
+  test("after a long press the page's context menu stays blocked, wherever it lands, until shortly after release", async () => {
+    const onLongPress = mock();
+    const { getByTestId } = render(<><Box onLongPress={onLongPress} /><div data-testid="backdrop" /></>);
+    const backdrop = getByTestId("backdrop");
+    fireEvent.pointerDown(getByTestId("text"), touch());
+    await wait(70);
+    expect(onLongPress).toHaveBeenCalledTimes(1);
+    // What the long press opened now lies under the finger: the menu lands there.
+    expect(fireEvent.contextMenu(backdrop)).toBe(false);
+    fireEvent.pointerUp(getByTestId("text"), touch());
+    expect(fireEvent.contextMenu(backdrop)).toBe(false);
+    await wait(850);
+    expect(fireEvent.contextMenu(backdrop)).toBe(true);
+  });
+
+  test("a short tap leaves the page's context menu alone", () => {
+    const { getByTestId } = render(<><Box onLongPress={mock()} /><div data-testid="elsewhere" /></>);
+    fireEvent.pointerDown(getByTestId("text"), touch());
+    fireEvent.pointerUp(getByTestId("text"), touch());
+    expect(fireEvent.contextMenu(getByTestId("elsewhere"))).toBe(true);
   });
 
   test("a mouse right-click keeps its context menu", () => {

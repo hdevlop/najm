@@ -58,6 +58,19 @@ export interface PressGestureHandlers<E extends Element = Element> {
 const DOUBLE_TAP_DISTANCE = 25;
 /** A browser that also fires its own dblclick after our double tap must not report it twice. */
 const NATIVE_DBLCLICK_GRACE_MS = 500;
+/**
+ * After a long press the page's own context menu stays blocked this long once
+ * the finger lifts: Chrome can fire it at release, on whatever the long press
+ * opened under the finger (a sheet's backdrop), out of the element's reach.
+ */
+const CONTEXT_MENU_GRACE_MS = 800;
+/** The block never outlives a press that somehow never ends. */
+const CONTEXT_MENU_MAX_BLOCK_MS = 5000;
+
+const blockContextMenu = (event: Event) => {
+  event.preventDefault();
+  event.stopPropagation();
+};
 
 type Press = { id: number; type: string; x: number; y: number; target: EventTarget | null; element: Element };
 
@@ -82,10 +95,15 @@ export function usePressGestures<E extends Element = Element>(options: PressGest
     swallowClick: false,
     lastTap: null as { time: number; x: number; y: number } | null,
     nativeDblclickUntil: 0,
+    menuBlocked: false,
+    menuTimer: null as ReturnType<typeof setTimeout> | null,
   });
 
   useEffect(() => () => {
-    if (state.current.timer) clearTimeout(state.current.timer);
+    const s = state.current;
+    if (s.timer) clearTimeout(s.timer);
+    if (s.menuTimer) clearTimeout(s.menuTimer);
+    if (s.menuBlocked) window.removeEventListener("contextmenu", blockContextMenu, true);
   }, []);
 
   const wantsLongPress = !options.disabled && !!options.onLongPress;
@@ -106,6 +124,37 @@ export function usePressGestures<E extends Element = Element>(options: PressGest
     const report = (press: Press): PressGestureEvent<E> => ({
       pointerType: press.type, clientX: press.x, clientY: press.y, target: press.target, currentTarget: press.element as E,
     });
+    // The page's context menu, blocked everywhere from a long press until shortly after it ends.
+    const unblockMenus = () => {
+      if (s.menuTimer) clearTimeout(s.menuTimer);
+      s.menuTimer = null;
+      if (!s.menuBlocked) return;
+      s.menuBlocked = false;
+      window.removeEventListener("contextmenu", blockContextMenu, true);
+    };
+    const unblockMenusIn = (ms: number) => {
+      if (!s.menuBlocked) return;
+      if (s.menuTimer) clearTimeout(s.menuTimer);
+      s.menuTimer = setTimeout(unblockMenus, ms);
+    };
+    const blockMenus = () => {
+      if (!s.menuBlocked) {
+        s.menuBlocked = true;
+        window.addEventListener("contextmenu", blockContextMenu, true);
+      }
+      unblockMenusIn(CONTEXT_MENU_MAX_BLOCK_MS);
+    };
+    const fireLongPress = (press: Press) => {
+      clearTimer();
+      s.longPressed = true;
+      s.swallowClick = true;
+      s.lastTap = null;
+      if (press.type !== "mouse") blockMenus();
+      if (optionsRef.current.haptics !== false) {
+        try { navigator.vibrate?.(10); } catch { /* not allowed here */ }
+      }
+      optionsRef.current.onLongPress?.(report(press));
+    };
 
     const onPointerDown = (event: React.PointerEvent<E>) => {
       const o = optionsRef.current;
@@ -122,14 +171,7 @@ export function usePressGestures<E extends Element = Element>(options: PressGest
       if (o.onLongPress && (event.pointerType !== "mouse" || o.mouseLongPress)) {
         s.timer = setTimeout(() => {
           s.timer = null;
-          if (s.press !== press) return;
-          s.longPressed = true;
-          s.swallowClick = true;
-          s.lastTap = null;
-          if (optionsRef.current.haptics !== false) {
-            try { navigator.vibrate?.(10); } catch { /* not allowed here */ }
-          }
-          optionsRef.current.onLongPress?.(report(press));
+          if (s.press === press) fireLongPress(press);
         }, o.longPressMs ?? 500);
       }
     };
@@ -149,6 +191,7 @@ export function usePressGestures<E extends Element = Element>(options: PressGest
       const press = s.press;
       clearTimer();
       s.press = null;
+      if (s.longPressed) unblockMenusIn(CONTEXT_MENU_GRACE_MS);
       if (!press || press.id !== event.pointerId || s.longPressed) return;
       const o = optionsRef.current;
       // A mouse double-click arrives as dblclick; only fingers and pens are counted here.
@@ -171,6 +214,7 @@ export function usePressGestures<E extends Element = Element>(options: PressGest
       clearTimer();
       s.press = null;
       s.lastTap = null;
+      if (s.longPressed) unblockMenusIn(CONTEXT_MENU_GRACE_MS);
     };
 
     const onClickCapture = (event: React.MouseEvent<E>) => {
@@ -181,11 +225,14 @@ export function usePressGestures<E extends Element = Element>(options: PressGest
     };
 
     const onContextMenu = (event: React.MouseEvent<E>) => {
-      // Android's own long-press menu, under a press this hook already reads as a long press.
+      // Android's own long-press menu, under a press this hook reads as a long press.
       if (!optionsRef.current.onLongPress || optionsRef.current.disabled) return;
-      if (!s.longPressed && !(s.press && s.press.type !== "mouse")) return;
+      const press = s.press;
+      if (!s.longPressed && !(press && press.type !== "mouse")) return;
       event.preventDefault();
       event.stopPropagation();
+      // The platform decided first that the finger is held: the long press is now, not a moment later.
+      if (press && !s.longPressed) fireLongPress(press);
     };
 
     const onDoubleClick = (event: React.MouseEvent<E>) => {
