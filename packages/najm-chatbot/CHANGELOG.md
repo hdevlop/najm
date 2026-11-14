@@ -1,5 +1,26 @@
 # Changelog
 
+## 3.7.2 - 2026-11-14
+
+### Fixed
+
+- Conversation memory keeps tool results. A turn that called a tool was saved
+  without the result, so every later message in that session failed with
+  `AI_MissingToolResultsError` until the call left the prompt window. A turn is
+  now stored as one assistant message whose tool calls carry their result or
+  error. Sessions saved by earlier releases recover: calls stored without a
+  result are left out of the prompt.
+- A session can only be continued by the user who started it. `POST /chat`
+  accepted any `sessionKey`, put that session's history in the caller's prompt
+  and then saved the session under the caller. Loading a session owned by
+  another user, or by no user while signed in, now answers 403, and a save
+  never reassigns the owner of an existing row.
+
+### Changed
+
+- `ConversationStore` has a `loadSession(key)` method returning the messages
+  and owner (`StoredConversation`, exported).
+
 ## 3.7.1 - 2026-10-22
 
 - Stop warning when importing PostgreSQL chatbot tables from `najm-chatbot/pg`.
