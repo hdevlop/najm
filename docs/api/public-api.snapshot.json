@@ -92,7 +92,7 @@
       "export { ChatSessionController } from './chat/ChatSessionController';",
       "export type { ChatDebugRequest } from './agent/ChatAgent';",
       "export { ChatSessionRepository, ChatSessionCleanupService, DbConversationStore, CacheConversationStore, CHAT_SESSION_CLEANUP_EVENT, CHAT_SESSION_CHANNELS, normalizeChatChannel, ttlToExpiresAt, } from './sessions';",
-      "export type { ConversationStore, ChatSessionChannel, ChatSessionMeta, StoredChatSession, } from './sessions';"
+      "export type { ConversationStore, StoredConversation, ChatSessionChannel, ChatSessionMeta, StoredChatSession, } from './sessions';"
     ],
     "najm-cli": [],
     "najm-cookies": [
