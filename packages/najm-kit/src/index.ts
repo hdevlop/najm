@@ -113,6 +113,8 @@ export { useDebouncedValue } from "./hooks/useDebouncedValue";
 export { useLocalStorageState } from "./hooks/useLocalStorageState";
 export { useInfiniteScroll } from "./hooks/useInfiniteScroll";
 export { useSelection } from "./hooks/useSelection";
+export { usePressGestures, PRESS_GESTURE_IGNORE } from "./hooks/usePressGestures";
+export type { PressGestureEvent, PressGestureOptions, PressGestureHandlers } from "./hooks/usePressGestures";
 export { useMediaQuery, useCardViewport, useDesktopTableMode, DEFAULT_CARD_BREAKPOINT } from "./hooks/useMediaQuery";
 
 // UI Primitives

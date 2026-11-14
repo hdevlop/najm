@@ -18,6 +18,7 @@ import { useTableStore } from "./TableContext";
 import { useNajmKitLabels } from "../../lib/kitLabels";
 import { useTableSurfaceAppearance } from "./tableSurface";
 import { resolveHiddenBelowClass } from "./responsiveColumns";
+import { PRESS_GESTURE_IGNORE } from "../../hooks/usePressGestures";
 import type { NTableColumnMeta, NTableEditorOption, NTableEditorType } from "./responsiveColumns";
 import {
   DEFAULT_TABLE_BORDER_COLOR,
@@ -289,6 +290,7 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
     ? { borderColor: resolvedBorderColor }
     : undefined;
   const onRowClick = useTableStore.use.onRowClick();
+  const onRowDoubleClick = useTableStore.use.onRowDoubleClick();
   const onCellClick = useTableStore.use.onCellClick();
   const onRowContextMenu = useTableStore.use.onRowContextMenu();
   const onBackgroundContextMenu = useTableStore.use.onBackgroundContextMenu();
@@ -466,6 +468,13 @@ export function NTableContent({ effectiveMode }: { effectiveMode?: string }) {
                     data-state={row.getIsSelected() && "selected"}
                     data-selected-row={isSelectedByRowId ? "true" : undefined}
                     onClick={() => onRowClick?.(row.original)}
+                    // Table view is the desktop's: the mouse double-click. Cards also read a double tap.
+                    onDoubleClick={onRowDoubleClick ? (e) => {
+                      if ((e.target as Element).closest?.(PRESS_GESTURE_IGNORE)) return;
+                      onRowDoubleClick(row.original, {
+                        pointerType: "mouse", clientX: e.clientX, clientY: e.clientY, target: e.target, currentTarget: e.currentTarget,
+                      });
+                    } : undefined}
                     onContextMenu={onRowContextMenu ? (e) => {
                       (e.nativeEvent as any)[ROW_CONTEXT_HANDLED] = true;
                       onRowContextMenu(e, row.original);

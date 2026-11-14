@@ -9,6 +9,7 @@ import type {
 } from "./paginationContract";
 import type { NTableToolbarLabels } from "./toolbarContract";
 import type { ContextMenuItem } from "../data-display/useContextMenu";
+import type { PressGestureEvent } from "../../hooks/usePressGestures";
 
 export interface NTableClassNames {
   root?: string;
@@ -77,6 +78,10 @@ export interface TableState {
   onEdit: any;
   onDelete: any;
   onRowClick: any;
+  /** A finger held on a card (card view). */
+  onRowLongPress: ((row: any, event: PressGestureEvent) => void) | null;
+  /** A double tap on a card, or a mouse double-click on a card or a table row. */
+  onRowDoubleClick: ((row: any, event: PressGestureEvent) => void) | null;
   onRowContextMenu: any;
   onBackgroundContextMenu: ((e: ReactMouseEvent) => void) | null;
   openRowMenu: ((e: ReactMouseEvent, row: any) => void) | null;
@@ -240,7 +245,7 @@ export const createTableStore = (seed?: Partial<TableState>) => {
     toolbarActions: [], toolbarActionDisplay: "both", hasHeaderMenu: false, onHeaderContextMenu: null, openHeaderMenu: null, openActionMenu: null,
     showSorting: true, showPagination: true, showColumnVisibility: false, showAddButton: true, showViewToggle: true, toolbarLabels: {}, dynamicHeight: true,
     showContent: false, isTableView: true, isCardView: false, isJsonView: false, isFilesView: false, isCustomMode: false, hasActions: false, hasData: false, hasControls: true, hasNoData: true, isRefreshing: false,
-    onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
+    onView: null, onEdit: null, onDelete: null, onAddClick: null, onRowClick: null, onRowLongPress: null, onRowDoubleClick: null, onRowContextMenu: null, onBackgroundContextMenu: null, openRowMenu: null, getRowClassName: null, menuButton: false, onCellClick: null, onBulkDelete: null, onRetry: null, onCellEdit: null, onStateChange: null, getRowId: null, renderToolbar: null,
     CardComponent: null, CardSkeletonComponent: null, className: "", classNames: {}, bordered: undefined, headerClassName: "bg-card", headerColor: undefined, headerTextColor: undefined, borderColor: undefined, showCheckbox: true, selectedRowId: null, headerSlot: null,
     noResultsText: "No results.", filterPlaceholder: "", loadingText: "Loading...", noDataText: "No data available", addButtonText: "",
     pageSizeOptions: [10, 20, 30, 40, 50, 100, 200, 500], calculatedPageSize: 10, calculatedCardPageSize: 0, hasMeasuredLayout: false, skeletonRowCount: 6, maxHeight: null,

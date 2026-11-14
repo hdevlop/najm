@@ -6,6 +6,10 @@ import { cn } from "../../lib/cn";
 import { useTableSurfaceAppearance } from "./tableSurface";
 import { useRowActionCopy } from "./rowActionLabels";
 import type { Row } from "@tanstack/react-table";
+import { PRESS_GESTURE_IGNORE, usePressGestures, type PressGestureEvent } from "../../hooks/usePressGestures";
+
+/** A card's own controls (row menu, checkbox) keep their press. */
+export const CARD_PRESS_IGNORE = `${PRESS_GESTURE_IGNORE}, [data-ntable-card-action], [role="checkbox"]`;
 
 export interface NDataCardShellActions {
   onView?: (row: unknown) => void;
@@ -17,6 +21,10 @@ export interface NDataCardShellProps {
   row: Row<unknown>;
   onClick?: () => void;
   onContextMenu?: (e: React.MouseEvent) => void;
+  /** A finger held on the card. The checkbox, row menu and controls inside keep their own press. */
+  onLongPress?: (event: PressGestureEvent<HTMLDivElement>) => void;
+  /** Two quick taps on a phone, or a mouse double-click. */
+  onDoubleClick?: (event: PressGestureEvent<HTMLDivElement>) => void;
   actions?: NDataCardShellActions;
   children?: React.ReactNode;
   className?: string;
@@ -28,8 +36,15 @@ export interface NDataCardShellProps {
   borderColor?: string;
 }
 
-export function NDataCardShell({ row, onClick, onContextMenu, actions, children, className, showCheckbox = true, selectedRowId, openRowMenu, menuButton, bordered, borderColor }: NDataCardShellProps) {
+export function NDataCardShell({ row, onClick, onContextMenu, onLongPress, onDoubleClick, actions, children, className, showCheckbox = true, selectedRowId, openRowMenu, menuButton, bordered, borderColor }: NDataCardShellProps) {
   const surface = useTableSurfaceAppearance(bordered, borderColor);
+  const { style: gestureStyle, onContextMenu: gestureContextMenu, ...gestureHandlers } = usePressGestures<HTMLDivElement>({
+    onLongPress, onDoubleTap: onDoubleClick, ignore: CARD_PRESS_IGNORE,
+  });
+  const handleContextMenu = gestureContextMenu || onContextMenu ? (e: React.MouseEvent<HTMLDivElement>) => {
+    gestureContextMenu?.(e);
+    if (!e.isPropagationStopped()) onContextMenu?.(e);
+  } : undefined;
   const canExpand = row.getCanExpand();
   const isExpanded = canExpand && row.getIsExpanded();
   const isSelected = row.getIsSelected();
@@ -43,9 +58,10 @@ export function NDataCardShell({ row, onClick, onContextMenu, actions, children,
       data-row="true"
       data-row-id={row.id}
       data-bordered={bordered === false ? "false" : bordered ? "true" : undefined}
+      {...gestureHandlers}
       onClick={onClick}
-      onContextMenu={onContextMenu}
-      style={surface.style}
+      onContextMenu={handleContextMenu}
+      style={gestureStyle ? { ...gestureStyle, ...surface.style } : surface.style}
       className={cn(
         "relative group w-full rounded-lg bg-card text-card-foreground overflow-hidden",
         surface.className,

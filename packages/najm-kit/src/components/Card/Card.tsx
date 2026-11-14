@@ -15,6 +15,7 @@ import { NEmptyState } from "../feedback/NEmptyState";
 import { NIcon, type NIconSource } from "../Icon";
 import { useNajmComponentStyle } from "../../theme/design-provider";
 import { resolveRadiusValue } from "../../theme/design-types";
+import { usePressGestures, type PressGestureEvent } from "../../hooks/usePressGestures";
 
 // Slots
 
@@ -64,6 +65,13 @@ export interface CardClassNames {
 export interface CardProps {
   children?: React.ReactNode;
   onClick?: () => void;
+  /**
+   * A finger held on the card, on a phone. Fields, buttons and links inside
+   * keep their own press. Android's own long-press menu is suppressed.
+   */
+  onLongPress?: (event: PressGestureEvent<HTMLDivElement>) => void;
+  /** Two quick taps on a phone, or a double-click with the mouse. */
+  onDoubleClick?: (event: PressGestureEvent<HTMLDivElement>) => void;
 
   // Header props
   title?: React.ReactNode;
@@ -187,7 +195,10 @@ export function NCard({
   className,
   classNames,
   onClick,
+  onLongPress,
+  onDoubleClick,
 }: CardProps) {
+  const { style: gestureStyle, ...gestureHandlers } = usePressGestures<HTMLDivElement>({ onLongPress, onDoubleTap: onDoubleClick });
   const isEmpty = empty ?? noData ?? false;
   const resolvedEmptyText = emptyText ?? noDataText ?? "No data available";
 
@@ -254,8 +265,9 @@ export function NCard({
       data-embedded={embedded ? "true" : undefined}
       data-media-layout={mediaLayout ?? undefined}
       data-media-variant={mediaSlot ? mediaVariant : undefined}
+      {...gestureHandlers}
       onClick={onClick}
-      style={recipeStyle}
+      style={gestureStyle ? { ...gestureStyle, ...recipeStyle } : recipeStyle}
       className={cn(
         mediaLayout ? mediaRootClasses(mediaLayout) : "flex flex-col",
         !mediaLayout && !noPadding && "p-2 lg:p-3 2xl:p-4 gap-3",

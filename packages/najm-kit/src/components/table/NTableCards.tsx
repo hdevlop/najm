@@ -1,7 +1,8 @@
 import React, { useCallback } from "react";
 import { cn } from "../../lib/cn";
 import { useTableStore } from "./TableContext";
-import { NDataCardShell } from "./NDataCardShell";
+import { CARD_PRESS_IGNORE, NDataCardShell } from "./NDataCardShell";
+import { usePressGestures, type PressGestureEvent } from "../../hooks/usePressGestures";
 import { useRowActionCopy } from "./rowActionLabels";
 import { NTableCardSkeleton } from "./NTableLoadingSkeleton";
 import { NajmScroll } from "../ui/scroll";
@@ -20,9 +21,28 @@ function isRowContextHandled(e: React.MouseEvent): boolean {
   return Boolean((e.nativeEvent as any)[ROW_CONTEXT_HANDLED]);
 }
 
+/** A card drawn by the app itself (`__smsNoShell`): its wrapper reads the press gestures. */
+function NTableBareCard({ onLongPress, onDoubleClick, onContextMenu, style, ...rest }: Omit<React.HTMLAttributes<HTMLDivElement>, "onDoubleClick"> & {
+  onLongPress?: (event: PressGestureEvent<HTMLDivElement>) => void;
+  onDoubleClick?: (event: PressGestureEvent<HTMLDivElement>) => void;
+  "data-row"?: string;
+  "data-row-id"?: string;
+}) {
+  const { style: gestureStyle, onContextMenu: gestureContextMenu, ...gestureHandlers } = usePressGestures<HTMLDivElement>({
+    onLongPress, onDoubleTap: onDoubleClick, ignore: CARD_PRESS_IGNORE,
+  });
+  const handleContextMenu = gestureContextMenu || onContextMenu ? (e: React.MouseEvent<HTMLDivElement>) => {
+    gestureContextMenu?.(e);
+    if (!e.isPropagationStopped()) onContextMenu?.(e);
+  } : undefined;
+  return <div {...rest} {...gestureHandlers} onContextMenu={handleContextMenu} style={gestureStyle ? { ...gestureStyle, ...style } : style} />;
+}
+
 export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
   const table = useTableStore.use.table();
   const onRowClick = useTableStore.use.onRowClick();
+  const onRowLongPress = useTableStore.use.onRowLongPress();
+  const onRowDoubleClick = useTableStore.use.onRowDoubleClick();
   const rowActionsLabel = useRowActionCopy().rowActions;
   const onRowContextMenu = useTableStore.use.onRowContextMenu();
   const onBackgroundContextMenu = useTableStore.use.onBackgroundContextMenu();
@@ -109,6 +129,8 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
         const canExpand = hasExpansion && row.getCanExpand();
         const isExpanded = canExpand && row.getIsExpanded();
         const handleClick = onRowClick ? () => onRowClick(row.original) : undefined;
+        const handleLongPress = onRowLongPress ? (event: PressGestureEvent) => onRowLongPress(row.original, event) : undefined;
+        const handleDoubleClick = onRowDoubleClick ? (event: PressGestureEvent) => onRowDoubleClick(row.original, event) : undefined;
         const rowClassName = getRowClassName?.(row.original);
 
         const handleCardContextMenu = onRowContextMenu
@@ -121,9 +143,11 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
 
         if (noShell) {
           return (
-            <div
+            <NTableBareCard
               key={row.id}
               onContextMenu={handleCardContextMenu}
+              onLongPress={handleLongPress}
+              onDoubleClick={handleDoubleClick}
               data-row="true"
               data-row-id={row.id}
               className={cn("group relative text-card-foreground", rowClassName)}
@@ -154,7 +178,7 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
                 data-row="true"
                 data-row-id={row.id}
               />
-            </div>
+            </NTableBareCard>
           );
         }
 
@@ -164,6 +188,8 @@ export function NTableCards({ effectiveMode }: { effectiveMode?: string }) {
             row={row}
             onClick={handleClick}
             onContextMenu={handleCardContextMenu}
+            onLongPress={handleLongPress}
+            onDoubleClick={handleDoubleClick}
             actions={actions}
             showCheckbox={showCheckbox}
             selectedRowId={selectedRowId}

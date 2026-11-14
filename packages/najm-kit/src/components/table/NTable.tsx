@@ -18,6 +18,7 @@ import type { Table } from "@tanstack/react-table";
 import { NTableCardsLoadingSkeleton, NTableLoadingSkeleton } from "./NTableLoadingSkeleton";
 import { cn } from "../../lib/cn";
 import { useMediaQuery } from "../../hooks/useMediaQuery";
+import type { PressGestureEvent } from "../../hooks/usePressGestures";
 import { NErrorState } from "../feedback/NErrorState";
 import { NEmptyState } from "../feedback/NEmptyState";
 import { Button } from "../Button";
@@ -233,6 +234,17 @@ export interface NTableProps<T = any, M extends ViewMode = ViewMode> {
   borderColor?: string;
   showCheckbox?: boolean;
   onRowClick?: (row: T) => void;
+  /**
+   * A finger held on a card in card view, on a phone. The card's checkbox,
+   * row menu, fields, buttons and links keep their own press, and Android's
+   * own long-press menu is suppressed for that press.
+   */
+  onRowLongPress?: (row: T, event: PressGestureEvent) => void;
+  /**
+   * Two quick taps on a card, or a mouse double-click on a card or a table
+   * row. The second tap does not also act as a click.
+   */
+  onRowDoubleClick?: (row: T, event: PressGestureEvent) => void;
   /**
    * Called when a data cell is clicked in table view. Cell clicks do not
    * propagate to `onRowClick`.
@@ -663,6 +675,8 @@ function NTableBase<T = any, M extends ViewMode = ViewMode>(
     onEdit: props.onEdit ?? null,
     onDelete: props.onDelete ?? null,
     onRowClick: props.onRowClick ?? null,
+    onRowLongPress: props.onRowLongPress ?? null,
+    onRowDoubleClick: props.onRowDoubleClick ?? null,
     onCellClick: props.onCellClick ?? null,
     onRowContextMenu: (onRowContextMenu || effectiveRowMenu) ? handleRowContextMenu : null,
     onBackgroundContextMenu: normalizedMenu.background ? handleBackgroundContextMenu : null,
