@@ -1,5 +1,25 @@
 # Changelog
 
+## 3.14.0 - 2026-11-14
+
+- Long press and double tap on cards, for phones as well as desktops.
+  `NCard` takes `onLongPress` and `onDoubleClick`; `NTable` takes
+  `onRowLongPress(row, event)` and `onRowDoubleClick(row, event)` for every
+  card in card view, whether the table or the app draws the card, and
+  `onRowDoubleClick` for a table row's mouse double-click. A long press is a
+  finger held still for 500 ms (moving 10 px is a scroll and cancels it); a
+  double tap is two taps within 300 ms in one place, and a mouse double-click
+  counts too. The click that ends a long press and the second tap's click are
+  swallowed, Android's own long-press menu is suppressed under the press, and
+  iOS shows no callout or text selection. A card that reads double taps opts
+  out of double-tap zoom. Fields, buttons, links and the card's own checkbox
+  and row menu keep their press.
+- `usePressGestures(options)` is the hook behind them, for any element:
+  `onLongPress`, `onDoubleTap`, `longPressMs`, `doubleTapMs`,
+  `moveTolerance`, `haptics` (a short vibration, on by default),
+  `mouseLongPress`, `ignore` (`PRESS_GESTURE_IGNORE` by default) and
+  `disabled`. Spread the handlers and `style` it returns onto the element.
+
 ## 3.13.0 - 2026-11-07
 
 - `TimeRangeInput` (and `FormInput type="timeRange"`): a start and an end time
