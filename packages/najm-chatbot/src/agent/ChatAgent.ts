@@ -1,4 +1,4 @@
-import { Service, Inject, Meta, DI, CORRELATION_ID, type Container } from 'najm-core';
+import { Service, Inject, Meta, DI, CORRELATION_ID, Err, type Container } from 'najm-core';
 import { convertToModelMessages, createUIMessageStream, createUIMessageStreamResponse, generateText, stepCountIs, streamText } from 'ai';
 import type { UIMessage } from 'ai';
 import { calculateCost, normalizeUsage, type ReportedUsage, type UsageCost } from './modelPricing';
@@ -188,33 +188,53 @@ export function getMessageText(message: UIMessage): string {
   return '';
 }
 
+/** The UI state of a tool call, from the result the SDK put in a `tool` response message. */
+function toolResultState(output: any): Record<string, unknown> {
+  switch (output?.type) {
+    case 'error-text':
+      return { state: 'output-error', errorText: String(output.value ?? '') };
+    case 'error-json':
+      return { state: 'output-error', errorText: JSON.stringify(output.value ?? null) };
+    case 'execution-denied':
+      return { state: 'output-error', errorText: output.reason ?? 'Tool call execution denied.' };
+    default:
+      return { state: 'output-available', output: output?.value ?? null };
+  }
+}
+
+/**
+ * Stores a turn's response as one assistant message. Each tool call keeps its
+ * result: a call saved without one makes the SDK refuse every later prompt
+ * that contains it (AI_MissingToolResultsError). `step-start` separates model
+ * steps, so the call and its result go back to the model before the answer
+ * that used them.
+ */
 function appendResponseMessages(messages: UIMessage[], responseMessages: any[]): UIMessage[] {
-  const assistantMessages = responseMessages
-    .filter((message) => message?.role === 'assistant')
-    .map((message, messageIndex) => {
-      const content = Array.isArray(message.content) ? message.content : [message.content];
-      const parts = content.flatMap((part: any) => {
-        if (typeof part === 'string') return [{ type: 'text', text: part }];
-        if (part?.type === 'text') return [{ type: 'text', text: part.text ?? '' }];
-        if (part?.type === 'tool-call') {
-          return [{
-            type: `tool-${part.toolName}`,
-            toolCallId: part.toolCallId,
-            state: 'input-available',
-            input: part.input,
-          }];
+  const parts: any[] = [];
+  const toolParts = new Map<string, any>();
+  for (const message of responseMessages) {
+    const content = Array.isArray(message?.content) ? message.content : [message?.content];
+    if (message?.role === 'assistant') {
+      if (parts.length > 0) parts.push({ type: 'step-start' });
+      for (const part of content) {
+        if (typeof part === 'string') parts.push({ type: 'text', text: part });
+        else if (part?.type === 'text') parts.push({ type: 'text', text: part.text ?? '' });
+        else if (part?.type === 'tool-call') {
+          const toolPart = { type: `tool-${part.toolName}`, toolCallId: part.toolCallId, state: 'input-available', input: part.input };
+          toolParts.set(part.toolCallId, toolPart);
+          parts.push(toolPart);
         }
-        return [];
-      });
+      }
+    } else if (message?.role === 'tool') {
+      for (const part of content) {
+        const toolPart = part?.type === 'tool-result' ? toolParts.get(part.toolCallId) : undefined;
+        if (toolPart) Object.assign(toolPart, toolResultState(part.output));
+      }
+    }
+  }
 
-      return {
-        id: `assistant-${Date.now()}-${messageIndex}`,
-        role: 'assistant',
-        parts,
-      } as UIMessage;
-    });
-
-  return [...messages, ...assistantMessages];
+  if (parts.length === 0) return messages;
+  return [...messages, { id: `assistant-${crypto.randomUUID()}`, role: 'assistant', parts } as UIMessage];
 }
 
 function normalizeUIMessages(messages: UIMessage[]): UIMessage[] {
@@ -229,7 +249,9 @@ function normalizeUIMessages(messages: UIMessage[]): UIMessage[] {
 }
 
 async function toModelMessages(messages: UIMessage[]) {
-  return convertToModelMessages(normalizeUIMessages(messages));
+  // Earlier releases stored tool calls without their results; drop those calls
+  // instead of failing every turn of the session.
+  return convertToModelMessages(normalizeUIMessages(messages), { ignoreIncompleteToolCalls: true });
 }
 
 /** Passes a response body through unchanged, reporting a read error or a cancel by the client. */
@@ -1005,10 +1027,18 @@ export class ChatAgent {
     );
   }
 
+  /**
+   * A session belongs to the user who started it. Web clients choose the
+   * sessionKey and some keys are guessable (`wa:<phone>`), so a session owned
+   * by someone else, or by no one, is refused before its history reaches the
+   * prompt or the save that follows would take it over.
+   */
   private async loadStoredHistory(input: ChatAgentInput): Promise<UIMessage[]> {
     if (!input.sessionKey) return [];
-    const previous = await this.getConversationStore().load(input.sessionKey);
-    return previous ?? [];
+    const session = await this.getConversationStore().loadSession(input.sessionKey);
+    if (!session) return [];
+    if ((session.userId ?? null) !== this.getCurrentUserId()) Err(403, 'Forbidden');
+    return session.messages;
   }
 
   private mergeSessionMessages(history: UIMessage[], current: UIMessage[]): UIMessage[] {

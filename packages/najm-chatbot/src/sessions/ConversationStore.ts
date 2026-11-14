@@ -6,8 +6,15 @@ import type { ChatbotConfig } from '../ChatbotPlugin';
 import { ChatSessionRepository } from './ChatSessionRepository';
 import { normalizeChatChannel, ttlToExpiresAt, type ChatSessionMeta } from './ChatSessionSchema';
 
+export interface StoredConversation {
+  messages: UIMessage[];
+  /** The user who started the session; null when it was saved outside a signed-in request. */
+  userId: string | null;
+}
+
 export interface ConversationStore {
   load(key: string): Promise<UIMessage[] | null>;
+  loadSession(key: string): Promise<StoredConversation | null>;
   save(key: string, messages: UIMessage[], meta?: ChatSessionMeta & { title?: string | null }): Promise<void>;
   clear(key: string): Promise<void>;
 }
@@ -32,8 +39,12 @@ export class DbConversationStore implements ConversationStore {
   ) {}
 
   async load(key: string): Promise<UIMessage[] | null> {
+    return (await this.loadSession(key))?.messages ?? null;
+  }
+
+  async loadSession(key: string): Promise<StoredConversation | null> {
     const session = await this.repository.findByKey(key);
-    return session?.messages ?? null;
+    return session ? { messages: session.messages, userId: session.userId ?? null } : null;
   }
 
   async save(key: string, messages: UIMessage[], meta: ChatSessionMeta & { title?: string | null } = {}): Promise<void> {
@@ -61,8 +72,12 @@ export class CacheConversationStore implements ConversationStore {
   ) {}
 
   async load(key: string): Promise<UIMessage[] | null> {
+    return (await this.loadSession(key))?.messages ?? null;
+  }
+
+  async loadSession(key: string): Promise<StoredConversation | null> {
     const payload = await this.cache.getJson<CacheSessionPayload>(cacheKey(key));
-    return payload?.messages ?? null;
+    return payload ? { messages: payload.messages ?? [], userId: payload.meta?.userId ?? null } : null;
   }
 
   async save(key: string, messages: UIMessage[], meta: ChatSessionMeta = {}): Promise<void> {

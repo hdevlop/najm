@@ -71,11 +71,13 @@ function makeAgent(overrides: {
   const chatLogRepository = { insert: mock(logGate.fn) } as any;
   const dbStore = {
     load: mock(() => Promise.resolve([])),
+    loadSession: mock(() => Promise.resolve(null)),
     save: mock(saveGate.fn),
     clear: mock(() => Promise.resolve()),
   } as any;
   const cacheStore = {
     load: mock(() => Promise.resolve([])),
+    loadSession: mock(() => Promise.resolve(null)),
     save: mock(() => Promise.resolve()),
     clear: mock(() => Promise.resolve()),
   } as any;
@@ -396,11 +398,13 @@ describe('Phase 3 (C7) — logChat token estimate is cached per tool identity', 
     const chatLogRepository = { insert: mock(async (row: any) => undefined) } as any;
     const dbStore = {
       load: mock(() => Promise.resolve([])),
+      loadSession: mock(() => Promise.resolve(null)),
       save: mock(() => Promise.resolve()),
       clear: mock(() => Promise.resolve()),
     } as any;
     const cacheStore = {
       load: mock(() => Promise.resolve([])),
+      loadSession: mock(() => Promise.resolve(null)),
       save: mock(() => Promise.resolve()),
       clear: mock(() => Promise.resolve()),
     } as any;

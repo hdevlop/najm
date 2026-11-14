@@ -54,7 +54,7 @@ describe('reply template tool boundary', () => {
 function agent(options: { provider?: string; template?: any; result?: any; preparation?: any; router?: any; tools?: any; context?: any } = {}) {
   const read = { name: 'counts', annotations: { readOnlyHint: true } };
   const settings = { isEnabled: true, provider: options.provider ?? 'openrouter', model: 'selected-model', useMemory: true };
-  const store = { load: async () => [], save: mock(async () => {}) };
+  const store = { load: async () => [], loadSession: async () => null, save: mock(async () => {}) };
   const diagnostics: any[] = [];
   const context = { getContext: mock(options.context ?? (async () => 'knowledge')) };
   const instance = new ChatAgent({ getInternal: async () => settings } as any, store as any, store as any,

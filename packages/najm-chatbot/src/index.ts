@@ -74,6 +74,7 @@ export {
 } from './sessions';
 export type {
   ConversationStore,
+  StoredConversation,
   ChatSessionChannel,
   ChatSessionMeta,
   StoredChatSession,

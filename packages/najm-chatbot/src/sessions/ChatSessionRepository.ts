@@ -75,8 +75,8 @@ export class ChatSessionRepository {
       updatedAt: now,
     };
 
+    // The owner is set when the row is created and never reassigned by a later save.
     const updateSet: Record<string, any> = {
-      userId: input.userId ?? null,
       channel,
       messages: input.messages,
       messageCount: input.messages.length,
