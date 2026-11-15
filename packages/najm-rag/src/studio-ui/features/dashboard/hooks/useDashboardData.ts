@@ -3,6 +3,7 @@ import { useApiClient } from '@/lib/api';
 import type { DocumentListItem, KnowledgeStatusResult, MCPTool, SemanticPhraseResponse } from '@/features/knowledge/types';
 import type { LiveRoutingSettings } from '@/features/logs/types';
 import { getKnowledgeNumber } from '../components/helpers';
+import { describeLoadError, type StudioSchemaStatus } from '@/lib/errorMessage';
 
 interface UnmatchedCount { count: number; }
 interface EmbeddingHealth { ok?: boolean; status?: string; }
@@ -17,6 +18,8 @@ interface RagStatus {
   /** Phrases embedded with other model or routing-text settings; null when unknown. */
   staleSemanticCount?: number | null;
   indexingRunning: boolean;
+  /** Missing najm-rag tables/columns; counts above are null while any are missing. */
+  schema?: StudioSchemaStatus | null;
 }
 
 const CACHE_KEY = 'najm-rag-studio:dashboard-cache';
@@ -112,7 +115,10 @@ export function useDashboardData() {
       lastFetchRef.current = Date.now();
     } catch (err) {
       console.error('Failed to load dashboard:', err);
-      setError('Failed to load dashboard data. Click Refresh to retry.');
+      // /status still answers when columns are missing, and its schema report
+      // explains every other failed read; ask it before falling back.
+      const schema = await api.get<RagStatus>('/status').then((s) => s.schema ?? null).catch(() => null);
+      setError(describeLoadError('Failed to load dashboard data', err, schema));
     } finally {
       setLoading(false);
     }
@@ -145,6 +151,7 @@ export function useDashboardData() {
   return {
     loading,
     error,
+    schemaMessage: status?.schema?.missing?.length ? status.schema.message ?? null : null,
     status,
     tools,
     semantics,

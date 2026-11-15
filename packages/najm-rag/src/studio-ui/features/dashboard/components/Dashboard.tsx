@@ -10,7 +10,7 @@ import {
   RefreshCw,
   Wrench,
 } from 'lucide-react';
-import { Button, Badge, NCard, NPageHeader, NEmptyState, NPieChart, NSkeleton, NStatCard, NStatCardSkeleton, NStatusBreakdown, cn } from 'najm-kit';
+import { Button, Badge, NAlert, NCard, NPageHeader, NEmptyState, NPieChart, NSkeleton, NStatCard, NStatCardSkeleton, NStatusBreakdown, cn } from 'najm-kit';
 import { documentDate, documentName, documentStatus } from './helpers';
 import { useDashboardData } from '../hooks/useDashboardData';
 import type { Workspace } from '@/shared/hooks/useWorkspace';
@@ -71,6 +71,7 @@ export function Dashboard({ onNavigate }: DashboardProps) {
   const {
     loading,
     error,
+    schemaMessage,
     tools,
     semantics,
     documents,
@@ -147,11 +148,8 @@ export function Dashboard({ onNavigate }: DashboardProps) {
       />
       <div className="flex-1 min-h-0 overflow-hidden">
         <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 lg:overflow-hidden xl:p-5" aria-live="polite">
-        {error && (
-          <div className="shrink-0 rounded-lg border border-status-red/30 bg-status-red/10 px-4 py-3 text-sm text-status-red" role="alert">
-            {error}
-          </div>
-        )}
+        {error && <NAlert tone="destructive" className="shrink-0" title="Could not load the dashboard" description={error} />}
+        {!error && schemaMessage && <NAlert tone="warning" className="shrink-0" title="Database schema out of date" description={schemaMessage} />}
 
         {/* ── Stat Cards ── */}
         <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">

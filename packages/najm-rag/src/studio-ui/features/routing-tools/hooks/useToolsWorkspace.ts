@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useApiClient } from '@/lib/api';
 import type { MCPTool } from '@/features/routing-tools/types';
 import { normalizeDependencyImport } from '../utils/dependency-import';
+import { withServerMessage } from '@/lib/errorMessage';
 
 export const TOOLS_KEY = ['rag-studio', 'routing', 'tools'] as const;
 
@@ -10,9 +11,10 @@ export function useToolsWorkspace(onError?: (message: string) => void) {
   const apiClient = useApiClient();
   const queryClient = useQueryClient();
 
-  const reportError = (message: string, err: unknown) => {
-    console.error(message, err);
-    onError?.(message);
+  // The label alone ("Failed to load tools.") hid the server's reason.
+  const reportError = (label: string, err: unknown) => {
+    console.error(label, err);
+    onError?.(withServerMessage(label, err));
   };
 
   const query = useQuery({
