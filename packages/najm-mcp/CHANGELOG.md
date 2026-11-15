@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.3.0 - 2026-11-15
 
 - `ToolProvider.findRelevantTools` takes an optional second argument,
   `ToolRoutingRequest` (exported), carrying the user's latest message on its
