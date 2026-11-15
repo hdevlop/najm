@@ -1,5 +1,6 @@
 import { createMemoryHistory, createRouter } from '@tanstack/react-router';
 import { routeTree } from './routeTree';
+import { createStudioHistory } from './history';
 import type { StudioRouterContext } from './__root';
 
 export function createStudioRouter(basePath: string, context: StudioRouterContext) {
@@ -9,8 +10,8 @@ export function createStudioRouter(basePath: string, context: StudioRouterContex
     routeTree,
     basepath: normalizedBasePath,
     context,
-    ...(typeof document === 'undefined'
-      ? { history: createMemoryHistory({ initialEntries: [normalizedBasePath] }) }
-      : {}),
+    history: typeof document === 'undefined'
+      ? createMemoryHistory({ initialEntries: [normalizedBasePath] })
+      : createStudioHistory(),
   });
 }
