@@ -495,7 +495,7 @@
     },
     "packages/najm-kit": {
       "name": "najm-kit",
-      "version": "3.14.0",
+      "version": "3.14.1",
       "dependencies": {
         "@googlemaps/js-api-loader": "^2.1.1",
         "@radix-ui/react-avatar": "^1",
@@ -716,7 +716,7 @@
     },
     "packages/najm-rag": {
       "name": "najm-rag",
-      "version": "3.4.0",
+      "version": "3.5.0",
       "dependencies": {
         "@tanstack/react-query": "^5",
         "@tanstack/react-router": "^1.170.8",
