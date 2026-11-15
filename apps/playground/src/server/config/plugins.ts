@@ -9,7 +9,7 @@ import { storage } from 'najm-storage';
 import { translations } from '../locales';
 import { databaseConfig } from './database';
 import { auth, isAdmin, isAuth } from 'najm-auth';
-import { rag, ragStudio } from 'najm-rag';
+import { rag, ragStudio, createDarijaQueryRewriter } from 'najm-rag';
 import { chatbot } from 'najm-chatbot';
 import { studioAssistant } from 'najm-chatbot/studio-assistant';
 import { whatsapp } from 'najm-whatsapp';
@@ -120,7 +120,9 @@ export const ragConfig = () => rag({
     : undefined,
   toolRouting: { enabled: true },
   knowledge: true,
-  allowedLangs: ['en', 'fr', 'ar', 'darija'],
+  allowedLangs: ['en', 'fr', 'ar', 'darija', 'darija-latn'],
+  // Darija function words to MSA before routing; measured on bench/routing.
+  rewriteRoutingQuery: createDarijaQueryRewriter(),
 });
 
 // RAG Studio admin API at /api/rag-studio. The UI is <RagStudio /> from

@@ -3,48 +3,910 @@
     {
       "toolName": "auth_register",
       "phrases": [
-        { "lang": "en", "phrase": "sign up" },
-        { "lang": "en", "phrase": "create account" },
-        { "lang": "fr", "phrase": "créer un compte" },
-        { "lang": "ar", "phrase": "إنشاء حساب" }
+        {
+          "lang": "en",
+          "phrase": "sign up"
+        },
+        {
+          "lang": "en",
+          "phrase": "create account"
+        },
+        {
+          "lang": "fr",
+          "phrase": "créer un compte"
+        },
+        {
+          "lang": "fr",
+          "phrase": "s'inscrire"
+        },
+        {
+          "lang": "ar",
+          "phrase": "إنشاء حساب"
+        },
+        {
+          "lang": "ar",
+          "phrase": "التسجيل في الموقع"
+        },
+        {
+          "lang": "darija",
+          "phrase": "بغيت ندير حساب جديد"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "bghit ndir compte jdid"
+        }
       ]
     },
     {
       "toolName": "auth_login",
       "phrases": [
-        { "lang": "en", "phrase": "log in" },
-        { "lang": "en", "phrase": "sign in" },
-        { "lang": "fr", "phrase": "se connecter" },
-        { "lang": "ar", "phrase": "تسجيل الدخول" }
+        {
+          "lang": "en",
+          "phrase": "log in"
+        },
+        {
+          "lang": "en",
+          "phrase": "sign in"
+        },
+        {
+          "lang": "fr",
+          "phrase": "se connecter"
+        },
+        {
+          "lang": "ar",
+          "phrase": "تسجيل الدخول"
+        },
+        {
+          "lang": "darija",
+          "phrase": "بغيت ندخل لحسابي"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "bghit ndkhol l compte dyali"
+        }
+      ]
+    },
+    {
+      "toolName": "auth_logout",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "log out"
+        },
+        {
+          "lang": "en",
+          "phrase": "sign out"
+        },
+        {
+          "lang": "fr",
+          "phrase": "se déconnecter"
+        },
+        {
+          "lang": "ar",
+          "phrase": "تسجيل الخروج"
+        },
+        {
+          "lang": "darija",
+          "phrase": "خرجني من الحساب"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "khrejni mn compte"
+        }
+      ]
+    },
+    {
+      "toolName": "auth_me",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "my profile"
+        },
+        {
+          "lang": "en",
+          "phrase": "who am I logged in as"
+        },
+        {
+          "lang": "fr",
+          "phrase": "mon profil"
+        },
+        {
+          "lang": "ar",
+          "phrase": "ملفي الشخصي"
+        },
+        {
+          "lang": "darija",
+          "phrase": "شكون أنا فالحساب"
+        }
       ]
     },
     {
       "toolName": "products_get_all",
       "phrases": [
-        { "lang": "en", "phrase": "list all products" },
-        { "lang": "en", "phrase": "show products" },
-        { "lang": "en", "phrase": "catalog" },
-        { "lang": "fr", "phrase": "liste des produits" },
-        { "lang": "ar", "phrase": "عرض المنتجات" }
+        {
+          "lang": "en",
+          "phrase": "list all products"
+        },
+        {
+          "lang": "en",
+          "phrase": "show products"
+        },
+        {
+          "lang": "en",
+          "phrase": "catalog"
+        },
+        {
+          "lang": "fr",
+          "phrase": "liste des produits"
+        },
+        {
+          "lang": "ar",
+          "phrase": "عرض المنتجات"
+        },
+        {
+          "lang": "darija",
+          "phrase": "وريني المنتوجات"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "werrini les produits"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "chno kayn mn produits"
+        }
       ]
     },
     {
-      "toolName": "orders_get_my_orders",
+      "toolName": "products_get_my_products",
       "phrases": [
-        { "lang": "en", "phrase": "show me my last orders" },
-        { "lang": "en", "phrase": "my orders" },
-        { "lang": "en", "phrase": "order history" },
-        { "lang": "fr", "phrase": "mes commandes" },
-        { "lang": "ar", "phrase": "طلباتي" }
+        {
+          "lang": "en",
+          "phrase": "my products"
+        },
+        {
+          "lang": "en",
+          "phrase": "products I created"
+        },
+        {
+          "lang": "fr",
+          "phrase": "mes produits"
+        },
+        {
+          "lang": "ar",
+          "phrase": "منتجاتي"
+        },
+        {
+          "lang": "darija",
+          "phrase": "المنتوجات ديالي"
+        }
+      ]
+    },
+    {
+      "toolName": "products_get",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "find a product by name"
+        },
+        {
+          "lang": "en",
+          "phrase": "search for a product"
+        },
+        {
+          "lang": "fr",
+          "phrase": "chercher un produit"
+        },
+        {
+          "lang": "ar",
+          "phrase": "البحث عن منتج"
+        },
+        {
+          "lang": "darija",
+          "phrase": "قلب ليا على منتوج"
+        }
+      ]
+    },
+    {
+      "toolName": "products_create",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "add a new product"
+        },
+        {
+          "lang": "en",
+          "phrase": "create a product"
+        },
+        {
+          "lang": "fr",
+          "phrase": "ajouter un produit"
+        },
+        {
+          "lang": "ar",
+          "phrase": "إضافة منتج جديد"
+        },
+        {
+          "lang": "darija",
+          "phrase": "زيد منتوج جديد"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "zid produit jdid"
+        }
+      ]
+    },
+    {
+      "toolName": "products_update",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "edit a product"
+        },
+        {
+          "lang": "en",
+          "phrase": "change the price of a product"
+        },
+        {
+          "lang": "fr",
+          "phrase": "modifier un produit"
+        },
+        {
+          "lang": "ar",
+          "phrase": "تعديل منتج"
+        },
+        {
+          "lang": "darija",
+          "phrase": "بدل الثمن ديال المنتوج"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "bddel prix dyal produit"
+        }
+      ]
+    },
+    {
+      "toolName": "products_delete",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "delete a product"
+        },
+        {
+          "lang": "en",
+          "phrase": "remove a product from the catalog"
+        },
+        {
+          "lang": "fr",
+          "phrase": "supprimer un produit"
+        },
+        {
+          "lang": "ar",
+          "phrase": "حذف منتج"
+        },
+        {
+          "lang": "darija",
+          "phrase": "مسح المنتوج"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "msse7 had produit"
+        }
       ]
     },
     {
       "toolName": "cart_get_my_cart",
       "phrases": [
-        { "lang": "en", "phrase": "my cart" },
-        { "lang": "en", "phrase": "shopping cart" },
-        { "lang": "fr", "phrase": "mon panier" },
-        { "lang": "ar", "phrase": "سلة التسوق" }
+        {
+          "lang": "en",
+          "phrase": "my cart"
+        },
+        {
+          "lang": "en",
+          "phrase": "shopping cart"
+        },
+        {
+          "lang": "fr",
+          "phrase": "mon panier"
+        },
+        {
+          "lang": "ar",
+          "phrase": "سلة التسوق"
+        },
+        {
+          "lang": "darija",
+          "phrase": "شنو كاين فالسلة"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "chno kayn f panier"
+        }
+      ]
+    },
+    {
+      "toolName": "cart_add",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "add to cart"
+        },
+        {
+          "lang": "en",
+          "phrase": "put this in my cart"
+        },
+        {
+          "lang": "fr",
+          "phrase": "ajouter au panier"
+        },
+        {
+          "lang": "ar",
+          "phrase": "أضف إلى السلة"
+        },
+        {
+          "lang": "darija",
+          "phrase": "زيد هادشي للسلة"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "zid had produit l panier"
+        }
+      ]
+    },
+    {
+      "toolName": "cart_update",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "change quantity in cart"
+        },
+        {
+          "lang": "fr",
+          "phrase": "modifier la quantité"
+        },
+        {
+          "lang": "ar",
+          "phrase": "تغيير الكمية في السلة"
+        }
+      ]
+    },
+    {
+      "toolName": "cart_remove",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "remove item from cart"
+        },
+        {
+          "lang": "fr",
+          "phrase": "retirer du panier"
+        },
+        {
+          "lang": "ar",
+          "phrase": "إزالة منتج من السلة"
+        },
+        {
+          "lang": "darija",
+          "phrase": "حيد هادا من السلة"
+        }
+      ]
+    },
+    {
+      "toolName": "cart_clear",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "empty my cart"
+        },
+        {
+          "lang": "en",
+          "phrase": "clear the cart"
+        },
+        {
+          "lang": "fr",
+          "phrase": "vider le panier"
+        },
+        {
+          "lang": "ar",
+          "phrase": "إفراغ السلة"
+        },
+        {
+          "lang": "darija",
+          "phrase": "خوي السلة"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "khwi lpanier"
+        }
+      ]
+    },
+    {
+      "toolName": "orders_get_my_orders",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "show me my last orders"
+        },
+        {
+          "lang": "en",
+          "phrase": "my orders"
+        },
+        {
+          "lang": "en",
+          "phrase": "order history"
+        },
+        {
+          "lang": "fr",
+          "phrase": "mes commandes"
+        },
+        {
+          "lang": "ar",
+          "phrase": "طلباتي"
+        },
+        {
+          "lang": "darija",
+          "phrase": "الكوموندات ديالي"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "chof lcommandes dyali"
+        }
+      ]
+    },
+    {
+      "toolName": "orders_get_by_id",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "order details"
+        },
+        {
+          "lang": "en",
+          "phrase": "show order number"
+        },
+        {
+          "lang": "fr",
+          "phrase": "détails de la commande"
+        },
+        {
+          "lang": "ar",
+          "phrase": "تفاصيل الطلب"
+        }
+      ]
+    },
+    {
+      "toolName": "orders_checkout",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "checkout"
+        },
+        {
+          "lang": "en",
+          "phrase": "place my order"
+        },
+        {
+          "lang": "en",
+          "phrase": "buy what's in my cart"
+        },
+        {
+          "lang": "fr",
+          "phrase": "passer la commande"
+        },
+        {
+          "lang": "ar",
+          "phrase": "إتمام الشراء"
+        },
+        {
+          "lang": "darija",
+          "phrase": "بغيت نشري داكشي لي فالسلة"
+        },
+        {
+          "lang": "darija-latn",
+          "phrase": "bghit nkhless lcommande"
+        }
+      ]
+    },
+    {
+      "toolName": "orders_update_status",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "mark order as shipped"
+        },
+        {
+          "lang": "en",
+          "phrase": "change order status"
+        },
+        {
+          "lang": "fr",
+          "phrase": "changer le statut de la commande"
+        },
+        {
+          "lang": "ar",
+          "phrase": "تحديث حالة الطلب"
+        }
+      ]
+    },
+    {
+      "toolName": "users_get_all",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "list users"
+        },
+        {
+          "lang": "en",
+          "phrase": "all users"
+        },
+        {
+          "lang": "fr",
+          "phrase": "liste des utilisateurs"
+        },
+        {
+          "lang": "ar",
+          "phrase": "قائمة المستخدمين"
+        },
+        {
+          "lang": "darija",
+          "phrase": "لائحة ديال اليوزرز"
+        },
+        {
+          "lang": "darija",
+          "phrase": "كاع المستخدمين ديال الموقع"
+        }
+      ]
+    },
+    {
+      "toolName": "roles_get_all",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "list roles"
+        },
+        {
+          "lang": "fr",
+          "phrase": "liste des rôles"
+        },
+        {
+          "lang": "ar",
+          "phrase": "قائمة الأدوار"
+        },
+        {
+          "lang": "darija",
+          "phrase": "لائحة الرولات"
+        },
+        {
+          "lang": "darija",
+          "phrase": "الأدوار الموجودين فالسيستيم"
+        }
+      ]
+    },
+    {
+      "toolName": "health_check",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "is the api up"
+        },
+        {
+          "lang": "en",
+          "phrase": "health check"
+        },
+        {
+          "lang": "fr",
+          "phrase": "l'api fonctionne"
+        },
+        {
+          "lang": "ar",
+          "phrase": "حالة الخادم"
+        }
+      ]
+    },
+    {
+      "toolName": "fees_calculate",
+      "phrases": [
+        {
+          "lang": "en",
+          "phrase": "calculate the fee"
+        },
+        {
+          "lang": "en",
+          "phrase": "processing fee"
+        },
+        {
+          "lang": "fr",
+          "phrase": "calculer les frais"
+        },
+        {
+          "lang": "ar",
+          "phrase": "حساب الرسوم"
+        }
+      ]
+    },
+    {
+      "toolName": "users_get_by_id",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "جيب المستخدم بالرقم ديالو"
+        },
+        {
+          "lang": "darija",
+          "phrase": "معلومات يوزر معين بالايدي"
+        }
+      ]
+    },
+    {
+      "toolName": "users_get_by_email",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "لقا الحساب ديال شي يوزر آخر من الإيميل"
+        },
+        {
+          "lang": "darija",
+          "phrase": "البحث على مستخدم بالبريد الإلكتروني"
+        }
+      ]
+    },
+    {
+      "toolName": "users_get_role",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "الرول اللي عند مستخدم معين"
+        },
+        {
+          "lang": "darija",
+          "phrase": "شوف الدور ديال يوزر"
+        }
+      ]
+    },
+    {
+      "toolName": "users_create",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "كري يوزر جديد"
+        },
+        {
+          "lang": "darija",
+          "phrase": "حل حساب لمستخدم آخر"
+        }
+      ]
+    },
+    {
+      "toolName": "users_update",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "عدل المعلومات ديال يوزر"
+        },
+        {
+          "lang": "darija",
+          "phrase": "تعديل الحساب ديال مستخدم آخر"
+        }
+      ]
+    },
+    {
+      "toolName": "users_delete",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "حذف يوزر من السيستيم"
+        },
+        {
+          "lang": "darija",
+          "phrase": "مسح الحساب ديال مستخدم آخر"
+        }
+      ]
+    },
+    {
+      "toolName": "users_assign_role",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "عطي رول ليوزر"
+        },
+        {
+          "lang": "darija",
+          "phrase": "رقي مستخدم لأدمين"
+        }
+      ]
+    },
+    {
+      "toolName": "users_remove_role",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "نزع الرول من مستخدم"
+        },
+        {
+          "lang": "darija",
+          "phrase": "حيد الدور اللي عند يوزر"
+        }
+      ]
+    },
+    {
+      "toolName": "roles_get_by_id",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "جيب رول بالرقم ديالو"
+        },
+        {
+          "lang": "darija",
+          "phrase": "تفاصيل دور معين"
+        }
+      ]
+    },
+    {
+      "toolName": "roles_create",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "كري رول جديد"
+        },
+        {
+          "lang": "darija",
+          "phrase": "زيد واحد الدور جديد"
+        }
+      ]
+    },
+    {
+      "toolName": "roles_update",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "عدل المعلومات ديال رول"
+        },
+        {
+          "lang": "darija",
+          "phrase": "عدل رول موجود"
+        }
+      ]
+    },
+    {
+      "toolName": "roles_delete",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "حذف رول من السيستيم"
+        },
+        {
+          "lang": "darija",
+          "phrase": "مسح دور ما بقيناش محتاجينو"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_get_all",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "لائحة البيرميسيونات"
+        },
+        {
+          "lang": "darija",
+          "phrase": "شوف جميع الصلاحيات"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_get_by_id",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "جيب صلاحية بالرقم ديالها"
+        },
+        {
+          "lang": "darija",
+          "phrase": "تفاصيل بيرميسيون وحدة"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_create",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "كري بيرميسيون جديدة"
+        },
+        {
+          "lang": "darija",
+          "phrase": "زيد صلاحية فالسيستيم"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_update",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "عدل بيرميسيون"
+        },
+        {
+          "lang": "darija",
+          "phrase": "عدل صلاحية موجودة"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_delete",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "حذف بيرميسيون"
+        },
+        {
+          "lang": "darija",
+          "phrase": "مسح صلاحية من السيستيم"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_get_by_role",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "البيرميسيونات ديال واحد الرول"
+        },
+        {
+          "lang": "darija",
+          "phrase": "الصلاحيات اللي عند دور معين"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_get_roles_by_permission",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "أشمن رولات فيهم هاد البيرميسيون"
+        },
+        {
+          "lang": "darija",
+          "phrase": "الأدوار اللي عندها صلاحية معينة"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_assign_to_role",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "ربط بيرميسيون مع رول"
+        },
+        {
+          "lang": "darija",
+          "phrase": "خلي الدور ياخد صلاحية جديدة"
+        }
+      ]
+    },
+    {
+      "toolName": "permissions_remove_from_role",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "نزع بيرميسيون من رول"
+        },
+        {
+          "lang": "darija",
+          "phrase": "حيد صلاحية من دور"
+        }
+      ]
+    },
+    {
+      "toolName": "health_summary",
+      "phrases": [
+        {
+          "lang": "darija",
+          "phrase": "نظرة عامة على السيرفيس"
+        },
+        {
+          "lang": "darija",
+          "phrase": "ملخص الحالة ديال التطبيق"
+        }
       ]
     }
   ]

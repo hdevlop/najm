@@ -1,0 +1,386 @@
+[
+ {
+  "name": "auth_register",
+  "group": "auth",
+  "description": "Register a new user account with email and password",
+  "annotations": {}
+ },
+ {
+  "name": "auth_login",
+  "group": "auth",
+  "description": "Login with email and password, returns access and refresh tokens",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "auth_refresh",
+  "group": "auth",
+  "description": "Refresh access token using the refresh cookie",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "auth_logout",
+  "group": "auth",
+  "description": "Logout the authenticated user and revoke tokens",
+  "annotations": {
+   "idempotentHint": true
+  }
+ },
+ {
+  "name": "auth_me",
+  "group": "auth",
+  "description": "Get the current authenticated user profile from cookie",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "permissions_get_all",
+  "group": "permissions",
+  "description": "List all permissions (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "permissions_get_by_id",
+  "group": "permissions",
+  "description": "Get a permission by ID (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "permissions_create",
+  "group": "permissions",
+  "description": "Create a new permission (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "permissions_update",
+  "group": "permissions",
+  "description": "Update a permission by ID (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "permissions_delete",
+  "group": "permissions",
+  "description": "Delete a permission by ID (admin only)",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "permissions_get_by_role",
+  "group": "permissions",
+  "description": "List all permissions assigned to a role (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "permissions_get_roles_by_permission",
+  "group": "permissions",
+  "description": "List all roles that have a specific permission (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "permissions_assign_to_role",
+  "group": "permissions",
+  "description": "Assign a permission to a role (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "permissions_remove_from_role",
+  "group": "permissions",
+  "description": "Remove a permission from a role (admin only)",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "roles_get_all",
+  "group": "roles",
+  "description": "List all roles (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "roles_get_by_id",
+  "group": "roles",
+  "description": "Get a role by ID (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "roles_create",
+  "group": "roles",
+  "description": "Create a new role (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "roles_update",
+  "group": "roles",
+  "description": "Update a role by ID (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "roles_delete",
+  "group": "roles",
+  "description": "Delete a role by ID (admin only)",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "users_get_all",
+  "group": "users",
+  "description": "List all users (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "users_get_by_id",
+  "group": "users",
+  "description": "Get a user by ID (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "users_get_by_email",
+  "group": "users",
+  "description": "Find a user by email address (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "users_get_role",
+  "group": "users",
+  "description": "Get the role name of a user (admin only)",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "users_create",
+  "group": "users",
+  "description": "Create a new user (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "users_update",
+  "group": "users",
+  "description": "Update a user by ID (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "users_delete",
+  "group": "users",
+  "description": "Delete a user by ID (admin only)",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "users_assign_role",
+  "group": "users",
+  "description": "Assign a role to a user (admin only)",
+  "annotations": {}
+ },
+ {
+  "name": "users_remove_role",
+  "group": "users",
+  "description": "Remove role from a user (admin only)",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "cart_get_my_cart",
+  "group": "cart",
+  "description": "Get the authenticated user cart",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "cart_add",
+  "group": "cart",
+  "description": "Add an item to the authenticated user cart",
+  "annotations": {}
+ },
+ {
+  "name": "cart_update",
+  "group": "cart",
+  "description": "Update quantity for a cart item",
+  "annotations": {}
+ },
+ {
+  "name": "cart_remove",
+  "group": "cart",
+  "description": "Remove one item from the cart",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "cart_clear",
+  "group": "cart",
+  "description": "Clear the authenticated user cart",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "fees_test",
+  "group": "fees",
+  "description": "Check that the fee module is loaded and ready for MCP calls",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "fees_calculate",
+  "group": "fees",
+  "description": "Calculate a processing fee using percentage and flat-fee inputs",
+  "annotations": {}
+ },
+ {
+  "name": "health_check",
+  "group": "health",
+  "description": "Check playground API health",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "health_lang_check",
+  "group": "health",
+  "description": "Inspect translated health-related messages",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "health_summary",
+  "group": "health",
+  "description": "Get a quick summary of playground data and service health",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "health_echo",
+  "group": "health",
+  "description": "Echo text for MCP connectivity checks",
+  "annotations": {}
+ },
+ {
+  "name": "orders_get_my_orders",
+  "group": "orders",
+  "description": "List orders for the authenticated user",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "orders_get_by_id",
+  "group": "orders",
+  "description": "Fetch one of your orders by id",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "orders_create",
+  "group": "orders",
+  "description": "Create an order from explicit items",
+  "annotations": {}
+ },
+ {
+  "name": "orders_checkout",
+  "group": "orders",
+  "description": "Create an order from the authenticated user cart",
+  "annotations": {}
+ },
+ {
+  "name": "orders_update_status",
+  "group": "orders",
+  "description": "Update the status of one of your orders",
+  "annotations": {}
+ },
+ {
+  "name": "products_get_all",
+  "group": "products",
+  "description": "List all products in the catalog",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "products_get_my_products",
+  "group": "products",
+  "description": "List products owned by the authenticated user",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "products_get_by_id",
+  "group": "products",
+  "description": "Fetch one product by id",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "products_create",
+  "group": "products",
+  "description": "Create a new product for the authenticated user",
+  "annotations": {}
+ },
+ {
+  "name": "products_update_by_id",
+  "group": "products",
+  "description": "Update one of your products by ID",
+  "annotations": {}
+ },
+ {
+  "name": "products_delete_by_id",
+  "group": "products",
+  "description": "Delete one of your products by ID",
+  "annotations": {
+   "destructiveHint": true
+  }
+ },
+ {
+  "name": "products_get",
+  "group": "products",
+  "description": "Search and resolve one product by natural text, name, category, or ID. Use argument { product }, or aliases { name } / { id }. Returns the product when unique, or candidate matches when ambiguous.",
+  "annotations": {
+   "readOnlyHint": true
+  }
+ },
+ {
+  "name": "products_update",
+  "group": "products",
+  "description": "Update a product by name, category, or ID. Use selector argument { product } or alias { id }, plus fields to update. Stops on ambiguity.",
+  "annotations": {}
+ },
+ {
+  "name": "products_delete",
+  "group": "products",
+  "description": "Delete a product by name, category, or ID. Use argument { product }, or aliases { name } / { id }. Stops on ambiguity.",
+  "annotations": {}
+ }
+]

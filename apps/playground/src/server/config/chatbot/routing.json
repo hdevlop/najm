@@ -4,7 +4,6 @@
     "model": "embeddinggemma"
   },
   "maxTools": 10,
-  "similarityThreshold": 0.45,
   "indexOnBoot": true,
   "chatLogging": true
 }

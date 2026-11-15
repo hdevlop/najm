@@ -2,21 +2,7 @@ import 'reflect-metadata';
 import { readFileSync, existsSync } from 'fs';
 import { resolve } from 'path';
 import { z } from 'zod';
-import { Server } from 'najm-api';
-import { ChatbotRagController } from 'najm-rag';
-import {
-  databaseConfig,
-  authConfig,
-  corsConfig,
-  i18nConfig,
-  eventsConfig,
-  mcpConfig,
-  validationConfig,
-  rateLimitConfig,
-  chatbotConfig,
-} from '../src/server/config/plugins';
-
-import * as modulesModule from '../src/server/modules';
+import { SemanticPhraseService } from 'najm-rag';
 
 const phraseSchema = z.object({
   lang: z.string().optional(),
@@ -41,25 +27,14 @@ async function importViaHttp(url: string, items: unknown[]) {
 }
 
 async function importInProcess(items: z.infer<typeof itemSchema>[]) {
-  // Minimal plugin set: only what the chatbot RAG controller needs
-  const server = new Server({ isolated: true })
-    .use(corsConfig())
-    .use(databaseConfig())
-    .use(i18nConfig())
-    .use(validationConfig())
-    .use(eventsConfig())
-    .use(rateLimitConfig())
-    .use(mcpConfig())
-    .use(authConfig())
-    .use(chatbotConfig())
-    .base('/api')
-    .load(modulesModule);
-
+  // The app's own server, so phrases are embedded with its rag() config
+  // (embedding prompts and rewriteRoutingQuery), as the studio would.
+  const { server } = await import('../src/server/index');
   await server.listen(0);
 
   try {
-    const controller = await server.container.resolve(ChatbotRagController);
-    const result = await controller.importSemantics({ items });
+    const phrases = await server.container.resolve(SemanticPhraseService);
+    const result = await phrases.importSemantics({ items });
 
     let inserted = 0;
     let updated = 0;

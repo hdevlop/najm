@@ -1,0 +1,31 @@
+{
+  "note": "Extra Darija (Arabic script) example phrases, about two per tool, written without looking at test failures. Same author as the test sets, so some overlap in wording is likely.",
+  "items": [
+    { "toolName": "products_get_all", "phrases": [{ "lang": "darija", "phrase": "شنو كاين من منتوجات" }, { "lang": "darija", "phrase": "عرض ليا السلعة كاملة" }] },
+    { "toolName": "products_get", "phrases": [{ "lang": "darija", "phrase": "بغيت نلقى منتوج معين" }, { "lang": "darija", "phrase": "واش كاين هاد المنتوج" }] },
+    { "toolName": "products_get_my_products", "phrases": [{ "lang": "darija", "phrase": "السلعة اللي زدت أنا" }, { "lang": "darija", "phrase": "المنتوجات اللي فالمتجر ديالي" }] },
+    { "toolName": "products_create", "phrases": [{ "lang": "darija", "phrase": "زيد سلعة جديدة للمتجر" }, { "lang": "darija", "phrase": "نحط منتوج جديد للبيع" }] },
+    { "toolName": "products_update", "phrases": [{ "lang": "darija", "phrase": "بدل المعلومات ديال منتوج" }, { "lang": "darija", "phrase": "عدل الثمن ديال السلعة" }] },
+    { "toolName": "products_delete", "phrases": [{ "lang": "darija", "phrase": "حيد منتوج من المتجر" }, { "lang": "darija", "phrase": "مسح منتوج من اللائحة" }] },
+    { "toolName": "cart_get_my_cart", "phrases": [{ "lang": "darija", "phrase": "شنو فالبانيي" }, { "lang": "darija", "phrase": "وريني الحوايج اللي فالسلة" }] },
+    { "toolName": "cart_add", "phrases": [{ "lang": "darija", "phrase": "حط منتوج فالسلة" }, { "lang": "darija", "phrase": "زيد للسلة" }] },
+    { "toolName": "cart_update", "phrases": [{ "lang": "darija", "phrase": "بدل الكمية فالسلة" }, { "lang": "darija", "phrase": "زيد ولا نقص العدد فالسلة" }] },
+    { "toolName": "cart_remove", "phrases": [{ "lang": "darija", "phrase": "حيد منتوج واحد من السلة" }, { "lang": "darija", "phrase": "ماعنديش غرض بهاد الحاجة فالسلة" }] },
+    { "toolName": "cart_clear", "phrases": [{ "lang": "darija", "phrase": "نقي السلة من كلشي" }, { "lang": "darija", "phrase": "بغيت السلة خاوية" }] },
+    { "toolName": "orders_checkout", "phrases": [{ "lang": "darija", "phrase": "دفع الطلبية" }, { "lang": "darija", "phrase": "نأكد الكوموند ونخلص" }] },
+    { "toolName": "orders_get_my_orders", "phrases": [{ "lang": "darija", "phrase": "الطلبيات اللي درت" }, { "lang": "darija", "phrase": "لائحة الكوموندات ديالي" }] },
+    { "toolName": "orders_get_by_id", "phrases": [{ "lang": "darija", "phrase": "تفاصيل كوموند معينة" }, { "lang": "darija", "phrase": "فين وصلات الكوموند" }] },
+    { "toolName": "orders_update_status", "phrases": [{ "lang": "darija", "phrase": "بدل الحالة ديال الكوموند" }, { "lang": "darija", "phrase": "دير الكوموند مبعوثة" }] },
+    { "toolName": "auth_register", "phrases": [{ "lang": "darija", "phrase": "حل حساب جديد" }, { "lang": "darija", "phrase": "بغيت نتسجل فالموقع" }] },
+    { "toolName": "auth_login", "phrases": [{ "lang": "darija", "phrase": "دخل للحساب ديالي" }, { "lang": "darija", "phrase": "نكونيكطي للكونط" }] },
+    { "toolName": "auth_logout", "phrases": [{ "lang": "darija", "phrase": "خرج من الكونط" }, { "lang": "darija", "phrase": "سد الحساب ديالي دابا" }] },
+    { "toolName": "auth_me", "phrases": [{ "lang": "darija", "phrase": "المعلومات ديال الحساب ديالي" }, { "lang": "darija", "phrase": "شكون داخل فهاد الكونط" }] },
+    { "toolName": "users_get_all", "phrases": [{ "lang": "darija", "phrase": "لائحة المستخدمين" }, { "lang": "darija", "phrase": "شكون هوما اليوزرز" }] },
+    { "toolName": "users_get_by_email", "phrases": [{ "lang": "darija", "phrase": "قلب على مستخدم بالإيميل" }, { "lang": "darija", "phrase": "لقا المستخدم من الإيميل ديالو" }] },
+    { "toolName": "users_assign_role", "phrases": [{ "lang": "darija", "phrase": "عطي دور لمستخدم" }, { "lang": "darija", "phrase": "رد هاد المستخدم أدمين" }] },
+    { "toolName": "roles_get_all", "phrases": [{ "lang": "darija", "phrase": "لائحة الأدوار" }, { "lang": "darija", "phrase": "شنو هوما الرولز" }] },
+    { "toolName": "permissions_get_all", "phrases": [{ "lang": "darija", "phrase": "لائحة الصلاحيات" }, { "lang": "darija", "phrase": "شنو هوما البيرميسيونات" }] },
+    { "toolName": "health_check", "phrases": [{ "lang": "darija", "phrase": "واش الخدمة خدامة" }, { "lang": "darija", "phrase": "واش الموقع شغال" }] },
+    { "toolName": "fees_calculate", "phrases": [{ "lang": "darija", "phrase": "حسب المصاريف" }, { "lang": "darija", "phrase": "شحال غيكون الفريس" }] }
+  ]
+}
