@@ -15,9 +15,13 @@ export interface RagStudioOptions {
    */
   ui?: boolean;
   /**
-   * How the SPA authenticates against this server:
-   * - `'session'` — piggyback the host app's session (embedded). Default.
-   * - `'standalone'` — the SPA logs in itself with a Bearer token.
+   * Documentation only: the server never reads it. Every studio route is
+   * `@isAdmin()`-gated through najm-auth, which accepts the host session or a
+   * Bearer token either way. How the UI signs in is chosen on the client, by
+   * `<RagStudioProvider auth="session" | "standalone">`. Kept in
+   * `RAG_STUDIO_OPTS` for code that already reads it.
+   * - `'session'`: the UI uses the host app's session (embedded). Default.
+   * - `'standalone'`: the UI logs in itself and sends a Bearer token.
    */
   auth?: 'session' | 'standalone';
   /**
