@@ -17,26 +17,27 @@
 
 import 'reflect-metadata';
 
-import { Server } from 'najm-api';
-import {
-  databaseConfig,
-  authConfig,
-  corsConfig,
-  i18nConfig,
-  eventsConfig,
-  mcpConfig,
-  validationConfig,
-  rateLimitConfig,
-  storageConfig,
-  ragConfig,
-  chatbotConfig,
-  whatsappConfig,
-} from '../src/server/config/plugins';
-import * as modulesModule from '../src/server/modules';
-import * as listenersModule from '../src/server/listeners';
+// The playground's own server: every plugin it really uses, including
+// ragStudio(). An isolated server rebuilt here missed ragStudio(), and under
+// bun a package whose tsconfig has no `paths` (najm-database) loads najm-core
+// from dist, so its class-token logger was not registered in an isolated
+// container ("Not registered: LoggerService").
+import { server } from '../src/server/index';
 
-const TOKEN = process.env.RAG_STUDIO_TOKEN || 'rag-studio-dev-token-32chars-min-a1b2c3d4e5';
-const STUDIO_API = '/api/rag-studio/api';
+const ADMIN_EMAIL = process.env.SMOKE_ADMIN_EMAIL || 'admin@admin.com';
+const ADMIN_PASSWORD = process.env.SMOKE_ADMIN_PASSWORD || 'Admin123!';
+// ragStudio() is mounted at /rag-studio under the server base /api.
+const STUDIO_API = '/api/rag-studio';
+let accessToken = '';
+
+/** Finds the access token in a login response, wrapped in `data` or not. */
+function findAccessToken(body: any): string {
+  const candidates = [body, body?.data, body?.data?.tokens, body?.tokens];
+  for (const c of candidates) {
+    if (typeof c?.accessToken === 'string') return c.accessToken;
+  }
+  return '';
+}
 
 interface TestResult {
   name: string;
@@ -62,26 +63,10 @@ function skip(name: string, detail: string) {
 }
 
 function authHeaders() {
-  return { Authorization: `Bearer ${TOKEN}` };
+  return { Authorization: `Bearer ${accessToken}` };
 }
 
 async function main() {
-  const server = new Server({ isolated: true })
-    .use(corsConfig())
-    .use(databaseConfig())
-    .use(i18nConfig())
-    .use(validationConfig())
-    .use(eventsConfig())
-    .use(rateLimitConfig())
-    .use(mcpConfig())
-    .use(authConfig())
-    .use(storageConfig())
-    .use(ragConfig())
-    .use(chatbotConfig())
-    .use(whatsappConfig())
-    .base('/api')
-    .load(modulesModule, listenersModule);
-
   let port: number;
   try {
     await server.listen(0);
@@ -94,8 +79,20 @@ async function main() {
   const baseUrl = `http://localhost:${port}`;
   let semanticId: string | undefined;
   let embeddingsAvailable = false;
+  let savedSettings: any = null;
+  let documentId: string | undefined;
 
   try {
+    const login = await fetch(`${baseUrl}/api/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+    });
+    accessToken = findAccessToken(await login.json().catch(() => null));
+    if (!accessToken) throw new Error(`admin login failed (HTTP ${login.status}); seed the db with: bun run --cwd apps/playground db:reset-seed`);
+    // The settings checks below write to the database; put back what was there.
+    savedSettings = await fetch(`${baseUrl}${STUDIO_API}/settings`, { headers: authHeaders() }).then((r) => r.ok ? r.json() : null);
+
     console.log(`\n🔍 RAG Studio Smoke Tests (port ${port})\n`);
 
     // ========================================================
@@ -106,7 +103,7 @@ async function main() {
     let res = await fetch(`${baseUrl}${STUDIO_API}/status`, { headers: authHeaders() });
     if (res.status === 200) {
       const data: any = await res.json();
-      pass(`GET /api/status returns 200 (accessMode=${data.accessMode})`);
+      pass(`GET /status returns 200 (schema missing=${data.schema?.missing?.length ?? 'n/a'})`);
       embeddingsAvailable = data.indexingRunning !== undefined;
     } else {
       fail('GET /api/status', `expected 200, got ${res.status}: ${await res.text()}`);
@@ -207,6 +204,7 @@ async function main() {
       try {
         const docData = await res.json();
         if (res.status === 200 && docData.documentId) {
+          documentId = docData.documentId;
           pass(`POST /documents/import creates document (id=${docData.documentId}, embedded=${docData.embedded}/${docData.embedded + docData.failed})`);
         } else {
           fail('POST /documents/import', `got ${res.status}: ${JSON.stringify(docData).substring(0, 100)}`);
@@ -314,8 +312,10 @@ async function main() {
     res = await fetch(`${baseUrl}${STUDIO_API}/semantics/export`, { headers: authHeaders() });
     try {
       const exportData = await res.json();
-      if (res.status === 200 && Array.isArray(exportData.items)) {
-        pass(`GET /semantics/export returns ${exportData.items.length} tool group(s)`);
+      // The export is grouped: { toolName: { lang: string[] } }.
+      const groups = exportData && typeof exportData === 'object' && !Array.isArray(exportData) ? Object.keys(exportData) : [];
+      if (res.status === 200 && groups.length > 0 && Object.values(exportData).every((langs: any) => langs && typeof langs === 'object')) {
+        pass(`GET /semantics/export returns ${groups.length} tool group(s)`);
       } else {
         fail('GET /semantics/export', `got ${res.status}`);
       }
@@ -345,14 +345,18 @@ async function main() {
       }
     }
 
-    // Reset settings
-    await fetch(`${baseUrl}${STUDIO_API}/settings`, {
-      method: 'PATCH',
-      headers: { ...authHeaders(), 'Content-Type': 'application/json' },
-      body: JSON.stringify({ similarityThreshold: 0.45, maxTools: 12, enableKnowledge: true }),
-    });
-
   } finally {
+    if (documentId) {
+      await fetch(`${baseUrl}${STUDIO_API}/documents/${documentId}`, { method: 'DELETE', headers: authHeaders() }).catch(() => {});
+    }
+    if (savedSettings) {
+      const { similarityThreshold, maxTools, enableKnowledge } = savedSettings;
+      await fetch(`${baseUrl}${STUDIO_API}/settings`, {
+        method: 'PATCH',
+        headers: { ...authHeaders(), 'Content-Type': 'application/json' },
+        body: JSON.stringify({ similarityThreshold, maxTools, enableKnowledge }),
+      }).catch(() => {});
+    }
     await server.stop();
   }
 
