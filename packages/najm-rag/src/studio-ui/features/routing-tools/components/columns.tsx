@@ -1,8 +1,9 @@
 import React from 'react';
-import { FunctionSquare, Package } from 'lucide-react';
+import { FunctionSquare, Package, ShieldCheck } from 'lucide-react';
 import type { ColumnDef } from '@tanstack/react-table';
 import { Badge } from 'najm-kit';
 import type { MCPTool } from '@/features/routing-tools/types';
+import { confirmationToVariant } from '@/lib/status';
 
 function ToolNameCell({ tool }: { tool: MCPTool }) {
   return (
@@ -40,9 +41,10 @@ function ConfirmCell({ tool }: { tool: MCPTool }) {
   const level = tool.confirmation.level;
   return (
     <Badge
-      variant={level === 'danger' ? 'destructive' : level === 'warning' ? 'warning' : 'default'}
+      variant={confirmationToVariant(level ?? 'notice')}
       className="gap-1 rounded-md px-2 py-0.5 text-xs capitalize"
     >
+      <ShieldCheck className="h-3 w-3" />
       {level ?? 'notice'}
     </Badge>
   );

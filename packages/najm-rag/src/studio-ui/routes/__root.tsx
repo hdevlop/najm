@@ -108,7 +108,7 @@ function RootLayout() {
   return (
     <RouteCallbacksContext.Provider value={callbacks}>
       <EmbeddingHealthRoot />
-      <div className="dark h-full w-full">
+      <div className="h-full w-full">
         <div className="flex h-full w-full overflow-hidden bg-bg">
           <NSidebar
             logo={{

@@ -5,8 +5,8 @@ export function LabEmptyState() {
   return (
     <NEmptyState
       icon={FlaskConical}
-      title="Enter a query to preview routing decisions"
-      description=""
+      title="No preview yet"
+      description="Enter a query above to see which tools the router selects, with scores, dependencies and confirmations."
     />
   );
 }

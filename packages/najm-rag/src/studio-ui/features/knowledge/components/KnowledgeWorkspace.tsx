@@ -88,7 +88,7 @@ export function KnowledgeWorkspace({ view, onCitationClick, onViewContextChange 
           <DocumentInspector
             documentId={inspectingDoc.id}
             chunks={chunks}
-            loading={false}
+            loading={chunksLoading}
             onChunkClick={(chunkId) => onCitationClick?.(chunkId, inspectingDoc.id)}
           />
         )}

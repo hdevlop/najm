@@ -1,5 +1,5 @@
 import React from 'react';
-import { Badge } from 'najm-kit';
+import { Badge, Collapsible, CollapsibleContent, CollapsibleTrigger, NCard } from 'najm-kit';
 import { ChevronDown, ChevronRight, Wrench, CheckCircle2, XCircle, ShieldAlert } from 'lucide-react';
 import { JsonViewer as StudioJsonViewer } from 'najm-kit/json';
 import type { StudioChatDebugResponse, JsonViewColors } from '@/features/chat/types';
@@ -16,20 +16,18 @@ export function ToolCallList({ toolCalls, expandedToolCalls, toggleToolCall, col
   if (!toolCalls || toolCalls.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-      <div className="flex items-center gap-2">
-        <div className="h-5 w-1 rounded-full bg-brand" />
-        <h3 className="text-sm font-semibold text-txt-secondary uppercase tracking-wider">Tool Calls</h3>
-      </div>
+    <NCard title="Tool Calls" icon={Wrench} iconColor="text-brand">
       <div className="space-y-2">
         {toolCalls.map((call, idx) => {
           const isExpanded = expandedToolCalls.has(call.toolName + idx);
           return (
-            <div key={call.toolName + idx} className="rounded-lg border border-border bg-bg overflow-hidden">
-              <button
-                onClick={() => toggleToolCall(call.toolName + idx)}
-                className="flex items-center w-full px-3 py-2 text-left hover:bg-card-hover transition-colors"
-              >
+            <Collapsible
+              key={call.toolName + idx}
+              open={isExpanded}
+              onOpenChange={() => toggleToolCall(call.toolName + idx)}
+              className="overflow-hidden rounded-lg border border-border bg-background"
+            >
+              <CollapsibleTrigger className="flex w-full items-center px-3 py-2 text-left transition-colors hover:bg-accent/50">
                 {isExpanded ? (
                   <ChevronDown className="h-4 w-4 text-txt-muted mr-2 shrink-0" />
                 ) : (
@@ -52,8 +50,8 @@ export function ToolCallList({ toolCalls, expandedToolCalls, toggleToolCall, col
                   {call.status === 'blocked' && <ShieldAlert className="h-3 w-3 mr-1" />}
                   {call.status}
                 </Badge>
-              </button>
-              {isExpanded && (
+              </CollapsibleTrigger>
+              <CollapsibleContent>
                 <div className="px-3 pb-3 space-y-2 border-t border-border">
                   <div className="pt-2">
                     <span className="text-xs font-semibold text-txt-muted uppercase">Arguments</span>
@@ -76,11 +74,11 @@ export function ToolCallList({ toolCalls, expandedToolCalls, toggleToolCall, col
                     </div>
                   )}
                 </div>
-              )}
-            </div>
+              </CollapsibleContent>
+            </Collapsible>
           );
         })}
       </div>
-    </div>
+    </NCard>
   );
 }

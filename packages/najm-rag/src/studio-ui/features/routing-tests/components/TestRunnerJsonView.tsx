@@ -375,7 +375,7 @@ export function TestRunnerJsonView({
         </TabsList>
       </Tabs>
       {runningAll && (
-        <span className="text-xs text-amber-400 flex items-center gap-1.5 ml-1 animate-pulse">
+        <span className="ml-1 flex items-center gap-1.5 text-xs text-status-yellow">
           <Loader2 className="h-3 w-3 animate-spin" /> Running…
         </span>
       )}

@@ -179,7 +179,7 @@ export function UnmatchedInbox({ items, tools, loading, onRefresh, onMap, onDisc
       <NPageHeader
         icon={Inbox}
         title="Unmatched Queries"
-        subtitle={`${items.length} item${items.length !== 1 ? 's' : ''}`}
+        subtitle={loading && items.length === 0 ? 'Loading…' : `${items.length} item${items.length !== 1 ? 's' : ''}`}
         actions={
           <Button
             variant="outline"
@@ -193,7 +193,7 @@ export function UnmatchedInbox({ items, tools, loading, onRefresh, onMap, onDisc
           </Button>
         }
       />
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto p-4 xl:p-5">
         <NTable<UnmatchedQuery, 'table'>
           data={items}
           columns={columns}

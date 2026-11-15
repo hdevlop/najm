@@ -26,7 +26,10 @@ export function RagStudio({ inheritTheme = false }: RagStudioProps) {
         mode="dark"
         accent="violet"
         accentOnly={inheritTheme}
-        className="rs-studio h-full w-full"
+        // `dark` sits on the provider element itself: kit's `.dark` rule
+        // re-declares every token, so on a nested wrapper it would override
+        // the inline accent tokens set here (violet primary went near-black).
+        className="rs-studio dark h-full w-full"
       >
         {isClient ? (
           <ChatDraftsProvider>

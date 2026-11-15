@@ -3,6 +3,7 @@ import { Radio, Database, Wrench, Palette } from 'lucide-react';
 import { Sheet, SheetContent, SheetTitle } from 'najm-kit';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from 'najm-kit';
 import { ScrollArea } from 'najm-kit';
+import { NLoadingState } from 'najm-kit';
 import { SettingsView } from './SettingsView';
 import { IndexSettings } from './IndexSettings';
 import { McpToolsSettings } from './McpToolsSettings';
@@ -129,7 +130,7 @@ export function SettingsSheet({ open, onOpenChange, onSettingsChange, onDependen
               {routingSettings ? (
                 <SettingsView settings={routingSettings} onSave={handleSaveRouting} saving={saving} embedded />
               ) : (
-                <div className="text-sm text-txt-muted">Loading…</div>
+                <NLoadingState label="Loading settings…" surface="panel" />
               )}
             </TabsContent>
             <TabsContent value="json-colors" className="mt-0 p-5">
@@ -139,7 +140,7 @@ export function SettingsSheet({ open, onOpenChange, onSettingsChange, onDependen
                   onColorsChange={onJsonViewColorsChange}
                 />
               ) : (
-                <div className="text-sm text-txt-muted">Loading…</div>
+                <NLoadingState label="Loading settings…" surface="panel" />
               )}
             </TabsContent>
             <TabsContent value="index" className="mt-0 p-5">
@@ -151,7 +152,7 @@ export function SettingsSheet({ open, onOpenChange, onSettingsChange, onDependen
                   saving={saving}
                 />
               ) : (
-                <div className="text-sm text-txt-muted">Loading…</div>
+                <NLoadingState label="Loading settings…" surface="panel" />
               )}
             </TabsContent>
             <TabsContent value="mcp-tools" className="mt-0 p-5">
@@ -163,7 +164,7 @@ export function SettingsSheet({ open, onOpenChange, onSettingsChange, onDependen
                   colors={jsonViewColors}
                 />
               ) : (
-                <div className="text-sm text-txt-muted">Loading…</div>
+                <NLoadingState label="Loading settings…" surface="panel" />
               )}
             </TabsContent>
           </ScrollArea>

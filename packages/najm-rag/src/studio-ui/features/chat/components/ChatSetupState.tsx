@@ -1,6 +1,6 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2, XCircle } from 'lucide-react';
-import { Button } from 'najm-kit';
+import { Button, NCard } from 'najm-kit';
 import type { StudioChatDebugError } from '@/features/chat/types';
 
 interface ChatSetupStateProps {
@@ -27,8 +27,7 @@ export function ChatSetupState({ error, onOpenSettings }: ChatSetupStateProps) {
           </div>
         </div>
 
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <h4 className="text-xs font-semibold text-txt-muted uppercase tracking-wider">Setup Checklist</h4>
+        <NCard title="Setup Checklist">
           <div className="space-y-2">
             {items.map((item) => (
               <div key={item.label} className="flex items-center gap-2 text-sm">
@@ -41,7 +40,7 @@ export function ChatSetupState({ error, onOpenSettings }: ChatSetupStateProps) {
               </div>
             ))}
           </div>
-        </div>
+        </NCard>
 
         {onOpenSettings && (
           <Button onClick={onOpenSettings} className="w-full">

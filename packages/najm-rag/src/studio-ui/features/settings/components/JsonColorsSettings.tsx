@@ -44,9 +44,9 @@ export function JsonColorsSettings({ colors, onColorsChange }: JsonColorsSetting
         {Object.entries(colorPresets).map(([name, preset]) => (
           <Button key={name} variant="outline" size="xs" onClick={() => onColorsChange(preset)} className="gap-1.5 px-3">
             <div className="flex -space-x-0.5">
-              <div className="h-2.5 w-2.5 rounded-full border border-white/50" style={{ backgroundColor: preset.toolName }} />
-              <div className="h-2.5 w-2.5 rounded-full border border-white/50" style={{ backgroundColor: preset.langCode }} />
-              <div className="h-2.5 w-2.5 rounded-full border border-white/50" style={{ backgroundColor: preset.phrase }} />
+              <div className="h-2.5 w-2.5 rounded-full border border-foreground/50" style={{ backgroundColor: preset.toolName }} />
+              <div className="h-2.5 w-2.5 rounded-full border border-foreground/50" style={{ backgroundColor: preset.langCode }} />
+              <div className="h-2.5 w-2.5 rounded-full border border-foreground/50" style={{ backgroundColor: preset.phrase }} />
             </div>
             <span className="capitalize">{name}</span>
           </Button>

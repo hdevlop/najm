@@ -183,7 +183,7 @@ export function SettingsView({ settings, onSave, saving, embedded }: SettingsVie
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="h-9 shrink-0 gap-1.5 bg-brand px-3 text-white hover:bg-brand-hover focus-visible:ring-brand"
+            className="h-9 shrink-0 gap-1.5 px-3"
           >
             <Save className="h-3.5 w-3.5" />
             {saving ? 'Saving...' : 'Save'}
@@ -209,7 +209,7 @@ export function SettingsView({ settings, onSave, saving, embedded }: SettingsVie
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="h-9 shrink-0 gap-1.5 bg-brand px-3 text-white hover:bg-brand-hover focus-visible:ring-brand"
+          className="h-9 shrink-0 gap-1.5 px-3"
         >
           <Save className="h-3.5 w-3.5" />
           {saving ? 'Saving...' : 'Save'}

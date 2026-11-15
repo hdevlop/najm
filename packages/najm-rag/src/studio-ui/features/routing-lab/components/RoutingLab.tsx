@@ -1,6 +1,5 @@
 import { FlaskConical } from 'lucide-react';
-import { NAlert } from 'najm-kit';
-import { NPageHeader } from 'najm-kit';
+import { NAlert, NLoadingState, NPageHeader } from 'najm-kit';
 import type { RoutingPreviewResult } from '@/features/routing-lab/types';
 import type { PendingRoutingLabQuery } from '@/lib/chatDraftsContext';
 import { useRoutingLab, buildLabVisibleData } from '../hooks';
@@ -21,7 +20,7 @@ export function RoutingLab({ onPreview, pendingQuery }: RoutingLabProps) {
         icon={FlaskConical}
         title="Routing Lab"
         subtitle="Preview tool selection for queries"
-        top={<LabQueryInput query={query} loading={loading} onQueryChange={setQuery} onPreview={() => void handlePreview()} />}
+        filters={<LabQueryInput query={query} loading={loading} onQueryChange={setQuery} onPreview={() => void handlePreview()} />}
       />
       <div className="min-h-0 flex-1 overflow-auto">
         <div className="p-5">
@@ -53,6 +52,7 @@ export function RoutingLab({ onPreview, pendingQuery }: RoutingLabProps) {
               )}
             </div>
           )}
+          {loading && <NLoadingState label="Running routing preview…" />}
           {!result && !loading && !error && <LabEmptyState />}
         </div>
       </div>

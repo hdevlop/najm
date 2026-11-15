@@ -133,7 +133,7 @@ export function DocumentList({ documents, loading, onUpload, onReindex, onDelete
       <NPageHeader
         icon={FileText}
         title="Documents"
-        subtitle={`${documents.length} document${documents.length !== 1 ? 's' : ''} in knowledge base`}
+        subtitle={loading && documents.length === 0 ? 'Loading…' : `${documents.length} document${documents.length !== 1 ? 's' : ''} in knowledge base`}
         actions={
           <Button onClick={onUpload} className="gap-1.5 px-2">
             <Upload className="h-3.5 w-3.5" />
@@ -141,7 +141,7 @@ export function DocumentList({ documents, loading, onUpload, onReindex, onDelete
           </Button>
         }
       />
-      <div className="min-h-0 flex-1 overflow-auto p-5">
+      <div className="min-h-0 flex-1 overflow-auto p-4 xl:p-5">
         <NTable<DocumentListItem, 'table'>
           data={documents}
           columns={columns}

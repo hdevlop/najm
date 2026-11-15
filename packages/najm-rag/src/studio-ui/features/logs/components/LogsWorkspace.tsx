@@ -95,7 +95,7 @@ export function LogsWorkspace() {
       <NPageHeader
         icon={ScrollText}
         title="Audit Logs"
-        subtitle={`${logs.length} log${logs.length !== 1 ? 's' : ''}`}
+        subtitle={query.isLoading ? 'Loading…' : `${logs.length} log${logs.length !== 1 ? 's' : ''}`}
         actions={
           <Button
             variant="outline"
@@ -109,7 +109,7 @@ export function LogsWorkspace() {
           </Button>
         }
       />
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto p-4 xl:p-5">
         <NTable<AuditLogEntry, 'table'>
           data={logs}
           columns={columns}

@@ -41,8 +41,8 @@ export function EmbeddingHealthBanner({
 
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <p className="text-sm font-semibold text-white">Embedding health alert</p>
-            <p className="text-sm leading-5 text-slate-300">
+            <p className="text-sm font-semibold text-foreground">Embedding health alert</p>
+            <p className="text-sm leading-5 text-muted-foreground">
               {providerKnown
                 ? `${provider} is not ready, so RAG search and indexing may fail.`
                 : 'Could not verify the embedding provider. RAG search and indexing may fail.'}
@@ -50,25 +50,25 @@ export function EmbeddingHealthBanner({
           </div>
 
           {expanded ? (
-            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-[#23232e] bg-[#06060a]/60 p-3 text-sm leading-5 text-slate-300">
+            <dl className="mt-3 grid grid-cols-2 gap-x-3 gap-y-2 rounded-lg border border-border bg-background/60 p-3 text-sm leading-5 text-muted-foreground">
               <div className="min-w-0">
-                <dt className="font-medium text-slate-100">Provider</dt>
+                <dt className="font-medium text-foreground">Provider</dt>
                 <dd className="truncate">{provider}</dd>
               </div>
               <div className="min-w-0">
-                <dt className="font-medium text-slate-100">Model</dt>
+                <dt className="font-medium text-foreground">Model</dt>
                 <dd className="truncate">{model}</dd>
               </div>
               <div className="min-w-0">
-                <dt className="font-medium text-slate-100">Latency</dt>
+                <dt className="font-medium text-foreground">Latency</dt>
                 <dd>{health.latencyMs}ms</dd>
               </div>
               <div className="col-span-2 min-w-0">
-                <dt className="font-medium text-slate-100">URL</dt>
+                <dt className="font-medium text-foreground">URL</dt>
                 <dd className="break-all">{baseUrl}</dd>
               </div>
               <div className="col-span-2 min-w-0">
-                <dt className="font-medium text-slate-100">Error</dt>
+                <dt className="font-medium text-foreground">Error</dt>
                 <dd className="break-words">{error}</dd>
               </div>
             </dl>

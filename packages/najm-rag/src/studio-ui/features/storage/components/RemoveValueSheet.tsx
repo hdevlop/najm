@@ -38,7 +38,7 @@ export function RemoveValueSheet({
       {target?.warning && target.description && (
         <p className="text-center text-sm text-muted-foreground">{target.warning}</p>
       )}
-      {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-3 text-xs text-destructive">{error}</p>}
     </NConfirmDialog>
   );
 }

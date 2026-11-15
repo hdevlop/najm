@@ -1,5 +1,5 @@
-import { Badge } from 'najm-kit';
-import { ShieldCheck } from 'lucide-react';
+import { Badge, NCard, NCardAction } from 'najm-kit';
+import { ShieldCheck, Target } from 'lucide-react';
 import type { RoutingPreviewResult } from '@/features/routing-lab/types';
 
 interface LabFinalToolsProps {
@@ -12,16 +12,12 @@ interface LabFinalToolsProps {
 
 export function LabFinalTools({ finalTools, matchByTool, scoreByTool, confirmationByTool, status }: LabFinalToolsProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="h-5 w-1 rounded-full bg-brand" />
-          <h3 className="text-sm font-semibold text-txt-secondary uppercase tracking-wider">Matched & Final Tools</h3>
-        </div>
-        <Badge variant={status === 'routed' ? 'success' : status === 'router_error' ? 'destructive' : 'outline'} className="uppercase text-xs">
+    <NCard title="Matched & Final Tools" icon={Target} iconColor="text-brand">
+      <NCardAction>
+        <Badge variant={status === 'routed' ? 'success' : status === 'router_error' ? 'destructive' : 'outline'} className="uppercase">
           {status}
         </Badge>
-      </div>
+      </NCardAction>
       <div className="flex flex-wrap gap-2">
         {finalTools.map((toolName) => {
           const match = matchByTool.get(toolName);
@@ -33,7 +29,7 @@ export function LabFinalTools({ finalTools, matchByTool, scoreByTool, confirmati
             <div
               key={toolName}
               className={[
-                'inline-flex w-fit max-w-full items-stretch overflow-hidden rounded-lg border bg-bg transition-colors',
+                'inline-flex w-fit max-w-full items-stretch overflow-hidden rounded-lg border bg-background transition-colors',
                 matchLevel === 'primary'
                   ? 'border-status-green/60 shadow-[0_0_18px_rgba(34,197,94,0.10)]'
                   : matchLevel === 'secondary'
@@ -51,7 +47,7 @@ export function LabFinalTools({ finalTools, matchByTool, scoreByTool, confirmati
                       ? 'text-status-green bg-status-green/10'
                       : matchLevel === 'secondary'
                       ? 'text-status-yellow bg-status-yellow/10'
-                      : 'text-txt-secondary bg-card',
+                      : 'text-txt-secondary bg-muted',
                   ].join(' ')}>
                     {(score.similarity * 100).toFixed(1)}%
                   </span>
@@ -70,9 +66,9 @@ export function LabFinalTools({ finalTools, matchByTool, scoreByTool, confirmati
           );
         })}
         {finalTools.length === 0 && (
-          <p className="text-sm text-txt-muted text-center py-4">No tools selected</p>
+          <p className="w-full py-4 text-center text-sm text-txt-muted">No tools selected</p>
         )}
       </div>
-    </div>
+    </NCard>
   );
 }

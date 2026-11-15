@@ -1,5 +1,6 @@
 import { useState, useCallback } from 'react';
 import { useApiClient } from '@/lib/api';
+import { NSkeleton } from 'najm-kit';
 
 interface ChunkData {
   id: string;
@@ -18,8 +19,14 @@ export function useInspector() {
     setInspectorContent({
       title: 'Chunk Details',
       content: (
-        <div className="p-4">
-          <p className="text-sm text-txt-muted">Loading chunk {chunkId}...</p>
+        <div className="space-y-3 p-4" role="status" aria-label={`Loading chunk ${chunkId}`}>
+          {Array.from({ length: 3 }, (_, i) => (
+            <div key={i} className="flex items-center justify-between gap-4">
+              <NSkeleton className="h-4 w-16" />
+              <NSkeleton className="h-4 w-40" />
+            </div>
+          ))}
+          <NSkeleton className="h-32 w-full rounded-lg" />
         </div>
       ),
     });

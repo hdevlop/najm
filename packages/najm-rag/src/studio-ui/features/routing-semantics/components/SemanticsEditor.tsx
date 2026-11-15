@@ -459,7 +459,7 @@ export function SemanticsEditor({
       <NPageHeader
         icon={Tag}
         title={title}
-        subtitle={subtitle ?? `${totalPhrases} phrase${totalPhrases !== 1 ? 's' : ''} total${pendingCount > 0 ? ` · ${pendingCount} pending` : ''}`}
+        subtitle={subtitle ?? (loading && safePhrases.length === 0 ? 'Loading…' : null) ?? `${totalPhrases} phrase${totalPhrases !== 1 ? 's' : ''} total${pendingCount > 0 ? ` · ${pendingCount} pending` : ''}`}
         actions={
           semanticsViewMode === 'files'
             ? undefined
@@ -493,7 +493,7 @@ export function SemanticsEditor({
         }
         top={panelTop}
       />
-      <div className={semanticsViewMode === 'json' ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-auto'}>
+      <div className={semanticsViewMode === 'json' ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-auto p-4 xl:p-5'}>
         <DeleteSelectedDialog
           open={deleteSelectedDialogOpen}
           count={selectedCount}

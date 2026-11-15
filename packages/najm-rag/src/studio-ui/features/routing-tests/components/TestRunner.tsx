@@ -538,7 +538,7 @@ export function TestRunner({
             )
         }
       />
-      <div className={testsViewMode === 'json' ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-auto'}>
+      <div className={testsViewMode === 'json' ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-auto p-4 xl:p-5'}>
       <TestRunnerDeleteSelectedDialog
         open={deleteSelectedDialogOpen}
         count={selectedCount}

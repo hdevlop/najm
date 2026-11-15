@@ -72,9 +72,9 @@ export function ChunkTable({ chunks, loading, onChunkClick }: ChunkTableProps) {
       <NPageHeader
         icon={Layers}
         title="Chunks"
-        subtitle={`${chunks.length} total chunks in knowledge base`}
+        subtitle={loading && chunks.length === 0 ? 'Loading…' : `${chunks.length} total chunks in knowledge base`}
       />
-      <div className="min-h-0 flex-1 overflow-auto p-5">
+      <div className="min-h-0 flex-1 overflow-auto p-4 xl:p-5">
         <NTable<DocumentChunkResponse, 'table'>
           data={chunks}
           columns={columns}

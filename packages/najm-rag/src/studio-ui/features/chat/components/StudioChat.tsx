@@ -4,7 +4,7 @@ import { Button } from 'najm-kit';
 import { Input } from 'najm-kit';
 import { ScrollArea } from 'najm-kit';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from 'najm-kit';
-import { NPageHeader } from 'najm-kit';
+import { NEmptyState, NPageHeader } from 'najm-kit';
 import { UserMessage } from './UserMessage';
 import { ChatTraceView } from './ChatTraceView';
 import { ChatSetupState } from './ChatSetupState';
@@ -347,14 +347,12 @@ function ActionButton({
 
 function ChatEmptyState() {
   return (
-    <div className="flex min-h-[260px] flex-col items-center justify-center px-3 py-10 text-center">
-      <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl border border-brand/20 bg-brand/10 text-brand">
-        <Sparkles className="h-5 w-5" />
-      </div>
-      <h3 className="text-sm font-semibold text-txt-primary">Ready to debug</h3>
-      <p className="mt-2 max-w-[280px] text-xs leading-relaxed text-txt-muted">
-        Ask a question to inspect routing, tool calls, and the assistant response.
-      </p>
+    <div className="flex min-h-[260px] items-center justify-center px-3 py-10">
+      <NEmptyState
+        icon={Sparkles}
+        title="Ready to debug"
+        description="Ask a question to inspect routing, tool calls, and the assistant response."
+      />
     </div>
   );
 }

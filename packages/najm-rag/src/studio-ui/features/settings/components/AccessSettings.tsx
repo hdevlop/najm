@@ -4,6 +4,7 @@ import { Badge } from 'najm-kit';
 import { NativeSelect as Select } from 'najm-kit';
 import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from 'najm-kit';
 import { NPageHeader } from 'najm-kit';
+import { NEmptyState, NLoadingState } from 'najm-kit';
 import type { AuditLogEntry } from '@/features/logs/types';
 
 interface AccessSettingsProps {
@@ -66,12 +67,9 @@ export function AccessSettings({ accessMode, auditLogs, loading }: AccessSetting
             </div>
             <div className="p-1">
               {loading ? (
-                <div className="text-sm text-txt-muted py-8 text-center">Loading audit entries...</div>
+                <NLoadingState label="Loading audit entries…" surface="panel" />
               ) : filteredLogs.length === 0 ? (
-                <div className="text-center py-8 text-txt-muted">
-                  <ScrollText className="h-8 w-8 mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">{actionFilter ? 'No entries for selected action' : 'No audit entries yet'}</p>
-                </div>
+                <NEmptyState icon={ScrollText} title={actionFilter ? 'No entries for selected action' : 'No audit entries yet'} />
               ) : (
                 <Table>
                   <TableHeader>

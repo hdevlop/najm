@@ -66,7 +66,9 @@ export function ToolList({
 
   const selectedTool = filtered.find((t) => t.id === selectedToolId) ?? null;
 
-  const subtitle = `${safeTools.length} registered tool${safeTools.length !== 1 ? 's' : ''}`;
+  const subtitle = loading && safeTools.length === 0
+    ? 'Loading…'
+    : `${safeTools.length} registered tool${safeTools.length !== 1 ? 's' : ''}`;
   const hasTools = safeTools.length > 0;
   const showToolbar = hasTools && !!onViewModeChange;
 
@@ -105,7 +107,7 @@ export function ToolList({
           </>
         }
       />
-      <div className={viewMode === 'json' ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-auto'}>
+      <div className={viewMode === 'json' ? 'flex min-h-0 flex-1 flex-col overflow-hidden' : 'min-h-0 flex-1 overflow-auto p-4 xl:p-5'}>
         <NTable<MCPTool, 'table' | 'json'>
           data={filtered}
           columns={toolColumns}
