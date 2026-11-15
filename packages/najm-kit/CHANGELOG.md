@@ -1,5 +1,18 @@
 # Changelog
 
+## 3.14.1 - 2026-11-15
+
+- `Badge` honors `variant` again. With no `color`, the badge fell back to the
+  primary color, so `variant="success" | "warning" | "destructive" |
+  "outline" | "secondary"` all rendered as a solid primary badge. An explicit
+  tone variant now gets its own classes; `default`, recipe aliases such as
+  `primary`, and badges with a `color` look as before. Check screens that
+  relied on the old look.
+- `NSkeleton` and `Skeleton` use `bg-muted` instead of `bg-accent`. Accent
+  presets tint `--accent`, which painted loading blocks in the brand color.
+- `NStatusBreakdown` draws no bar for a zero value; `minimumVisiblePercent`
+  applies to non-zero values only.
+
 ## 3.14.0 - 2026-11-14
 
 - Long press and double tap on cards, for phones as well as desktops.
