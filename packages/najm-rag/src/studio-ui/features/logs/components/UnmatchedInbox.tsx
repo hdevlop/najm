@@ -175,41 +175,44 @@ export function UnmatchedInbox({ items, tools, loading, onRefresh, onMap, onDisc
   ], [tools, onMap, onDiscard]);
 
   return (
-    <NPageHeader
-      icon={Inbox}
-      title="Unmatched Queries"
-      subtitle={`${items.length} item${items.length !== 1 ? 's' : ''}`}
-      actions={
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={onRefresh}
-          disabled={loading}
-          className="gap-1.5 px-2"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Refresh</span>
-        </Button>
-      }
-    >
-      <NTable<UnmatchedQuery, 'table'>
-        data={items}
-        columns={columns}
-        loading={loading}
-        getRowId={(item) => item.id}
-        availableModes={['table']}
-        mode="table"
-        showCheckbox={false}
-        showViewToggle={false}
-        loadingText="Loading unmatched queries..."
-        renderEmpty={() => (
-          <NEmptyState
-            icon={Inbox}
-            title="No unmatched queries"
-            description="Queries that didn't match any tool will appear here for manual mapping."
-          />
-        )}
+    <div className="flex h-full min-h-0 flex-col">
+      <NPageHeader
+        icon={Inbox}
+        title="Unmatched Queries"
+        subtitle={`${items.length} item${items.length !== 1 ? 's' : ''}`}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onRefresh}
+            disabled={loading}
+            className="gap-1.5 px-2"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+        }
       />
-    </NPageHeader>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <NTable<UnmatchedQuery, 'table'>
+          data={items}
+          columns={columns}
+          loading={loading}
+          getRowId={(item) => item.id}
+          availableModes={['table']}
+          mode="table"
+          showCheckbox={false}
+          showViewToggle={false}
+          loadingText="Loading unmatched queries..."
+          renderEmpty={() => (
+            <NEmptyState
+              icon={Inbox}
+              title="No unmatched queries"
+              description="Queries that didn't match any tool will appear here for manual mapping."
+            />
+          )}
+        />
+      </div>
+    </div>
   );
 }

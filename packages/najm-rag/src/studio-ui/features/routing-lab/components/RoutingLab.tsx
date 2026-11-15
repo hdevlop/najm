@@ -16,43 +16,46 @@ export function RoutingLab({ onPreview, pendingQuery }: RoutingLabProps) {
   const visible = result ? buildLabVisibleData(result) : null;
 
   return (
-    <NPageHeader
-      icon={FlaskConical}
-      title="Routing Lab"
-      subtitle="Preview tool selection for queries"
-      top={<LabQueryInput query={query} loading={loading} onQueryChange={setQuery} onPreview={() => void handlePreview()} />}
-    >
-      <div className="p-5">
-        {error && <NAlert tone="destructive" description={error} />}
-        {result && !loading && visible && (
-          <div className="space-y-5">
-            <LabMetrics
-              elapsedMs={elapsedMs}
-              matchesCount={visible.matches.length}
-              dependenciesCount={visible.visibleDependencies.length}
-              confirmationsCount={visible.confirmations.length}
-            />
-            <LabFinalTools
-              finalTools={visible.finalTools}
-              matchByTool={visible.matchByTool}
-              scoreByTool={visible.scoreByTool}
-              confirmationByTool={visible.confirmationByTool}
-              status={result.status}
-            />
-            <LabDependencies visibleDependencies={visible.visibleDependencies} />
-            <LabConfirmations confirmations={visible.confirmations} />
-            {(result.error || result.status.startsWith('fallback_')) && (
-              <NAlert
-                tone="warning"
-                className="p-4"
-                title={<span className="uppercase tracking-wider">{result.error ? 'Router Error' : 'Fallback'}</span>}
-                description={result.error ?? result.status}
+    <div className="flex h-full min-h-0 flex-col">
+      <NPageHeader
+        icon={FlaskConical}
+        title="Routing Lab"
+        subtitle="Preview tool selection for queries"
+        top={<LabQueryInput query={query} loading={loading} onQueryChange={setQuery} onPreview={() => void handlePreview()} />}
+      />
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="p-5">
+          {error && <NAlert tone="destructive" description={error} />}
+          {result && !loading && visible && (
+            <div className="space-y-5">
+              <LabMetrics
+                elapsedMs={elapsedMs}
+                matchesCount={visible.matches.length}
+                dependenciesCount={visible.visibleDependencies.length}
+                confirmationsCount={visible.confirmations.length}
               />
-            )}
-          </div>
-        )}
-        {!result && !loading && !error && <LabEmptyState />}
+              <LabFinalTools
+                finalTools={visible.finalTools}
+                matchByTool={visible.matchByTool}
+                scoreByTool={visible.scoreByTool}
+                confirmationByTool={visible.confirmationByTool}
+                status={result.status}
+              />
+              <LabDependencies visibleDependencies={visible.visibleDependencies} />
+              <LabConfirmations confirmations={visible.confirmations} />
+              {(result.error || result.status.startsWith('fallback_')) && (
+                <NAlert
+                  tone="warning"
+                  className="p-4"
+                  title={<span className="uppercase tracking-wider">{result.error ? 'Router Error' : 'Fallback'}</span>}
+                  description={result.error ?? result.status}
+                />
+              )}
+            </div>
+          )}
+          {!result && !loading && !error && <LabEmptyState />}
+        </div>
       </div>
-    </NPageHeader>
+    </div>
   );
 }

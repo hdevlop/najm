@@ -298,7 +298,7 @@ export function SemanticsBucket() {
   }
 
   return (
-    <div className="h-full"
+    <div className="flex h-full min-h-0 flex-col"
       onContextMenu={(e) => {
         if (e.defaultPrevented) return;
         if (!selectedGroup) openGroupsBackgroundMenu(e);
@@ -314,7 +314,8 @@ export function SemanticsBucket() {
           <Breadcrumb segments={breadcrumb} />
         </div>
       }
-    >
+    />
+    <div className="min-h-0 flex-1 overflow-auto">
       {!selectedGroup && (
         <div className="p-4">
           <NFileBrowser
@@ -418,7 +419,7 @@ export function SemanticsBucket() {
         onClose={closeRemoveLangFile}
         onConfirm={() => void submitRemoveLangFile()}
       />
-    </NPageHeader>
+    </div>
     </div>
   );
 }

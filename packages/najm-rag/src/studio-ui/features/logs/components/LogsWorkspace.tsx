@@ -91,41 +91,44 @@ export function LogsWorkspace() {
   ], []);
 
   return (
-    <NPageHeader
-      icon={ScrollText}
-      title="Audit Logs"
-      subtitle={`${logs.length} log${logs.length !== 1 ? 's' : ''}`}
-      actions={
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={refresh}
-          disabled={query.isFetching}
-          className="gap-1.5 px-2"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Refresh</span>
-        </Button>
-      }
-    >
-      <NTable<AuditLogEntry, 'table'>
-        data={logs}
-        columns={columns}
-        loading={query.isLoading}
-        getRowId={(log) => String(log.id)}
-        availableModes={['table']}
-        mode="table"
-        showCheckbox={false}
-        showViewToggle={false}
-        loadingText="Loading audit logs..."
-        renderEmpty={() => (
-          <NEmptyState
-            icon={ScrollText}
-            title="No audit logs"
-            description="Audit log entries will appear here as actions are performed."
-          />
-        )}
+    <div className="flex h-full min-h-0 flex-col">
+      <NPageHeader
+        icon={ScrollText}
+        title="Audit Logs"
+        subtitle={`${logs.length} log${logs.length !== 1 ? 's' : ''}`}
+        actions={
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={refresh}
+            disabled={query.isFetching}
+            className="gap-1.5 px-2"
+          >
+            <RefreshCw className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Refresh</span>
+          </Button>
+        }
       />
-    </NPageHeader>
+      <div className="min-h-0 flex-1 overflow-auto">
+        <NTable<AuditLogEntry, 'table'>
+          data={logs}
+          columns={columns}
+          loading={query.isLoading}
+          getRowId={(log) => String(log.id)}
+          availableModes={['table']}
+          mode="table"
+          showCheckbox={false}
+          showViewToggle={false}
+          loadingText="Loading audit logs..."
+          renderEmpty={() => (
+            <NEmptyState
+              icon={ScrollText}
+              title="No audit logs"
+              description="Audit log entries will appear here as actions are performed."
+            />
+          )}
+        />
+      </div>
+    </div>
   );
 }

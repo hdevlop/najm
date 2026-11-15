@@ -51,90 +51,93 @@ export function IndexSettings({ settings, onReindexAll, onSaveAllowedLangs, savi
   const allowedLangsChanged = allowedLangsText.trim() !== formatLangs(settings.allowedLangs);
 
   return (
-    <NPageHeader
-      icon={Database}
-      title="Index Settings"
-      subtitle="Vector store and embedding configuration"
-    >
-      <div className="p-5 space-y-6">
-        <div className="rounded-xl border border-border bg-card p-5 space-y-5">
-          <div className="flex items-center gap-2">
-            <div className="h-5 w-1 rounded-full bg-brand" />
-            <h3 className="text-sm font-semibold text-txt-secondary uppercase tracking-wider">Embedding Configuration</h3>
-          </div>
+    <div className="flex h-full min-h-0 flex-col">
+      <NPageHeader
+        icon={Database}
+        title="Index Settings"
+        subtitle="Vector store and embedding configuration"
+      />
+      <div className="min-h-0 flex-1 overflow-auto">
+        <div className="p-5 space-y-6">
+          <div className="rounded-xl border border-border bg-card p-5 space-y-5">
+            <div className="flex items-center gap-2">
+              <div className="h-5 w-1 rounded-full bg-brand" />
+              <h3 className="text-sm font-semibold text-txt-secondary uppercase tracking-wider">Embedding Configuration</h3>
+            </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-3 rounded-lg bg-bg border border-border">
-              <NDetailItem label="Provider" value={<Badge variant="outline" className="text-sm font-mono">{settings.embeddingProvider}</Badge>} />
-            </div>
-            <div className="p-3 rounded-lg bg-bg border border-border">
-              <NDetailItem label="Model" value={<Badge variant="outline" className="text-sm font-mono">{settings.embeddingModel}</Badge>} />
-            </div>
-            <div className="p-3 rounded-lg bg-bg border border-border">
-              <NDetailItem label="Dimensions" value={<Badge variant="outline" className="text-sm font-mono">{settings.embeddingDimensions}</Badge>} />
-            </div>
-            <div className="p-3 rounded-lg bg-bg border border-border">
-              <NDetailItem label="Vector Store" value={<Badge variant="outline" className="text-sm font-mono">{settings.vectorStoreDriver}</Badge>} />
-            </div>
-            <div className="p-3 rounded-lg bg-bg border border-border sm:col-span-2">
-              <NDetailItem label="Database Dialect" value={<Badge variant="outline" className="text-sm font-mono">{settings.dialect}</Badge>} />
-            </div>
-            <div className="p-3 rounded-lg bg-bg border border-border sm:col-span-2">
-              <Label htmlFor="rs-allowed-langs" className="mb-1.5 block text-sm font-medium uppercase tracking-wider text-txt-muted">
-                Allowed Languages (semantics)
-              </Label>
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Input
-                    id="rs-allowed-langs"
-                    value={allowedLangsText}
-                    onChange={(event) => setAllowedLangsText(event.target.value)}
-                    placeholder="en, fr, ar, darija"
-                    className="h-9 bg-card font-mono text-sm"
-                  />
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={handleSaveAllowedLangs}
-                    disabled={!onSaveAllowedLangs || saving || !allowedLangsChanged}
-                    className="h-9 shrink-0 gap-1.5"
-                  >
-                    <Save className="h-3.5 w-3.5" />
-                    {saving ? 'Saving...' : 'Save'}
-                  </Button>
-                </div>
-                {settings.allowedLangs && settings.allowedLangs.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {settings.allowedLangs.map((l) => (
-                      <Badge key={l} variant="outline" className="text-sm font-mono uppercase">{l}</Badge>
-                    ))}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="p-3 rounded-lg bg-bg border border-border">
+                <NDetailItem label="Provider" value={<Badge variant="outline" className="text-sm font-mono">{settings.embeddingProvider}</Badge>} />
+              </div>
+              <div className="p-3 rounded-lg bg-bg border border-border">
+                <NDetailItem label="Model" value={<Badge variant="outline" className="text-sm font-mono">{settings.embeddingModel}</Badge>} />
+              </div>
+              <div className="p-3 rounded-lg bg-bg border border-border">
+                <NDetailItem label="Dimensions" value={<Badge variant="outline" className="text-sm font-mono">{settings.embeddingDimensions}</Badge>} />
+              </div>
+              <div className="p-3 rounded-lg bg-bg border border-border">
+                <NDetailItem label="Vector Store" value={<Badge variant="outline" className="text-sm font-mono">{settings.vectorStoreDriver}</Badge>} />
+              </div>
+              <div className="p-3 rounded-lg bg-bg border border-border sm:col-span-2">
+                <NDetailItem label="Database Dialect" value={<Badge variant="outline" className="text-sm font-mono">{settings.dialect}</Badge>} />
+              </div>
+              <div className="p-3 rounded-lg bg-bg border border-border sm:col-span-2">
+                <Label htmlFor="rs-allowed-langs" className="mb-1.5 block text-sm font-medium uppercase tracking-wider text-txt-muted">
+                  Allowed Languages (semantics)
+                </Label>
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      id="rs-allowed-langs"
+                      value={allowedLangsText}
+                      onChange={(event) => setAllowedLangsText(event.target.value)}
+                      placeholder="en, fr, ar, darija"
+                      className="h-9 bg-card font-mono text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={handleSaveAllowedLangs}
+                      disabled={!onSaveAllowedLangs || saving || !allowedLangsChanged}
+                      className="h-9 shrink-0 gap-1.5"
+                    >
+                      <Save className="h-3.5 w-3.5" />
+                      {saving ? 'Saving...' : 'Save'}
+                    </Button>
                   </div>
-                ) : (
-                  <span className="text-sm text-txt-muted">All languages allowed</span>
-                )}
+                  {settings.allowedLangs && settings.allowedLangs.length > 0 ? (
+                    <div className="flex flex-wrap gap-1.5">
+                      {settings.allowedLangs.map((l) => (
+                        <Badge key={l} variant="outline" className="text-sm font-mono uppercase">{l}</Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-sm text-txt-muted">All languages allowed</span>
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        </div>
 
-        <Separator />
+          <Separator />
 
-        <div className="rounded-xl border border-border bg-card p-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center">
-              <RefreshCw className="h-4 w-4 text-brand" />
+          <div className="rounded-xl border border-border bg-card p-5 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-brand/10 flex items-center justify-center">
+                <RefreshCw className="h-4 w-4 text-brand" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-txt-primary">Reindex All</p>
+                <p className="text-sm text-txt-muted mt-0.5">Re-index all registered MCP tools</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium text-txt-primary">Reindex All</p>
-              <p className="text-sm text-txt-muted mt-0.5">Re-index all registered MCP tools</p>
-            </div>
+            <Button  variant="outline" onClick={handleReindex} disabled={!onReindexAll || reindexing} className="gap-1.5">
+              <RefreshCw className={`h-3.5 w-3.5 ${reindexing ? 'animate-spin' : ''}`} />
+              {reindexing ? 'Indexing...' : 'Run'}
+            </Button>
           </div>
-          <Button  variant="outline" onClick={handleReindex} disabled={!onReindexAll || reindexing} className="gap-1.5">
-            <RefreshCw className={`h-3.5 w-3.5 ${reindexing ? 'animate-spin' : ''}`} />
-            {reindexing ? 'Indexing...' : 'Run'}
-          </Button>
         </div>
       </div>
-    </NPageHeader>
+    </div>
   );
 }
