@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- `ChatController` starts when an app loads it without `chatbot()`. 3.8.0
+  injected the chatbot config to read `chatRequestLimits` and failed with
+  `Not registered: "Symbol(najm:chatbot:config)"`; the config is now looked up,
+  and without it the default limits apply.
+
 ## 3.8.0 - 2026-11-15
 
 ### Fixed
