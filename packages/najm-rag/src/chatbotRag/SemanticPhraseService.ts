@@ -1,6 +1,6 @@
 import { Service, Inject, HttpError, LoggerService, LOGGER, DI, type Container } from 'najm-core';
 import { McpRegistryService, type McpToolConfirmation } from 'najm-mcp';
-import { RAG_CONFIG } from '../tokens';
+import { RAG_CONFIG, RAG_SEED_STATUS } from '../tokens';
 import type { RagMergedConfig, SemanticSeed } from '../config';
 import { EmbeddingService } from '../embeddings';
 import { ToolIndexRepository, ToolIndexerService } from '../toolIndex';
@@ -16,6 +16,8 @@ import type {
   SemanticGroupsResponse,
   SemanticReindexResult,
   SemanticSeedResult,
+  SemanticSeedProgress,
+  SemanticSeedStatus,
 } from './ChatbotRagDto';
 import type { CreateSemanticDto, UpdateSemanticDto } from './ChatbotRagDto';
 import type { RoutingPreviewResult } from '../toolRouter/ToolRouterDto';
@@ -47,6 +49,12 @@ export class SemanticPhraseService {
     return this.container.get<RagSchemaService>(RagSchemaService).status();
   }
 
+  /** The boot seed's state, or null when no seed is configured. */
+  getSeedStatus(): SemanticSeedStatus | null {
+    if (!this.container?.has?.(RAG_SEED_STATUS)) return null;
+    return (this.container.get(RAG_SEED_STATUS) as { status(): SemanticSeedStatus | null }).status();
+  }
+
   async getStatus() {
     const routing = this.config.toolRouting;
     const schema = await this.getSchemaStatus();
@@ -65,6 +73,7 @@ export class SemanticPhraseService {
       : null;
     return {
       schema,
+      seed: this.getSeedStatus(),
       routingEnabled: routing?.enabled ?? false,
       dialect: this.config.dialect ?? 'pg',
       embeddingProvider: embedding?.provider ?? 'ollama',
@@ -275,7 +284,17 @@ export class SemanticPhraseService {
    * language), for registered tools only. Stored phrases are not touched or
    * re-embedded. See `RagConfig.seedSemantics`.
    */
-  async seedSemantics(seed: SemanticSeed): Promise<SemanticSeedResult> {
+  /**
+   * Adds seed phrases that are not stored yet, one embedding batch at a time:
+   * each batch is embedded and written before the next starts, so a restart
+   * or an error keeps what was done and phrases appear as the seed goes.
+   * Embedding all phrases before writing any took over five minutes for 228
+   * phrases on a CPU model, with nothing stored until the very end.
+   */
+  async seedSemantics(
+    seed: SemanticSeed,
+    options: { batchSize?: number; onProgress?: (progress: SemanticSeedProgress) => void } = {},
+  ): Promise<SemanticSeedResult> {
     const key = (toolName: string, phrase: string, lang?: string | null) =>
       `${toolName.trim()}\u0000${phrase.trim()}\u0000${(lang ?? 'und').trim() || 'und'}`;
     const stored = new Set((await this.repository.listSemantics()).map((row) => key(row.toolName, row.phrase, row.lang)));
@@ -294,14 +313,49 @@ export class SemanticPhraseService {
       });
       if (phrases.length) items.push({ toolName, phrases });
     }
-    if (!items.length) return { inserted: 0, alreadyStored, failed: 0, unknownTools };
-    const { results } = await this.importSemantics({ items }, { source: 'seed' });
-    return {
-      inserted: results.filter((r) => r.status === 'inserted' || r.status === 'updated').length,
-      alreadyStored,
-      failed: results.filter((r) => r.status === 'skipped' && r.error).length,
-      unknownTools,
-    };
+    const entries = items.flatMap((item) => item.phrases.map((phrase) => ({ toolName: item.toolName, phrase })));
+    const progress: SemanticSeedProgress = { total: entries.length, done: 0, inserted: 0, alreadyStored, failed: 0, unknownTools };
+    const report = () => options.onProgress?.({ ...progress, unknownTools: [...unknownTools] });
+    report();
+
+    const embedding: any = this.config.rag?.embedding ?? {};
+    const batchSize = Math.max(1, Math.floor(options.batchSize ?? embedding.batchSize ?? 16));
+    let failedInARow = 0;
+    for (let offset = 0; offset < entries.length; offset += batchSize) {
+      const batch = entries.slice(offset, offset + batchSize);
+      let inserted = 0;
+      let failed = 0;
+      try {
+        const { results } = await this.importSemantics(
+          { items: batch.map((entry) => ({ toolName: entry.toolName, phrases: [entry.phrase] })) },
+          { source: 'seed' },
+        );
+        for (const result of results) {
+          if (result.status === 'inserted' || result.status === 'updated') inserted++;
+          else if (result.error) { failed++; progress.lastError = result.error; }
+        }
+      } catch (error) {
+        failed = batch.length;
+        progress.lastError = error instanceof Error ? error.message : String(error);
+      }
+      progress.inserted += inserted;
+      progress.failed += failed;
+      progress.done += batch.length;
+      report();
+
+      failedInARow = failed === batch.length ? failedInARow + 1 : 0;
+      if (failedInARow >= 3 && progress.done < progress.total) {
+        // The provider or the database is down: stop instead of timing out
+        // on every remaining batch. The next boot seeds what is left.
+        progress.lastError = `stopped after ${failedInARow} failed batches in a row: ${progress.lastError}`;
+        report();
+        break;
+      }
+    }
+
+    const { total: _total, done: _done, ...result } = progress;
+    if (!result.lastError) delete result.lastError;
+    return result;
   }
 
   async importSemantics(

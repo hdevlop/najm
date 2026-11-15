@@ -1,7 +1,7 @@
 import { RagSchemaService } from './schema/RagSchemaService';
 import { plugin } from 'najm-core';
 import { TOOL_PROVIDER } from 'najm-mcp';
-import { RAG_CONFIG, RAG_DIAGNOSTICS, RAG_SCHEMA, VECTOR_STRATEGY, RAG_OCR_PROVIDER } from './tokens';
+import { RAG_CONFIG, RAG_DIAGNOSTICS, RAG_SCHEMA, VECTOR_STRATEGY, RAG_OCR_PROVIDER, RAG_SEED_STATUS } from './tokens';
 import { RagDiagnosticsService } from './diagnostics';
 import {
   EmbeddingService,
@@ -268,6 +268,7 @@ export const rag = (config?: RagConfig) => {
 
   if (routingEnabled) {
     builder.alias(TOOL_PROVIDER, ToolRouterService);
+    builder.alias(RAG_SEED_STATUS, SemanticSeedService);
     const CHATBOT_ROUTING_PREVIEW_PROVIDER = Symbol.for('najm:chatbot:routing-preview-provider');
     builder.alias(CHATBOT_ROUTING_PREVIEW_PROVIDER, RoutingPreviewService);
   }

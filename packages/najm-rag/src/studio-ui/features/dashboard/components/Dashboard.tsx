@@ -13,6 +13,7 @@ import {
 import { Button, Badge, NAlert, NCard, NPageHeader, NEmptyState, NPieChart, NSkeleton, NStatCard, NStatCardSkeleton, NStatusBreakdown, cn } from 'najm-kit';
 import { documentDate, documentName, documentStatus } from './helpers';
 import { useDashboardData } from '../hooks/useDashboardData';
+import { seedHealth, seedProblem } from './seedStatus';
 import type { Workspace } from '@/shared/hooks/useWorkspace';
 
 const MAX_GROUP_SLICES = 5;
@@ -150,6 +151,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
         <div className="flex h-full min-h-0 flex-col gap-4 overflow-y-auto p-4 lg:overflow-hidden xl:p-5" aria-live="polite">
         {error && <NAlert tone="destructive" className="shrink-0" title="Could not load the dashboard" description={error} />}
         {!error && schemaMessage && <NAlert tone="warning" className="shrink-0" title="Database schema out of date" description={schemaMessage} />}
+        {status?.seed && seedProblem(status.seed) && (
+          <NAlert tone="warning" className="shrink-0" title="Phrase seed" description={seedProblem(status.seed)} />
+        )}
 
         {/* ── Stat Cards ── */}
         <div className="grid shrink-0 grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
@@ -325,6 +329,9 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                     : 'Current'}
                   tone={status.staleSemanticCount > 0 ? 'warn' : 'good'}
                 />
+              )}
+              {status?.seed && (
+                <HealthItem label="Phrase seed" {...seedHealth(status.seed)} />
               )}
               <HealthItem
                 label="Similarity"

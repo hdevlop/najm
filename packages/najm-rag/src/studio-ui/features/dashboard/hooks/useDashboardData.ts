@@ -20,10 +20,24 @@ interface RagStatus {
   indexingRunning: boolean;
   /** Missing najm-rag tables/columns; counts above are null while any are missing. */
   schema?: StudioSchemaStatus | null;
+  /** The app's boot phrase seed; null when none is configured. */
+  seed?: SeedStatus | null;
+}
+
+export interface SeedStatus {
+  state: 'waiting' | 'running' | 'done' | 'skipped' | 'failed' | 'disabled';
+  total: number;
+  done: number;
+  inserted: number;
+  alreadyStored: number;
+  failed: number;
+  unknownTools: string[];
+  lastError?: string;
 }
 
 const CACHE_KEY = 'najm-rag-studio:dashboard-cache';
 const CACHE_TTL_MS = 30_000;
+const SEED_POLL_MS = 5_000;
 
 interface CachedData {
   timestamp: number;
@@ -133,6 +147,16 @@ export function useDashboardData() {
     }
     load().catch(() => {});
   }, []);
+
+  // A boot seed takes minutes on a CPU embedder: follow its progress while it runs.
+  const seedActive = status?.seed?.state === 'running' || status?.seed?.state === 'waiting';
+  useEffect(() => {
+    if (!seedActive) return;
+    const timer = setInterval(() => {
+      api.get<RagStatus>('/status').then(setStatus).catch(() => {});
+    }, SEED_POLL_MS);
+    return () => clearInterval(timer);
+  }, [seedActive, api]);
 
   const totalDeps = tools.reduce((sum, tool) => sum + (tool.dependencies?.length ?? 0), 0);
   const activePhrases = semantics.filter((phrase) => phrase.hasEmbedding).length;

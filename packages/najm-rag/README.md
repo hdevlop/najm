@@ -176,6 +176,14 @@ are not registered are skipped with one warning. Nothing runs with
 `indexOnBoot: false` or while the embedding provider is unreachable (the next
 boot retries).
 
+The seed embeds and stores one embedding batch at a time (`embedding.batchSize`,
+default 16), so phrases appear as it goes and a restart keeps what was stored.
+Three failed batches in a row stop it until the next boot. `GET /status` reports
+it under `seed`: `state` (`waiting`, `running`, `done`, `skipped`, `failed`,
+`disabled`), `done` of `total`, `inserted`, `failed`, `unknownTools` and
+`lastError`; the studio dashboard shows the same, so a host logging at ERROR
+only can still see why a seed did nothing.
+
 ### Tool Routing
 
 ```typescript

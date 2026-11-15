@@ -166,4 +166,24 @@ export interface SemanticSeedResult {
   failed: number;
   /** Seed tool names that are not registered; their phrases were skipped. */
   unknownTools: string[];
+  /** Why the last failed batch failed, when one did. */
+  lastError?: string;
+}
+
+/** Progress of a running seed: `done` of `total` phrases to add have been embedded and written (or failed). */
+export interface SemanticSeedProgress extends SemanticSeedResult {
+  total: number;
+  done: number;
+}
+
+/** The boot seed as /status reports it. */
+export interface SemanticSeedStatus extends SemanticSeedProgress {
+  /**
+   * waiting: checking the embedding provider; running; done; skipped: the
+   * provider was unreachable (retried next boot); failed: the seed stopped on
+   * an error; disabled: boot indexing is off, so the seed does not run.
+   */
+  state: 'waiting' | 'running' | 'done' | 'skipped' | 'failed' | 'disabled';
+  startedAt?: string;
+  finishedAt?: string;
 }

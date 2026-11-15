@@ -4,7 +4,7 @@ export { ragStudio } from './studio/plugin';
 export type { RagStudioOptions } from './studio/plugin';
 export { RAG_STUDIO_OPTS } from './studio/tokens';
 export type { RagConfig, RagMergedConfig, RagDialect, RagEmbeddingConfig, RagToolRoutingConfig, RagKnowledgeConfig, RagSchema, RoutingQueryRewrite, RoutingQueryRewriteOnMiss, SemanticSeed } from './config';
-export { RAG_CONFIG, RAG_DIAGNOSTICS, RAG_SCHEMA, VECTOR_STRATEGY, RAG_TOOL_PROVIDER, RAG_OCR_PROVIDER } from './tokens';
+export { RAG_CONFIG, RAG_DIAGNOSTICS, RAG_SCHEMA, VECTOR_STRATEGY, RAG_TOOL_PROVIDER, RAG_OCR_PROVIDER, RAG_SEED_STATUS } from './tokens';
 export type { RagToolProvider } from './provider';
 export * from './chatbotRag';
 export * from './toolIndex';
