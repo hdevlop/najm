@@ -284,7 +284,7 @@
     },
     "packages/najm-chatbot": {
       "name": "najm-chatbot",
-      "version": "3.7.2",
+      "version": "3.8.0",
       "dependencies": {
         "@ai-sdk/anthropic": "^3.0.100",
         "@ai-sdk/google": "^3.0.99",
@@ -605,7 +605,7 @@
     },
     "packages/najm-mcp": {
       "name": "najm-mcp",
-      "version": "2.2.5",
+      "version": "2.3.0",
       "dependencies": {
         "@modelcontextprotocol/sdk": "^1.29.0",
       },
@@ -716,7 +716,7 @@
     },
     "packages/najm-rag": {
       "name": "najm-rag",
-      "version": "3.2.0",
+      "version": "3.3.0",
       "dependencies": {
         "@tanstack/react-query": "^5",
         "@tanstack/react-router": "^1.170.8",
