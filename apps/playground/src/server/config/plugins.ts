@@ -15,6 +15,7 @@ import { studioAssistant } from 'najm-chatbot/studio-assistant';
 import { whatsapp } from 'najm-whatsapp';
 import { theme } from 'najm-theme/server';
 import { appTheme } from '../../../theme';
+import semantics from './chatbot/semantics.json';
 
 /**
  * Export all plugin configurations
@@ -123,6 +124,8 @@ export const ragConfig = () => rag({
   allowedLangs: ['en', 'fr', 'ar', 'darija', 'darija-latn'],
   // Darija function words to MSA before routing; measured on bench/routing.
   rewriteRoutingQuery: createDarijaQueryRewriter(),
+  // Phrases missing from the database are added after boot indexing.
+  seedSemantics: semantics,
 });
 
 // RAG Studio admin API at /api/rag-studio. The UI is <RagStudio /> from

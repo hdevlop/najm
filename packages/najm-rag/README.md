@@ -156,6 +156,26 @@ your privacy policy. Rows written before this release may hold several turns
 joined by `---`; the najm repository's `packages/najm-rag/scripts/cleanup-multiturn-routing-rows.ts <db>` (not published to npm)
 lists them, and `--apply` deletes them.
 
+#### Shipping phrases with the app
+
+`seedSemantics` takes phrases in the studio's "Import JSON" format, so every
+database gets them without a manual import:
+
+```ts
+import semantics from './semantics.json'; // { items: [{ toolName, phrases: [{ phrase, lang }] }] }
+
+rag({ toolRouting: { enabled: true }, seedSemantics: semantics });
+```
+
+After boot tool indexing, phrases not yet stored (same tool, phrase and
+language) are added with source `seed`. Stored phrases are not touched or
+re-embedded, so a restart costs nothing and studio edits stay. A seed phrase
+deleted or reworded in the studio comes back on the next boot while it is in
+the file: change it in the file to change it for good. Phrases for tools that
+are not registered are skipped with one warning. Nothing runs with
+`indexOnBoot: false` or while the embedding provider is unreachable (the next
+boot retries).
+
 ### Tool Routing
 
 ```typescript

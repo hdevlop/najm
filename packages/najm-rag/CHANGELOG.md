@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `seedSemantics`: phrases the app ships, in the studio's "Import JSON"
+  format. After boot tool indexing, phrases not yet stored are added with
+  source `seed`; stored ones are not touched or re-embedded, so restarts cost
+  nothing and studio edits stay. Phrases for unregistered tools are skipped
+  with a warning. New `SemanticPhraseService.seedSemantics(seed)` and the
+  `SemanticSeed` and `SemanticSeedResult` types; `importSemantics` takes an
+  optional `{ source }`.
+
 ## 3.3.0 - 2026-11-15
 
 ### Fixed

@@ -1,7 +1,7 @@
 import { Service, Inject, HttpError, LoggerService, LOGGER, DI, type Container } from 'najm-core';
 import { McpRegistryService, type McpToolConfirmation } from 'najm-mcp';
 import { RAG_CONFIG } from '../tokens';
-import type { RagMergedConfig } from '../config';
+import type { RagMergedConfig, SemanticSeed } from '../config';
 import { EmbeddingService } from '../embeddings';
 import { ToolIndexRepository, ToolIndexerService } from '../toolIndex';
 import { ChatbotRagValidator } from './ChatbotRagValidator';
@@ -14,6 +14,7 @@ import type {
   PaginatedSemanticsResponse,
   SemanticGroupsResponse,
   SemanticReindexResult,
+  SemanticSeedResult,
 } from './ChatbotRagDto';
 import type { CreateSemanticDto, UpdateSemanticDto } from './ChatbotRagDto';
 import type { RoutingPreviewResult } from '../toolRouter/ToolRouterDto';
@@ -254,7 +255,44 @@ export class SemanticPhraseService {
     return { reindexed, skipped: 0, failed };
   }
 
-  async importSemantics(body: Parameters<typeof this.validator.normalizeSemanticImport>[0]): Promise<{ results: import('./ChatbotRagDto').ImportSemanticResult[] }> {
+  /**
+   * Adds the seed's phrases that are not stored yet (same tool, phrase and
+   * language), for registered tools only. Stored phrases are not touched or
+   * re-embedded. See `RagConfig.seedSemantics`.
+   */
+  async seedSemantics(seed: SemanticSeed): Promise<SemanticSeedResult> {
+    const key = (toolName: string, phrase: string, lang?: string | null) =>
+      `${toolName.trim()}\u0000${phrase.trim()}\u0000${(lang ?? 'und').trim() || 'und'}`;
+    const stored = new Set((await this.repository.listSemantics()).map((row) => key(row.toolName, row.phrase, row.lang)));
+    const known = new Set(getRoutableTools(this.registry.tools).map((tool) => tool.name));
+    const unknownTools: string[] = [];
+    let alreadyStored = 0;
+    const items: SemanticSeed['items'] = [];
+    for (const item of seed.items ?? []) {
+      const toolName = item.toolName?.trim();
+      if (!toolName) continue;
+      if (!known.has(toolName)) { unknownTools.push(toolName); continue; }
+      const phrases = (item.phrases ?? []).filter((p) => {
+        if (!p?.phrase?.trim()) return false;
+        if (stored.has(key(toolName, p.phrase, p.lang))) { alreadyStored++; return false; }
+        return true;
+      });
+      if (phrases.length) items.push({ toolName, phrases });
+    }
+    if (!items.length) return { inserted: 0, alreadyStored, failed: 0, unknownTools };
+    const { results } = await this.importSemantics({ items }, { source: 'seed' });
+    return {
+      inserted: results.filter((r) => r.status === 'inserted' || r.status === 'updated').length,
+      alreadyStored,
+      failed: results.filter((r) => r.status === 'skipped' && r.error).length,
+      unknownTools,
+    };
+  }
+
+  async importSemantics(
+    body: Parameters<typeof this.validator.normalizeSemanticImport>[0],
+    options: { source?: string } = {},
+  ): Promise<{ results: import('./ChatbotRagDto').ImportSemanticResult[] }> {
     const state = this.validator.normalizeSemanticImport(body);
 
     if (!this.validator.hasSemanticEntries(state)) {
@@ -277,7 +315,7 @@ export class SemanticPhraseService {
           toolName: entry.toolName,
           phrase: entry.phrase,
           lang: entry.lang,
-          source: 'import',
+          source: options.source ?? 'import',
           sourceFile: entry.sourceFile ?? null,
           embedding: embeddings[i],
         }),

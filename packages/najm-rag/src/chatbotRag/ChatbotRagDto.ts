@@ -158,3 +158,12 @@ export interface SemanticReindexResult {
   skipped: number;
   failed: number;
 }
+
+/** What a boot seed added; `alreadyStored` phrases were left as they are. */
+export interface SemanticSeedResult {
+  inserted: number;
+  alreadyStored: number;
+  failed: number;
+  /** Seed tool names that are not registered; their phrases were skipped. */
+  unknownTools: string[];
+}

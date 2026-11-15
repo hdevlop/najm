@@ -117,6 +117,23 @@ export interface RagConfig {
    * the exported Drizzle schema, which holds every table and column.
    */
   ensureSchema?: boolean;
+  /**
+   * Semantic phrases the app ships, in the studio's JSON import format. After
+   * boot tool indexing (so not with `indexOnBoot: false`), phrases not yet
+   * stored are added with source `seed`; stored phrases are left as they are
+   * and nothing is re-embedded, so phrases edited or added in the studio stay.
+   * A seed phrase deleted or reworded in the studio comes back on the next
+   * boot while it is in the seed (the reworded copy stays too): change or
+   * remove it here to change or remove it for good. Phrases for tools that are
+   * not registered are skipped with a warning. Pass the data (for example an
+   * imported JSON file), not a path, so it also works in bundled apps.
+   */
+  seedSemantics?: SemanticSeed;
+}
+
+/** Same shape as the studio's "Import JSON" file. */
+export interface SemanticSeed {
+  items: Array<{ toolName: string; phrases: Array<{ phrase: string; lang?: string }> }>;
 }
 
 export type RoutingQueryRewrite = (normalized: string) => string;
@@ -132,6 +149,8 @@ export interface RagMergedConfig {
   unmatchedRetentionDays?: number;
   /** False: repositories never change the schema. */
   ensureSchema?: boolean;
+  /** Set only when it holds at least one item. */
+  seedSemantics?: SemanticSeed;
   knowledge?: {
     enabled: boolean;
     namespace: string;

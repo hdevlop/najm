@@ -1,6 +1,7 @@
 export { ChatbotRagController } from './ChatbotRagController';
 export { ChatbotRagValidator } from './ChatbotRagValidator';
 export { SemanticPhraseService } from './SemanticPhraseService';
+export { SemanticSeedService } from './SemanticSeedService';
 export { SemanticImportJobService } from './SemanticImportJobService';
 export { initFileSummaries, markJobFailed, runBatches } from './runBatchImportJob';
 export { ToolMetadataService } from './ToolMetadataService';
@@ -25,6 +26,7 @@ export type {
   SemanticImportState,
   SemanticPhraseResponse,
   SemanticReindexResult,
+  SemanticSeedResult,
   ImportJobState,
   ImportJobFileSummary,
   PaginatedSemanticsResponse,

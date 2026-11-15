@@ -16,6 +16,7 @@ import {
   ChatbotRagValidator,
   ChatbotRagController,
   SemanticPhraseService,
+  SemanticSeedService,
   SemanticImportJobService,
   ToolMetadataService,
   RoutingSettingsService,
@@ -160,6 +161,9 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
     unmatchedRetentionDays: typeof effective.unmatchedRetentionDays === 'number' && effective.unmatchedRetentionDays > 0
       ? effective.unmatchedRetentionDays
       : undefined,
+    seedSemantics: Array.isArray(config?.seedSemantics?.items) && config.seedSemantics.items.length > 0
+      ? config.seedSemantics
+      : undefined,
     knowledge,
     rag: {
       enabled: ragEnabled,
@@ -206,6 +210,7 @@ export const rag = (config?: RagConfig) => {
       ChatbotRagValidator,
       ChatbotRagController,
       SemanticPhraseService,
+      SemanticSeedService,
       SemanticImportJobService,
       ToolMetadataService,
       RoutingSettingsService,
