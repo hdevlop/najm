@@ -9,7 +9,7 @@ export {
   MCP_REGISTRY,
   TOOL_PROVIDER,
 } from './tokens';
-export type { ToolProvider } from './tokens';
+export type { ToolProvider, ToolRoutingRequest } from './tokens';
 export {
   Tool,
   McpTool,

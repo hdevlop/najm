@@ -26,8 +26,17 @@ export const MCP_CONTROLLER_TOOL_META = Symbol.for('mcp:controller-tool');
 
 export const TOOL_PROVIDER = Symbol.for('najm:tool-provider');
 
+/** Extra context a chat passes to a tool provider alongside the routing text. */
+export interface ToolRoutingRequest {
+  /**
+   * The user's latest message on its own. The routing text may join several
+   * turns; a provider that records or reports a query should use this one.
+   */
+  latestUserText?: string;
+}
+
 export interface ToolProvider {
-  findRelevantTools(userText: string): Promise<{
+  findRelevantTools(userText: string, request?: ToolRoutingRequest): Promise<{
     status: 'disabled' | 'routed' | 'fallback_all' | 'fallback_none' | 'router_error';
     tools: RegisteredTool[];
     error?: string;

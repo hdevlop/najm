@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- `ToolProvider.findRelevantTools` takes an optional second argument,
+  `ToolRoutingRequest` (exported), carrying the user's latest message on its
+  own. Existing providers keep working unchanged.
+
 ## 2.2.5 - 2026-10-04
 
 - Accept Auth 6 alongside the existing Auth 3/4/5 peer ranges.
