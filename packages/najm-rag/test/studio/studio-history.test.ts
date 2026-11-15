@@ -1,5 +1,5 @@
 import { describe, test, expect } from 'bun:test';
-import { createStudioHistory } from '../../src/studio-ui/routes/history';
+import { createHistoryLifetime, createStudioHistory } from '../../src/studio-ui/routes/history';
 
 /** Just enough of `window` for TanStack's browser history. */
 function fakeWindow(href: string) {
@@ -54,5 +54,35 @@ describe('studio history and a Next.js host', () => {
     expect(win.history.replaceState).not.toBe(original);
     history.destroy();
     expect(win.history.replaceState).toBe(original);
+  });
+});
+
+describe('the studio history is destroyed when the studio unmounts', () => {
+  function lifetime() {
+    let destroyed = 0;
+    const queue: Array<() => void> = [];
+    const life = createHistoryLifetime({ destroy: () => { destroyed++; } }, (run) => { queue.push(run); return run; }, (run) => {
+      const i = queue.indexOf(run); if (i >= 0) queue.splice(i, 1);
+    });
+    const tick = () => queue.splice(0).forEach((run) => run());
+    return { life, tick, destroyed: () => destroyed };
+  }
+
+  test('a real unmount destroys the history after a tick', () => {
+    const { life, tick, destroyed } = lifetime();
+    life.retain();
+    life.release();
+    expect(destroyed()).toBe(0);
+    tick();
+    expect(destroyed()).toBe(1);
+  });
+
+  test('a StrictMode unmount and immediate remount keeps the history', () => {
+    const { life, tick, destroyed } = lifetime();
+    life.retain();
+    life.release();
+    life.retain();
+    tick();
+    expect(destroyed()).toBe(0);
   });
 });

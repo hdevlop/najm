@@ -49,3 +49,28 @@ export function createStudioHistory(win: HistoryWindow = window): RouterHistory 
   };
   return history;
 }
+
+/**
+ * Destroys a router's history when the studio really unmounts.
+ *
+ * Every mount creates a router whose history wraps `window.history` and adds a
+ * popstate listener; without a destroy, leaving and re-entering the studio in
+ * a host app stacked them. The destroy waits a tick: React StrictMode unmounts
+ * and remounts at once in development, and that remount must keep a working
+ * history, so `retain()` cancels a pending destroy.
+ */
+export function createHistoryLifetime(
+  history: Pick<RouterHistory, 'destroy'>,
+  schedule: (run: () => void) => unknown = (run) => setTimeout(run, 0),
+  cancel: (handle: any) => void = (handle) => clearTimeout(handle),
+) {
+  let pending: unknown = null;
+  return {
+    retain() {
+      if (pending !== null) { cancel(pending); pending = null; }
+    },
+    release() {
+      pending = schedule(() => { pending = null; history.destroy(); });
+    },
+  };
+}
