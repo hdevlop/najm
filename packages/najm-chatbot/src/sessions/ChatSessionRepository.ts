@@ -166,6 +166,7 @@ export class ChatSessionRepository {
   private async ensureColumns(): Promise<void> {
     if (this.schemaChecked || !this.schema.chatSessions) return;
     this.schemaChecked = true;
+    if (this.config?.ensureSchema === false) return;
 
     if (typeof this.db.all === 'function') {
       const columns = await this.db.all(sql`PRAGMA table_info(chat_sessions)`);

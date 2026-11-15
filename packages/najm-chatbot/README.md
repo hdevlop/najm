@@ -76,7 +76,7 @@ await server.listen(3000);
 import { chatbot } from 'najm-chatbot';
 
 chatbot({
-  dialect: 'sqlite',               // 'sqlite' | 'pg' | 'mysql'
+  dialect: 'sqlite',               // 'sqlite' | 'pg' ('mysql': schema only, see below)
   schema: myCustomSchema,          // Override schema object
 
   // Agent behavior
@@ -90,6 +90,14 @@ chatbot({
   // Session storage
   conversationStore: 'db',        // 'db' | 'cache' (default: 'db')
   sessionTtl: 3600000,             // Session TTL in ms (null = no expiry)
+  maxStoredToolResultChars: 4000,  // Longest tool result kept in memory (0 = whole)
+
+  // Limits
+  streamTimeout: { chunkMs: 60_000, totalMs: 120_000 }, // totalMs also bounds runOnce
+  chatRequestLimits: { maxMessages: 200, maxMessageChars: 32_000 }, // POST /chat body
+
+  // Logging
+  chatLogging: { enabled: true, retentionDays: 30 }, // retentionDays unset = keep logs
 });
 ```
 
@@ -178,6 +186,18 @@ The plugin provides Drizzle table definitions for three dialects:
 import { chatbotSchema } from 'najm-chatbot/sqlite';  // or /pg, /mysql
 ```
 
+**MySQL is not supported at runtime.** `najm-chatbot/mysql` defines the tables,
+but sessions, AI settings, log retention and session cleanup have never run on a
+MySQL server, and parts of them use SQL MySQL lacks (`ADD COLUMN IF NOT EXISTS`,
+`RETURNING`). Use PostgreSQL or SQLite.
+
+**Migrations.** The exported schema holds every table and column the plugin
+uses (a test checks this against the runtime code on SQLite and PostgreSQL).
+Generate migrations from it with drizzle-kit. Until then, the AI settings and
+session repositories add missing columns on first use; once your migrations
+own the tables, set `chatbot({ ensureSchema: false })` and the plugin never
+runs `ALTER`.
+
 The schema exports:
 
 - `aiSettingsTable` — LLM provider configuration (provider, model, API key, base URL, system prompt, enabled flag)
@@ -225,10 +245,10 @@ The plugin registers two controllers:
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
-| `GET` | `/ai-settings` | `@isAuth()` | Get public settings (API key hidden) |
+| `GET` | `/ai-settings` | `@isAuth()` | Administrators get the settings (API key hidden); other users get provider, model and enabled state only |
 | `POST` | `/ai-settings` | `@isAdministrator()` | Create or replace settings |
 | `PUT` | `/ai-settings` | `@isAdministrator()` | Partial update settings |
-| `POST` | `/ai-settings/test` | `@isAdministrator()` | Test LLM connection |
+| `POST` | `/ai-settings/test` | `@isAdministrator()` | Makes one short request to the provider; answers `ok: false` with its error |
 
 **Chat (`/chat`):**
 
@@ -267,6 +287,15 @@ Content-Type: application/json
 ```
 
 Returns an AI SDK data stream response.
+
+The body may carry only `user` and `assistant` messages, in the AI SDK shape
+(`parts`) or the one above (`content`); the system prompt is the server's.
+A request over `chatRequestLimits` answers 400.
+
+A `sessionKey` is not a secret: a session belongs to the user who started
+it, and another user posting its key gets 403. When a client resends its whole
+history, the stored history is kept and only messages after the last answer
+it resent are added.
 
 ### ChatAgent Service
 

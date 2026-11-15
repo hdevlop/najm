@@ -263,6 +263,12 @@ function openRouterBodyFields(options?: OpenRouterRequestOptions): Record<string
   return Object.keys(fields).length > 0 ? fields : undefined;
 }
 
+/** Ollama's OpenAI-compatible root, whether the saved URL ends in `/`, `/v1` or neither. */
+function ollamaOpenAiBaseUrl(baseUrl: string | null | undefined): string {
+  const root = (baseUrl || 'http://localhost:11434').replace(/\/+$/, '');
+  return root.endsWith('/v1') ? root : `${root}/v1`;
+}
+
 export function buildModel(settings: LlmSettings, options: BuildModelOptions = {}): LanguageModel {
   const { provider, apiKey, baseUrl, model } = settings;
 
@@ -332,17 +338,19 @@ export function buildModel(settings: LlmSettings, options: BuildModelOptions = {
       return qwen.chat(model);
     }
 
+    // OpenAI-compatible servers implement /chat/completions; the bare
+    // `createOpenAI()(model)` form targets OpenAI's own /responses API.
     case 'ollama': {
       const ollama = createOpenAI({
         apiKey: 'ollama',
-        baseURL: (baseUrl ?? 'http://localhost:11434') + '/v1',
+        baseURL: ollamaOpenAiBaseUrl(baseUrl),
       });
-      return ollama(model);
+      return ollama.chat(model);
     }
 
     default: {
       const custom = createOpenAI({ apiKey: apiKey ?? 'custom', baseURL: baseUrl ?? '' });
-      return custom(model);
+      return custom.chat(model);
     }
   }
 }

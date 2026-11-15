@@ -118,14 +118,15 @@ describe('embedding spans in chat diagnostics', () => {
     expect(events[0]!.embeddings).toEqual([]);
   });
 
-  test('runOnce records shared-cache miss/hit with chat-relative offsets and no input text', async () => {
+  test('runOnce shares one embedding request between routing and knowledge, with chat-relative offsets and no input text', async () => {
     success();
     const events: ChatDiagnostics[] = [];
     const agent = makeAgent('chat-id', embedder(), events);
     expect(await agent.runOnce(input('private query'))).toBe('answer');
     expect(events).toHaveLength(1);
     expect(events[0]!.embeddings!.map(e => [e.correlationId, e.operation, e.cache, e.attempts.length]))
-      .toEqual([['chat-id', 'tool-routing', 'miss', 1], ['chat-id', 'knowledge-search', 'hit', 0]]);
+      // The knowledge lookup starts first; routing waits for the same request.
+      .toEqual([['chat-id', 'knowledge-search', 'miss', 1], ['chat-id', 'tool-routing', 'shared', 0]]);
     for (const event of events[0]!.embeddings!) {
       expect(event.startMs).toBeGreaterThanOrEqual(0);
       expect(event.startMs + event.durationMs).toBeLessThanOrEqual(events[0]!.marks.finishMs! + 1);

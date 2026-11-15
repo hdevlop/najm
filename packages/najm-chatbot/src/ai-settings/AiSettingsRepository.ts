@@ -2,8 +2,9 @@ import { Repository, Inject } from 'najm-core';
 import { DB } from 'najm-database';
 import { EncryptionService } from 'najm-auth';
 import { desc, eq, sql } from 'drizzle-orm';
-import { CHATBOT_SCHEMA } from '../tokens';
+import { CHATBOT_CONFIG, CHATBOT_SCHEMA } from '../tokens';
 import type { LlmProvider } from './AiSettingsDto';
+import type { ChatbotConfig } from '../ChatbotPlugin';
 
 export interface ChatbotSchema {
   aiSettings: any;
@@ -22,6 +23,7 @@ interface ProviderModelStore {
 export class AiSettingsRepository {
   @DB() declare db: any;
   @Inject(CHATBOT_SCHEMA) private schema!: ChatbotSchema;
+  @Inject(CHATBOT_CONFIG) private config?: ChatbotConfig;
   private encryption!: EncryptionService;
   private schemaChecked = false;
 
@@ -171,6 +173,7 @@ export class AiSettingsRepository {
   private async ensureColumns(): Promise<void> {
     if (this.schemaChecked) return;
     this.schemaChecked = true;
+    if (this.config?.ensureSchema === false) return;
 
     if (typeof this.db.all === 'function') {
       const columns = await this.db.all(sql`PRAGMA table_info(ai_settings)`);

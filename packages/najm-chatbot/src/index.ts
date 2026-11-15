@@ -7,6 +7,7 @@ export type {
   ChatbotStreamTimeout,
   ToolRoutingFallback,
 } from './ChatbotPlugin';
+export type { ChatRequestLimits } from './chat/ChatRequestDto';
 export { CHATBOT_CONFIG, CHATBOT_SCHEMA, CHATBOT_ROUTING_PROVIDER, CHATBOT_CONTEXT_PROVIDER } from './tokens';
 export type { ChatbotContextProvider } from './tokens';
 

@@ -16,6 +16,7 @@ import type { ChatbotSchema } from './ai-settings';
 import type { ChatDiagnosticsSink } from './agent/ChatDiagnostics';
 import type { OpenRouterRequestOptions } from './agent/LlmProviderFactory';
 import type { ChatReplyPolicy } from './agent/replyPolicy';
+import type { ChatRequestLimits } from './chat/ChatRequestDto';
 
 export type ChatbotDialect = 'sqlite' | 'pg' | 'mysql';
 
@@ -53,6 +54,11 @@ export interface ChatbotLoggingConfig {
    * are ignored and never reach the user.
    */
   onDiagnostics?: ChatDiagnosticsSink;
+  /**
+   * Days to keep `chatbot_interaction_logs` rows, which hold users' messages.
+   * An hourly pass deletes older rows. Unset keeps them indefinitely.
+   */
+  retentionDays?: number;
 }
 
 /**
@@ -84,6 +90,20 @@ export interface ChatbotConfig {
   reply?: ChatReplyPolicy;
   maxPromptMessages?: number;
   maxStoredMessages?: number;
+  /**
+   * Longest tool result, in characters, kept in conversation memory. A longer
+   * result is stored cut off with a note; the model saw it whole on the turn
+   * that called the tool. Defaults to 4000; 0 keeps results whole.
+   */
+  maxStoredToolResultChars?: number;
+  /** Size limits for `POST /chat` bodies. Defaults: 200 messages, 32000 characters per message. */
+  chatRequestLimits?: ChatRequestLimits;
+  /**
+   * Let repositories add missing columns on first use (default true). Set
+   * false when your migrations own the schema: generate them from the
+   * exported Drizzle schema, which holds every table and column.
+   */
+  ensureSchema?: boolean;
   routingHistoryMessages?: number;
   systemPromptByChannel?: { web?: string; whatsapp?: string };
   conversationStore?: 'db' | 'cache';
@@ -230,6 +250,9 @@ const mergeConfig = (config?: ChatbotConfig): ChatbotConfig => {
     reply: effective.reply,
     maxPromptMessages: effective.maxPromptMessages ?? 10,
     maxStoredMessages: effective.maxStoredMessages ?? 100,
+    maxStoredToolResultChars: effective.maxStoredToolResultChars ?? 4000,
+    chatRequestLimits: effective.chatRequestLimits,
+    ensureSchema: effective.ensureSchema !== false,
     routingHistoryMessages: effective.routingHistoryMessages ?? 2,
     systemPromptByChannel: effective.systemPromptByChannel ?? {},
     conversationStore: effective.conversationStore ?? 'db',

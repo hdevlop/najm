@@ -1,5 +1,6 @@
 import { Repository, Inject } from 'najm-core';
 import { DB } from 'najm-database';
+import { lt } from 'drizzle-orm';
 import { CHATBOT_SCHEMA } from '../tokens';
 import type { ChatbotSchema } from '../ai-settings/AiSettingsRepository';
 
@@ -35,6 +36,13 @@ export class ChatLogRepository {
     const table = this.schema.chatbotInteractionLogs;
     if (!table) throw new Error('chatbot_interaction_logs schema missing');
     return table;
+  }
+
+  /** Deletes log rows created before `cutoff`; returns how many were removed. */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const t = this.table;
+    const deleted = await this.db.delete(t).where(lt(t.createdAt, cutoff.toISOString())).returning({ id: t.id });
+    return Array.isArray(deleted) ? deleted.length : 0;
   }
 
   async insert(input: InsertChatLogInput): Promise<void> {

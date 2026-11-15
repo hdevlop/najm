@@ -1,5 +1,54 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- The studio assistant read AI SDK 4 stream fields: answers showed
+  "undefined", tool arguments were missing, and every tool call, including
+  failed writes, was reported as successful.
+- The chat debug trace never showed tool results, and could not report a
+  failed or blocked call. It now reads each call's real outcome.
+- Two identical messages without ids (a second "yes") are two turns; the
+  second was dropped. A client that resends its whole history with a
+  `sessionKey` no longer stores each answer twice. Stored history is the
+  source of truth: only messages after the last resent answer are added.
+  Regenerating an answer from the client does not replace the stored one.
+- "Test connection" makes one short request to the provider and reports its
+  error; it reported success without connecting. The key is never echoed.
+- `ollama` and `custom` providers call `/chat/completions` instead of OpenAI's
+  `/responses`, and an Ollama base URL ending in `/` or `/v1` is not doubled.
+- `runOnce` and the debug endpoint have a time limit (`streamTimeout.totalMs`,
+  default 120 s); a stalled provider held a WhatsApp turn open indefinitely.
+- A session's expiry read back from PostgreSQL (a time without a zone) is
+  read as UTC; on a server not running in UTC sessions expired hours early or
+  late.
+
+### Changed
+
+- `GET /ai-settings` returns only provider, model and enabled state to users
+  who are not administrators; the system prompt and base URL are admin-only.
+- `POST /chat` validates its body: only user and assistant messages, at most
+  200 messages and 32000 characters per message (`chatRequestLimits`).
+- Tool results kept in conversation memory are cut at 4000 characters
+  (`maxStoredToolResultChars`; 0 keeps them whole).
+- Knowledge context and tool routing are prepared at the same time;
+  `routingMs` and `contextMs` overlap in diagnostics.
+- The router receives the latest message on its own as well as the routing
+  text (`ToolRoutingRequest` from najm-mcp).
+
+### Added
+
+- `chatLogging.retentionDays`: hourly deletion of interaction logs older than
+  that. Off unless set.
+- `ensureSchema` (default true): set `false` when your migrations own the
+  tables, and the AI settings and session repositories never run `ALTER`.
+
+### Documentation
+
+- MySQL is not supported at runtime; `najm-chatbot/mysql` only defines the
+  tables. Sessions, settings and cleanup use SQL MySQL lacks.
+
 ## 3.7.2 - 2026-11-14
 
 ### Fixed

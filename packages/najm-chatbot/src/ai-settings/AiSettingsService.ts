@@ -2,13 +2,24 @@ import { Service } from 'najm-core';
 import { EncryptionService } from 'najm-auth';
 import { AiSettingsRepository } from './AiSettingsRepository';
 import type { CreateAiSettingsDto, LlmProvider, UpdateAiSettingsDto } from './AiSettingsDto';
-import { PROVIDERS, buildModel } from '../agent/LlmProviderFactory';
+import { generateText } from 'ai';
+import { PROVIDERS, buildModel, type LlmSettings } from '../agent/LlmProviderFactory';
 
 type InternalSettings = ReturnType<AiSettingsRepository['decryptApiKey']>;
 
 interface InternalCacheEntry {
   value: InternalSettings | null;
   expiresAt: number;
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) return err.message || err.name;
+  return String(err);
+}
+
+/** Provider errors sometimes echo the key back; never return it to the browser. */
+function redactSecret(message: string, secret: string | null): string {
+  return secret ? message.split(secret).join('***') : message;
 }
 
 function normalizeText(value: string | null | undefined): string | null {
@@ -198,20 +209,28 @@ export class AiSettingsService {
       throw new Error('Base URL is required for this provider.');
     }
 
-    buildModel({
-      provider,
-      apiKey: resolvedApiKey,
-      baseUrl: resolvedBaseUrl,
-      model: resolvedModel,
-    });
+    const summary = { provider, resolvedModel, needsKey: meta.needsKey, needsUrl: meta.needsUrl };
+    try {
+      const model = this.buildModel({
+        provider,
+        apiKey: resolvedApiKey,
+        baseUrl: resolvedBaseUrl,
+        model: resolvedModel,
+      });
+      // One short request proves the key, URL and model name together.
+      // 16 output tokens: OpenAI's Responses API rejects lower limits.
+      await generateText({ model, prompt: 'ping', maxOutputTokens: 16, timeout: this.connectionTestTimeoutMs });
+      return { ok: true as const, ...summary };
+    } catch (err) {
+      return { ok: false as const, ...summary, error: redactSecret(errorMessage(err), resolvedApiKey) };
+    }
+  }
 
-    return {
-      ok: true,
-      provider,
-      resolvedModel,
-      needsKey: meta.needsKey,
-      needsUrl: meta.needsUrl,
-    };
+  /** Time allowed for the "Test connection" request. */
+  protected connectionTestTimeoutMs = 10_000;
+
+  protected buildModel(settings: LlmSettings) {
+    return buildModel(settings);
   }
 
   private mergeModelOptions(

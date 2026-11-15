@@ -35,14 +35,28 @@ export const ttlToExpiresAt = (ttlMs?: number | null, now = new Date()): string 
   return new Date(now.getTime() + ttlMs).toISOString();
 };
 
+const ZONE_SUFFIX = /(Z|[+-]\d{2}(:?\d{2})?)$/i;
+
+/**
+ * Parses a stored time. Expiry is always written as UTC, but PostgreSQL's
+ * `timestamp without time zone` drops the zone and returns e.g.
+ * '2026-11-14 12:00:00'; JavaScript would read that as local time, so a
+ * string without a zone is read as UTC.
+ */
+function parseStoredTime(value: string | Date): Date {
+  if (value instanceof Date) return value;
+  const text = value.trim();
+  return new Date(ZONE_SUFFIX.test(text) ? text : `${text.replace(' ', 'T')}Z`);
+}
+
 export const normalizeExpiresAt = (value?: string | Date | null): string | null => {
   if (!value) return null;
-  return value instanceof Date ? value.toISOString() : value;
+  const parsed = parseStoredTime(value);
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : (value instanceof Date ? null : value);
 };
 
 export const isExpired = (expiresAt?: string | Date | null, now = new Date()): boolean => {
   if (!expiresAt) return false;
-  const expires = expiresAt instanceof Date ? expiresAt : new Date(expiresAt);
-  const expiresTime = expires.getTime();
+  const expiresTime = parseStoredTime(expiresAt).getTime();
   return Number.isFinite(expiresTime) && expiresTime <= now.getTime();
 };

@@ -49,7 +49,10 @@ export interface ChatUsageSummary {
   reasoningTokens: number | null;
 }
 
-/** Durations of preparation stages. `prepareMs` contains `routingMs` and `contextMs`; do not add them. */
+/**
+ * Durations of preparation stages. `prepareMs` contains `routingMs` and
+ * `contextMs`, which run at the same time and overlap; do not add any of them.
+ */
 export interface ChatPreparationSpans {
   settingsMs: number | null;
   historyMs: number | null;

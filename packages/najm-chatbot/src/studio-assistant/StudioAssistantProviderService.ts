@@ -9,7 +9,7 @@ import {
   type StudioAssistantRunInput,
 } from 'najm-rag';
 import { AiSettingsService } from '../ai-settings/AiSettingsService';
-import { buildModel } from '../agent/LlmProviderFactory';
+import { buildModel, type LlmSettings } from '../agent/LlmProviderFactory';
 import { toolParametersSchema } from '../agent/McpToolAdapter';
 
 interface StudioToolResult {
@@ -118,7 +118,7 @@ export class StudioAssistantProviderService implements StudioAssistantProvider {
     const tools = this.registry.tools.filter((tool) => allowed.has(tool.name));
     const aiTools = this.buildObservableTools(tools);
 
-    const model = buildModel({
+    const model = this.buildModel({
       provider: settings.provider,
       model: settings.model,
       apiKey: settings.apiKey ?? null,
@@ -136,6 +136,10 @@ export class StudioAssistantProviderService implements StudioAssistantProvider {
     });
 
     return this.toStudioSse(result, input.sessionId ?? crypto.randomUUID());
+  }
+
+  protected buildModel(settings: LlmSettings) {
+    return buildModel(settings);
   }
 
   private buildObservableTools(tools: RegisteredTool[]): Record<string, any> {
@@ -203,21 +207,22 @@ export class StudioAssistantProviderService implements StudioAssistantProvider {
         };
 
         try {
+          // AI SDK 6 stream parts: text-delta.text, tool-call.input, tool-result.output.
           for await (const part of result.fullStream) {
             if (part.type === 'text-delta') {
-              send({ type: 'text', delta: part.textDelta });
+              send({ type: 'text', delta: part.text });
             }
             if (part.type === 'tool-call') {
               send({
                 type: 'tool_call',
                 id: part.toolCallId,
                 name: part.toolName,
-                args: part.args,
+                args: part.input,
                 requiresConfirmation: STUDIO_WRITE_TOOLS.has(part.toolName),
               });
             }
             if (part.type === 'tool-result') {
-              const toolResult = part.result as StudioToolResult | undefined;
+              const toolResult = part.output as StudioToolResult | undefined;
               const isError = toolResult && typeof toolResult === 'object' && 'isError' in toolResult
                 ? toolResult.isError
                 : false;
@@ -226,7 +231,16 @@ export class StudioAssistantProviderService implements StudioAssistantProvider {
                 id: part.toolCallId,
                 name: part.toolName,
                 ok: !isError,
-                result: toolResult?.text ?? part.result,
+                result: toolResult?.text ?? part.output,
+              });
+            }
+            if (part.type === 'tool-error') {
+              send({
+                type: 'tool_result',
+                id: part.toolCallId,
+                name: part.toolName,
+                ok: false,
+                error: part.error instanceof Error ? part.error.message : String(part.error),
               });
             }
           }

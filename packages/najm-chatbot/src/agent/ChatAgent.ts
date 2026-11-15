@@ -164,6 +164,14 @@ export function answerAfterRepeatedToolCall({ steps }: {
   return last && last === stepToolCalls(steps[steps.length - 2]) ? { toolChoice: 'none' } : undefined;
 }
 
+/** MCP tools answer with text, usually JSON; parse it so a trace preview shows structure. */
+function parseToolText(value: unknown): unknown {
+  if (typeof value !== 'string') return value ?? null;
+  const trimmed = value.trim();
+  if (!trimmed.startsWith('{') && !trimmed.startsWith('[') && !trimmed.startsWith('"')) return value;
+  try { return JSON.parse(trimmed); } catch { return value; }
+}
+
 async function settleWrites(writes: Promise<void>[]): Promise<void> {
   const results = await Promise.allSettled(writes);
   const failure = results.find((result): result is PromiseRejectedResult => result.status === 'rejected');
@@ -189,16 +197,38 @@ export function getMessageText(message: UIMessage): string {
 }
 
 /** The UI state of a tool call, from the result the SDK put in a `tool` response message. */
-function toolResultState(output: any): Record<string, unknown> {
+export const DEFAULT_MAX_STORED_TOOL_RESULT_CHARS = 4000;
+
+/** Total time allowed for a non-streamed answer when `streamTimeout.totalMs` is not set. */
+const DEFAULT_GENERATE_TOTAL_MS = 120_000;
+
+/**
+ * Shortens a tool result kept in conversation memory. Each stored result goes
+ * back into every later prompt of the session, so an unbounded list result
+ * would grow the session row and the prompt on every turn.
+ */
+function capStoredToolOutput(value: unknown, maxChars: number): unknown {
+  if (!(maxChars > 0)) return value;
+  let text: string;
+  if (typeof value === 'string') {
+    text = value;
+  } else {
+    try { text = JSON.stringify(value) ?? ''; } catch { return value; }
+  }
+  if (text.length <= maxChars) return value;
+  return `${text.slice(0, maxChars)}… [truncated ${text.length - maxChars} characters]`;
+}
+
+function toolResultState(output: any, maxChars: number): Record<string, unknown> {
   switch (output?.type) {
     case 'error-text':
-      return { state: 'output-error', errorText: String(output.value ?? '') };
+      return { state: 'output-error', errorText: String(capStoredToolOutput(String(output.value ?? ''), maxChars)) };
     case 'error-json':
-      return { state: 'output-error', errorText: JSON.stringify(output.value ?? null) };
+      return { state: 'output-error', errorText: String(capStoredToolOutput(JSON.stringify(output.value ?? null), maxChars)) };
     case 'execution-denied':
       return { state: 'output-error', errorText: output.reason ?? 'Tool call execution denied.' };
     default:
-      return { state: 'output-available', output: output?.value ?? null };
+      return { state: 'output-available', output: capStoredToolOutput(output?.value ?? null, maxChars) };
   }
 }
 
@@ -209,7 +239,11 @@ function toolResultState(output: any): Record<string, unknown> {
  * steps, so the call and its result go back to the model before the answer
  * that used them.
  */
-function appendResponseMessages(messages: UIMessage[], responseMessages: any[]): UIMessage[] {
+function appendResponseMessages(
+  messages: UIMessage[],
+  responseMessages: any[],
+  maxToolResultChars = DEFAULT_MAX_STORED_TOOL_RESULT_CHARS,
+): UIMessage[] {
   const parts: any[] = [];
   const toolParts = new Map<string, any>();
   for (const message of responseMessages) {
@@ -228,7 +262,7 @@ function appendResponseMessages(messages: UIMessage[], responseMessages: any[]):
     } else if (message?.role === 'tool') {
       for (const part of content) {
         const toolPart = part?.type === 'tool-result' ? toolParts.get(part.toolCallId) : undefined;
-        if (toolPart) Object.assign(toolPart, toolResultState(part.output));
+        if (toolPart) Object.assign(toolPart, toolResultState(part.output, maxToolResultChars));
       }
     }
   }
@@ -278,11 +312,9 @@ function observeBody(response: Response, hooks: { error(error: unknown): void; c
   return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
 }
 
-function getMessageIdentity(message: UIMessage): string | null {
-  if (message.id) return String(message.id);
-  const text = getMessageText(message).trim();
-  if (!text) return null;
-  return `${message.role}:${text.slice(0, 200)}`;
+/** Gives each message without an id a fresh one, so identical texts stay distinct messages. */
+function withMessageIds(messages: UIMessage[]): UIMessage[] {
+  return messages.map((message) => (message.id ? message : { ...message, id: crypto.randomUUID() }));
 }
 
 /**
@@ -451,6 +483,7 @@ export class ChatAgent {
         tools: Object.keys(tools).length > 0 ? tools : undefined,
         stopWhen: stepCountIs(this.config.maxSteps ?? 10),
         prepareStep: answerAfterRepeatedToolCall,
+        timeout: this.generateTimeout(),
         onStepFinish: (step) => {
           steps.push(step);
           diagnostics.step(step);
@@ -508,8 +541,13 @@ export class ChatAgent {
     let routingStatus: RoutingStatus;
     let routedToolNames: string[];
 
+    // Records each tool call's outcome as the adapter settles it (executed,
+    // blocked by the read-only rule, or an MCP error); the SDK's step results
+    // alone cannot tell a blocked call from a successful one.
+    const toolDiagnostics = this.startDiagnostics(channel);
+
     try {
-      const prepared = await this.prepareReply(input, channel, routingText, settings);
+      const prepared = await this.prepareReply(input, channel, routingText, settings, toolDiagnostics);
       model = prepared.model;
       system = prepared.system;
       tools = prepared.tools;
@@ -555,6 +593,7 @@ export class ChatAgent {
         tools: Object.keys(tools).length > 0 ? tools : undefined,
         stopWhen: stepCountIs(this.config.maxSteps ?? 10),
         prepareStep: answerAfterRepeatedToolCall,
+        timeout: this.generateTimeout(),
       });
     } catch (err) {
       return {
@@ -582,13 +621,17 @@ export class ChatAgent {
       .map((call: any) => call.toolName ?? call.function?.name ?? call.name)
       .filter(Boolean);
 
-    const toolResultMap = new Map<string, any>();
-    for (const step of result.steps) {
-      for (const tr of step.toolResults ?? []) {
-        const id = tr?.toolCallId ?? (tr as any)?.id;
-        if (id) toolResultMap.set(id, tr);
+    // AI SDK 6: calls carry `input`; results carry `output`; a thrown execute
+    // becomes a `tool-error` content part with no result.
+    const outputs = new Map<string, unknown>();
+    const thrown = new Map<string, unknown>();
+    for (const step of result.steps as any[]) {
+      for (const toolResult of step.toolResults ?? []) outputs.set(toolResult.toolCallId, toolResult.output);
+      for (const part of step.content ?? []) {
+        if (part?.type === 'tool-error') thrown.set(part.toolCallId, part.error);
       }
     }
+    const outcomes = new Map(toolDiagnostics.data.tools.map((span) => [span.toolCallId, span.outcome]));
 
     const routedSet = new Set(routedToolNames);
     const routingThreshold = trace?.thresholds?.similarityThreshold ?? 0.45;
@@ -600,37 +643,24 @@ export class ChatAgent {
       redactKeys: traceOptions.redactKeys,
     } : undefined;
 
-    for (const step of result.steps) {
-      for (const rawCall of step.toolCalls ?? []) {
-        const toolCall = rawCall as any;
-        const name = toolCall.toolName ?? toolCall.function?.name ?? toolCall.name;
-        const args = toolCall.args ?? toolCall.input ?? {};
-        let status: ChatDebugToolCall['status'] = 'success';
-        let resultPreview: unknown;
-        let error: string | undefined;
-
-        const matchedResult = toolResultMap.get(toolCall.toolCallId ?? toolCall.id);
-
-        if (toolCall.isConfirmationBlocked || toolCall.confirmationRequired) {
-          status = 'blocked';
-          resultPreview = truncatePreview(matchedResult?.result ?? args, truncationOpts);
-        } else if (matchedResult && matchedResult.isError) {
-          status = 'error';
-          error = typeof matchedResult.result === 'string'
-            ? matchedResult.result
-            : matchedResult.result?.message ?? 'Unknown error';
-          resultPreview = truncatePreview(matchedResult.result, truncationOpts);
-        } else {
-          const toolResult = matchedResult?.result ?? toolCall.result ?? toolCall.output ?? {};
-          const truncated = truncatePreview(toolResult, truncationOpts);
-          resultPreview = truncated;
-          if (truncated && typeof truncated === 'object' && 'truncated' in truncated) {
-            toolCalls.push({ toolName: name, args, status, resultPreview: truncated, error });
-            continue;
-          }
-        }
-
-        toolCalls.push({ toolName: name, args, status, resultPreview, error });
+    for (const call of allToolCalls as any[]) {
+      const output = outputs.get(call.toolCallId);
+      const outcome = outcomes.get(call.toolCallId);
+      const args = truncatePreview(call.input ?? {}, { redactKeys: traceOptions?.redactKeys });
+      if (thrown.has(call.toolCallId)) {
+        const failure = thrown.get(call.toolCallId);
+        toolCalls.push({ toolName: call.toolName, args, status: 'error',
+          error: failure instanceof Error ? failure.message : String(failure) });
+      } else if (outcome === 'blocked') {
+        toolCalls.push({ toolName: call.toolName, args, status: 'blocked',
+          resultPreview: truncatePreview(parseToolText(output), truncationOpts) });
+      } else if (outcome === 'error') {
+        toolCalls.push({ toolName: call.toolName, args, status: 'error',
+          error: typeof output === 'string' ? output : JSON.stringify(output ?? null),
+          resultPreview: truncatePreview(parseToolText(output), truncationOpts) });
+      } else {
+        toolCalls.push({ toolName: call.toolName, args, status: 'success',
+          resultPreview: truncatePreview(parseToolText(output), truncationOpts) });
       }
     }
 
@@ -844,6 +874,25 @@ export class ChatAgent {
     let routingStatus: RoutingStatus = 'disabled';
     let routedToolNames: string[] = [];
 
+    // Knowledge lookup and tool routing are independent: start the lookup now
+    // and await it after routing. Their diagnostics spans overlap.
+    const contextParts: string[] = [];
+    let context: Promise<void> | null = null;
+    if (this.config.context !== 'none') {
+      const collect = async () => {
+        for (const provider of this.tryGetContextProviders()) {
+          signal?.throwIfAborted();
+          const ctx = await provider.getContext(userText, { latestUserText, channel });
+          signal?.throwIfAborted();
+          if (ctx) contextParts.push(ctx);
+        }
+      };
+      context = diagnostics ? diagnostics.span('contextMs', collect, signal) : collect();
+      // Routing may throw first; the lookup's own failure is then reported by
+      // the routing error, not as an unhandled rejection.
+      context.catch(() => {});
+    }
+
     const toolsOverride = this.config.tools;
     const mcp = this.getMcpTools();
 
@@ -857,7 +906,7 @@ export class ChatAgent {
     } else {
       const router = this.tryGetRouter();
       if (router) {
-        const findTools = () => router.findRelevantTools(userText);
+        const findTools = () => router.findRelevantTools(userText, { latestUserText });
         const routerResult = diagnostics ? await diagnostics.span('routingMs', findTools, signal) : await findTools();
         signal?.throwIfAborted();
         routingStatus = routerResult.status;
@@ -883,18 +932,8 @@ export class ChatAgent {
     let system =
       channelPrompt ?? settings.systemPrompt ?? this.config.defaultSystemPrompt ?? '';
 
-    if (this.config.context !== 'none') {
-      const contextParts: string[] = [];
-      const collect = async () => {
-        for (const provider of this.tryGetContextProviders()) {
-          signal?.throwIfAborted();
-          const ctx = await provider.getContext(userText, { latestUserText, channel });
-          signal?.throwIfAborted();
-          if (ctx) contextParts.push(ctx);
-        }
-      };
-      if (diagnostics) await diagnostics.span('contextMs', collect, signal);
-      else await collect();
+    if (context) {
+      await context;
       if (contextParts.length > 0) {
         system = contextParts.join('\n\n') + '\n\n' + system;
       }
@@ -949,6 +988,16 @@ export class ChatAgent {
     await settleWrites([this.settleChat(diagnostics, 'completed', undefined, save,
       { sessionKey: input.sessionKey, userText: getLatestUserText(input.messages), routedToolNames: turn.routedToolNames, steps: [] }),
       ...(save ? [save] : [])]);
+  }
+
+  /**
+   * Limits for runOnce and debugRun, which have no stream to go silent:
+   * `chunkMs` does not apply. A stalled provider would otherwise hold a
+   * WhatsApp turn open indefinitely, so a total limit always applies.
+   */
+  private generateTimeout(): { totalMs: number; stepMs?: number } {
+    const { totalMs, stepMs } = this.config.streamTimeout ?? {};
+    return { totalMs: totalMs ?? DEFAULT_GENERATE_TOTAL_MS, ...(stepMs ? { stepMs } : {}) };
   }
 
   protected buildModel(settings: LlmSettings) {
@@ -1041,15 +1090,22 @@ export class ChatAgent {
     return session.messages;
   }
 
+  /**
+   * Stored history is the source of truth. A client may send only the new
+   * message or resend its whole history; its answers carry client ids that
+   * never match the stored ones. So only the messages after the last answer
+   * in the request are new, minus any id already stored (a retried send).
+   * Identity is the message id alone: two identical "yes" replies are two turns.
+   */
   private mergeSessionMessages(history: UIMessage[], current: UIMessage[]): UIMessage[] {
-    const result: UIMessage[] = [];
-    const seen = new Set<string>();
-    for (const message of [...history, ...current]) {
-      const key = getMessageIdentity(message);
-      if (key && seen.has(key)) continue;
-      if (key) seen.add(key);
-      result.push(message);
+    const incoming = withMessageIds(current);
+    if (history.length === 0) return incoming;
+    let lastAnswer = -1;
+    for (let i = incoming.length - 1; i >= 0; i--) {
+      if (incoming[i].role === 'assistant') { lastAnswer = i; break; }
     }
+    const stored = new Set(history.map((message) => message.id).filter(Boolean).map(String));
+    const result = [...history, ...incoming.slice(lastAnswer + 1).filter((message) => !stored.has(String(message.id)))];
     return result;
   }
 
@@ -1082,7 +1138,8 @@ export class ChatAgent {
   ): Promise<void> {
     if (options.skip || !sessionKey) return;
 
-    const updatedMessages = appendResponseMessages(messages, responseMessages);
+    const updatedMessages = appendResponseMessages(messages, responseMessages,
+      this.config.maxStoredToolResultChars ?? DEFAULT_MAX_STORED_TOOL_RESULT_CHARS);
 
     const isNewSession = messages.length === 0
       || (messages.every((m) => m.role !== 'user') === false && messages.filter((m) => m.role === 'user').length <= 1);

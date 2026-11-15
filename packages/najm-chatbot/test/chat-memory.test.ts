@@ -215,7 +215,7 @@ describe('Chat Memory - Phase 1', () => {
     expect(result.map((m: any) => m.id)).toEqual(['m1', 'm2', 'm3']);
   });
 
-  test('mergeSessionMessages falls back to role+text when id missing', async () => {
+  test('mergeSessionMessages keeps stored history and appends only messages after the last resent answer', async () => {
     const { server } = await setup();
     const agent = server!.container.get(ChatAgent) as ChatAgent;
 

@@ -9,6 +9,8 @@ import { drizzle } from 'drizzle-orm/bun-sqlite';
 import { Database } from 'bun:sqlite';
 import { createCredentialSetupTables } from './auth-test-schema';
 import { aiSettingsTable } from '../src/schema/sqlite';
+import { AiSettingsService } from '../src/ai-settings/AiSettingsService';
+import { MockLanguageModelV1 } from '../src/testing/MockLanguageModel';
 import { usersTable, rolesTable, tokensTable, permissionsTable, rolePermissionsTable } from 'najm-auth/sqlite';
 
 const JWT_SECRET = 'test-access-secret-that-is-at-least-32-chars!';
@@ -91,6 +93,17 @@ async function setup(options: { legacyAiSettings?: boolean } = {}): Promise<{ se
 
   await server.listen(p);
   return { server, db, port: p };
+}
+
+/** "Test connection" makes a real request; answer it locally and record the resolved settings. */
+function stubConnectionModel(target: Server): any[] {
+  const built: any[] = [];
+  const service = target.container.get(AiSettingsService) as any;
+  service.buildModel = (settings: any) => {
+    built.push(settings);
+    return new MockLanguageModelV1({ doGenerate: async () => ({ text: 'pong', finishReason: 'stop', usage: {} }) });
+  };
+  return built;
 }
 
 async function registerAndLogin(
@@ -237,6 +250,31 @@ describe('najm-chatbot ai-settings', () => {
     expect(body2.provider).toBe('ollama');
   });
 
+  test('H1: a signed-in non-admin sees only what the chat panel needs', async () => {
+    const { port } = await setup();
+    const adminToken = await registerAndLogin(port, 'admin@test.com', 'Password123!', { asAdmin: true });
+    await fetch(`http://localhost:${port}/ai-settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${adminToken}` },
+      body: JSON.stringify({
+        provider: 'custom', apiKey: 'k', model: 'internal-model',
+        baseUrl: 'http://10.0.0.5:8080/v1', systemPrompt: 'Internal instructions',
+      }),
+    });
+
+    const userToken = await registerAndLogin(port, 'user@test.com', 'Password123!');
+    const asUser = await (await fetch(`http://localhost:${port}/ai-settings`, {
+      headers: { Authorization: `Bearer ${userToken}` },
+    })).json();
+    expect(asUser).toEqual({ provider: 'custom', model: 'internal-model', isEnabled: true });
+
+    const asAdmin = await (await fetch(`http://localhost:${port}/ai-settings`, {
+      headers: { Authorization: `Bearer ${adminToken}` },
+    })).json();
+    expect(asAdmin.systemPrompt).toBe('Internal instructions');
+    expect(asAdmin.baseUrl).toBe('http://10.0.0.5:8080/v1');
+  });
+
   test('unauthenticated GET returns 401', async () => {
     const { port } = await setup();
     const res = await fetch(`http://localhost:${port}/ai-settings`);
@@ -273,7 +311,8 @@ describe('najm-chatbot ai-settings', () => {
   });
 
   test('admin test endpoint resolves provider config and reuses saved key when apiKey is omitted', async () => {
-    const { port } = await setup();
+    const { port, server } = await setup();
+    const built = stubConnectionModel(server);
     const token = await registerAndLogin(port, 'admin@test.com', 'Password123!', { asAdmin: true });
 
     await fetch(`http://localhost:${port}/ai-settings`, {
@@ -306,10 +345,12 @@ describe('najm-chatbot ai-settings', () => {
     expect(body.ok).toBe(true);
     expect(body.provider).toBe('openai');
     expect(body.resolvedModel).toBe('gpt-5.4');
+    expect(built.at(-1)).toMatchObject({ provider: 'openai', apiKey: 'sk-test-secret-key', model: 'gpt-5.4' });
   });
 
   test('stores and reuses separate api keys per provider', async () => {
-    const { port } = await setup();
+    const { port, server } = await setup();
+    const built = stubConnectionModel(server);
     const token = await registerAndLogin(port, 'admin@test.com', 'Password123!', { asAdmin: true });
 
     await fetch(`http://localhost:${port}/ai-settings`, {
@@ -360,10 +401,12 @@ describe('najm-chatbot ai-settings', () => {
     const testOpenRouterBody = await testOpenRouter.json();
     expect(testOpenRouterBody.ok).toBe(true);
     expect(testOpenRouterBody.provider).toBe('openrouter');
+    expect(built.at(-1)).toMatchObject({ provider: 'openrouter', apiKey: 'openrouter-key' });
   });
 
   test('stores and reuses separate selected models per provider', async () => {
-    const { port } = await setup();
+    const { port, server } = await setup();
+    stubConnectionModel(server);
     const token = await registerAndLogin(port, 'admin@test.com', 'Password123!', { asAdmin: true });
 
     await fetch(`http://localhost:${port}/ai-settings`, {

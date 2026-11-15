@@ -1,28 +1,34 @@
-import { Controller, Post, Body, Ctx } from 'najm-core';
+import { Controller, Post, Body, Ctx, Inject } from 'najm-core';
 import { isAuth } from 'najm-auth';
 import type { Context } from 'hono';
 import { ChatAgent } from '../agent/ChatAgent';
-
-interface ChatRequest {
-  messages: Array<{ role: string; content: string | Array<{ type: string; text?: string }>; [key: string]: unknown }>;
-  sessionKey?: string;
-}
+import { CHATBOT_CONFIG } from '../tokens';
+import type { ChatbotConfig } from '../ChatbotPlugin';
+import { chatRequestSchema } from './ChatRequestDto';
 
 @Controller('/chat')
 export class ChatController {
-  constructor(private agent: ChatAgent) {}
+  private schema?: ReturnType<typeof chatRequestSchema>;
+
+  constructor(
+    private agent: ChatAgent,
+    @Inject(CHATBOT_CONFIG) private config: ChatbotConfig,
+  ) {}
 
   @Post()
   @isAuth()
-  async chat(@Body() body: ChatRequest, @Ctx() ctx: Context) {
-    if (!body?.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
-      return ctx.json({ error: 'Messages array is required.' }, 400);
+  async chat(@Body() body: unknown, @Ctx() ctx: Context) {
+    this.schema ??= chatRequestSchema(this.config?.chatRequestLimits);
+    const parsed = this.schema.safeParse(body ?? {});
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      const message = issue?.path[0] === 'messages' && issue.code === 'invalid_type'
+        ? 'Messages array is required.'
+        : `${issue?.path.join('.') || 'body'}: ${issue?.message ?? 'invalid request'}`;
+      return ctx.json({ error: message }, 400);
     }
 
-    const messages = body.messages as any[];
-    const sessionKey = typeof body.sessionKey === 'string' && body.sessionKey.trim()
-      ? body.sessionKey
-      : undefined;
-    return this.agent.stream({ messages, sessionKey, channel: 'web', signal: ctx.req.raw.signal });
+    const sessionKey = parsed.data.sessionKey?.trim() ? parsed.data.sessionKey : undefined;
+    return this.agent.stream({ messages: parsed.data.messages as any[], sessionKey, channel: 'web', signal: ctx.req.raw.signal });
   }
 }

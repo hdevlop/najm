@@ -69,6 +69,7 @@
     "najm-chatbot": [
       "export { chatbot } from './ChatbotPlugin';",
       "export type { ChatbotConfig, ChatbotRagConfig, ChatbotToolRoutingConfig, ChatbotLoggingConfig, ChatbotStreamTimeout, ToolRoutingFallback, } from './ChatbotPlugin';",
+      "export type { ChatRequestLimits } from './chat/ChatRequestDto';",
       "export { CHATBOT_CONFIG, CHATBOT_SCHEMA, CHATBOT_ROUTING_PROVIDER, CHATBOT_CONTEXT_PROVIDER } from './tokens';",
       "export type { ChatbotContextProvider } from './tokens';",
       "export { AiSettingsController, AiSettingsService, AiSettingsRepository, createAiSettingsDto, updateAiSettingsDto, LLM_PROVIDER_ENUM, } from './ai-settings';",
@@ -345,7 +346,7 @@
     "najm-mcp": [
       "export * from './types';",
       "export { MCP_CONFIG, MCP_GROUP_META, MCP_TOOL_META, MCP_ANNOTATIONS_META, MCP_CONFIRMATION_META, MCP_CONTROLLER_TOOL_META, MCP_REGISTRY, TOOL_PROVIDER, } from './tokens';",
-      "export type { ToolProvider } from './tokens';",
+      "export type { ToolProvider, ToolRoutingRequest } from './tokens';",
       "export { Tool, McpTool, ToolGroup, getMcpTools, getMcpToolGroup, getMcpAnnotations, getMcpConfirmation, getMcpControllerTools, } from './decorator';",
       "export * from './McpPlugin';",
       "export * from './result';",
@@ -395,7 +396,7 @@
       "export { ragStudio } from './studio/plugin';",
       "export type { RagStudioOptions } from './studio/plugin';",
       "export { RAG_STUDIO_OPTS } from './studio/tokens';",
-      "export type { RagConfig, RagMergedConfig, RagDialect, RagEmbeddingConfig, RagToolRoutingConfig, RagKnowledgeConfig, RagSchema, RoutingQueryRewrite } from './config';",
+      "export type { RagConfig, RagMergedConfig, RagDialect, RagEmbeddingConfig, RagToolRoutingConfig, RagKnowledgeConfig, RagSchema, RoutingQueryRewrite, RoutingQueryRewriteOnMiss } from './config';",
       "export { RAG_CONFIG, RAG_DIAGNOSTICS, RAG_SCHEMA, VECTOR_STRATEGY, RAG_TOOL_PROVIDER, RAG_OCR_PROVIDER } from './tokens';",
       "export type { RagToolProvider } from './provider';",
       "export * from './chatbotRag';",
