@@ -1,6 +1,9 @@
 import { Service, Inject } from 'najm-core';
 import { EmbeddingService } from '../embeddings';
 import { ToolIndexRepository } from '../toolIndex';
+import { RAG_CONFIG } from '../tokens';
+import type { RagMergedConfig } from '../config';
+import { canonicalizeRoutingText } from '../toolRouter/ToolRouterUtils';
 import type { ImportJobState, ImportJobFileSummary } from './ChatbotRagDto';
 import { initFileSummaries, markJobFailed, runBatches } from './runBatchImportJob';
 
@@ -11,6 +14,7 @@ export class SemanticImportJobService {
   constructor(
     @Inject() private repository: ToolIndexRepository,
     @Inject() private embedding: EmbeddingService,
+    @Inject(RAG_CONFIG) private config?: RagMergedConfig,
   ) {}
 
   createImportJob(files: Array<{ name: string; content: Record<string, Record<string, string[]>> }>): ImportJobState {
@@ -151,7 +155,8 @@ export class SemanticImportJobService {
       toEmbed,
       BATCH_SIZE,
       async (batch, batchIndex, batchStart) => {
-        const phrases = batch.map((e) => e.phrase);
+        // Embedded the way routing embeds a message; stored as typed.
+        const phrases = batch.map((e) => canonicalizeRoutingText(e.phrase, this.config?.rewriteRoutingQuery));
         const embeddings = await this.embedding.embedBatch(phrases, 'document', 'semantic-index');
 
         job.currentPhase = 'saving';

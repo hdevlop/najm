@@ -8,10 +8,18 @@ export interface CachedRouting {
   loadedAt: number;
 }
 
+/** Matches `ToolRoutingRequest` from najm-mcp; declared here so older najm-mcp releases still type-check. */
+export interface ToolRoutingRequest {
+  /** The user's latest message on its own; the routing text may join several turns. */
+  latestUserText?: string;
+}
+
 export interface ToolRouterResult {
   status: 'disabled' | 'routed' | 'fallback_all' | 'fallback_none' | 'router_error';
   tools: RegisteredTool[];
   error?: string;
+  /** The tools came from a second pass on `rewriteRoutingQueryOnMiss`'s rewrite. */
+  rewrittenOnMiss?: boolean;
 }
 
 export interface RoutingPreviewMatch {
@@ -58,6 +66,8 @@ export interface RoutingPreviewResult {
   normalized: string;
   /** What routing embedded, when the app's rewriteRoutingQuery changed it. */
   rewritten?: string;
+  /** What the second pass embedded, when `rewriteRoutingQueryOnMiss` rescued a miss. */
+  rewrittenOnMiss?: string;
   status: 'disabled' | 'routed' | 'fallback_all' | 'fallback_none' | 'router_error';
   matches: RoutingPreviewMatch[];
   finalToolScores?: RoutingPreviewToolScore[];

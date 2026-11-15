@@ -9,6 +9,8 @@ import type {
   RoutingTestRow,
   RoutingTestScore,
   RoutingTestStatus,
+  RoutingTestSummary,
+  RoutingTestTally,
 } from './RoutingTestsDto';
 import type { ImportJobState } from '../chatbotRag/ChatbotRagDto';
 import { initFileSummaries, markJobFailed, runBatches } from '../chatbotRag/runBatchImportJob';
@@ -36,6 +38,33 @@ export class RoutingTestsService {
 
   async list(): Promise<RoutingTestRow[]> {
     return this.repository.list();
+  }
+
+  /**
+   * Pass rates from the latest results, overall and per `lang`, so a gain in
+   * one language or script cannot hide a loss in another. Tests never run
+   * are counted as pending, not as failures.
+   */
+  async summary(): Promise<RoutingTestSummary> {
+    const rows = await this.repository.list();
+    const empty = (): RoutingTestTally => ({ run: 0, passed: 0, passRate: null, pending: 0 });
+    const total = empty();
+    const byLang: Record<string, RoutingTestTally> = {};
+    for (const test of rows) {
+      const lang = test.lang || 'und';
+      const tallies = [total, byLang[lang] ??= empty()];
+      for (const tally of tallies) {
+        if (test.lastStatus === 'pending') tally.pending += 1;
+        else {
+          tally.run += 1;
+          if (test.lastStatus === 'pass') tally.passed += 1;
+        }
+      }
+    }
+    for (const tally of [total, ...Object.values(byLang)]) {
+      tally.passRate = tally.run > 0 ? tally.passed / tally.run : null;
+    }
+    return { total, byLang };
   }
 
   async listPaginated(opts: { limit?: number; offset?: number; search?: string; status?: string }): Promise<PaginatedRoutingTestsResponse> {

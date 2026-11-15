@@ -64,6 +64,7 @@ export class RoutingSettingsService {
       fallbackOnRouterError: s.fallbackOnRouterError,
       fallbackOnNoMatch: s.fallbackOnNoMatch,
       dependencies: s.dependencies,
+      toolsOverride: s.toolsOverride,
     };
   }
 

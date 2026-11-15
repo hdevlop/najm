@@ -33,7 +33,7 @@ function makeService(overrides: Partial<Record<string, unknown>> = {}) {
     deleteSemanticById: mock(() => Promise.resolve()),
     deleteSemanticsByIds: mock(() => Promise.resolve(1)),
     deleteAllSemantics: mock(() => Promise.resolve(1)),
-    listSemanticsWithoutEmbeddings: mock(() => Promise.resolve([])),
+    listSemanticsToReindex: mock(() => Promise.resolve([])),
     updateSemanticEmbeddingById: mock(() => Promise.resolve()),
     pruneDuplicateSemantics: mock(() => Promise.resolve()),
     listEmbeddings: mock(() => Promise.resolve([])),
@@ -424,10 +424,10 @@ describe('SemanticPhraseService.reindexSemantics', () => {
     const unindexed = [makeRow({ embedding: null }), makeRow({ id: 'def', embedding: null })];
     const embedBatch = mock(() => Promise.resolve([new Array(768).fill(0.1)]));
     const updateSemanticEmbeddingById = mock(() => Promise.resolve());
-    const listSemanticsWithoutEmbeddings = mock(() => Promise.resolve(unindexed));
+    const listSemanticsToReindex = mock(() => Promise.resolve(unindexed));
 
     const { service } = makeService({
-      repository: { listSemanticsWithoutEmbeddings, updateSemanticEmbeddingById },
+      repository: { listSemanticsToReindex, updateSemanticEmbeddingById },
       embedding: { embedBatch },
     });
 
@@ -445,7 +445,7 @@ describe('SemanticPhraseService.reindexSemantics', () => {
 
     const { service } = makeService({
       repository: {
-        listSemanticsWithoutEmbeddings: mock(() => Promise.resolve(unindexed)),
+        listSemanticsToReindex: mock(() => Promise.resolve(unindexed)),
         updateSemanticEmbeddingById,
       },
       embedding: { embedBatch },

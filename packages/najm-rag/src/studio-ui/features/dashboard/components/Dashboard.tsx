@@ -303,6 +303,16 @@ export function Dashboard({ onNavigate }: DashboardProps) {
                 tone={embeddingOnline ? 'good' : 'warn'}
                 icon={Activity}
               />
+              {typeof status?.staleSemanticCount === 'number' && (
+                <HealthItem
+                  label="Phrase vectors"
+                  value={status.staleSemanticCount > 0
+                    ? `${status.staleSemanticCount} to reindex`
+                    : 'Current'}
+                  tone={status.staleSemanticCount > 0 ? 'warn' : 'good'}
+                  icon={Languages}
+                />
+              )}
               <HealthItem
                 label="Similarity"
                 value={`${Math.round((settings?.similarityThreshold ?? 0) * 100)}% threshold`}

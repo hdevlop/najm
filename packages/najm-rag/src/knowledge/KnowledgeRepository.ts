@@ -6,6 +6,22 @@ import type { VectorStrategy } from '../vectorStore';
 import type { ChunkWithSource } from './KnowledgeDto';
 import { KnowledgeValidator } from './KnowledgeValidator';
 
+/**
+ * Source metadata as callers see it: without the pasted-text body that older
+ * text documents store under `sourceText`.
+ */
+export function publicSourceMetadata(metadata: unknown): Record<string, unknown> | null {
+  if (!metadata || typeof metadata !== 'object' || Array.isArray(metadata)) return (metadata as any) ?? null;
+  if (!('sourceText' in metadata)) return metadata as Record<string, unknown>;
+  const { sourceText: _body, ...rest } = metadata as Record<string, unknown>;
+  return rest;
+}
+
+/** `enabled` is text ('true'/'false') on PostgreSQL and an integer on SQLite. */
+function isChunkEnabled(value: unknown): boolean {
+  return !(value === false || value === 0 || value === '0' || value === 'false');
+}
+
 @Repository()
 export class KnowledgeRepository {
   @DB() declare db: any;
@@ -34,22 +50,38 @@ export class KnowledgeRepository {
     const chunks = this.validator.chunksTable();
     const sources = this.validator.sourcesTable();
 
-    const rows = await this.db
-      .select({
-        chunkId: chunks.id,
-        text: chunks.text,
-        page: chunks.page,
-        ordinal: chunks.ordinal,
-        docId: sources.id,
-        namespace: sources.namespace,
-        sourceType: sources.sourceType,
-        originalPath: sources.originalPath,
-        metadata: sources.metadata,
-      })
+    // Sources are loaded once each, not once per matching chunk: their
+    // metadata can be large (older text documents keep their whole body there).
+    const allChunkRows = await this.db
+      .select({ chunkId: chunks.id, text: chunks.text, page: chunks.page, ordinal: chunks.ordinal,
+        documentId: chunks.documentId, enabled: chunks.enabled })
       .from(chunks)
-      .innerJoin(sources, eq(chunks.documentId, sources.id))
       .where(inArray(chunks.id, chunkIds));
+    const chunkRows = (allChunkRows ?? []).filter((row: any) => isChunkEnabled(row.enabled));
+    if (!chunkRows.length) return [];
 
-    return rows ?? [];
+    const documentIds = [...new Set<string>(chunkRows.map((row: any) => row.documentId))];
+    const sourceRows = await this.db
+      .select({ id: sources.id, namespace: sources.namespace, sourceType: sources.sourceType,
+        originalPath: sources.originalPath, metadata: sources.metadata })
+      .from(sources)
+      .where(inArray(sources.id, documentIds));
+    const sourceById = new Map<string, any>(sourceRows.map((row: any) => [row.id, row]));
+
+    return chunkRows.flatMap((row: any) => {
+      const source = sourceById.get(row.documentId);
+      if (!source) return [];
+      return [{
+        chunkId: row.chunkId,
+        text: row.text,
+        page: row.page,
+        ordinal: row.ordinal,
+        docId: source.id,
+        namespace: source.namespace,
+        sourceType: source.sourceType,
+        originalPath: source.originalPath,
+        metadata: publicSourceMetadata(source.metadata),
+      }];
+    });
   }
 }

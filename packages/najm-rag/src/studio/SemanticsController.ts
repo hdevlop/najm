@@ -140,10 +140,11 @@ export class SemanticsController {
   }
 
   @Post('/semantics/reindex')
-  @McpTool('Reindex all semantic phrases (regenerate embeddings)')
-  async reindexSemantics(@User() user: any) {
-    const result = await this.semantics.reindexSemantics();
-    await this.audit.recordAudit('reindex_semantics', 'Reindex all semantics', user?.id ?? null);
+  @McpTool('Re-embed semantic phrases that have no embedding or were embedded with a different model or settings')
+  async reindexSemantics(@User() user: any, @Query('force') force?: string) {
+    const all = force === 'true' || force === '1';
+    const result = await this.semantics.reindexSemantics({ force: all });
+    await this.audit.recordAudit('reindex_semantics', all ? 'Reindex all semantics (forced)' : 'Reindex stale semantics', user?.id ?? null);
     return result;
   }
 

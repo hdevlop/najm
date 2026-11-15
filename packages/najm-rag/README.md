@@ -78,17 +78,83 @@ not a complete translator or a promise that every embedding model routes better.
 
 `words` extends/overrides the preset; `null` disables a preset entry. Keys are
 normalized Arabic words and meaningful shadda is preserved. `rewriteRules` are
-literal Arabic word sequences, applied in order before the built-in count rule
-and word substitutions; vowel marks and attached conjunctions are supported.
+literal Arabic word sequences matched against the message as typed (after the
+cleanup below, before anything else), applied in order before the built-in
+count rule; vowel marks and attached conjunctions are supported.
 Apps own domain meanings such as attendance, grades, payments and what “the
 number” refers to. Unknown words and names remain unchanged unless they match
 a configured rule; keep ambiguous/name-like terms out of the shared preset.
 
-Existing **semantic phrases** remain example questions attached to tools.
-`rewriteRules` transform query text before that semantic matching. When enabling
-or changing the preset, re-run held-out routing cases and check both phrase and
-description matches. Rewritten queries may match previously indexed Darija
-examples differently; tune those examples separately. No LLM request is added.
+Before the word list, the rewriter removes tatweel (`ـ`), collapses a letter
+stretched three or more times, turns Arabic-Indic digits into `0-9`, rewrites a
+joined negation (`ماعرفتش` → `لم عرفت`, unless the word list has the word) and
+strips present/future prefixes and the first-person `ن` before known verbs
+(`كنقلب` → `قلب`, `نزيد` → `زيد`) and an object pronoun attached to an
+imperative (`زيدلي`, `حطها`). These apply only to a fixed list of verbs, so
+words such as `كتاب`, `غياب` and `نسيم` stay as they are.
+
+The preset holds everyday verbs (`حيد`, `زيد`, `مسح`, `خوي`, `بدل`, ...),
+quantities and courtesy words. Add your app's nouns and payment words through
+`words`; for a shop, for example:
+
+```typescript
+createDarijaQueryRewriter({
+  words: { البانيي: 'السله', الكوموند: 'الطلب', الكونط: 'الحساب', المنتوج: 'المنتج', خلص: 'ادفع' },
+})
+```
+
+Existing **semantic phrases** remain example questions attached to tools. They
+are embedded through the same rewrite as messages, so a phrase typed as a
+question matches it. No LLM request is added. When enabling or changing the
+preset, re-run held-out routing cases (`routing-benchmark.ts --darija`) and
+check both phrase and description matches.
+
+`words` also accepts Latin-script (Arabizi) keys such as `ch7al` or `bghit`,
+matched as whole tokens, digits included. None are preset, because many
+Arabizi spellings are also French or English words (`fin`, `dial`); add the
+ones your users write. Adding Arabizi example phrases to tools (for example
+under `lang: 'darija-latn'`) helps without any rewriting.
+
+When you change the rewriter, also change `routingTextVersion` (any string).
+Phrases record which embedder setup produced their vectors, and "reindex
+semantics" re-embeds the ones that no longer match.
+
+#### Second chance for a miss
+
+`rewriteRoutingQueryOnMiss` runs only when a message matched no tool. It can
+call an LLM to translate the message; routing then runs once more on the result.
+It gets 1.5 s and an abort signal, results are cached per message, and a
+failure keeps the no-match outcome. It is off unless set, and it adds a model
+call to every unmatched message.
+
+The model must translate Darija reliably and answer within the limit. On the
+routing benchmark, a local `qwen2.5:1.5b` made routing worse: it mistranslated
+most Darija and Arabizi, answered greetings instead of translating them (so
+small talk matched tools), and took over 1.5 s for a third of the calls. Small
+talk reaches this hook too, so tell the model to translate and never answer,
+and measure with `routing-benchmark.ts --dr7 --llm <model>` before enabling it.
+
+```typescript
+rag({
+  toolRouting: { enabled: true },
+  rewriteRoutingQueryOnMiss: async (message, { signal }) => {
+    const { text } = await generateText({ model, abortSignal: signal, prompt: `Rewrite in Modern Standard Arabic: ${message}` });
+    return text;
+  },
+});
+```
+
+#### Unmatched queries
+
+A message that matched no tool is recorded in the studio's unmatched inbox (the
+user's latest message only), without delaying the reply. Each entry shows the
+closest tool below the threshold, which "Map" starts on, and, with a
+`rewriteRoutingQuery`, the text routing embeds after the rewrite. Entries stay until
+they are mapped or discarded; `unmatchedRetentionDays: 30` deletes entries not
+seen for 30 days, hourly. They hold users' messages, so set a limit that fits
+your privacy policy. Rows written before this release may hold several turns
+joined by `---`; the najm repository's `packages/najm-rag/scripts/cleanup-multiturn-routing-rows.ts <db>` (not published to npm)
+lists them, and `--apply` deletes them.
 
 ### Tool Routing
 
@@ -197,19 +263,25 @@ rag({
 });
 ```
 
-Prefixes are model-specific and empty by default. The example uses EmbeddingGemma's
-retrieval prompts. `embed(text)` embeds a query; `embed(text, 'document')` and
+Prefixes are model-specific. With an EmbeddingGemma model (the default) and
+neither prefix set, the retrieval prompts above are used and the routing threshold
+defaults to 0.35; the prompts lower every score. Set either prefix, even to `''`,
+to use your own prompts; the threshold then defaults to 0.45, as for every other
+model, whose prefixes are empty. `embed(text)` embeds a query; `embed(text, 'document')` and
 `embedBatch(texts)` embed indexed content. `embedBatch(texts, 'query')` is also
 available. Batches are sequential and default to 16 inputs per request. Each batch
 has its own timeout; callers may impose an overall indexing deadline separately.
 
 Queries and indexing can wait differently. A CPU embedding model may need many
 seconds for a batch of long documents but a fraction of a second for a chat
-message, so give queries a shorter `queryTimeoutMs` (default: `timeoutMs`). With
-`queryFailureCooldownMs`, a query that times out or cannot connect makes the
-following queries fail at once for that long, so one message's routing and
-knowledge search do not each wait out the timeout during an outage; a success
-or a healthy health check ends the window. Indexing is never skipped.
+message, so queries have their own `queryTimeoutMs` (default: 4000, or `timeoutMs`
+when that is shorter). With `queryFailureCooldownMs` (default: 15000), a query that
+times out or cannot connect makes the following queries fail at once for that long,
+so one message's routing and knowledge search do not each wait out the timeout
+during an outage; a success or a healthy health check ends the window. Set it to 0
+to try the provider on every query. Indexing is never skipped. A cold local model
+can take longer than 4 s to answer its first query; raise `queryTimeoutMs` or keep
+the model loaded (Ollama's `keep_alive`) rather than turning the cooldown off.
 
 ```typescript
 embedding: { timeoutMs: 60_000, queryTimeoutMs: 5_000, queryFailureCooldownMs: 30_000 }
@@ -234,11 +306,12 @@ llama.cpp even when asked for 768, and supports shortening to 768. Model-specifi
 query instructions still belong in `queryPrefix`.
 
 Bundled vector schemas remain fixed at 768 dimensions; setting `dimensions` does
-not migrate storage. Use a compatible model/output dimension. When changing model,
-quantization or prefixes, rebuild all affected indexes before serving queries;
-matching dimensions alone do not imply compatible vector spaces. Existing tool
-fingerprints do not automatically trigger rebuilding for embedding configuration
-changes. Start with an empty index or use an explicit reviewed reindex procedure.
+not migrate storage. Use a compatible model/output dimension. Matching dimensions
+alone do not imply compatible vector spaces. After a change of model, dimensions,
+truncation or document prefix, tools are re-embedded on the next indexing run and
+phrases are reported stale until "reindex semantics" runs; knowledge documents
+must be reindexed one by one. Quantization is not detected: reindex after changing
+it.
 
 Run a local server with a pinned llama.cpp build and a verified model file:
 
@@ -257,8 +330,8 @@ rag({
   toolRouting: {
     enabled: true,              // enable RAG-powered tool selection
     maxTools: 12,               // max tools sent to LLM per turn (default: 12)
-    topSemanticHits: 8,         // phrase matches to consider (default: 8)
-    similarityThreshold: 0.45, // cosine similarity floor (default: 0.45)
+    topSemanticHits: 8,         // tools matched before dependencies (default: 8)
+    similarityThreshold: 0.35, // cosine floor (default: 0.35 with EmbeddingGemma prompts, else 0.45)
     fallbackOnRouterError: 'all',  // 'all' | 'none' when embedding fails
     fallbackOnNoMatch: 'none',     // 'all' | 'none' when no tools score above threshold
     dependencies: {},             // tool -> dependent tools mapping
@@ -266,6 +339,28 @@ rag({
   },
 })
 ```
+
+How a tool is picked for a message:
+
+1. The user's latest message is routed on its own. Only when it matches nothing
+   are the last turns routed together, so a bare "yes" still follows the
+   question it answers. A miss is recorded with the latest message.
+2. Example phrases and tool descriptions are searched together. Each tool scores
+   the better of its best phrase and its description, so a tool without phrases
+   still competes, and a tool with many phrases cannot fill the list.
+3. Tools at or above `similarityThreshold` are kept, best first, up to
+   `topSemanticHits`; the best one is the primary. Dependencies join, and write
+   tools other than the primary and its dependencies are dropped.
+
+Phrases are stored as typed and embedded as routing embeds a message:
+lowercased, with Arabic letter variants folded and `rewriteRoutingQuery`
+applied. Phrases saved by earlier releases are re-embedded by "reindex
+semantics".
+
+To measure a change on your own data, the najm repository has
+`packages/najm-rag/scripts/routing-benchmark.ts` (not published to npm). It runs
+a case file through this router against a live Ollama model and reports the
+right-primary rate per language and the share of small talk given tools.
 
 ### `ragStudio()`
 
@@ -335,8 +430,36 @@ const db = drizzle(sqlite, {
 ```typescript
 import { ragSchema } from 'najm-rag/sqlite';  // SQLite (uses sqlite-vec for vectors)
 import { ragSchema } from 'najm-rag/pg';      // PostgreSQL (uses pgvector)
-import { ragSchema } from 'najm-rag/mysql';   // MySQL (no vector operations)
+import { ragSchema } from 'najm-rag/mysql';   // MySQL: table definitions only
 ```
+
+**MySQL is not supported at runtime.** `najm-rag/mysql` only defines the tables,
+for apps that keep one Drizzle schema across dialects. Tool routing refuses to
+start on MySQL, knowledge search has no MySQL vector search, and no part of the
+plugin has been tested on a MySQL server. Use PostgreSQL or SQLite.
+
+### Migrations
+
+The exported schema (`najm-rag/sqlite`, `najm-rag/pg`) holds every table,
+column and index the plugin uses; a test checks this against the runtime code
+on both dialects. Spread `ragSchema` into your Drizzle schema and generate
+migrations with drizzle-kit as you do for your own tables. On PostgreSQL, run
+`CREATE EXTENSION IF NOT EXISTS vector;` before the first migration.
+
+Until your migrations own these tables, the repositories add a missing column
+or table the first time they need it, which needs a database user allowed to
+alter tables. Once they do, turn that off:
+
+```typescript
+rag({ ensureSchema: false, toolRouting: { enabled: true } });
+```
+
+With `ensureSchema: false` the plugin never runs `CREATE` or `ALTER`; a missing
+column then fails the query that needs it. The runtime step will be removed in
+a later major release.
+
+This release adds two nullable text columns: `chatbot_tool_semantics.fingerprint`
+and `chatbot_unmatched_queries.nearest_tool`.
 
 ### Tables included in `ragSchema`
 
@@ -387,7 +510,7 @@ Imports `semantics.json` directly into the database (`chatbot_tool_semantics` ta
 | `POST` | `/chatbot-rag/semantics` | Create semantic phrase (auto-embeds) |
 | `PATCH` | `/chatbot-rag/semantics/:id` | Update phrase (re-embeds if changed) |
 | `DELETE` | `/chatbot-rag/semantics/:id` | Delete phrase + vector |
-| `POST` | `/chatbot-rag/semantics/reindex` | Re-embed all unembedded phrases |
+| `POST` | `/chatbot-rag/semantics/reindex` | Re-embed phrases with no vector or one from a different embedder setup; `?force=true` re-embeds all |
 | `POST` | `/chatbot-rag/semantics/import` | Batch import from JSON |
 | `GET` | `/chatbot-rag/semantics/export` | Export to JSON |
 | `POST` | `/chatbot-rag/routing/preview` | Test a query against the router |

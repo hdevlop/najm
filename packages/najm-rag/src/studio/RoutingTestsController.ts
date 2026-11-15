@@ -64,6 +64,12 @@ export class RoutingTestsController {
     return this.routingTests.export();
   }
 
+  @Get('/routing-tests/summary')
+  @McpTool('Pass rate of the latest routing test results, overall and per language')
+  async routingTestSummary() {
+    return this.routingTests.summary();
+  }
+
   @Get('/routing-tests/:id')
   @McpTool('Get a single routing test by id with its last run result')
   @Validate({ params: routingTestIdParam })

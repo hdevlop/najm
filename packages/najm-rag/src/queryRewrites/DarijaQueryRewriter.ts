@@ -17,6 +17,9 @@ const DIACRITICS = /[ً-ْ]/g;
 const VOWELS = /[ً-ِْ]/g;
 const ARABIC_WORD = /[ء-يً-ْ]+/g;
 const ARABIC_KEY = /^[ء-يً-ْ]+$/;
+/** Arabizi writes some Arabic letters as digits (3, 7, 9), so tokens include digits. */
+const LATIN_KEY = /^[a-z0-9']+$/;
+const LATIN_WORD = /[A-Za-z0-9']+/g;
 const fold = (text: string) => text.replace(/[أإآ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه');
 const keyOf = (text: string) => fold(text).replace(VOWELS, '');
 const vowelledWord = (word: string) => [...word].join('[ً-ِْ]*') + '[ً-ِْ]*';
@@ -41,7 +44,44 @@ const WORDS: Readonly<Record<string, string>> = {
   دابا: 'الان', البارح: 'امس', نهار: 'يوم', السيمانه: 'الاسبوع', سيمانه: 'اسبوع',
   العشيه: 'المساء', جاي: 'القادم', الجاي: 'القادم', جايه: 'القادمه',
   الجايه: 'القادمه', جايين: 'القادمه',
+  // Everyday verbs, quantities and courtesy words. Payments, prices and shop
+  // nouns (خلص, شري, الثمن, الكوموند...) stay out: apps add them through `words`.
+  حيد: 'ازل', حيدو: 'ازله', حيدها: 'ازلها', زيد: 'اضف', زيدها: 'اضفها', زيدو: 'اضفه', مسح: 'احذف', نمسح: 'احذف',
+  خوي: 'افرغ', فرغ: 'افرغ', بدل: 'غير', نبدل: 'اغير', نقص: 'خفض', حط: 'ضع',
+  سد: 'اغلق', دخلني: 'ادخلني', خرجني: 'اخرجني', نخرج: 'اخرج', نتسجل: 'اسجل',
+  كلشي: 'كل شيء', كولشي: 'كل شيء', كامل: 'كل', كاملين: 'كل', شي: 'بعض', ماشي: 'ليس', صافي: 'حسنا', عافاك: 'من فضلك',
+  لقا: 'جد', شوف: 'انظر', نشوف: 'انظر', نتفرج: 'اشاهد', عندي: 'لدي', عندكم: 'لديكم', واه: 'نعم', جوج: 'اثنان',
+  تلاته: 'ثلاثه', حاجه: 'شيء', نمره: 'رقم', سميه: 'اسم', السميه: 'الاسم', سميتو: 'اسمه',
+  // نشوف was 'ارى', which the ى→ي fold turns into اري ("show me").
+  ابغيت: 'اريد', بغيتي: 'تريد', نبغي: 'اريد', كنبغي: 'اريد', بغا: 'يريد', عليا: 'علي',
+  عرف: 'اعرف', خرج: 'اخرج', دخل: 'ادخل', عطي: 'اعط', ناخد: 'اخذ', خد: 'خذ', جيبلي: 'احضر لي',
+  خدام: 'يعمل', خدامه: 'تعمل', شغال: 'يعمل', شغاله: 'تعمل', مزيان: 'جيد', مزيانه: 'جيده',
+  باقي: 'ما زال', باقا: 'ما زال', وقع: 'حدث',
 };
+
+/**
+ * Verb stems whose present/future prefixes (ك, كي, كت, كن, غ, plus a person
+ * letter) are stripped. A general prefix rule would turn كتاب into تاب and
+ * غياب into a future verb, so only these stems qualify.
+ */
+const VERB_STEMS = ['شوف', 'دير', 'مشي', 'خلص', 'عرف', 'قدر', 'قلب', 'زيد', 'مسح', 'بدل', 'خرج', 'دخل', 'شري', 'حيد', 'خوي', 'سجل'];
+const VERB_PREFIX = new RegExp(`${START}(?:كي|كت|كن|ك|غ)([نتي]?)(${VERB_STEMS.join('|')})(و|ي|ين)?${END}`, 'g');
+/** نزيد, نشوفو: the bare first-person prefix before the same stems. */
+const FIRST_PERSON = new RegExp(`${START}ن(${VERB_STEMS.join('|')})(و)?${END}`, 'g');
+/** زيدلي, حطها, حيدهم: an object pronoun attached to an imperative. */
+const OBJECT_STEMS = [...VERB_STEMS, 'حط', 'جيب', 'عطي', 'صيفط'];
+const OBJECT_SUFFIX = new RegExp(`${START}(${OBJECT_STEMS.join('|')})(?:ليا|لي|لينا|ليه|ليها|ليهم|ها|هم)${END}`, 'g');
+/** ما…ش around a stem of three or more letters: ماخلصتش → لم خلصت. */
+const JOINED_NEGATION = new RegExp(`${START}ما([ء-ي]{3,})ش${END}`, 'g');
+
+/** Tatweel, letters stretched three or more times, Arabic-Indic digits. */
+function cleanArabic(text: string): string {
+  return text
+    .replace(/ـ/g, '')
+    .replace(/([ء-ي])\1{2,}/g, '$1')
+    .replace(/[٠-٩]/g, (digit) => String(digit.charCodeAt(0) - 0x0660))
+    .replace(/[۰-۹]/g, (digit) => String(digit.charCodeAt(0) - 0x06f0));
+}
 
 function compileRule(rule: DarijaRewriteRule): [RegExp, string] {
   if (typeof rule.from !== 'string' || typeof rule.to !== 'string') {
@@ -64,10 +104,22 @@ function compileRule(rule: DarijaRewriteRule): [RegExp, string] {
  */
 export function createDarijaQueryRewriter(options: DarijaQueryRewriteOptions = {}): RoutingQueryRewrite {
   const words = new Map(Object.entries(WORDS));
+  // Latin-script (Arabizi) words come only from the app; none are preset,
+  // because many Arabizi spellings are also French or English words.
+  const latinWords = new Map<string, string>();
   for (const [word, replacement] of Object.entries(options.words ?? {})) {
+    if (replacement !== null && typeof replacement !== 'string') {
+      throw new TypeError('Darija word overrides need a string or null');
+    }
+    const latin = word.trim().toLowerCase();
+    if (LATIN_KEY.test(latin)) {
+      if (replacement === null) latinWords.delete(latin);
+      else latinWords.set(latin, replacement);
+      continue;
+    }
     const key = keyOf(word.trim());
-    if (!ARABIC_KEY.test(key) || (replacement !== null && typeof replacement !== 'string')) {
-      throw new TypeError('Darija word overrides need an Arabic word and a string or null');
+    if (!ARABIC_KEY.test(key)) {
+      throw new TypeError('Darija word overrides need one Arabic or Latin-script word');
     }
     if (replacement === null) words.delete(key);
     else words.set(key, replacement);
@@ -104,15 +156,29 @@ export function createDarijaQueryRewriter(options: DarijaQueryRewriteOptions = {
   }
 
   return (normalized) => {
-    let text = normalized;
+    let text = cleanArabic(normalized);
+    // Rules come first: an app writes them in the user's wording (بغيت نعرف).
     for (const [pattern, replacement] of rules) {
       text = text.replace(pattern, (_match, before: string, and: string | undefined) =>
         `${before}${replacement && and ? 'و' : ''}${replacement}`);
     }
+    // A joined negation the word list knows (ماكاينش) is left to the list.
+    text = text.replace(JOINED_NEGATION, (match, before: string, stem: string) =>
+      (words.has(keyOf(`ما${stem}ش`).replace(DIACRITICS, '')) ? match : `${before}لم ${stem}`));
+    text = text.replace(VERB_PREFIX, (_match, before: string, _person: string, stem: string) => `${before}${stem}`);
+    // A form the word list knows (نشوف, زيدها) is left to the list.
+    text = text.replace(FIRST_PERSON, (match, before: string, stem: string, plural?: string) =>
+      (words.has(`ن${stem}${plural ?? ''}`) ? match : `${before}${stem}`));
+    text = text.replace(OBJECT_SUFFIX, (match, before: string, stem: string) =>
+      (words.has(keyOf(match.slice(before.length))) ? match : `${before}${stem}`));
     text = text.replace(negation, (match, before: string, verb: string) => {
       const joined = `ما${keyOf(verb).replace(DIACRITICS, '')}`;
       return words.has(joined) ? `${before}${joined}` : match;
     });
-    return text.replace(ARABIC_WORD, rewriteWord).replace(/ {2,}/g, ' ').trim();
+    text = text.replace(ARABIC_WORD, rewriteWord);
+    if (latinWords.size > 0) {
+      text = text.replace(LATIN_WORD, (word) => latinWords.get(word.toLowerCase()) ?? word);
+    }
+    return text.replace(/ {2,}/g, ' ').trim();
   };
 }

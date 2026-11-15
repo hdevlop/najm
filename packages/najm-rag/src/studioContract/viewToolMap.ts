@@ -24,6 +24,7 @@ export const STUDIO_VIEW_TOOL_MAP: Record<StudioAssistantView, string[]> = {
     'rag_studio_tool_list',
     'rag_studio_list_routing_tests',
     'rag_studio_export_routing_tests',
+    'rag_studio_routing_test_summary',
     'rag_studio_get_routing_test',
     'rag_studio_create_routing_test',
     'rag_studio_run_all_routing_tests',

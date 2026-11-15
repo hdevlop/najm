@@ -15,8 +15,8 @@ describe('ToolRouterService', () => {
     groupToolsMap?: Map<string, string[]>;
   }) =>
     ({
-      searchSemantics: mock(() => Promise.resolve(opts.semantics ?? [])),
-      searchEmbeddings: mock(() => Promise.resolve(opts.embeddings ?? [])),
+      searchSemantics: mock((_e: number[], limit: number) => Promise.resolve((opts.semantics ?? []).slice(0, limit))),
+      searchEmbeddings: mock((_e: number[], limit: number) => Promise.resolve((opts.embeddings ?? []).slice(0, limit))),
       getGroupsForTools: mock(() => Promise.resolve(new Set(opts.groups ?? []))),
       getToolsByGroup: mock(() => Promise.resolve(opts.groupTools ?? [])),
       getToolsByGroups: mock(() => Promise.resolve(opts.groupToolsMap ?? new Map())),
@@ -127,10 +127,10 @@ describe('ToolRouterService', () => {
     expect(result.tools.length).toBeLessThanOrEqual(5);
   });
 
-  test('primary is the tool with the strongest aggregate score, not just matches[0]', async () => {
-    // Realistic Arabic-style scenario: products_get_my_products has a single phrase
-    // that scores 0.60 (an outlier), but products_delete has 6 phrases clustered
-    // 0.52–0.57. Aggregate should pick products_delete.
+  test('Q1: the primary is the best-scoring tool, however many phrases another tool has', async () => {
+    // products_delete has six phrases clustered 0.51–0.57, products_get_my_products
+    // one at 0.60. Summing each tool's top three picked products_delete; on the
+    // routing benchmark that rule got 8 points fewer right primaries.
     const tools = [
       { name: 'products_delete', description: 'Delete', annotations: { destructive: true } },
       { name: 'products_get_my_products', description: 'Get my products', annotations: { readOnlyHint: true } },
@@ -162,9 +162,55 @@ describe('ToolRouterService', () => {
 
     const result = await service.findRelevantTools('من السوق PRD-884 أزل الإعلان');
     const names = result.tools.map((t) => t.name);
-    expect(names[0]).toBe('products_delete');
-    // products_update (single 0.54 hit) should be dropped as a write alternative
+    expect(names[0]).toBe('products_get_my_products');
+    // A read-only primary never brings write tools along.
+    expect(names).not.toContain('products_delete');
     expect(names).not.toContain('products_update');
+  });
+
+  test('Q1: a tool with many phrases does not push other tools out of the list', async () => {
+    const tools = [
+      { name: 'orders_list', description: 'List orders', annotations: { readOnlyHint: true } },
+      { name: 'orders_get', description: 'Get an order', annotations: { readOnlyHint: true } },
+    ];
+    const repo = makeRepository({
+      semantics: [
+        ...Array.from({ length: 8 }, (_, i) => ({ toolName: 'orders_list', similarity: 0.8 - i * 0.01 })),
+        { toolName: 'orders_get', similarity: 0.7 },
+      ],
+    });
+    const service = createToolRouterService(
+      { toolRouting: { enabled: true, maxTools: 12, topSemanticHits: 2, similarityThreshold: 0.45 } } as any,
+      makeRegistry(tools),
+      makeEmbedding(new Array(768).fill(0.1)),
+      repo,
+      { error: undefined } as any,
+    );
+
+    const names = (await service.findRelevantTools('my orders')).tools.map((t) => t.name);
+    expect(names).toEqual(['orders_list', 'orders_get']);
+  });
+
+  test('Q2: a tool without phrases wins on its description over a weaker phrase hit', async () => {
+    const tools = [
+      { name: 'permissions_get_by_role', description: 'List permissions of a role', annotations: { readOnlyHint: true } },
+      { name: 'roles_get_all', description: 'List roles', annotations: { readOnlyHint: true } },
+    ];
+    const repo = makeRepository({
+      semantics: [{ toolName: 'roles_get_all', similarity: 0.5 }],
+      embeddings: [{ toolName: 'permissions_get_by_role', similarity: 0.62 }, { toolName: 'roles_get_all', similarity: 0.4 }],
+    });
+    const service = createToolRouterService(
+      { toolRouting: { enabled: true, similarityThreshold: 0.45 } } as any,
+      makeRegistry(tools),
+      makeEmbedding(new Array(768).fill(0.1)),
+      repo,
+      { error: undefined } as any,
+    );
+
+    const names = (await service.findRelevantTools('which permissions does editor have')).tools.map((t) => t.name);
+    expect(names[0]).toBe('permissions_get_by_role');
+    expect(names).toContain('roles_get_all');
   });
 
   test('drops sibling write tools when primary match is a write', async () => {
@@ -286,14 +332,12 @@ describe('ToolRouterService', () => {
       { name: 'products_delete', description: 'Delete', annotations: { destructive: true } },
     ];
     const embedding = new Array(768).fill(0.1);
-    // products_get_by_id wins on aggregate (3 strong phrases),
-    // products_delete is a single noisy outlier with a slightly higher peak.
+    // products_get_by_id is the best match; products_delete is close behind.
     const repo = makeRepository({
       semantics: [
-        { toolName: 'products_get_by_id', similarity: 0.77 },
+        { toolName: 'products_get_by_id', similarity: 0.79 },
         { toolName: 'products_get_by_id', similarity: 0.72 },
-        { toolName: 'products_get_by_id', similarity: 0.68 },
-        { toolName: 'products_delete', similarity: 0.79 },
+        { toolName: 'products_delete', similarity: 0.77 },
       ],
     });
 

@@ -101,9 +101,10 @@ describe('SemanticPhraseService', () => {
     });
 
     expect(embedding.embedBatch).toHaveBeenCalledTimes(1);
+    // DR1: embedded the way routing embeds a query (ة folds to ه)...
     expect(embedding.embedBatch.mock.calls[0][0]).toEqual([
       'list students',
-      'قائمة الطلاب',
+      'قائمه الطلاب',
     ]);
 
     expect(repository.upsertSemantic).toHaveBeenCalledTimes(2);
@@ -116,6 +117,8 @@ describe('SemanticPhraseService', () => {
     const secondCall = repository.upsertSemantic.mock.calls[1][0];
     expect(secondCall.embedding).toEqual(new Array(768).fill(0.2));
     expect(secondCall.lang).toBe('ar');
+    // ...and stored as typed.
+    expect(secondCall.phrase).toBe('قائمة الطلاب');
 
     expect(result.results.length).toBe(2);
     expect(result.results[0].status).toBe('inserted');

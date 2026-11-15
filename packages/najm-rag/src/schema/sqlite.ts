@@ -25,6 +25,8 @@ export const chatbotToolSemanticsTable = sqliteTable('chatbot_tool_semantics', {
   lang: text('lang').notNull().default('und'),
   source: text('source'),
   sourceFile: text('source_file'),
+  /** Embedder setup that made `embedding`; see ToolIndexRepository.semanticFingerprint. */
+  fingerprint: text('fingerprint'),
   embedding: blob('embedding', { mode: 'buffer' }),
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at')
@@ -107,6 +109,7 @@ export const chatbotUnmatchedQueriesTable = sqliteTable('chatbot_unmatched_queri
   score: text('score').notNull(),
   threshold: text('threshold').notNull(),
   source: text('source').notNull().default('router'),
+  nearestTool: text('nearest_tool'),
   occurrenceCount: integer('occurrence_count').notNull().default(1),
   createdAt: text('created_at').$defaultFn(() => new Date().toISOString()),
   updatedAt: text('updated_at')

@@ -21,7 +21,8 @@ export interface EmbeddingDiagnostic {
   startMs: number;
   durationMs: number;
   inputCount: number;
-  cache: 'hit' | 'miss' | 'bypass';
+  /** `shared`: waited for an identical request already in flight; it has no attempts of its own. */
+  cache: 'hit' | 'miss' | 'bypass' | 'shared';
   provider: string | null;
   model: string | null;
   timeoutMs: number | null;

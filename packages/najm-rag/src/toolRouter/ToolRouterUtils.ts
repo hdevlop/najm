@@ -39,6 +39,15 @@ export function rewriteRoutingQuery(normalized: string, rewrite?: (normalized: s
   return (typeof rewritten === 'string' && normalizeQuery(rewritten)) || normalized;
 }
 
+/**
+ * The text routing embeds for a message or a stored phrase: normalized, then
+ * rewritten. Phrases go through it too, so a phrase typed as a query matches.
+ */
+export function canonicalizeRoutingText(text: string, rewrite?: (normalized: string) => string): string {
+  const normalized = normalizeQuery(text);
+  return normalized ? rewriteRoutingQuery(normalized, rewrite) : text.trim();
+}
+
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object') return false;

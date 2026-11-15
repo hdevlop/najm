@@ -41,6 +41,7 @@ import { ragSchema as pgSchema } from './schema/pg';
 import { ragSchema as mysqlSchema } from './schema/mysql';
 import { loadRagRoutingConfig } from './config/loadRoutingConfig';
 import type { RagConfig, RagMergedConfig, RagDialect } from './config';
+import { DEFAULT_SIMILARITY_THRESHOLD, embeddingPresetFor } from './toolRouter/RoutingDefaults';
 
 const defaultRag = {
   enabled: false,
@@ -59,7 +60,6 @@ const defaultToolRouting = {
   enabled: false,
   maxTools: 12,
   topSemanticHits: 8,
-  similarityThreshold: 0.45,
   fallbackOnRouterError: 'all' as const,
   fallbackOnNoMatch: 'none' as const,
   dependencies: {},
@@ -132,6 +132,21 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
     );
   }
 
+  const embedding = {
+    ...defaultRag.embedding,
+    ...(effective.embedding?.provider === 'openai-compatible'
+      ? { baseUrl: 'http://localhost:8080/v1' }
+      : {}),
+    ...effective.embedding,
+  };
+  // Model prompts (EmbeddingGemma's retrieval prompts) when the app sets no
+  // prefix, with the threshold measured for them unless one is set.
+  const preset = embeddingPresetFor(embedding);
+  if (preset) Object.assign(embedding, { queryPrefix: preset.queryPrefix, documentPrefix: preset.documentPrefix });
+  const similarityThreshold = effective.toolRouting?.similarityThreshold
+    ?? preset?.similarityThreshold
+    ?? DEFAULT_SIMILARITY_THRESHOLD;
+
   return {
     dialect: dialect as RagDialect,
     configPath: effective.configPath,
@@ -139,22 +154,23 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
       ? effective.allowedLangs
       : undefined,
     rewriteRoutingQuery: typeof config?.rewriteRoutingQuery === 'function' ? config.rewriteRoutingQuery : undefined,
+    rewriteRoutingQueryOnMiss: typeof config?.rewriteRoutingQueryOnMiss === 'function' ? config.rewriteRoutingQueryOnMiss : undefined,
+    routingTextVersion: typeof effective.routingTextVersion === 'string' ? effective.routingTextVersion : undefined,
+    ensureSchema: effective.ensureSchema !== false,
+    unmatchedRetentionDays: typeof effective.unmatchedRetentionDays === 'number' && effective.unmatchedRetentionDays > 0
+      ? effective.unmatchedRetentionDays
+      : undefined,
     knowledge,
     rag: {
       enabled: ragEnabled,
-      embedding: {
-        ...defaultRag.embedding,
-        ...(effective.embedding?.provider === 'openai-compatible'
-          ? { baseUrl: 'http://localhost:8080/v1' }
-          : {}),
-        ...effective.embedding,
-      },
+      embedding,
       queryEmbeddingCacheSize: effective.queryEmbeddingCacheSize ?? defaultRag.queryEmbeddingCacheSize,
       indexOnBoot: effective.indexOnBoot ?? defaultRag.indexOnBoot,
     },
     toolRouting: {
       ...defaultToolRouting,
       ...effective.toolRouting,
+      similarityThreshold,
       enabled: routingEnabled,
     },
   };
@@ -222,7 +238,9 @@ export const rag = (config?: RagConfig) => {
     );
   }
 
-  if (knowledgeEnabled && routingEnabled) {
+  // The chatbot reads knowledge through this provider, with or without tool
+  // routing; without routing it has no studio settings and is always on.
+  if (knowledgeEnabled) {
     services.push(KnowledgeContextProvider);
   }
 
@@ -247,7 +265,7 @@ export const rag = (config?: RagConfig) => {
     builder.alias(CHATBOT_ROUTING_PREVIEW_PROVIDER, RoutingPreviewService);
   }
 
-  if (knowledgeEnabled && routingEnabled) {
+  if (knowledgeEnabled) {
     builder.alias(CHATBOT_CONTEXT_PROVIDER, KnowledgeContextProvider);
   }
 

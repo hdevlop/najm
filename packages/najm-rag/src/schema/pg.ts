@@ -25,6 +25,8 @@ export const chatbotToolSemanticsTable = pgTable('chatbot_tool_semantics', {
   lang: text('lang').notNull().default('und'),
   source: text('source'),
   sourceFile: text('source_file'),
+  /** Embedder setup that made `embedding`; see ToolIndexRepository.semanticFingerprint. */
+  fingerprint: text('fingerprint'),
   embedding: vector('embedding', { dimensions: 768 }),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' })
@@ -108,6 +110,7 @@ export const chatbotUnmatchedQueriesTable = pgTable('chatbot_unmatched_queries',
   score: text('score').notNull(),
   threshold: text('threshold').notNull(),
   source: text('source').notNull().default('router'),
+  nearestTool: text('nearest_tool'),
   occurrenceCount: integer('occurrence_count').notNull().default(1),
   createdAt: timestamp('created_at', { mode: 'string' }).defaultNow(),
   updatedAt: timestamp('updated_at', { mode: 'string' }).defaultNow().$onUpdate(() => sql`CURRENT_TIMESTAMP`),

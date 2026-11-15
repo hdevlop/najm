@@ -7,6 +7,9 @@ import { EmbeddingLru } from './EmbeddingUtils';
 import { startEmbeddingDiagnostic, type EmbeddingDiagnosticRecorder,
   type EmbeddingOperation, type EmbeddingOutcome } from '../diagnostics/EmbeddingDiagnostics';
 
+const DEFAULT_QUERY_TIMEOUT_MS = 4000;
+const DEFAULT_QUERY_FAILURE_COOLDOWN_MS = 15_000;
+
 @Service()
 export class EmbeddingService {
   private queryCache: EmbeddingLru;
@@ -63,8 +66,11 @@ export class EmbeddingService {
       throw new Error('Embedding batch size and dimensions must be positive integers');
     }
     const timeoutMs = (emb as any)?.timeoutMs ?? 8000;
-    const queryTimeoutMs = (emb as any)?.queryTimeoutMs ?? timeoutMs;
-    const queryFailureCooldownMs = (emb as any)?.queryFailureCooldownMs ?? 0;
+    // A chat message waits for its query embedding, so queries get a shorter
+    // default than indexing, and one failure skips the provider for a while
+    // instead of making routing and knowledge search each wait it out.
+    const queryTimeoutMs = (emb as any)?.queryTimeoutMs ?? Math.min(timeoutMs, DEFAULT_QUERY_TIMEOUT_MS);
+    const queryFailureCooldownMs = (emb as any)?.queryFailureCooldownMs ?? DEFAULT_QUERY_FAILURE_COOLDOWN_MS;
     if (!(queryTimeoutMs > 0) || !Number.isFinite(queryTimeoutMs)
       || !(queryFailureCooldownMs >= 0) || !Number.isFinite(queryFailureCooldownMs)) {
       throw new Error('Embedding query timeout must be positive and the failure cooldown zero or more');
@@ -87,23 +93,90 @@ export class EmbeddingService {
     };
   }
 
+  /**
+   * Requests not yet answered, by cache key. A chat message's routing and
+   * knowledge search often embed the same text at the same time; the second
+   * caller waits for the first request instead of sending its own.
+   */
+  private inFlight = new Map<string, Promise<number[]>>();
+
+  private trackInFlight(cacheKey: string, request: Promise<number[]>): void {
+    this.inFlight.set(cacheKey, request);
+    request.then(
+      () => { if (this.inFlight.get(cacheKey) === request) this.inFlight.delete(cacheKey); },
+      () => { if (this.inFlight.get(cacheKey) === request) this.inFlight.delete(cacheKey); },
+    );
+  }
+
+  private labelDiagnostic(diagnostic: EmbeddingDiagnosticRecorder, cache: 'hit' | 'shared', purpose: 'query' | 'document'): void {
+    if (!diagnostic) return;
+    const config = this.embeddingConfig;
+    Object.assign(diagnostic.data, { cache, provider: config.provider,
+      model: config.model, timeoutMs: purpose === 'query' ? config.queryTimeoutMs : config.timeoutMs });
+  }
+
   async embed(text: string, purpose: 'query' | 'document' = 'query', operation: EmbeddingOperation = 'unspecified'): Promise<number[]> {
     const diagnostic = startEmbeddingDiagnostic({ purpose, operation, inputCount: 1, cache: 'miss' });
     try {
       const cacheKey = `${purpose}\0${text}`;
       const cached = this.queryCache.get(cacheKey);
       if (cached) {
-        if (diagnostic) {
-          const config = this.embeddingConfig;
-          Object.assign(diagnostic.data, { cache: 'hit', provider: config.provider,
-            model: config.model, timeoutMs: purpose === 'query' ? config.queryTimeoutMs : config.timeoutMs });
-        }
+        this.labelDiagnostic(diagnostic, 'hit', purpose);
         return cached;
       }
-      const results = await this.embedBatchInternal([text], purpose, diagnostic);
-      if (!results[0]) throw new Error('Embedding service returned empty result for single text');
-      this.queryCache.set(cacheKey, results[0]);
-      return results[0];
+      const pending = this.inFlight.get(cacheKey);
+      if (pending) {
+        this.labelDiagnostic(diagnostic, 'shared', purpose);
+        return await pending;
+      }
+      const request = this.embedBatchInternal([text], purpose, diagnostic).then((results) => {
+        if (!results[0]) throw new Error('Embedding service returned empty result for single text');
+        this.queryCache.set(cacheKey, results[0]);
+        return results[0];
+      });
+      this.trackInFlight(cacheKey, request);
+      return await request;
+    } catch (err) {
+      if (diagnostic?.data.outcome !== 'cooldown') diagnostic?.fail();
+      throw err;
+    } finally {
+      diagnostic?.finish();
+    }
+  }
+
+  /**
+   * Query embeddings for several texts: cached ones are reused, texts already
+   * being embedded are awaited, and the rest go to the provider in one batch.
+   * Every result is cached under the same key `embed(text)` uses.
+   */
+  async embedQueries(texts: string[], operation: EmbeddingOperation = 'unspecified'): Promise<number[][]> {
+    const diagnostic = startEmbeddingDiagnostic({ purpose: 'query', operation, inputCount: texts.length, cache: 'miss' });
+    try {
+      const keyOf = (text: string) => `query\0${text}`;
+      const ready = new Map<string, number[] | Promise<number[]>>();
+      const misses: string[] = [];
+      let shared = false;
+      for (const text of new Set(texts)) {
+        const cached = this.queryCache.get(keyOf(text));
+        const pending = cached ? undefined : this.inFlight.get(keyOf(text));
+        if (cached) ready.set(text, cached);
+        else if (pending) { ready.set(text, pending); shared = true; }
+        else misses.push(text);
+      }
+      if (misses.length === 0) this.labelDiagnostic(diagnostic, shared ? 'shared' : 'hit', 'query');
+      else {
+        const batch = this.embedBatchInternal(misses, 'query', diagnostic);
+        misses.forEach((text, index) => {
+          const request = batch.then((results) => {
+            if (!results[index]) throw new Error('Embedding service returned fewer vectors than inputs');
+            this.queryCache.set(keyOf(text), results[index]);
+            return results[index];
+          });
+          this.trackInFlight(keyOf(text), request);
+          ready.set(text, request);
+        });
+      }
+      return await Promise.all(texts.map((text) => ready.get(text)!));
     } catch (err) {
       if (diagnostic?.data.outcome !== 'cooldown') diagnostic?.fail();
       throw err;

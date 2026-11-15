@@ -196,7 +196,7 @@ describe('EmbeddingService', () => {
     }
   });
 
-  test('queryTimeoutMs defaults to timeoutMs', async () => {
+  test('queryTimeoutMs defaults to timeoutMs when that is shorter than 4 s', async () => {
     const service = new EmbeddingService({
       rag: { embedding: { provider: 'ollama', baseUrl: 'http://localhost:11434', model: 'test', timeoutMs: 7 } },
     } as any, new EmbeddingValidator());
@@ -257,9 +257,9 @@ describe('EmbeddingService', () => {
     }
   });
 
-  test('without a cooldown every query tries the provider', async () => {
+  test('with the cooldown set to 0 every query tries the provider', async () => {
     const service = new EmbeddingService({
-      rag: { embedding: { provider: 'ollama', baseUrl: 'http://localhost:11434', model: 'test' } },
+      rag: { embedding: { provider: 'ollama', baseUrl: 'http://localhost:11434', model: 'test', queryFailureCooldownMs: 0 } },
     } as any, new EmbeddingValidator());
     const originalFetch = globalThis.fetch;
     let calls = 0;

@@ -14,9 +14,13 @@ export interface UnmatchedQuery {
   id: string;
   query: string;
   normalized: string;
+  /** What routing embeds after the app's rewrite; null without a rewrite. */
+  canonical?: string | null;
   score: number;
   threshold: number;
   source: string | null;
+  /** Closest tool below the threshold; null for older entries. */
+  nearestTool?: string | null;
   occurrenceCount: number;
   createdAt: string | null;
   updatedAt: string | null;

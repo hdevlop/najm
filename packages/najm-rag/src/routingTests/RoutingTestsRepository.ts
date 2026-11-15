@@ -169,6 +169,7 @@ export class RoutingTestsRepository {
   private async ensureTable(): Promise<void> {
     if (this.ready) return;
     this.ready = true;
+    if (this.config?.ensureSchema === false) return;
 
     if (this.config.dialect === 'sqlite' && typeof this.db.run === 'function') {
       await this.db.run(sql`

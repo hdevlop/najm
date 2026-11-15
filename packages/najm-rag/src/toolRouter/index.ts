@@ -5,6 +5,7 @@ export { ToolRoutingLoader } from './ToolRoutingLoader';
 export { ToolRouterValidator } from './ToolRouterValidator';
 export type {
   ToolRouterResult,
+  ToolRoutingRequest,
   ChatbotRoutingConfigProvider,
   RoutingPreviewMatch,
   RoutingPreviewDependency,
@@ -17,6 +18,7 @@ export {
   DEFAULT_INTENT_KEYWORDS,
   normalizeQuery,
   rewriteRoutingQuery,
+  canonicalizeRoutingText,
   normalizeArabic,
   EmbeddingLru,
   deepEqual,

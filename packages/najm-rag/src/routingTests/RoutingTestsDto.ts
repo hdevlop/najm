@@ -52,6 +52,21 @@ export interface PaginatedRoutingTestsResponse {
   offset: number;
 }
 
+export interface RoutingTestTally {
+  /** Tests with a result. */
+  run: number;
+  passed: number;
+  /** passed / run; null when nothing was run. */
+  passRate: number | null;
+  /** Tests never run. */
+  pending: number;
+}
+
+export interface RoutingTestSummary {
+  total: RoutingTestTally;
+  byLang: Record<string, RoutingTestTally>;
+}
+
 export interface RoutingTestRow {
   id: string;
   name: string;

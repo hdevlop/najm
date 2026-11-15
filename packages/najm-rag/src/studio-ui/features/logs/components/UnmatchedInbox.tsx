@@ -42,7 +42,9 @@ function ActionsCell({
   onMap: (id: string, toolName: string) => Promise<void>;
   onDiscard: (id: string) => Promise<void>;
 }) {
-  const [selectedTool, setSelectedTool] = useState('');
+  // Start on the closest tool so a correct near-miss maps in one click.
+  const nearest = item.nearestTool && tools.some((t) => t.name === item.nearestTool) ? item.nearestTool : '';
+  const [selectedTool, setSelectedTool] = useState(nearest);
   const [mapping, setMapping] = useState(false);
   const [discarding, setDiscarding] = useState(false);
 
@@ -110,17 +112,29 @@ export function UnmatchedInbox({ items, tools, loading, onRefresh, onMap, onDisc
         <div className="max-w-[280px]">
           <p className="truncate text-sm text-foreground">{row.original.query}</p>
           <p className="truncate text-xs text-muted-foreground">{row.original.normalized}</p>
+          {row.original.canonical && row.original.canonical !== row.original.normalized && (
+            <p className="truncate text-xs text-muted-foreground" title="Text routing embeds after the rewrite">
+              → {row.original.canonical}
+            </p>
+          )}
         </div>
       ),
     },
     {
       accessorKey: 'score',
       header: 'Score',
-      size: 120,
+      size: 160,
       cell: ({ row }) => (
-        <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
-          {row.original.score.toFixed(2)} / {row.original.threshold.toFixed(2)}
-        </span>
+        <div className="min-w-0">
+          <span className="whitespace-nowrap font-mono text-xs text-muted-foreground">
+            {row.original.score.toFixed(2)} / {row.original.threshold.toFixed(2)}
+          </span>
+          {row.original.nearestTool && (
+            <p className="truncate text-xs text-muted-foreground" title="Closest tool below the threshold">
+              {row.original.nearestTool}
+            </p>
+          )}
+        </div>
       ),
     },
     {

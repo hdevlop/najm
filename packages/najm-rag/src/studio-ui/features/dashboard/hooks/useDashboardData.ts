@@ -14,6 +14,8 @@ interface RagStatus {
   registeredToolCount: number;
   indexedToolCount: number;
   semanticPhraseCount: number;
+  /** Phrases embedded with other model or routing-text settings; null when unknown. */
+  staleSemanticCount?: number | null;
   indexingRunning: boolean;
 }
 

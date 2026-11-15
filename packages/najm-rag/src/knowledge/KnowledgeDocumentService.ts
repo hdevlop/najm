@@ -1,7 +1,9 @@
-import { Service, Inject, HttpError } from 'najm-core';
+import { Service, Inject, DI, HttpError, type Container } from 'najm-core';
 import { DocumentSourceRepository } from './DocumentSourceRepository';
 import { DocumentIngestionService } from './DocumentIngestionService';
 import { KnowledgeService } from './KnowledgeService';
+import { publicSourceMetadata } from './KnowledgeRepository';
+import { invalidateKnowledgeContext } from './KnowledgeContextProvider';
 import type { DocumentListItem, DocumentChunkResponse, KnowledgeStatusResult, KnowledgeSearchResult } from './KnowledgeDto';
 import type { IngestTextDto } from './KnowledgeDto';
 import type { IngestTextResult, IngestUploadResult, ReindexResult } from './DocumentIngestionService';
@@ -12,6 +14,8 @@ function isUploadFile(value: FormDataEntryValue | null): value is File {
 
 @Service()
 export class KnowledgeDocumentService {
+  @DI() private container?: Container;
+
   constructor(
     @Inject() private docRepo?: DocumentSourceRepository,
     @Inject() private ingestion?: DocumentIngestionService,
@@ -31,7 +35,7 @@ export class KnowledgeDocumentService {
       status: r.status,
       error: r.error,
       ingestedAt: r.ingestedAt,
-      metadata: r.metadata,
+      metadata: publicSourceMetadata(r.metadata),
       chunkCount: r.chunkCount,
       createdAt: r.createdAt,
       updatedAt: r.updatedAt,
@@ -64,6 +68,7 @@ export class KnowledgeDocumentService {
       await this.ingestion.deleteStoredFiles(source);
     }
     await this.docRepo.deleteSource(documentId);
+    invalidateKnowledgeContext(this.container);
     return { deleted: true };
   }
 

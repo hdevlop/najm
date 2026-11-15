@@ -66,8 +66,8 @@ export class ChatbotRagController {
 
   @Post('/semantics/reindex')
   @isAdministrator()
-  async reindexSemantics() {
-    return this.semantics.reindexSemantics();
+  async reindexSemantics(@Query('force') force?: string) {
+    return this.semantics.reindexSemantics({ force: force === 'true' || force === '1' });
   }
 
   @Get('/semantics/:id')

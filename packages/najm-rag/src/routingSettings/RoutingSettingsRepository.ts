@@ -1,13 +1,14 @@
 import { Repository, Inject } from 'najm-core';
 import { DB } from 'najm-database';
 import { eq, sql } from 'drizzle-orm';
-import { RAG_SCHEMA } from '../tokens';
-import type { RagSchema } from '../config';
+import { RAG_CONFIG, RAG_SCHEMA } from '../tokens';
+import type { RagMergedConfig, RagSchema } from '../config';
 
 @Repository()
 export class RoutingSettingsRepository {
   @DB() declare db: any;
   @Inject(RAG_SCHEMA) private schema!: RagSchema;
+  @Inject(RAG_CONFIG) private config?: RagMergedConfig;
   private schemaChecked = false;
 
   private table() {
@@ -44,6 +45,7 @@ export class RoutingSettingsRepository {
   private async ensureColumns(): Promise<void> {
     if (this.schemaChecked) return;
     this.schemaChecked = true;
+    if (this.config?.ensureSchema === false) return;
 
     if (typeof this.db.all === 'function') {
       const columns = await this.db.all(sql`PRAGMA table_info(chatbot_routing_settings)`);

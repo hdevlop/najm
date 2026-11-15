@@ -4,6 +4,7 @@ import type { RagMergedConfig } from '../config';
 import { EmbeddingService } from '../embeddings';
 import { KnowledgeRepository } from './KnowledgeRepository';
 import { normalizeQuery } from '../toolRouter/ToolRouterUtils';
+import { DEFAULT_SIMILARITY_THRESHOLD } from '../toolRouter/RoutingDefaults';
 import type { KnowledgeCitation, KnowledgeSearchResult } from './KnowledgeDto';
 
 @Service()
@@ -15,7 +16,7 @@ export class KnowledgeService {
   ) {}
 
   async search(query: string, limit = 5, threshold?: number): Promise<KnowledgeSearchResult> {
-    const resolvedThreshold = threshold ?? this.config.toolRouting?.similarityThreshold ?? 0.45;
+    const resolvedThreshold = threshold ?? this.config.toolRouting?.similarityThreshold ?? DEFAULT_SIMILARITY_THRESHOLD;
 
     // Normalize the query so the embedding cache key matches the router's
     // key, allowing the shared `EmbeddingService` LRU to dedupe a single

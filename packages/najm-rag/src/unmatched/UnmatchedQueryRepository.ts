@@ -4,7 +4,7 @@ import { desc, eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { RAG_CONFIG, RAG_SCHEMA } from '../tokens';
 import type { RagMergedConfig, RagSchema } from '../config';
-import type { UnmatchedQueryRow } from './UnmatchedQueryDto';
+import type { UnmatchedMiss, UnmatchedQueryRow } from './UnmatchedQueryDto';
 
 @Repository()
 export class UnmatchedQueryRepository {
@@ -17,13 +17,7 @@ export class UnmatchedQueryRepository {
     return this.schema.chatbotUnmatchedQueries;
   }
 
-  async record(data: {
-    query: string;
-    normalized: string;
-    score: number;
-    threshold: number;
-    source?: string;
-  }): Promise<void> {
+  async record(data: UnmatchedMiss): Promise<void> {
     const table = this.table();
     if (!table) return;
     await this.ensureTable();
@@ -42,6 +36,7 @@ export class UnmatchedQueryRepository {
           score: String(data.score),
           threshold: String(data.threshold),
           source: data.source ?? 'router',
+          nearestTool: data.nearestTool ?? null,
           occurrenceCount: (existing.occurrenceCount ?? 1) + 1,
           updatedAt: sql`CURRENT_TIMESTAMP`,
         })
@@ -56,6 +51,7 @@ export class UnmatchedQueryRepository {
       score: String(data.score),
       threshold: String(data.threshold),
       source: data.source ?? 'router',
+      nearestTool: data.nearestTool ?? null,
       occurrenceCount: 1,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -92,10 +88,39 @@ export class UnmatchedQueryRepository {
     await this.db.delete(table).where(eq(table.id, id));
   }
 
-  private async ensureTable(): Promise<void> {
-    if (this.ready) return;
-    this.ready = true;
+  /**
+   * Deletes entries last seen before `cutoff`; returns how many were removed.
+   * On SQLite, inserts store ISO text and updates store CURRENT_TIMESTAMP text,
+   * so both sides go through datetime() to compare as times, not strings.
+   */
+  async deleteOlderThan(cutoff: Date): Promise<number> {
+    const table = this.table();
+    if (!table) return 0;
+    await this.ensureTable();
+    const lastSeen = sql`coalesce(${table.updatedAt}, ${table.createdAt})`;
+    const condition = this.config.dialect === 'sqlite'
+      ? sql`datetime(${lastSeen}) < datetime(${cutoff.toISOString()})`
+      : sql`${lastSeen} < ${cutoff.toISOString()}`;
+    const deleted = await this.db.delete(table).where(condition).returning({ id: table.id });
+    return Array.isArray(deleted) ? deleted.length : 0;
+  }
 
+  private ensuring: Promise<void> | null = null;
+
+  /**
+   * Creates the table, and adds `nearest_tool` to a table made by an earlier
+   * release. Concurrent first calls share one check; a failed check is retried.
+   */
+  private ensureTable(): Promise<void> {
+    if (this.ready) return Promise.resolve();
+    if (this.config?.ensureSchema === false) { this.ready = true; return Promise.resolve(); }
+    this.ensuring ??= this.ensureTableOnce()
+      .then(() => { this.ready = true; })
+      .finally(() => { this.ensuring = null; });
+    return this.ensuring;
+  }
+
+  private async ensureTableOnce(): Promise<void> {
     if (this.config.dialect === 'sqlite' && typeof this.db.run === 'function') {
       await this.db.run(sql`
         CREATE TABLE IF NOT EXISTS chatbot_unmatched_queries (
@@ -105,11 +130,19 @@ export class UnmatchedQueryRepository {
           score TEXT NOT NULL,
           threshold TEXT NOT NULL,
           source TEXT NOT NULL DEFAULT 'router',
+          nearest_tool TEXT,
           occurrence_count INTEGER NOT NULL DEFAULT 1,
           created_at TEXT DEFAULT CURRENT_TIMESTAMP,
           updated_at TEXT DEFAULT CURRENT_TIMESTAMP
         )
       `);
+      if (typeof this.db.all === 'function') {
+        const columns = await this.db.all(sql`PRAGMA table_info(chatbot_unmatched_queries)`);
+        const list = Array.isArray(columns) ? columns : columns?.rows ?? [];
+        if (!list.some((column: any) => column.name === 'nearest_tool')) {
+          await this.db.run(sql`ALTER TABLE chatbot_unmatched_queries ADD COLUMN nearest_tool TEXT`);
+        }
+      }
       return;
     }
 
@@ -122,10 +155,15 @@ export class UnmatchedQueryRepository {
           score text NOT NULL,
           threshold text NOT NULL,
           source text NOT NULL DEFAULT 'router',
+          nearest_tool text,
           occurrence_count integer NOT NULL DEFAULT 1,
           created_at timestamp DEFAULT CURRENT_TIMESTAMP,
           updated_at timestamp DEFAULT CURRENT_TIMESTAMP
         )
+      `);
+      await this.db.execute(sql`
+        ALTER TABLE chatbot_unmatched_queries
+        ADD COLUMN IF NOT EXISTS nearest_tool text
       `);
     }
   }

@@ -79,14 +79,18 @@ export class ToolRoutingLoader {
       this.validator.assertRagUnchanged(ragSnapshot, this.baselineRag);
     }
 
+    // A field the file leaves out keeps the merged value (code config and
+    // defaults, such as the embedding preset's threshold); before, it became
+    // undefined and the router fell back to its own constants.
+    const boot = this.config.toolRouting ?? ({} as Partial<RagToolRoutingConfig>);
     const config: RagToolRoutingConfig = {
-      enabled: this.config.toolRouting?.enabled ?? true,
-      maxTools: data.maxTools,
-      topSemanticHits: data.topSemanticHits,
-      similarityThreshold: data.similarityThreshold,
-      fallbackOnRouterError: data.fallbackOnRouterError,
-      fallbackOnNoMatch: data.fallbackOnNoMatch,
-      dependencies: data.dependencies,
+      enabled: boot.enabled ?? true,
+      maxTools: data.maxTools ?? boot.maxTools,
+      topSemanticHits: data.topSemanticHits ?? boot.topSemanticHits,
+      similarityThreshold: data.similarityThreshold ?? boot.similarityThreshold,
+      fallbackOnRouterError: data.fallbackOnRouterError ?? boot.fallbackOnRouterError,
+      fallbackOnNoMatch: data.fallbackOnNoMatch ?? boot.fallbackOnNoMatch,
+      dependencies: data.dependencies ?? boot.dependencies,
     };
 
     const mtime = this.getFileMtime(filePath);

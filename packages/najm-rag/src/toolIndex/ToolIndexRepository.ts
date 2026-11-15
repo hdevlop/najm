@@ -1,7 +1,9 @@
 import { Repository, Inject } from 'najm-core';
 import { DB } from 'najm-database';
 import { eq, isNull, sql, and, like, inArray } from 'drizzle-orm';
-import { VECTOR_STRATEGY } from '../tokens';
+import { createHash } from 'crypto';
+import { RAG_CONFIG, VECTOR_STRATEGY } from '../tokens';
+import type { RagMergedConfig } from '../config';
 import type { VectorStrategy } from '../vectorStore';
 import { decodeF32 } from '../vectorStore';
 import type { SemanticMatch, SemanticPhraseRow, SemanticGroup, SemanticGroupsResult, ToolEmbeddingRow, UpsertEmbeddingData, UpsertSemanticData } from './ToolIndexDto';
@@ -12,6 +14,7 @@ export class ToolIndexRepository {
   @DB() declare db: any;
   @Inject(VECTOR_STRATEGY) private vectors!: VectorStrategy;
   @Inject() private validator!: ToolIndexValidator;
+  @Inject(RAG_CONFIG) private config?: RagMergedConfig;
   private semanticsSchemaChecked = false;
   private semanticsSchemaCheck: Promise<void> | null = null;
 
@@ -163,6 +166,7 @@ export class ToolIndexRepository {
       const setValues: Record<string, unknown> = {
         source: data.source ?? null,
         embedding: encodedEmbedding,
+        fingerprint: encodedEmbedding ? this.semanticFingerprint : null,
         updatedAt: sql`CURRENT_TIMESTAMP`,
       };
       if (data.sourceFile !== undefined) setValues.sourceFile = data.sourceFile ?? null;
@@ -181,6 +185,7 @@ export class ToolIndexRepository {
       source: data.source ?? null,
       sourceFile: data.sourceFile ?? null,
       embedding: encodedEmbedding,
+      fingerprint: encodedEmbedding ? this.semanticFingerprint : null,
     };
     await this.db.insert(table).values(insertValues);
     return 'inserted';
@@ -326,6 +331,7 @@ export class ToolIndexRepository {
     if (data.lang !== undefined) patch.lang = data.lang;
     if ('embedding' in data) {
       patch.embedding = data.embedding ? this.vectors.encodeEmbedding(data.embedding) : null;
+      patch.fingerprint = data.embedding ? this.semanticFingerprint : null;
     }
     await this.db.update(table).set(patch).where(eq(table.id, id));
   }
@@ -381,12 +387,13 @@ export class ToolIndexRepository {
     const table = this.validator.semanticsTable();
     await this.db
       .update(table)
-      .set({ embedding: this.vectors.encodeEmbedding(embedding), updatedAt: sql`CURRENT_TIMESTAMP` })
+      .set({ embedding: this.vectors.encodeEmbedding(embedding), fingerprint: this.semanticFingerprint, updatedAt: sql`CURRENT_TIMESTAMP` })
       .where(eq(table.id, id));
   }
 
   private async ensureSemanticsSourceFileColumn(): Promise<void> {
     if (this.semanticsSchemaChecked) return;
+    if (this.config?.ensureSchema === false) { this.semanticsSchemaChecked = true; return; }
     if (this.semanticsSchemaCheck) return this.semanticsSchemaCheck;
 
     this.semanticsSchemaCheck = this.ensureSemanticsSourceFileColumnOnce()
@@ -404,9 +411,15 @@ export class ToolIndexRepository {
     if (typeof this.db.all === 'function') {
       const columns = await this.db.all(sql`PRAGMA table_info(chatbot_tool_semantics)`);
       const list = Array.isArray(columns) ? columns : columns?.rows ?? [];
-      if (list.length === 0 || list.some((column: any) => column.name === 'source_file')) return;
-      await this.db.run(sql`ALTER TABLE chatbot_tool_semantics ADD COLUMN source_file TEXT`);
-      await this.db.run(sql`CREATE INDEX IF NOT EXISTS semantics_tool_lang_idx ON chatbot_tool_semantics(tool_name, lang)`);
+      if (list.length === 0) return;
+      const has = (name: string) => list.some((column: any) => column.name === name);
+      if (!has('source_file')) {
+        await this.db.run(sql`ALTER TABLE chatbot_tool_semantics ADD COLUMN source_file TEXT`);
+        await this.db.run(sql`CREATE INDEX IF NOT EXISTS semantics_tool_lang_idx ON chatbot_tool_semantics(tool_name, lang)`);
+      }
+      if (!has('fingerprint')) {
+        await this.db.run(sql`ALTER TABLE chatbot_tool_semantics ADD COLUMN fingerprint TEXT`);
+      }
       return;
     }
 
@@ -416,10 +429,53 @@ export class ToolIndexRepository {
         ADD COLUMN IF NOT EXISTS source_file text
       `);
       await this.db.execute(sql`
+        ALTER TABLE chatbot_tool_semantics
+        ADD COLUMN IF NOT EXISTS fingerprint text
+      `);
+      await this.db.execute(sql`
         CREATE INDEX IF NOT EXISTS semantics_tool_lang_idx
         ON chatbot_tool_semantics(tool_name, lang)
       `);
     }
+  }
+
+  /**
+   * Identifies what shaped a phrase vector: the embedder and the app's
+   * routing-text version. A phrase whose stored value differs (or is missing,
+   * as for phrases saved before this column) needs re-embedding.
+   */
+  get semanticFingerprint(): string {
+    const embedding: any = this.config?.rag?.embedding ?? {};
+    return createHash('sha1').update(JSON.stringify({
+      provider: embedding.provider ?? 'ollama',
+      model: embedding.model ?? 'embeddinggemma',
+      dimensions: embedding.dimensions ?? null,
+      truncateDimensions: embedding.truncateDimensions ?? false,
+      documentPrefix: embedding.documentPrefix ?? '',
+      routingTextVersion: this.config?.routingTextVersion ?? null,
+      // Phrases are embedded through the routing pipeline (normalized, rewritten).
+      phraseText: 'canonical-1',
+    })).digest('hex');
+  }
+
+  private staleCondition(table: any) {
+    return sql`(${table.embedding} IS NULL OR ${table.fingerprint} IS NULL OR ${table.fingerprint} <> ${this.semanticFingerprint})`;
+  }
+
+  /** Phrases without a vector or with one made by a different embedder setup. */
+  async countStaleSemantics(): Promise<number> {
+    await this.ensureSemanticsSourceFileColumn();
+    const table = this.validator.semanticsTable();
+    const [row] = await this.db.select({ count: sql<number>`count(*)` }).from(table).where(this.staleCondition(table));
+    return Number(row?.count ?? 0);
+  }
+
+  /** Phrases to re-embed: stale ones, or all of them with `force`. */
+  async listSemanticsToReindex(force = false): Promise<Array<{ id: string; phrase: string }>> {
+    await this.ensureSemanticsSourceFileColumn();
+    const table = this.validator.semanticsTable();
+    const query = this.db.select({ id: table.id, phrase: table.phrase }).from(table);
+    return force ? query : query.where(this.staleCondition(table));
   }
 }
 

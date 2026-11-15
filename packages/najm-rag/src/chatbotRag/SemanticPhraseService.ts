@@ -8,6 +8,7 @@ import { ChatbotRagValidator } from './ChatbotRagValidator';
 import { getRoutableTools } from '../toolVisibility';
 import { RoutingSettingsService } from '../routingSettings/RoutingSettingsService';
 import { RoutingPreviewService } from '../toolRouter/RoutingPreviewService';
+import { canonicalizeRoutingText } from '../toolRouter/ToolRouterUtils';
 import type {
   SemanticPhraseResponse,
   PaginatedSemanticsResponse,
@@ -33,6 +34,11 @@ export class SemanticPhraseService {
     @Inject() private preview?: RoutingPreviewService,
   ) {}
 
+  /** Phrases are stored as typed and embedded the way routing embeds a message. */
+  private phraseText(phrase: string): string {
+    return canonicalizeRoutingText(phrase, this.config.rewriteRoutingQuery);
+  }
+
   async getStatus() {
     const routing = this.config.toolRouting;
     const indexedCount = await this.repository.countEmbeddings();
@@ -51,6 +57,8 @@ export class SemanticPhraseService {
       registeredToolCount: getRoutableTools(this.registry.tools).length,
       indexedToolCount: indexedCount,
       semanticPhraseCount: semanticCount,
+      // Phrases to re-embed after a model or routing-text change.
+      staleSemanticCount: await Promise.resolve().then(() => this.repository.countStaleSemantics()).catch(() => null),
       indexingRunning: this.indexer.isIndexing,
       effectiveSettings: effective,
     };
@@ -90,7 +98,7 @@ export class SemanticPhraseService {
     let embedding: number[] | null = null;
     let embeddingError: string | null = null;
     try {
-      embedding = await this.embedding.embed(dto.phrase, 'document', 'semantic-index');
+      embedding = await this.embedding.embed(this.phraseText(dto.phrase), 'document', 'semantic-index');
     } catch (err) {
       embeddingError = err instanceof Error ? err.message : String(err);
       this.log?.warn?.(`[semantic-phrase] createSemantic: embedding failed for phrase "${dto.phrase}" → saved as PENDING. Reason: ${embeddingError}`);
@@ -119,7 +127,7 @@ export class SemanticPhraseService {
 
     if (phraseChanged) {
       try {
-        newEmbedding = await this.embedding.embed(dto.phrase!, 'document', 'semantic-index');
+        newEmbedding = await this.embedding.embed(this.phraseText(dto.phrase!), 'document', 'semantic-index');
       } catch {
         // keep existing embedding if re-embed fails
       }
@@ -224,14 +232,18 @@ export class SemanticPhraseService {
     return output;
   }
 
-  async reindexSemantics(): Promise<SemanticReindexResult> {
-    const rows = await this.repository.listSemanticsWithoutEmbeddings();
+  /**
+   * Embeds phrases that have no vector or whose vector came from a different
+   * embedder setup (see `routingTextVersion`); `force` re-embeds every phrase.
+   */
+  async reindexSemantics(options: { force?: boolean } = {}): Promise<SemanticReindexResult> {
+    const rows = await this.repository.listSemanticsToReindex(options.force === true);
     let reindexed = 0;
     let failed = 0;
 
     for (const row of rows) {
       try {
-        const [embedding] = await this.embedding.embedBatch([row.phrase], 'document', 'semantic-index');
+        const [embedding] = await this.embedding.embedBatch([this.phraseText(row.phrase)], 'document', 'semantic-index');
         await this.repository.updateSemanticEmbeddingById(row.id, embedding);
         reindexed++;
       } catch {
@@ -250,7 +262,7 @@ export class SemanticPhraseService {
     }
 
     const embeddings = await this.validator.resolveSemanticEmbeddings(
-      this.embedding.embedBatch(this.validator.getSemanticImportPhrases(state), 'document', 'semantic-index'),
+      this.embedding.embedBatch(this.validator.getSemanticImportPhrases(state).map((p) => this.phraseText(p)), 'document', 'semantic-index'),
       state,
     );
 

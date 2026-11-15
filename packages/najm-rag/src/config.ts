@@ -27,14 +27,16 @@ export interface RagEmbeddingConfig {
    * Timeout in milliseconds for query embeddings: the live calls that route a
    * chat message and search the knowledge base. Indexing batches keep
    * `timeoutMs`, so a slow CPU model can index without giving every chat
-   * question the same long wait. Defaults to `timeoutMs`.
+   * question the same long wait. Defaults to 4000, or `timeoutMs` when that
+   * is shorter.
    */
   queryTimeoutMs?: number;
   /**
    * After a query embedding times out or cannot reach the provider, further
    * query embeddings fail immediately for this many milliseconds instead of
    * each waiting out `queryTimeoutMs`. A success or a healthy health check
-   * ends the window early. Indexing is not affected. Defaults to 0 (off).
+   * ends the window early. Indexing is not affected. Defaults to 15000; 0
+   * turns it off.
    */
   queryFailureCooldownMs?: number;
   /**
@@ -53,6 +55,11 @@ export interface RagToolRoutingConfig {
   fallbackOnRouterError?: ToolRoutingFallback;
   fallbackOnNoMatch?: ToolRoutingFallback;
   dependencies?: Record<string, string[]>;
+  /**
+   * Set from the studio's routing settings. `none` gives the model no tools
+   * and `all` every routable tool, both without routing; `auto` routes.
+   */
+  toolsOverride?: 'auto' | 'none' | 'all';
 }
 
 export interface RagKnowledgeConfig {
@@ -76,6 +83,21 @@ export interface RagConfig {
    * knowledge search. A rewrite that throws is a router error.
    */
   rewriteRoutingQuery?: RoutingQueryRewrite;
+  /**
+   * Any string naming the current routing-text handling (for example the
+   * rewriter's version). Changing it marks every semantic phrase stale so the
+   * next "reindex semantics" re-embeds them; a function cannot be compared,
+   * so bump this when you change `rewriteRoutingQuery`.
+   */
+  routingTextVersion?: string;
+  /**
+   * Optional second chance for a message that matched no tool, for example an
+   * LLM call that translates Darija or Arabizi to MSA. Receives the
+   * normalized message; routing runs once more on the result. It has 1.5 s
+   * (then `signal` aborts); a failure, timeout or empty result keeps the
+   * no-match outcome. Results are cached per message. Off unless set.
+   */
+  rewriteRoutingQueryOnMiss?: RoutingQueryRewriteOnMiss;
   knowledge?: boolean | RagKnowledgeConfig;
   /**
    * BCP-47 language codes allowed for semantic phrases. If omitted, all known
@@ -83,15 +105,33 @@ export interface RagConfig {
    * RAG Studio. Example: ['en', 'fr', 'ar'].
    */
   allowedLangs?: string[];
+  /**
+   * Days to keep unmatched-query entries, which hold users' messages, after
+   * they were last seen. An hourly pass deletes older ones. Unset keeps them
+   * until they are mapped or discarded in the studio.
+   */
+  unmatchedRetentionDays?: number;
+  /**
+   * Let repositories create missing tables and columns on first use (default
+   * true). Set false when your migrations own the schema: generate them from
+   * the exported Drizzle schema, which holds every table and column.
+   */
+  ensureSchema?: boolean;
 }
 
 export type RoutingQueryRewrite = (normalized: string) => string;
+export type RoutingQueryRewriteOnMiss = (normalized: string, options: { signal: AbortSignal }) => Promise<string | null> | string | null;
 
 export interface RagMergedConfig {
   dialect: RagDialect;
   configPath?: string;
   allowedLangs?: string[];
   rewriteRoutingQuery?: RoutingQueryRewrite;
+  rewriteRoutingQueryOnMiss?: RoutingQueryRewriteOnMiss;
+  routingTextVersion?: string;
+  unmatchedRetentionDays?: number;
+  /** False: repositories never change the schema. */
+  ensureSchema?: boolean;
   knowledge?: {
     enabled: boolean;
     namespace: string;

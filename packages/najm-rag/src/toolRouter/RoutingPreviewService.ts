@@ -14,8 +14,10 @@ import type {
 } from './ToolRouterDto';
 import { normalizeQuery, rewriteRoutingQuery } from './ToolRouterUtils';
 import { ToolRoutingLoader } from './ToolRoutingLoader';
+import { DEFAULT_SIMILARITY_THRESHOLD } from './RoutingDefaults';
 import { getRoutableTools } from '../toolVisibility';
-import { selectPrimaryTool, filterAlternativeMutations } from './RoutingLogic';
+import { decideRouting } from './RoutingDecision';
+import { rewriteOnMiss } from './RewriteOnMiss';
 
 @Service()
 export class RoutingPreviewService {
@@ -36,7 +38,7 @@ export class RoutingPreviewService {
 
     const maxTools = routing?.maxTools ?? 12;
     const topSemanticHits = routing?.topSemanticHits ?? 8;
-    const similarityThreshold = routing?.similarityThreshold ?? 0.45;
+    const similarityThreshold = routing?.similarityThreshold ?? DEFAULT_SIMILARITY_THRESHOLD;
     const fallbackOnNoMatch = routing?.fallbackOnNoMatch ?? 'none';
     const fallbackOnRouterError = routing?.fallbackOnRouterError ?? 'all';
 
@@ -51,8 +53,9 @@ export class RoutingPreviewService {
       };
     }
 
-    if (!normalized) {
-      const fallback = routing.fallbackOnNoMatch ?? 'none';
+    const override = routing.toolsOverride === 'none' || routing.toolsOverride === 'all' ? routing.toolsOverride : null;
+    if (override || !normalized) {
+      const fallback = override ?? routing.fallbackOnNoMatch ?? 'none';
       return {
         query: userText, normalized,
         status: fallback === 'all' ? 'fallback_all' : 'fallback_none',
@@ -63,27 +66,30 @@ export class RoutingPreviewService {
     }
 
     // Shown only when the app's rewrite changed what was embedded.
-    let shown: { rewritten?: string } = {};
+    let shown: { rewritten?: string; rewrittenOnMiss?: string } = {};
     try {
       const rewritten = rewriteRoutingQuery(normalized, this.config.rewriteRoutingQuery);
       if (rewritten !== normalized) shown = { rewritten };
-      const embedding = await this.embedding.embed(rewritten, 'query', 'routing-preview');
+      let embedding = await this.embedding.embed(rewritten, 'query', 'routing-preview');
 
-      const registeredToolNames = new Set(routableTools.map((tool) => tool.name));
-      let rawMatches = this.filterRegisteredMatches(
-        await this.repository.searchSemantics(embedding, topSemanticHits, similarityThreshold),
-        registeredToolNames,
-      );
-      let matchSource: 'semantics' | 'embeddings' = 'semantics';
-      if (rawMatches.length === 0) {
-        rawMatches = this.filterRegisteredMatches(
-          await this.repository.searchEmbeddings(embedding, topSemanticHits, similarityThreshold),
-          registeredToolNames,
-        );
-        matchSource = 'embeddings';
+      const settings = { maxTools, topSemanticHits, similarityThreshold, dependencies: routing.dependencies ?? {} };
+      let decision = await decideRouting(embedding, routableTools, this.repository, settings);
+
+      // Same second pass as chat routing (ToolRouterService).
+      if (decision.miss) {
+        const second = await rewriteOnMiss(this.config.rewriteRoutingQueryOnMiss, normalized);
+        if (second) {
+          const secondEmbedding = await this.embedding.embed(second, 'query', 'routing-preview');
+          const secondDecision = await decideRouting(secondEmbedding, routableTools, this.repository, settings);
+          if (!secondDecision.miss) {
+            embedding = secondEmbedding;
+            decision = secondDecision;
+            shown = { ...shown, rewrittenOnMiss: second };
+          }
+        }
       }
 
-      if (rawMatches.length === 0) {
+      if (decision.miss) {
         const fallback = routing.fallbackOnNoMatch ?? 'none';
         return {
           query: userText, normalized, ...shown,
@@ -94,63 +100,8 @@ export class RoutingPreviewService {
         };
       }
 
-      const matches: RoutingPreviewMatch[] = rawMatches.map((m) => ({
-        toolName: m.toolName,
-        similarity: m.similarity,
-        source: matchSource,
-      }));
-
-      const toolNameSet = new Set(rawMatches.map((m) => m.toolName));
-      const orderedToolNames = [...toolNameSet];
-      const dependencies: RoutingPreviewDependency[] = [];
-
-      const deps = routing.dependencies ?? {};
-      for (const name of [...orderedToolNames]) {
-        const depNames = deps[name];
-        if (depNames) {
-          for (const dep of depNames) {
-            if (!toolNameSet.has(dep)) {
-              toolNameSet.add(dep);
-              orderedToolNames.push(dep);
-              dependencies.push({ toolName: dep, reason: `dependency_of:${name}` });
-            }
-          }
-        }
-      }
-
-      const registryMap = new Map(routableTools.map((t) => [t.name, t]));
-      const routingDecisions: RoutingPreviewRoutingDecision[] = [];
-
-      const primaryName = selectPrimaryTool(rawMatches);
-      const explicitDeps = new Set<string>(
-        primaryName ? deps[primaryName] ?? [] : [],
-      );
-
-      const orderedWithPrimaryFirst = primaryName
-        ? [primaryName, ...orderedToolNames.filter((n) => n !== primaryName)]
-        : orderedToolNames;
-
-      const kept = filterAlternativeMutations(
-        orderedWithPrimaryFirst,
-        primaryName,
-        explicitDeps,
-        registryMap,
-      );
-      const keptSet = new Set(kept);
-
-      for (const name of orderedWithPrimaryFirst) {
-        const tool = registryMap.get(name);
-        if (!tool) continue;
-        const isKept = keptSet.has(name);
-        let reason: RoutingPreviewRoutingDecision['reason'];
-        if (!isKept) reason = 'dropped_as_alternative';
-        else if (name === primaryName) reason = 'primary';
-        else if (explicitDeps.has(name)) reason = 'dependency';
-        else reason = 'read_only';
-        routingDecisions.push({ toolName: name, kept: isKept, reason });
-      }
-
-      const finalTools = kept.slice(0, maxTools);
+      const { matches, primaryName, dependencies, routingDecisions } = decision;
+      const finalTools = decision.finalTools.map((tool) => tool.name);
       const directScoreByTool = new Map<string, RoutingPreviewMatch>();
       for (const m of matches) {
         const existing = directScoreByTool.get(m.toolName);
@@ -215,13 +166,6 @@ export class RoutingPreviewService {
         return preview;
       })
       .filter((confirmation): confirmation is RoutingPreviewConfirmation => confirmation != null);
-  }
-
-  private filterRegisteredMatches<T extends { toolName: string }>(
-    matches: T[],
-    registeredToolNames: Set<string>,
-  ): T[] {
-    return matches.filter((match) => registeredToolNames.has(match.toolName));
   }
 
   private resolveI18nMessage(message: string): string {

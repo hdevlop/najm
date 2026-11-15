@@ -7,6 +7,10 @@ import { RoutingSettingsService } from '../src/routingSettings/RoutingSettingsSe
 import { ToolRoutingLoader } from '../src/toolRouter/ToolRoutingLoader';
 import { ToolRouterValidator } from '../src/toolRouter/ToolRouterValidator';
 import { loadRagRoutingConfig } from '../src/config/loadRoutingConfig';
+import { mkdtempSync, rmSync, writeFileSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
+import { rag } from '../src/plugin';
 
 describe('RoutingSettingsService + Repository integration', () => {
   function createDb() {
@@ -313,5 +317,26 @@ describe('ToolRoutingLoader DB integration', () => {
     expect(routing.maxTools).toBe(3);
     expect(routing.similarityThreshold).toBe(0.99);
     expect(routing.topSemanticHits).toBe(6); // boot fallback
+  });
+
+  test('a routing.json without a field keeps the merged value for it', async () => {
+    const { raw, db } = createDb();
+    createTables(raw);
+    const dir = mkdtempSync(join(tmpdir(), 'rag-loader-'));
+    const file = join(dir, 'routing.json');
+    writeFileSync(file, JSON.stringify({ maxTools: 10 }));
+    try {
+      // The merged config carries the EmbeddingGemma preset's threshold.
+      const merged = (rag({ dialect: 'sqlite', configPath: file, toolRouting: { enabled: true } }) as any).config;
+      expect(merged.toolRouting.similarityThreshold).toBe(0.35);
+      const settingsService = new RoutingSettingsService(merged, createRepo(db));
+      const routing = await makeLoader(merged, settingsService, file).getRoutingConfig();
+      expect(routing.maxTools).toBe(10);
+      expect(routing.similarityThreshold).toBe(0.35);
+      expect(routing.topSemanticHits).toBe(8);
+      expect(routing.fallbackOnNoMatch).toBe('none');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
