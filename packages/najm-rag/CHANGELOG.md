@@ -1,5 +1,51 @@
 # Changelog
 
+## 3.5.0 - 2026-11-15
+
+### Fixed
+
+- Missing columns no longer break every studio read. Schema checks ran lazily,
+  on the first query that called them, so a read that skipped the check (or a
+  check rolled back with a host request transaction) left
+  `chatbot_tool_semantics.source_file` missing and `/semantics`, `/settings`,
+  `/status` and `/tools/list` returned 500. `RagSchemaService` now runs every
+  check once at boot (`activate`), then compares the live tables with the
+  exported schema. Failed settings and routing-test checks are retried instead
+  of being marked done.
+- The boot seed (`seedSemantics`) embeds and stores one embedding batch at a
+  time (`embedding.batchSize`, default 16) instead of embedding everything
+  first, so progress survives a restart or an error. Three failed batches in a
+  row stop it until the next boot.
+- The studio's JSON-view save and "Import JSON" go through
+  `/semantics/import-jobs` and poll it; the synchronous import timed out on
+  large files. A job from a JSON body stores no source file.
+- The studio no longer logs "useInsertionEffect must not schedule updates."
+  in Next.js hosts: same-URL history writes from the host no longer reload
+  the router synchronously.
+- The studio dashboard and MCP Tools screen show the server's error text.
+- Studio UI review: the violet accent reaches icons and badges (a nested
+  `.dark` wrapper reset it), dashboard panels show skeletons while loading,
+  Routing Lab's query box sits below its title, Knowledge Chat has a header,
+  tables share one gutter, and hand-built panels use najm-kit components.
+
+### Added
+
+- `schema` in `/status` and in the studio's new `GET /health`: `missing`
+  (`table` / `table.column`) and a `message` such as "database is missing
+  chatbot_tool_semantics.source_file: run your migrations". The dashboard
+  shows it. `RagSchemaService`, `RagSchemaStatus` and `RagSchemaEnsurer` are
+  exported.
+- `seed` in `/status`: `state`, `done`/`total`, `inserted`, `failed`,
+  `unknownTools` and `lastError`, shown on the dashboard, so a host logging at
+  ERROR only can see why a seed did nothing. `seedSemantics(seed, { batchSize,
+  onProgress })`; `RAG_SEED_STATUS` token; `SemanticSeedProgress` and
+  `SemanticSeedStatus` types.
+
+### Changed
+
+- `ragStudio({ auth })` is documented as informational: the server never read
+  it.
+
 ## 3.4.0 - 2026-11-15
 
 ### Added
