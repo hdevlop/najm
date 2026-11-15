@@ -7,6 +7,13 @@ import { canonicalizeRoutingText } from '../toolRouter/ToolRouterUtils';
 import type { ImportJobState, ImportJobFileSummary } from './ChatbotRagDto';
 import { initFileSummaries, markJobFailed, runBatches } from './runBatchImportJob';
 
+/** One uploaded file, or a JSON body. `sourceFile` overrides the stored file name; null stores none. */
+export interface ImportJobFile {
+  name: string;
+  sourceFile?: string | null;
+  content: Record<string, Record<string, string[]>>;
+}
+
 @Service()
 export class SemanticImportJobService {
   private importJobs = new Map<string, ImportJobState>();
@@ -17,7 +24,7 @@ export class SemanticImportJobService {
     @Inject(RAG_CONFIG) private config?: RagMergedConfig,
   ) {}
 
-  createImportJob(files: Array<{ name: string; content: Record<string, Record<string, string[]>> }>): ImportJobState {
+  createImportJob(files: Array<ImportJobFile>): ImportJobState {
     const { nanoid: nanoidFn } = require('nanoid');
     const jobId = nanoidFn(12);
     const now = new Date().toISOString();
@@ -69,7 +76,7 @@ export class SemanticImportJobService {
     return this.importJobs.get(jobId) ?? null;
   }
 
-  private async runImportJob(jobId: string, files: Array<{ name: string; content: Record<string, Record<string, string[]>> }>): Promise<void> {
+  private async runImportJob(jobId: string, files: Array<ImportJobFile>): Promise<void> {
     const job = this.importJobs.get(jobId);
     if (!job) return;
 
@@ -77,7 +84,8 @@ export class SemanticImportJobService {
     job.currentPhase = 'parsing';
 
     const BATCH_SIZE = 100;
-    const allEntries: Array<{ toolName: string; phrase: string; lang: string; sourceFile: string }> = [];
+    // `file` keys the progress summary; `sourceFile` is what gets stored (null for a pasted JSON body).
+    const allEntries: Array<{ toolName: string; phrase: string; lang: string; file: string; sourceFile: string | null }> = [];
 
     for (const file of files) {
       job.currentFile = file.name;
@@ -87,7 +95,7 @@ export class SemanticImportJobService {
         for (const [lang, phrases] of Object.entries(langs)) {
           if (!Array.isArray(phrases)) continue;
           for (const phrase of phrases) {
-            allEntries.push({ toolName: toolName.trim(), phrase: String(phrase).trim(), lang: (lang.trim() || 'und'), sourceFile: file.name });
+            allEntries.push({ toolName: toolName.trim(), phrase: String(phrase).trim(), lang: (lang.trim() || 'und'), file: file.name, sourceFile: file.sourceFile === undefined ? file.name : file.sourceFile });
           }
         }
       }
@@ -109,7 +117,7 @@ export class SemanticImportJobService {
     }
 
     for (const entry of dedupedAway) {
-      const fileSummary = job.files.find((f) => f.fileName === entry.sourceFile);
+      const fileSummary = job.files.find((f) => f.fileName === entry.file);
       if (fileSummary) {
         fileSummary.processed++;
         fileSummary.skipped++;
@@ -141,7 +149,7 @@ export class SemanticImportJobService {
       job.processed++;
       job.skipped++;
       job.progressPercent = Math.round((job.processed / job.total) * 100);
-      const fileSummary = job.files.find((f) => f.fileName === entry.sourceFile);
+      const fileSummary = job.files.find((f) => f.fileName === entry.file);
       if (fileSummary) {
         fileSummary.processed++;
         fileSummary.skipped++;
@@ -179,7 +187,7 @@ export class SemanticImportJobService {
             else if (status === 'updated') job.updated++;
             else job.skipped++;
 
-            const fileSummary = job.files.find((f) => f.fileName === entry.sourceFile);
+            const fileSummary = job.files.find((f) => f.fileName === entry.file);
             if (fileSummary) {
               fileSummary.processed++;
               if (status === 'inserted') fileSummary.inserted++;
@@ -192,7 +200,7 @@ export class SemanticImportJobService {
             job.failed++;
             const msg = err instanceof Error ? err.message : String(err);
             job.errors.push(msg);
-            const fileSummary = job.files.find((f) => f.fileName === entry.sourceFile);
+            const fileSummary = job.files.find((f) => f.fileName === entry.file);
             if (fileSummary) {
               fileSummary.processed++;
               fileSummary.failed++;
@@ -215,7 +223,7 @@ export class SemanticImportJobService {
         for (const entry of batch) {
           job.processed++;
           job.failed++;
-          const fileSummary = job.files.find((f) => f.fileName === entry.sourceFile);
+          const fileSummary = job.files.find((f) => f.fileName === entry.file);
           if (fileSummary) {
             fileSummary.processed++;
             fileSummary.failed++;

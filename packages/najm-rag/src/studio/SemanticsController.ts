@@ -184,7 +184,7 @@ export class SemanticsController {
   @Post('/semantics/import-jobs')
   async createImportJob(@Req() req: any, @User() user: any) {
     const contentType = req.raw.headers.get('content-type') ?? '';
-    let files: Array<{ name: string; content: Record<string, Record<string, string[]>> }>;
+    let files: Array<{ name: string; sourceFile?: string | null; content: Record<string, Record<string, string[]>> }>;
 
     if (contentType.includes('multipart/form-data')) {
       const formData = await req.formData();
@@ -205,7 +205,8 @@ export class SemanticsController {
       }
     } else {
       const body = await req.json();
-      files = [{ name: 'import.json', content: normalizeSemanticImportContent(body) }];
+      // A JSON body is not a file: store no source file, as /semantics/import does.
+      files = [{ name: 'import.json', sourceFile: null, content: normalizeSemanticImportContent(body) }];
     }
 
     if (files.length === 0) {

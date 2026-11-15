@@ -5,7 +5,7 @@ import type { RowSelectionState } from '@tanstack/react-table';
 import type {
   SemanticPhraseResponse,
   SemanticsExportPayload,
-  SemanticsImportResult,
+  SemanticsImportSummary,
   SemanticGroup,
   ImportJobState,
   JsonViewColors,
@@ -45,7 +45,7 @@ interface SemanticsEditorProps {
   onDeleteBatch?: (ids: string[]) => Promise<{ deleted: number }>;
   onReindexAll?: () => Promise<void>;
   onExport?: () => Promise<SemanticsExportPayload>;
-  onImport?: (payload: SemanticsExportPayload) => Promise<SemanticsImportResult>;
+  onImport?: (payload: SemanticsExportPayload) => Promise<SemanticsImportSummary>;
   onImportFiles?: (files: File[]) => Promise<ImportJobState>;
   onPollImportJob?: (jobId: string) => Promise<ImportJobState>;
   onImportComplete?: () => void | Promise<void>;
@@ -283,11 +283,11 @@ export function SemanticsEditor({
       const raw = await file.text();
       const payload = JSON.parse(raw) as SemanticsExportPayload;
       if (!isValidSemanticsPayload(payload)) throw new Error('Invalid semantics JSON. Expected grouped tool/language arrays or { "items": [...] }.');
-      const result = await onImport(payload);
-      const inserted = result.results.filter((r) => r.status === 'inserted').length;
-      const updated = result.results.filter((r) => r.status === 'updated').length;
-      const skipped = result.results.filter((r) => r.status === 'skipped').length;
-      setBanner({ kind: skipped > 0 ? 'warning' : 'info', message: `Import complete: ${inserted} inserted, ${updated} updated, ${skipped} skipped.` });
+      const { inserted, updated, skipped, failed } = await onImport(payload);
+      setBanner({
+        kind: skipped > 0 || failed > 0 ? 'warning' : 'info',
+        message: `Import complete: ${inserted} inserted, ${updated} updated, ${skipped} skipped${failed ? `, ${failed} failed` : ''}.`,
+      });
     } catch (err) {
       setBanner({ kind: 'error', message: err instanceof Error ? err.message : 'Import failed' });
     } finally { setTransferring(false); }

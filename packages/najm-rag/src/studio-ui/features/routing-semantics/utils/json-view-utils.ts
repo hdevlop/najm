@@ -1,5 +1,6 @@
 import type { SemanticPhraseResponse, GroupedSemanticsPayload } from '@/features/routing-semantics/types';
 import type { ApiClient } from '@/lib/api';
+import { importSemanticsViaJob } from '@/lib/importJob';
 
 export function toGrouped(semantics: SemanticPhraseResponse[]): GroupedSemanticsPayload {
   const result: GroupedSemanticsPayload = {};
@@ -73,10 +74,6 @@ export function isValidSemanticsPayload(value: unknown): value is GroupedSemanti
     }
   }
   return true;
-}
-
-interface ImportResult {
-  results: Array<{ toolName: string; phrase: string; lang: string; status: 'inserted' | 'updated' | 'skipped'; error?: string }>;
 }
 
 export function extractGroupedPayload(raw: unknown): GroupedSemanticsPayload {
@@ -179,14 +176,15 @@ export async function handleJsonSave(
     removedIds.length > 0
       ? apiClient.post<{ deleted: number }>('/semantics/delete-batch', { ids: removedIds })
       : Promise.resolve({ deleted: 0 }),
+    // An import job, not POST /semantics/import: a large edit embedded in one
+    // request outlived fetch's 300 s header timeout.
     hasAdditions
-      ? apiClient.post<ImportResult>('/semantics/import', addedPayload)
-      : Promise.resolve<ImportResult>({ results: [] }),
+      ? importSemanticsViaJob(apiClient, addedPayload)
+      : Promise.resolve(null),
   ]);
 
-  const results = Array.isArray(importResult?.results) ? importResult.results : [];
-  const inserted = results.filter(r => r.status === 'inserted').length;
-  const updated = results.filter(r => r.status === 'updated').length;
+  const inserted = importResult?.inserted ?? 0;
+  const updated = importResult?.updated ?? 0;
   const deleted = deleteResult?.deleted ?? 0;
 
   await onRefresh();

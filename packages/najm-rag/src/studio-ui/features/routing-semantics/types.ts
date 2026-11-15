@@ -91,6 +91,8 @@ export interface LegacySemanticsExportPayload {
 
 export type SemanticsExportPayload = GroupedSemanticsPayload | LegacySemanticsExportPayload;
 
+export type { SemanticsImportSummary } from '@/lib/importJob';
+
 export interface SemanticsImportResult {
   results: Array<{
     toolName: string;

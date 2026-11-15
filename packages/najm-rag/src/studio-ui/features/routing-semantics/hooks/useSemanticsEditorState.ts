@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useApiClient } from '@/lib/api';
-import type { SemanticPhraseResponse, SemanticsExportPayload, SemanticsImportResult, ImportJobState } from '@/features/routing-semantics/types';
+import type { SemanticPhraseResponse, SemanticsExportPayload, SemanticsImportSummary, ImportJobState } from '@/features/routing-semantics/types';
 
 export interface UseSemanticsEditorStateOptions {
   defaultLang: string;
@@ -180,7 +180,7 @@ export function useSemanticsActions(
     onClearAll?: () => Promise<{ deleted: number } | void>;
     onReindexAll?: () => Promise<void>;
     onExport?: () => Promise<SemanticsExportPayload>;
-    onImport?: (payload: SemanticsExportPayload) => Promise<SemanticsImportResult>;
+    onImport?: (payload: SemanticsExportPayload) => Promise<SemanticsImportSummary>;
     onImportFiles?: (files: File[]) => Promise<ImportJobState>;
   }
 ) {
@@ -297,11 +297,8 @@ export function useSemanticsActions(
     try {
       const raw = await file.text();
       const payload = JSON.parse(raw) as SemanticsExportPayload;
-      const result = await callbacks.onImport(payload);
-      const inserted = result.results.filter((r) => r.status === 'inserted').length;
-      const updated = result.results.filter((r) => r.status === 'updated').length;
-      const skipped = result.results.filter((r) => r.status === 'skipped').length;
-      onSuccess(inserted, updated, skipped);
+      const { inserted, updated, skipped, failed } = await callbacks.onImport(payload);
+      onSuccess(inserted, updated, skipped + failed);
     } catch (err) {
       onError(err instanceof Error ? err.message : 'Import failed');
     } finally {

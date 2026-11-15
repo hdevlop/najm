@@ -2,8 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { RowSelectionState } from '@tanstack/react-table';
 import { useApiClient } from '@/lib/api';
+import { importSemanticsViaJob, summarizeImportJob, type SemanticsImportSummary } from '@/lib/importJob';
 import type {
-  SemanticPhraseResponse, SemanticsExportPayload, SemanticsImportResult,
+  SemanticPhraseResponse, SemanticsExportPayload,
   PaginatedSemanticsResponse, SemanticGroupsResponse, ImportJobState, IndexSettings,
 } from '@/features/routing-semantics/types';
 
@@ -130,10 +131,12 @@ export function useSemanticsWorkspace() {
   const handleExportSemantics = async () =>
     apiClient.get<SemanticsExportPayload>('/semantics/export');
 
-  const handleImportSemantics = async (payload: SemanticsExportPayload) => {
-    const result = await apiClient.post<SemanticsImportResult>('/semantics/import', payload);
+  // Through an import job: the synchronous endpoint embeds everything in one
+  // request and timed out (fetch gives up on headers after 300 s).
+  const handleImportSemantics = async (payload: SemanticsExportPayload): Promise<SemanticsImportSummary> => {
+    const job = await importSemanticsViaJob(apiClient, payload);
     await invalidateSemantics();
-    return result;
+    return summarizeImportJob(job);
   };
 
   const handleImportFiles = async (files: File[]) => {
