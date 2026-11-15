@@ -3,7 +3,7 @@ import { EmbeddingService } from '../embeddings';
 import { ToolIndexRepository } from '../toolIndex';
 import { RAG_CONFIG } from '../tokens';
 import type { RagMergedConfig } from '../config';
-import { canonicalizeRoutingText } from '../toolRouter/ToolRouterUtils';
+import { phraseRoutingText } from '../toolRouter/ToolRouterUtils';
 import type { ImportJobState, ImportJobFileSummary } from './ChatbotRagDto';
 import { initFileSummaries, markJobFailed, runBatches } from './runBatchImportJob';
 
@@ -163,8 +163,8 @@ export class SemanticImportJobService {
       toEmbed,
       BATCH_SIZE,
       async (batch, batchIndex, batchStart) => {
-        // Embedded the way routing embeds a message; stored as typed.
-        const phrases = batch.map((e) => canonicalizeRoutingText(e.phrase, this.config?.rewriteRoutingQuery));
+        // Embedded through rewriteRoutingPhrase (default: the message rewrite); stored as typed.
+        const phrases = batch.map((e) => phraseRoutingText(e.phrase, this.config));
         const embeddings = await this.embedding.embedBatch(phrases, 'document', 'semantic-index');
 
         job.currentPhase = 'saving';

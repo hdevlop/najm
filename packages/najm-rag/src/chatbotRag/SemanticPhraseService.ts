@@ -8,7 +8,7 @@ import { ChatbotRagValidator } from './ChatbotRagValidator';
 import { getRoutableTools } from '../toolVisibility';
 import { RoutingSettingsService } from '../routingSettings/RoutingSettingsService';
 import { RoutingPreviewService } from '../toolRouter/RoutingPreviewService';
-import { canonicalizeRoutingText } from '../toolRouter/ToolRouterUtils';
+import { phraseRoutingText } from '../toolRouter/ToolRouterUtils';
 import { RagSchemaService, type RagSchemaStatus } from '../schema/RagSchemaService';
 import type {
   SemanticPhraseResponse,
@@ -38,9 +38,9 @@ export class SemanticPhraseService {
     @Inject() private preview?: RoutingPreviewService,
   ) {}
 
-  /** Phrases are stored as typed and embedded the way routing embeds a message. */
+  /** Phrases are stored as typed and embedded through `rewriteRoutingPhrase` (default: the message rewrite). */
   private phraseText(phrase: string): string {
-    return canonicalizeRoutingText(phrase, this.config.rewriteRoutingQuery);
+    return phraseRoutingText(phrase, this.config);
   }
 
   /** Schema state from RagSchemaService, or null when it is not registered. */

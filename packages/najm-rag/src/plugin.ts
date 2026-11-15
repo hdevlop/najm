@@ -156,6 +156,7 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
       ? effective.allowedLangs
       : undefined,
     rewriteRoutingQuery: typeof config?.rewriteRoutingQuery === 'function' ? config.rewriteRoutingQuery : undefined,
+    rewriteRoutingPhrase: typeof config?.rewriteRoutingPhrase === 'function' ? config.rewriteRoutingPhrase : undefined,
     rewriteRoutingQueryOnMiss: typeof config?.rewriteRoutingQueryOnMiss === 'function' ? config.rewriteRoutingQueryOnMiss : undefined,
     routingTextVersion: typeof effective.routingTextVersion === 'string' ? effective.routingTextVersion : undefined,
     ensureSchema: effective.ensureSchema !== false,

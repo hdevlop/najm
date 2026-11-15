@@ -119,6 +119,23 @@ When you change the rewriter, also change `routingTextVersion` (any string).
 Phrases record which embedder setup produced their vectors, and "reindex
 semantics" re-embeds the ones that no longer match.
 
+If your message rewrite adds text a stored phrase should not carry, such as
+hint lines that name tools, give phrases their own rewrite. Phrases otherwise
+get those hints too, which pulls them toward the hinted tools and makes them
+longer to embed:
+
+```typescript
+rag({
+  rewriteRoutingQuery: (text) => withToolHints(text, normalizeDarija(text)),
+  rewriteRoutingPhrase: normalizeDarija, // same normalization, no hints
+  routingTextVersion: 'phrases-without-hints-1',
+});
+```
+
+`rewriteRoutingPhrase` defaults to `rewriteRoutingQuery`; `(text) => text`
+embeds phrases as typed. Setting it marks stored phrases stale, so run
+"reindex semantics" afterwards. Re-run your routing tests before and after.
+
 #### Second chance for a miss
 
 `rewriteRoutingQueryOnMiss` runs only when a message matched no tool. It can

@@ -19,6 +19,7 @@ export {
   normalizeQuery,
   rewriteRoutingQuery,
   canonicalizeRoutingText,
+  phraseRoutingText,
   normalizeArabic,
   EmbeddingLru,
   deepEqual,

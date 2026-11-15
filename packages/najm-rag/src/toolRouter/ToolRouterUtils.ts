@@ -48,6 +48,18 @@ export function canonicalizeRoutingText(text: string, rewrite?: (normalized: str
   return normalized ? rewriteRoutingQuery(normalized, rewrite) : text.trim();
 }
 
+/**
+ * The text a stored semantic phrase is embedded as: normalized, then rewritten
+ * by `rewriteRoutingPhrase`, or by `rewriteRoutingQuery` when no phrase
+ * rewrite is set. Every path that embeds a phrase goes through here.
+ */
+export function phraseRoutingText(
+  phrase: string,
+  config?: { rewriteRoutingPhrase?: (normalized: string) => string; rewriteRoutingQuery?: (normalized: string) => string } | null,
+): string {
+  return canonicalizeRoutingText(phrase, config?.rewriteRoutingPhrase ?? config?.rewriteRoutingQuery);
+}
+
 export function deepEqual(a: unknown, b: unknown): boolean {
   if (a === b) return true;
   if (typeof a !== 'object' || typeof b !== 'object') return false;

@@ -460,6 +460,8 @@ export class ToolIndexRepository {
       routingTextVersion: this.config?.routingTextVersion ?? null,
       // Phrases are embedded through the routing pipeline (normalized, rewritten).
       phraseText: 'canonical-1',
+      // Only when set, so hosts without a phrase rewrite keep their vectors.
+      ...(this.config?.rewriteRoutingPhrase ? { phraseRewrite: 'rewriteRoutingPhrase' } : {}),
     })).digest('hex');
   }
 

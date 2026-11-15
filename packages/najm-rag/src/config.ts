@@ -84,6 +84,17 @@ export interface RagConfig {
    */
   rewriteRoutingQuery?: RoutingQueryRewrite;
   /**
+   * Rewrites a stored semantic phrase before it is embedded. Defaults to
+   * `rewriteRoutingQuery`, so phrases and messages are embedded the same way.
+   * Set it when the message rewrite adds things a phrase should not carry,
+   * for example hint lines that name tools: those pull every phrase toward
+   * the hinted tools and make it longer to embed. A typical value keeps the
+   * dialect normalization and drops the hints; `(text) => text` embeds
+   * phrases as typed. Bump `routingTextVersion` when you change it, then
+   * reindex semantics.
+   */
+  rewriteRoutingPhrase?: RoutingQueryRewrite;
+  /**
    * Any string naming the current routing-text handling (for example the
    * rewriter's version). Changing it marks every semantic phrase stale so the
    * next "reindex semantics" re-embeds them; a function cannot be compared,
@@ -144,6 +155,7 @@ export interface RagMergedConfig {
   configPath?: string;
   allowedLangs?: string[];
   rewriteRoutingQuery?: RoutingQueryRewrite;
+  rewriteRoutingPhrase?: RoutingQueryRewrite;
   rewriteRoutingQueryOnMiss?: RoutingQueryRewriteOnMiss;
   routingTextVersion?: string;
   unmatchedRetentionDays?: number;
