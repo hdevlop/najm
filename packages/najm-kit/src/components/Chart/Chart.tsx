@@ -316,7 +316,7 @@ export function NStatusBreakdown({
             return (
               <div className={cn("space-y-1.5", item.className)} key={item.id}>
                 <div className="flex items-center justify-between gap-3 text-sm"><span className="text-muted-foreground">{item.label}</span><strong className="tabular-nums">{valueFormatter(value)}</strong></div>
-                <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ backgroundColor: getNChartColor(index, item.color), width: `${Math.max(minimumVisiblePercent, (value / maximum) * 100)}%` }} /></div>
+                <div className="h-2 overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full" style={{ backgroundColor: getNChartColor(index, item.color), width: value === 0 ? "0%" : `${Math.max(minimumVisiblePercent, (value / maximum) * 100)}%` }} /></div>
               </div>
             );
           })}

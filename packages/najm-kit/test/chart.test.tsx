@@ -70,6 +70,21 @@ describe("Najm charts", () => {
     expect(container.querySelector(".hidden.xl\\:block")).toBeDefined();
   });
 
+  test("status breakdown draws no bar for a zero value but keeps small values visible", () => {
+    const { getByRole } = render(
+      <NStatusBreakdown
+        items={[
+          { id: "active", label: "Active", value: 228 },
+          { id: "small", label: "Small", value: 1 },
+          { id: "pending", label: "Pending", value: 0 },
+        ]}
+        title="Phrases"
+      />,
+    );
+    const bars = Array.from(getByRole("img", { name: "Phrases" }).querySelectorAll<HTMLElement>(".bg-muted > div"));
+    expect(bars.map((bar) => bar.style.width)).toEqual(["100%", "4%", "0%"]);
+  });
+
   test("loading variants expose an accessible busy state", () => {
     const { getByRole } = render(<NLineChart data={[]} icon={ChartNoAxesCombined} loading loadingLabel="Loading trend" series={[]} title="Trend" />);
     const status = getByRole("status", { name: "Loading trend" });

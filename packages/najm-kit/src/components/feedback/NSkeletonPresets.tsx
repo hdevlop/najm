@@ -4,10 +4,14 @@ import { NCard } from "../Card/Card";
 
 interface SkeletonProps extends React.ComponentProps<"div"> {}
 
+/**
+ * `bg-muted`, not `bg-accent`: accent presets tint `--accent` (violet, emerald,
+ * ...), which painted every loading block in the brand color.
+ */
 export function NSkeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
-      className={cn('animate-pulse rounded-md bg-accent motion-reduce:animate-none', className)}
+      className={cn('animate-pulse rounded-md bg-muted motion-reduce:animate-none', className)}
       aria-hidden="true"
       {...props}
     />

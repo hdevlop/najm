@@ -128,6 +128,12 @@ const SIZE_TEXT_MAP: Record<string, string> = {
   lg: "text-base",
 };
 
+const TONE_VARIANTS = new Set<string>(["secondary", "destructive", "success", "warning", "outline"]);
+
+function isToneVariant(variant: unknown): variant is BadgeVariant {
+  return typeof variant === "string" && TONE_VARIANTS.has(variant);
+}
+
 function renderIcon(icon: BadgeIcon | undefined) {
   if (!icon) return null;
   return <NIcon aria-hidden="true" icon={icon} className="shrink-0" />;
@@ -180,9 +186,14 @@ function Badge({
   // radius must not silently un-pill an application's status badges.
   const recipeRadius = effectiveShape === undefined ? resolveRadiusValue(recipe?.radius) : undefined;
   const recipeStyle = recipeRadius ? { borderRadius: recipeRadius, ...style } : style;
+  // An explicit tone variant (`success`, `outline`, …) is the caller's color.
+  // Falling straight through to `color ?? "primary"` made every variant render
+  // as a solid primary badge. `default` and recipe aliases such as `primary`
+  // keep the primary color they have always had.
+  const usesToneVariant = !status && color === undefined && isToneVariant(variant);
   const resolvedColor = status
     ? resolveStatusColor(status, effectiveStatusMap, color ?? "neutral")
-    : color ?? "primary";
+    : usesToneVariant ? undefined : color ?? "primary";
   // Most specific first: the call site, then its children, then the
   // application's label for this status, then the humanized token.
   const resolvedLabel =

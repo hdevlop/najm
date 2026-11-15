@@ -54,6 +54,7 @@ export interface NPieChartProps extends NChartCardProps {
 
 export interface NStatusBreakdownProps extends NChartCardProps {
   items: readonly NChartItem[];
+  /** Smallest bar width for a non-zero value, so a tiny count stays visible. A zero value draws no bar. */
   minimumVisiblePercent?: number;
 }
 

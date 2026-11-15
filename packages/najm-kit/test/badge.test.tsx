@@ -25,6 +25,25 @@ describe("Badge", () => {
     expect(badgeColorVariants({ color: "success", look: "soft" })).toContain("bg-success/10");
   });
 
+  test("an explicit tone variant is not overridden by the primary color", () => {
+    const { getByText } = render(
+      <>
+        <Badge variant="success">Ok</Badge>
+        <Badge variant="destructive">Bad</Badge>
+        <Badge variant="outline">Plain</Badge>
+        <Badge>Default</Badge>
+        <Badge variant="success" color="warning">Color wins</Badge>
+      </>,
+    );
+    expect(getByText("Ok").className).toContain("bg-green-500/10");
+    expect(getByText("Ok").className).not.toContain("bg-primary");
+    expect(getByText("Bad").className).toContain("text-destructive");
+    expect(getByText("Plain").className).toContain("border-border/50");
+    expect(getByText("Plain").className).not.toContain("bg-primary");
+    expect(getByText("Default").className).toContain("bg-primary");
+    expect(getByText("Color wins").className).toContain("bg-warning");
+  });
+
   test("renders primitive badge with string icon", () => {
     const { container } = render(
       <Badge color="success" look="soft" icon="circle-check">
