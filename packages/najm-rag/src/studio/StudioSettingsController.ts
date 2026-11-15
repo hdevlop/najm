@@ -37,6 +37,13 @@ export class StudioSettingsController {
     return this.semantics.getStatus();
   }
 
+  /** Embedding reachability and database schema in one call; `ok` is false when either needs attention. */
+  @Get('/health')
+  async health() {
+    const [embedding, schema] = await Promise.all([this.embedding.health(), this.semantics.getSchemaStatus()]);
+    return { ok: embedding.ok === true && !(schema?.missing.length), embedding, schema };
+  }
+
   @Get('/health/embedding')
   async embeddingHealth() {
     return this.embedding.health();

@@ -9,6 +9,7 @@ import { getRoutableTools } from '../toolVisibility';
 import { RoutingSettingsService } from '../routingSettings/RoutingSettingsService';
 import { RoutingPreviewService } from '../toolRouter/RoutingPreviewService';
 import { canonicalizeRoutingText } from '../toolRouter/ToolRouterUtils';
+import { RagSchemaService, type RagSchemaStatus } from '../schema/RagSchemaService';
 import type {
   SemanticPhraseResponse,
   PaginatedSemanticsResponse,
@@ -40,16 +41,30 @@ export class SemanticPhraseService {
     return canonicalizeRoutingText(phrase, this.config.rewriteRoutingQuery);
   }
 
+  /** Schema state from RagSchemaService, or null when it is not registered. */
+  async getSchemaStatus(): Promise<RagSchemaStatus | null> {
+    if (!this.container?.has?.(RagSchemaService)) return null;
+    return this.container.get<RagSchemaService>(RagSchemaService).status();
+  }
+
   async getStatus() {
     const routing = this.config.toolRouting;
-    const indexedCount = await this.repository.countEmbeddings();
-    const semanticCount = await this.repository.countSemantics();
+    const schema = await this.getSchemaStatus();
+    // With columns missing, a count that names one would fail the whole
+    // status, and the studio could only say "Failed to load". Report the
+    // schema and leave those counts empty instead.
+    const degraded = (schema?.missing.length ?? 0) > 0;
+    const read = <T>(work: () => Promise<T>): Promise<T | null> =>
+      degraded ? Promise.resolve().then(work).catch(() => null) : work();
+    const indexedCount = await read(() => this.repository.countEmbeddings());
+    const semanticCount = await read(() => this.repository.countSemantics());
     const embedding = this.config.rag?.embedding ?? (this.config.toolRouting as any)?.embedding;
     const embeddingModel = embedding?.model ?? 'embeddinggemma';
     const effective = this.settings
-      ? await this.settings.getEffectiveSettings()
+      ? await read(() => this.settings!.getEffectiveSettings())
       : null;
     return {
+      schema,
       routingEnabled: routing?.enabled ?? false,
       dialect: this.config.dialect ?? 'pg',
       embeddingProvider: embedding?.provider ?? 'ollama',

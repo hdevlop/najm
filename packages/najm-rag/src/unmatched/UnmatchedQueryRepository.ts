@@ -107,6 +107,11 @@ export class UnmatchedQueryRepository {
 
   private ensuring: Promise<void> | null = null;
 
+  /** Creates the table and adds newer columns. Run at boot by RagSchemaService. */
+  ensureSchema(): Promise<void> {
+    return this.ensureTable();
+  }
+
   /**
    * Creates the table, and adds `nearest_tool` to a table made by an earlier
    * release. Concurrent first calls share one check; a failed check is retried.

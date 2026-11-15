@@ -18,6 +18,8 @@ export * from './routingSettings';
 export * from './routingTests';
 export * from './knowledge';
 export * from './unmatched';
+export { RagSchemaService } from './schema/RagSchemaService';
+export type { RagSchemaStatus, RagSchemaEnsurer } from './schema/RagSchemaService';
 // Studio API + assistant contract. The UI ships separately as `najm-rag/studio`.
 export * from './studioContract/StudioAssistantDto';
 export * from './studioContract/StudioAssistantProvider';

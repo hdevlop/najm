@@ -466,16 +466,21 @@ on both dialects. Spread `ragSchema` into your Drizzle schema and generate
 migrations with drizzle-kit as you do for your own tables. On PostgreSQL, run
 `CREATE EXTENSION IF NOT EXISTS vector;` before the first migration.
 
-Until your migrations own these tables, the repositories add a missing column
-or table the first time they need it, which needs a database user allowed to
-alter tables. Once they do, turn that off:
+Until your migrations own these tables, najm-rag adds missing columns and
+tables once at boot (in the plugin's `activate` phase, before the first
+request), which needs a database user allowed to alter tables. Once your
+migrations own them, turn that off:
 
 ```typescript
 rag({ ensureSchema: false, toolRouting: { enabled: true } });
 ```
 
-With `ensureSchema: false` the plugin never runs `CREATE` or `ALTER`; a missing
-column then fails the query that needs it. The runtime step will be removed in
+With `ensureSchema: false` the plugin never runs `CREATE` or `ALTER`. Either
+way, after boot it compares the live tables with this schema and reports what
+is absent: the boot log, `GET /status` and the studio's `GET /health` carry
+`schema.missing` (for example `chatbot_tool_semantics.source_file`) and a
+`schema.message` such as "database is missing chatbot_tool_semantics.source_file:
+run your migrations". The studio dashboard shows that message. The runtime step will be removed in
 a later major release.
 
 This release adds two nullable text columns: `chatbot_tool_semantics.fingerprint`

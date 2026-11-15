@@ -42,10 +42,24 @@ export class RoutingSettingsRepository {
     return row;
   }
 
-  private async ensureColumns(): Promise<void> {
-    if (this.schemaChecked) return;
-    this.schemaChecked = true;
-    if (this.config?.ensureSchema === false) return;
+  /** Adds settings columns newer than the table. Run at boot by RagSchemaService. */
+  ensureSchema(): Promise<void> {
+    return this.ensureColumns();
+  }
+
+  private ensuring: Promise<void> | null = null;
+
+  /** Concurrent first calls share one check; a failed check is retried instead of being marked done. */
+  private ensureColumns(): Promise<void> {
+    if (this.schemaChecked) return Promise.resolve();
+    if (this.config?.ensureSchema === false) { this.schemaChecked = true; return Promise.resolve(); }
+    this.ensuring ??= this.ensureColumnsOnce()
+      .then(() => { this.schemaChecked = true; })
+      .finally(() => { this.ensuring = null; });
+    return this.ensuring;
+  }
+
+  private async ensureColumnsOnce(): Promise<void> {
 
     if (typeof this.db.all === 'function') {
       const columns = await this.db.all(sql`PRAGMA table_info(chatbot_routing_settings)`);

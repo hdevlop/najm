@@ -391,6 +391,11 @@ export class ToolIndexRepository {
       .where(eq(table.id, id));
   }
 
+  /** Adds semantics columns newer than the table (source_file, fingerprint). Run at boot by RagSchemaService. */
+  ensureSchema(): Promise<void> {
+    return this.ensureSemanticsSourceFileColumn();
+  }
+
   private async ensureSemanticsSourceFileColumn(): Promise<void> {
     if (this.semanticsSchemaChecked) return;
     if (this.config?.ensureSchema === false) { this.semanticsSchemaChecked = true; return; }

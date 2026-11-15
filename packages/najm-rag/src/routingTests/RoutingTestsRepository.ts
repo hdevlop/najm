@@ -166,10 +166,24 @@ export class RoutingTestsRepository {
     return before.length;
   }
 
-  private async ensureTable(): Promise<void> {
-    if (this.ready) return;
-    this.ready = true;
-    if (this.config?.ensureSchema === false) return;
+  /** Creates the table and adds newer columns. Run at boot by RagSchemaService. */
+  ensureSchema(): Promise<void> {
+    return this.ensureTable();
+  }
+
+  private ensuring: Promise<void> | null = null;
+
+  /** Concurrent first calls share one check; a failed check is retried instead of being marked done. */
+  private ensureTable(): Promise<void> {
+    if (this.ready) return Promise.resolve();
+    if (this.config?.ensureSchema === false) { this.ready = true; return Promise.resolve(); }
+    this.ensuring ??= this.ensureTableOnce()
+      .then(() => { this.ready = true; })
+      .finally(() => { this.ensuring = null; });
+    return this.ensuring;
+  }
+
+  private async ensureTableOnce(): Promise<void> {
 
     if (this.config.dialect === 'sqlite' && typeof this.db.run === 'function') {
       await this.db.run(sql`

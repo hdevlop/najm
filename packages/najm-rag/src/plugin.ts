@@ -1,3 +1,4 @@
+import { RagSchemaService } from './schema/RagSchemaService';
 import { plugin } from 'najm-core';
 import { TOOL_PROVIDER } from 'najm-mcp';
 import { RAG_CONFIG, RAG_DIAGNOSTICS, RAG_SCHEMA, VECTOR_STRATEGY, RAG_OCR_PROVIDER } from './tokens';
@@ -197,6 +198,7 @@ export const rag = (config?: RagConfig) => {
       ToolIndexRepository,
       ToolIndexValidator,
       SqliteVecBootService,
+      RagSchemaService,
     );
   }
 
