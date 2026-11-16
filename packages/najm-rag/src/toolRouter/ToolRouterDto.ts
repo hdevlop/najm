@@ -14,12 +14,24 @@ export interface ToolRoutingRequest {
   latestUserText?: string;
 }
 
+/** What `rerankTools` answered and what routing did with it. */
+export interface RoutingRerankOutcome {
+  /** Null when the reranker failed, timed out or answered something unusable. */
+  pick: { toolName: string | null; confidence: number } | null;
+  /** selected: the pick leads a shortened list; promoted: moved to the top; unchanged: the router's order. */
+  applied: 'selected' | 'promoted' | 'unchanged';
+  /** How many candidates the reranker was shown. */
+  candidates: number;
+}
+
 export interface ToolRouterResult {
   status: 'disabled' | 'routed' | 'fallback_all' | 'fallback_none' | 'router_error';
   tools: RegisteredTool[];
   error?: string;
   /** The tools came from a second pass on `rewriteRoutingQueryOnMiss`'s rewrite. */
   rewrittenOnMiss?: boolean;
+  /** Set when `rerankTools` was asked. */
+  rerank?: RoutingRerankOutcome;
 }
 
 export interface RoutingPreviewMatch {
@@ -68,6 +80,8 @@ export interface RoutingPreviewResult {
   rewritten?: string;
   /** What the second pass embedded, when `rewriteRoutingQueryOnMiss` rescued a miss. */
   rewrittenOnMiss?: string;
+  /** Set when `rerankTools` was asked. */
+  rerank?: RoutingRerankOutcome;
   status: 'disabled' | 'routed' | 'fallback_all' | 'fallback_none' | 'router_error';
   matches: RoutingPreviewMatch[];
   finalToolScores?: RoutingPreviewToolScore[];

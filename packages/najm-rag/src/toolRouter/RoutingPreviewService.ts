@@ -66,21 +66,22 @@ export class RoutingPreviewService {
     }
 
     // Shown only when the app's rewrite changed what was embedded.
-    let shown: { rewritten?: string; rewrittenOnMiss?: string } = {};
+    let shown: { rewritten?: string; rewrittenOnMiss?: string; rerank?: RoutingPreviewResult['rerank'] } = {};
     try {
       const rewritten = rewriteRoutingQuery(normalized, this.config.rewriteRoutingQuery);
       if (rewritten !== normalized) shown = { rewritten };
       let embedding = await this.embedding.embed(rewritten, 'query', 'routing-preview');
 
       const settings = { maxTools, topSemanticHits, similarityThreshold, dependencies: routing.dependencies ?? {} };
-      let decision = await decideRouting(embedding, routableTools, this.repository, settings);
+      const rerankFor = (query: string) => (this.config.rerankTools ? { config: this.config.rerankTools, query } : undefined);
+      let decision = await decideRouting(embedding, routableTools, this.repository, settings, rerankFor(normalized));
 
       // Same second pass as chat routing (ToolRouterService).
       if (decision.miss) {
         const second = await rewriteOnMiss(this.config.rewriteRoutingQueryOnMiss, normalized);
         if (second) {
           const secondEmbedding = await this.embedding.embed(second, 'query', 'routing-preview');
-          const secondDecision = await decideRouting(secondEmbedding, routableTools, this.repository, settings);
+          const secondDecision = await decideRouting(secondEmbedding, routableTools, this.repository, settings, rerankFor(second));
           if (!secondDecision.miss) {
             embedding = secondEmbedding;
             decision = secondDecision;
@@ -89,6 +90,7 @@ export class RoutingPreviewService {
         }
       }
 
+      if (decision.rerank) shown = { ...shown, rerank: decision.rerank };
       if (decision.miss) {
         const fallback = routing.fallbackOnNoMatch ?? 'none';
         return {
@@ -115,9 +117,11 @@ export class RoutingPreviewService {
         .map((toolName) => {
           const direct = directScoreByTool.get(toolName);
           if (direct) {
+            // A near miss the reranker selected keeps its below-threshold score.
             return {
               ...direct,
-              matchLevel: toolName === primaryName ? 'primary' as const : 'secondary' as const,
+              matchLevel: toolName === primaryName ? 'primary' as const
+                : direct.similarity >= similarityThreshold ? 'secondary' as const : 'below_threshold' as const,
             };
           }
           const score = embeddingScoreByTool.get(toolName);

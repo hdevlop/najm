@@ -158,6 +158,7 @@ const mergeConfig = (config?: RagConfig): RagMergedConfig => {
     rewriteRoutingQuery: typeof config?.rewriteRoutingQuery === 'function' ? config.rewriteRoutingQuery : undefined,
     rewriteRoutingPhrase: typeof config?.rewriteRoutingPhrase === 'function' ? config.rewriteRoutingPhrase : undefined,
     rewriteRoutingQueryOnMiss: typeof config?.rewriteRoutingQueryOnMiss === 'function' ? config.rewriteRoutingQueryOnMiss : undefined,
+    rerankTools: typeof config?.rerankTools?.rerank === 'function' ? config.rerankTools : undefined,
     routingTextVersion: typeof effective.routingTextVersion === 'string' ? effective.routingTextVersion : undefined,
     ensureSchema: effective.ensureSchema !== false,
     unmatchedRetentionDays: typeof effective.unmatchedRetentionDays === 'number' && effective.unmatchedRetentionDays > 0

@@ -109,6 +109,14 @@ export interface RagConfig {
    * no-match outcome. Results are cached per message. Off unless set.
    */
   rewriteRoutingQueryOnMiss?: RoutingQueryRewriteOnMiss;
+  /**
+   * Optional second judge after embedding search, for example a small
+   * classifier model. Receives the message and the best-scoring tools with
+   * their descriptions, and returns one of them (or null for none) with a
+   * confidence. A confident pick leads the tool list; anything else, a
+   * failure or a timeout keeps the router's order. Off unless set.
+   */
+  rerankTools?: RoutingRerankConfig;
   knowledge?: boolean | RagKnowledgeConfig;
   /**
    * BCP-47 language codes allowed for semantic phrases. If omitted, all known
@@ -150,6 +158,48 @@ export interface SemanticSeed {
 export type RoutingQueryRewrite = (normalized: string) => string;
 export type RoutingQueryRewriteOnMiss = (normalized: string, options: { signal: AbortSignal }) => Promise<string | null> | string | null;
 
+export interface RoutingRerankCandidate {
+  toolName: string;
+  description: string;
+  /** The router's score for the tool. */
+  similarity: number;
+}
+
+export interface RoutingRerankPick {
+  /** One of the candidates' names, or null when none fits. */
+  toolName: string | null;
+  /** Between 0 and 1. */
+  confidence: number;
+}
+
+export interface RoutingRerankConfig {
+  /**
+   * Receives the normalized message as routed (before `rewriteRoutingQuery`)
+   * and the candidates, best first. An answer naming a tool that is not a
+   * candidate, a throw, or no answer within `timeoutMs` keeps the router's
+   * order. Valid answers are cached per message and candidate list.
+   */
+  rerank: (request: {
+    query: string;
+    candidates: RoutingRerankCandidate[];
+    signal: AbortSignal;
+  }) => Promise<RoutingRerankPick | null> | RoutingRerankPick | null;
+  /**
+   * Lowest score a candidate may have. Below the routing threshold, a near
+   * miss can be rescued, but only by a pick at `selectAt`. Default: the
+   * routing threshold (no near misses).
+   */
+  minSimilarity?: number;
+  /** At or above: the pick, its dependencies, then `keepRouterTools` of the router's matches. Default 0.85. */
+  selectAt?: number;
+  /** At or above (and below `selectAt`): the pick moves to the top of the router's matches. Default 0.7. */
+  promoteAt?: number;
+  /** Router matches kept after a selected pick. Default 3. */
+  keepRouterTools?: number;
+  /** Default 800. */
+  timeoutMs?: number;
+}
+
 export interface RagMergedConfig {
   dialect: RagDialect;
   configPath?: string;
@@ -157,6 +207,7 @@ export interface RagMergedConfig {
   rewriteRoutingQuery?: RoutingQueryRewrite;
   rewriteRoutingPhrase?: RoutingQueryRewrite;
   rewriteRoutingQueryOnMiss?: RoutingQueryRewriteOnMiss;
+  rerankTools?: RoutingRerankConfig;
   routingTextVersion?: string;
   unmatchedRetentionDays?: number;
   /** False: repositories never change the schema. */

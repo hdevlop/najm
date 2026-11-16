@@ -10,7 +10,9 @@ import { ToolRoutingLoader } from './ToolRoutingLoader';
 import { UnmatchedQueryService } from '../unmatched';
 import type { UnmatchedMiss } from '../unmatched/UnmatchedQueryDto';
 import { getRoutableTools } from '../toolVisibility';
-import { decideRouting, type RoutingDecisionSettings } from './RoutingDecision';
+import { decideRouting, type RoutingDecision, type RoutingDecisionSettings, type RoutingRerank } from './RoutingDecision';
+
+const withRerank = (decision: RoutingDecision) => (decision.rerank ? { rerank: decision.rerank } : {});
 import { rewriteOnMiss } from './RewriteOnMiss';
 import { DEFAULT_SIMILARITY_THRESHOLD } from './RoutingDefaults';
 
@@ -70,15 +72,15 @@ export class ToolRouterService {
         similarityThreshold: threshold,
         dependencies: routing.dependencies ?? {},
       };
-      let decision = await decideRouting(latestEmbedding, routableTools, this.repository, settings);
+      let decision = await decideRouting(latestEmbedding, routableTools, this.repository, settings, this.rerankFor(latest));
       if (decision.miss && joinedEmbedding) {
-        const joined = await decideRouting(joinedEmbedding, routableTools, this.repository, settings);
+        const joined = await decideRouting(joinedEmbedding, routableTools, this.repository, settings, this.rerankFor(normalized));
         if (!joined.miss) decision = joined;
       }
 
       if (decision.miss) {
         const second = await this.routeRewrittenMiss(latest, routableTools, settings);
-        if (second) return { status: 'routed', tools: second, rewrittenOnMiss: true };
+        if (second) return { status: 'routed', tools: second.finalTools, rewrittenOnMiss: true, ...withRerank(second) };
         this.recordUnmatchedQuery({
           query: latestText,
           normalized: latest,
@@ -87,10 +89,10 @@ export class ToolRouterService {
           source: decision.miss.source,
           nearestTool: decision.miss.toolName,
         });
-        return this.applyFallbackResult(routing.fallbackOnNoMatch ?? 'none');
+        return { ...this.applyFallbackResult(routing.fallbackOnNoMatch ?? 'none'), ...withRerank(decision) };
       }
 
-      return { status: 'routed', tools: decision.finalTools };
+      return { status: 'routed', tools: decision.finalTools, ...withRerank(decision) };
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.log.error?.('[chatbot-rag] Tool routing failed:', error);
@@ -99,21 +101,25 @@ export class ToolRouterService {
     }
   }
 
+  private rerankFor(query: string): RoutingRerank | undefined {
+    return this.config.rerankTools ? { config: this.config.rerankTools, query } : undefined;
+  }
+
   /**
    * The second pass for a miss (`rewriteRoutingQueryOnMiss`). Returns the
-   * tools when the rewritten message matched; any failure keeps the miss.
+   * decision when the rewritten message matched; any failure keeps the miss.
    */
   private async routeRewrittenMiss(
     normalized: string,
     routableTools: RegisteredTool[],
     settings: RoutingDecisionSettings,
-  ): Promise<RegisteredTool[] | null> {
+  ): Promise<RoutingDecision | null> {
     const rewritten = await rewriteOnMiss(this.config.rewriteRoutingQueryOnMiss, normalized);
     if (!rewritten) return null;
     try {
       const embedding = await this.embedding.embed(rewritten, 'query', 'tool-routing');
-      const decision = await decideRouting(embedding, routableTools, this.repository, settings);
-      return decision.miss ? null : decision.finalTools;
+      const decision = await decideRouting(embedding, routableTools, this.repository, settings, this.rerankFor(rewritten));
+      return decision.miss ? null : decision;
     } catch (error) {
       this.log.warn?.('[chatbot-rag] Routing the rewritten message failed:', error);
       return null;

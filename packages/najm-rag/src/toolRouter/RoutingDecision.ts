@@ -1,7 +1,11 @@
 import type { RegisteredTool } from 'najm-mcp';
 import type { SemanticMatch } from '../toolIndex';
-import type { RoutingPreviewDependency, RoutingPreviewMatch, RoutingPreviewRoutingDecision } from './ToolRouterDto';
+import type { RoutingRerankConfig } from '../config';
+import type {
+  RoutingPreviewDependency, RoutingPreviewMatch, RoutingPreviewRoutingDecision, RoutingRerankOutcome,
+} from './ToolRouterDto';
 import { filterAlternativeMutations } from './RoutingLogic';
+import { rerankMatches } from './RerankTools';
 
 /** Phrase rows fetched per tool kept, so tools are ranked from enough rows. */
 const PHRASE_ROWS_PER_TOOL = 5;
@@ -23,6 +27,8 @@ export interface RoutingDecision {
   /**
    * One per tool at or above the threshold, best first, scored by the better
    * of the tool's best phrase and its description (`source` says which).
+   * With `rerankTools`, in the reranker's order, and may hold a near miss it
+   * selected.
    */
   matches: RoutingPreviewMatch[];
   /**
@@ -35,6 +41,14 @@ export interface RoutingDecision {
   routingDecisions: RoutingPreviewRoutingDecision[];
   /** The tools given to the model, in order. */
   finalTools: RegisteredTool[];
+  /** Set when `rerankTools` was asked. */
+  rerank?: RoutingRerankOutcome;
+}
+
+/** The app's reranker and the message it judges (before `rewriteRoutingQuery`). */
+export interface RoutingRerank {
+  config: RoutingRerankConfig;
+  query: string;
 }
 
 /**
@@ -46,6 +60,7 @@ export async function decideRouting(
   routableTools: RegisteredTool[],
   search: RoutingSearch,
   settings: RoutingDecisionSettings,
+  rerank?: RoutingRerank,
 ): Promise<RoutingDecision> {
   const { maxTools, topSemanticHits, similarityThreshold: threshold } = settings;
   const registered = new Set(routableTools.map((tool) => tool.name));
@@ -71,10 +86,19 @@ export async function decideRouting(
   consider(rawSemantics, 'semantics');
   consider(rawEmbeddings, 'embeddings');
   const ranked = [...best.values()].sort((a, b) => b.similarity - a.similarity);
-  const matches = ranked.filter((match) => match.similarity >= threshold).slice(0, Math.max(topSemanticHits, 1));
+  let matches = ranked.filter((match) => match.similarity >= threshold).slice(0, Math.max(topSemanticHits, 1));
+
+  let rerankOutcome: RoutingRerankOutcome | undefined;
+  if (rerank) {
+    const reranked = await rerankMatches(rerank.config, rerank.query, ranked, matches, routableTools,
+      { threshold, topSemanticHits });
+    if (reranked) ({ matches, outcome: rerankOutcome } = reranked);
+  }
+  const withRerank = rerankOutcome ? { rerank: rerankOutcome } : {};
 
   if (matches.length === 0) {
     return {
+      ...withRerank,
       matches: [],
       miss: {
         score: ranked[0]?.similarity ?? 0,
@@ -130,5 +154,5 @@ export async function decideRouting(
     .map((name) => registryMap.get(name))
     .filter((tool): tool is RegisteredTool => tool !== undefined);
 
-  return { matches, miss: null, primaryName, dependencies, routingDecisions, finalTools };
+  return { matches, miss: null, primaryName, dependencies, routingDecisions, finalTools, ...withRerank };
 }
