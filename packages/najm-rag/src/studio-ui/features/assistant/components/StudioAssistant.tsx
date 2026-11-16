@@ -18,6 +18,13 @@ interface StudioAssistantProps {
   activeWorkspace: string;
   viewContext?: Record<string, unknown>;
   onToolResult?: (toolName: string) => void;
+  /**
+   * Controlled panel state. When set, the floating trigger is not drawn: the
+   * studio opens the panel from its sidebar, because a floating button sat on
+   * every table's pagination footer.
+   */
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 const TOOL_DISPLAY_NAMES: Record<string, string> = {
@@ -53,9 +60,15 @@ function formatToolName(name: string): string {
   return TOOL_DISPLAY_NAMES[name] ?? name.replace('rag_studio_', '').replace(/_/g, ' ');
 }
 
-export function StudioAssistant({ activeWorkspace, viewContext, onToolResult }: StudioAssistantProps) {
+export function StudioAssistant({ activeWorkspace, viewContext, onToolResult, open: openProp, onOpenChange }: StudioAssistantProps) {
   const { apiBase, getAuthHeaders } = useRagStudio();
-  const [open, setOpen] = useState(false);
+  const [openState, setOpenState] = useState(false);
+  const controlled = openProp !== undefined;
+  const open = controlled ? openProp : openState;
+  const setOpen = (next: boolean) => {
+    if (!controlled) setOpenState(next);
+    onOpenChange?.(next);
+  };
   const [messages, setMessages] = useState<StudioAssistantMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -214,7 +227,7 @@ export function StudioAssistant({ activeWorkspace, viewContext, onToolResult }: 
 
   return (
     <>
-      {!open && (
+      {!open && !controlled && (
         <Button
           size="icon-lg"
           rounded="full"

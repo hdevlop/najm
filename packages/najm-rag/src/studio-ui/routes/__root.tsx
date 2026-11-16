@@ -9,7 +9,8 @@ import { useInspector } from '@/features/knowledge/hooks/useInspector';
 import { useUnmatchedInbox } from '@/features/logs/hooks/useUnmatchedInbox';
 import { useStudioSettings } from '@/features/settings/hooks/useStudioSettings';
 import { useRefreshBuckets } from '@/features/assistant/hooks/useRefreshBuckets';
-import { useNavItems } from '@/features/dashboard/hooks/useNavItems';
+import { ASSISTANT_NAV_ID, useNavItems } from '@/features/dashboard/hooks/useNavItems';
+import { normalizeStudioView } from '@/features/assistant/constants';
 
 interface RouteCallbacks {
   onCitationClick: (chunkId: string, documentId: string) => void;
@@ -86,9 +87,16 @@ function RootLayout() {
     }
   }, [activeNavId]);
 
-  const navItems = useNavItems({ enableKnowledge, unmatchedCount });
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  // The assistant works on screens it has tools for; Chat Debug is its own chat.
+  const assistantAvailable = activeNavId !== 'chat' && normalizeStudioView(activeNavId) !== null;
+  const navItems = useNavItems({ enableKnowledge, unmatchedCount, assistant: assistantAvailable });
 
   const handleNavigate = useCallback((href: string) => {
+    if (href === ASSISTANT_NAV_ID) {
+      setAssistantOpen((open) => !open);
+      return;
+    }
     const targetPath = NAV_ID_TO_PATH[href] ?? '/';
     const currentPath = NAV_ID_TO_PATH[activeNavId] ?? '/';
     if (targetPath === currentPath) {
@@ -147,11 +155,13 @@ function RootLayout() {
         onSettingsChange={setSettings}
         onDependenciesChange={onDependenciesChange}
       />
-      {activeNavId !== 'chat' && (
+      {assistantAvailable && (
         <StudioAssistant
           activeWorkspace={activeNavId}
           viewContext={viewContext}
           onToolResult={onAssistantToolResult}
+          open={assistantOpen}
+          onOpenChange={setAssistantOpen}
         />
       )}
     </RouteCallbacksContext.Provider>

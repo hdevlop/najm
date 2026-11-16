@@ -2,15 +2,23 @@ import React, { useMemo } from 'react';
 import {
   BookOpen, Blocks, ScrollText, FileText, Layers,
   MessageSquare, Wrench, Tag, FlaskConical, TestTube,
-  Inbox, LayoutDashboard,
+  Inbox, LayoutDashboard, Bot,
 } from 'lucide-react';
 import { Badge } from 'najm-kit';
 import type { NavItem } from 'najm-kit';
 
-export function useNavItems(opts: { enableKnowledge: boolean; unmatchedCount: number }) {
-  const { enableKnowledge, unmatchedCount } = opts;
+/** Nav id of the item that opens the Studio Assistant panel (not a route). */
+export const ASSISTANT_NAV_ID = 'assistant';
 
-  return useMemo<NavItem[]>(() => {
+export interface NavItemOptions { enableKnowledge: boolean; unmatchedCount: number; assistant?: boolean }
+
+export function useNavItems(opts: NavItemOptions) {
+  const { enableKnowledge, unmatchedCount, assistant = false } = opts;
+  return useMemo(() => buildNavItems({ enableKnowledge, unmatchedCount, assistant }), [enableKnowledge, unmatchedCount, assistant]);
+}
+
+export function buildNavItems({ enableKnowledge, unmatchedCount, assistant = false }: NavItemOptions): NavItem[] {
+  {
     const items: NavItem[] = [];
     if (enableKnowledge) {
       items.push(
@@ -40,6 +48,9 @@ export function useNavItems(opts: { enableKnowledge: boolean; unmatchedCount: nu
       },
       { id: 'logs', label: 'View Logs', icon: ScrollText },
     );
+    if (assistant) {
+      items.push({ id: ASSISTANT_NAV_ID, label: 'Assistant', icon: Bot, sectionLabel: 'Help', sectionIcon: Bot });
+    }
     return items;
-  }, [enableKnowledge, unmatchedCount]);
+  }
 }
