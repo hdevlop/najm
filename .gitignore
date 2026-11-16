@@ -222,3 +222,5 @@ packages/*/src/**/*.js.map
 
 # Branding uploads written at runtime by the theme acceptance run.
 apps/playground/storage/theme-branding-platform/
+# RAG Studio uploads (playground runtime data)
+apps/playground/storage/rag/
