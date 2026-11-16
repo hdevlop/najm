@@ -189,19 +189,16 @@ export class CredentialSetupService {
     return createHash('sha256').update(token).digest('hex');
   }
 
+  // Secure comes from the cookie plugin's defaults, like every other auth cookie.
   private setCookie(token: string, options: ResolvedCredentialSetupOptions): void {
     this.cookies.setSession(options.cookieName, token, {
       httpOnly: true,
       path: options.cookiePath,
       sameSite: 'Strict',
-      secure: process.env.NODE_ENV === 'production',
     });
   }
 
   private clearCookie(options: ResolvedCredentialSetupOptions): void {
-    this.cookies.delete(options.cookieName, {
-      path: options.cookiePath,
-      secure: process.env.NODE_ENV === 'production',
-    });
+    this.cookies.delete(options.cookieName, { path: options.cookiePath });
   }
 }

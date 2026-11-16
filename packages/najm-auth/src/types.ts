@@ -6,6 +6,7 @@ import type { ZodType } from 'zod';
 import type { ValidationPluginConfig } from 'najm-validation';
 import type { RateLimitPluginConfig } from 'najm-rate';
 import type { CachePluginConfig } from 'najm-cache';
+import type { CookiePluginConfig } from 'najm-cookies';
 import type { AccountInviteEmailTheme, EmailPluginConfig } from 'najm-email';
 import type { IdentityConfig, ResolvedIdentityConfig } from './identity/types';
 import type {
@@ -282,13 +283,22 @@ export type AuthPluginConfig = {
    */
   credentialSetup?: CredentialSetupConfig;
   /*
-   * Auth depends on the cache, validation, rate-limit and email plugins. The
-   * first plugin of a name to register wins, and auth builds its own only when
-   * the application has not registered one before `auth()`. The four options
-   * below configure that auth-built plugin. An application that registers the
-   * plugin itself configures it there instead: config passed here as well is
-   * ignored, and the server warns once at startup naming it.
+   * Auth depends on the cache, cookies, validation, rate-limit and email
+   * plugins. The first plugin of a name to register wins, and auth builds its
+   * own only when the application has not registered one before `auth()`. The
+   * five options below configure that auth-built plugin. An application that
+   * registers the plugin itself configures it there instead: config passed
+   * here as well is ignored, and the server warns once at startup naming it.
    */
+
+  /**
+   * Config for the cookies() plugin auth registers when the application has
+   * none; it sets the defaults of every auth cookie. When omitted, cookies
+   * keep najm-cookies' defaults (Secure when NODE_ENV is production), except
+   * that a plain-HTTP loopback `frontendUrl` (localhost, 127.0.0.0/8, [::1])
+   * drops Secure, because WebKit never sends Secure cookies to such an origin.
+   */
+  cookies?: CookiePluginConfig;
 
   /** Config for the validation() plugin auth registers when the application has none. */
   validation?: ValidationPluginConfig;

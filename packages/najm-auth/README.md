@@ -228,17 +228,36 @@ auth({
   validation?: ValidationPluginConfig
   rateLimit?: RateLimitPluginConfig
   cache?: CachePluginConfig
+  cookies?: CookiePluginConfig             // Defaults of every auth cookie (see "Secure cookies")
   email?: EmailPluginConfig
 })
 ```
 
-Auth depends on the `cache`, `validation`, `rate-limit` and `email` plugins and
-builds each only when the application has not registered one of that name
-before `auth()`. An application that registers its own configures it there and
-passes nothing for it to `auth()`; config passed both ways is ignored on the
-auth side, and the server warns once at startup naming the option. In
+Auth depends on the `cache`, `cookies`, `validation`, `rate-limit` and `email`
+plugins and builds each only when the application has not registered one of
+that name before `auth()`. An application that registers its own configures it
+there and passes nothing for it to `auth()`; config passed both ways is ignored
+on the auth side, and the server warns once at startup naming the option. In
 particular, `auth()` needs no `EMAIL_PROVIDER` when the application registers
 `email()` itself.
+
+### Secure cookies
+
+Auth cookies (refresh token, signed session, credential setup) take `Secure`
+from the cookies plugin. By default najm-cookies sets it whenever `NODE_ENV` is
+`production`, so a production build served over plain HTTP issues cookies that
+only HTTPS should carry. Chromium and Firefox still send them to
+`http://localhost`; WebKit (measured with Playwright's WebKit on Windows) stores
+them but never sends them, and every request after sign-in arrives signed out.
+
+When `auth({ cookies })` is not given and the application has no `cookies()`
+plugin, auth therefore drops `Secure` for one case only: an explicitly
+configured `frontendUrl` (or `FRONTEND_URL`) that is `http:` on `localhost`,
+`127.0.0.0/8` or `[::1]`. Every other frontend keeps the default, and so does
+an unset one: the `http://localhost:3000` fallback does not count. A plain-HTTP
+LAN address such as `http://192.168.1.20:3000` is not loopback; set
+`auth({ cookies: { secure: false } })` explicitly for that kind of testing, never
+for a deployment.
 
 ---
 

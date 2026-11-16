@@ -15,7 +15,7 @@ import * as RoleModule from './roles';
 import * as PermissionModule from './permissions';
 import * as TokenModule from './tokens';
 import { ScopeContext } from './ownership';
-import { cookies } from 'najm-cookies';
+import { cookies, type CookiePluginConfig } from 'najm-cookies';
 import { i18n, I18N_CONTRIBUTIONS } from 'najm-i18n';
 import { guards } from 'najm-guard';
 import { validation } from 'najm-validation';
@@ -252,7 +252,7 @@ export const selectAuthSchema = (config?: AuthPluginConfig): AuthSchema => {
  * without a provider. Config forwarded through auth() for a plugin the
  * application registered is ignored, and the server warns about it.
  */
-const configurableDependency = <K extends 'cache' | 'validation' | 'rateLimit' | 'email'>(
+const configurableDependency = <K extends 'cache' | 'cookies' | 'validation' | 'rateLimit' | 'email'>(
   config: AuthPluginConfig | undefined,
   option: K,
   name: string,
@@ -261,12 +261,35 @@ const configurableDependency = <K extends 'cache' | 'validation' | 'rateLimit' |
   forwardedConfig: config?.[option] === undefined ? undefined : `auth({ ${option} })`,
 });
 
+const isLoopbackHost = (hostname: string) =>
+  hostname === 'localhost' || hostname === '[::1]' || /^127(?:\.\d{1,3}){3}$/.test(hostname);
+
+/**
+ * Cookie config for the cookies() plugin auth builds when `auth({ cookies })`
+ * is not given. najm-cookies makes cookies Secure whenever NODE_ENV is
+ * production. Browsers disagree about Secure cookies on plain-HTTP loopback:
+ * Chromium and Firefox send them, WebKit stores them but never sends them, so
+ * a production build served on http://localhost signs WebKit out on its next
+ * request. Only an explicitly configured plain-HTTP loopback `frontendUrl`
+ * (or FRONTEND_URL) drops the attribute. The `http://localhost:3000` fallback
+ * for an unset frontend does not, so an unconfigured deployment keeps the
+ * production default.
+ */
+export const defaultAuthCookieConfig = (config?: AuthPluginConfig): CookiePluginConfig => {
+  const frontendUrl = config?.frontendUrl ?? process.env.FRONTEND_URL;
+  if (!frontendUrl || !URL.canParse(frontendUrl)) return undefined;
+  const { protocol, hostname } = new URL(frontendUrl);
+  return protocol === 'http:' && isLoopbackHost(hostname) ? { secure: false } : undefined;
+};
+
 export const auth = (config?: AuthPluginConfig) =>
   plugin('auth')
     .version('1.0.0')
     .depends(
       configurableDependency(config, 'cache', 'cache', cache),
-      cookies(),
+      configurableDependency(config, 'cookies', 'cookies', (options) =>
+        cookies(options ?? defaultAuthCookieConfig(config)),
+      ),
       i18n(),
       guards(),
       configurableDependency(config, 'validation', 'validation', validation),
