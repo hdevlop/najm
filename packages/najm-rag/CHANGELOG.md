@@ -1,5 +1,31 @@
 # Changelog
 
+## 3.6.0 - 2026-11-16
+
+### Added
+
+- `rag({ rewriteRoutingPhrase })`: a separate rewrite for stored semantic
+  phrases, defaulting to `rewriteRoutingQuery`. Use it when the message
+  rewrite adds text a phrase should not carry, such as hint lines naming
+  tools. Setting it marks phrases stale for "reindex semantics"; hosts that
+  do not set it keep their vectors. `phraseRoutingText()` is exported.
+
+### Fixed
+
+- The studio destroys its router history when it unmounts; leaving and
+  re-entering the studio in a host app no longer stacks `window.history`
+  wrappers and popstate listeners.
+- The Studio Assistant opens from an "Assistant" sidebar item instead of a
+  floating button that covered every table's pagination footer.
+  `StudioAssistant` takes controlled `open` / `onOpenChange`.
+- Folder tiles and the breadcrumb in the studio's file views use najm-kit
+  `Button` and `Checkbox`; a double-click no longer opens a folder twice.
+
+### Removed
+
+- The unmounted studio screens `AccessSettings`, `SettingsWorkspace` and
+  `RagSettingsView` (never exported by `najm-rag/studio`).
+
 ## 3.5.0 - 2026-11-15
 
 ### Fixed
