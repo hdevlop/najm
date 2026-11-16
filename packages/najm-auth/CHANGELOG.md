@@ -1,5 +1,22 @@
 # Changelog
 
+## 6.14.0 - 2026-11-16
+
+- `auth({ cookies })` configures the `cookies()` plugin auth registers when the
+  application has none, like `cache`, `rateLimit` and `email`. Config passed
+  here while the application registers its own `cookies()` is ignored with the
+  usual startup warning.
+- Without it, an explicitly configured plain-HTTP loopback `frontendUrl` or
+  `FRONTEND_URL` (`localhost`, `127.0.0.0/8`, `[::1]`) drops `Secure` from auth
+  cookies. WebKit stores Secure cookies from such an origin but never sends
+  them, so a production build served on `http://localhost` signed WebKit out on
+  its next request. The `http://localhost:3000` fallback for an unset frontend
+  does not count, and every other frontend keeps najm-cookies' defaults.
+- The credential-setup cookie takes `Secure` from the cookie plugin defaults
+  instead of reading `NODE_ENV` itself. An application whose `cookies()` config
+  differs from `NODE_ENV` now sees that cookie follow it, like the refresh and
+  session cookies.
+
 ## 6.13.0 - 2026-11-10
 
 - An invited account that has not set its password yet accepts its invitation
