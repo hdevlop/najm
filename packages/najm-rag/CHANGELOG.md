@@ -1,5 +1,19 @@
 # Changelog
 
+## 3.7.0 - 2026-11-16
+
+### Added
+
+- `rag({ rerankTools })`: an optional second judge after embedding search.
+  The app's `rerank` receives the message and the best-scoring tools with
+  their descriptions and returns one of them (or none) with a confidence.
+  A pick at `selectAt` (0.85) leads the tool list with its dependencies and
+  `keepRouterTools` (3) of the router's matches; at `promoteAt` (0.7) it moves
+  to the top. Near misses down to `minSimilarity` can be rescued at
+  `selectAt`. "None", a lower confidence, an unknown tool, a throw or no
+  answer in `timeoutMs` (800) keeps the router's order. Chat routing and the
+  studio preview share it and report it as `rerank`.
+
 ## 3.6.0 - 2026-11-16
 
 ### Added
