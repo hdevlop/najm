@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { NFileTypeIcon, NFolderIcon } from 'najm-kit';
+import React from 'react';
+import { Button, Checkbox, NFileTypeIcon, NFolderIcon, cn } from 'najm-kit';
 
 interface FolderCardProps {
   label: string;
@@ -14,6 +14,10 @@ interface FolderCardProps {
   onContextMenu?: (e: React.MouseEvent) => void;
 }
 
+/**
+ * A folder or file tile. The checkbox is a sibling of the tile's button, not
+ * a child: a control inside a button is invalid and steals its clicks.
+ */
 export function FolderCard({
   label,
   subtitle,
@@ -24,57 +28,49 @@ export function FolderCard({
   onToggleSelect,
   onContextMenu,
 }: FolderCardProps) {
-  const [hovered, setHovered] = useState(false);
-
   const isFolder = variant === 'folder';
 
   return (
-    <button
-      type="button"
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
-      onDoubleClick={onOpen}
-      onClick={onOpen}
+    <div
+      className="group relative w-32"
       onContextMenu={onContextMenu ? (e) => {
         e.preventDefault();
         e.stopPropagation();
         onContextMenu(e);
       } : undefined}
-      className={`group relative flex w-32 min-h-[116px] flex-col items-center justify-start gap-2 rounded-lg border border-transparent px-3 py-3 text-center transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-        selected ? 'border-primary/35 bg-primary/10' : 'hover:border-border/70 hover:bg-accent/35'
-      }`}
     >
-      {selectable && (
-        <span
-          role="checkbox"
-          aria-checked={selected}
-          tabIndex={-1}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSelect?.();
-          }}
-          className={`absolute left-1.5 top-1.5 flex h-4 w-4 items-center justify-center rounded-sm border border-border bg-background/80 transition ${
-            hovered || selected ? 'opacity-100' : 'opacity-0'
-          } ${selected ? 'border-primary bg-primary text-primary-foreground' : ''}`}
-        >
-          {selected && (
-            <svg viewBox="0 0 12 12" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M2 6l2.5 2.5L10 3" strokeLinecap="round" strokeLinejoin="round" />
-            </svg>
-          )}
+      <Button
+        type="button"
+        variant="ghost"
+        onClick={onOpen}
+        aria-pressed={selectable ? selected : undefined}
+        className={cn(
+          'flex h-auto min-h-[116px] w-full flex-col items-center justify-start gap-2 whitespace-normal rounded-lg border border-transparent px-3 py-3 text-center',
+          selected ? 'border-primary/35 bg-primary/10 hover:bg-primary/10' : 'hover:border-border/70 hover:bg-accent/35',
+        )}
+      >
+        {isFolder ? (
+          <NFolderIcon size="lg" className="mt-0.5 drop-shadow-sm transition-transform group-hover:-translate-y-0.5" />
+        ) : (
+          <NFileTypeIcon mimeType="application/json" fileName={label} size="lg" className="mt-0.5 transition-transform group-hover:-translate-y-0.5" />
+        )}
+        <span className="block w-full">
+          <span className="block truncate text-[13px] font-semibold leading-5 text-foreground">{label}</span>
+          {subtitle && <span className="block truncate text-[11px] font-normal leading-4 text-txt-muted">{subtitle}</span>}
         </span>
-      )}
+      </Button>
 
-      {isFolder ? (
-        <NFolderIcon size="lg" className="mt-0.5 drop-shadow-sm transition-transform group-hover:-translate-y-0.5" />
-      ) : (
-        <NFileTypeIcon mimeType="application/json" fileName={label} size="lg" className="mt-0.5 transition-transform group-hover:-translate-y-0.5" />
+      {selectable && (
+        <Checkbox
+          checked={selected}
+          onCheckedChange={() => onToggleSelect?.()}
+          aria-label={`Select ${label}`}
+          className={cn(
+            'absolute left-1.5 top-1.5 bg-background/80 transition-opacity',
+            selected ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-visible:opacity-100',
+          )}
+        />
       )}
-
-      <div className="w-full">
-        <div className="truncate text-[13px] font-semibold leading-5 text-foreground">{label}</div>
-        {subtitle && <div className="truncate text-[11px] leading-4 text-txt-muted">{subtitle}</div>}
-      </div>
-    </button>
+    </div>
   );
 }

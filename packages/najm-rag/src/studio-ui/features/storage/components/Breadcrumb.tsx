@@ -1,5 +1,6 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
+import { Button } from 'najm-kit';
 
 import type { BreadcrumbSegment } from '../types';
 
@@ -9,17 +10,19 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ segments }: BreadcrumbProps) {
   return (
-    <div className="flex items-center gap-1 text-sm">
+    <nav aria-label="Breadcrumb" className="flex items-center gap-1 text-sm">
       {segments.map((seg, i) => {
         const isLast = i === segments.length - 1;
         const node = seg.onClick && !isLast ? (
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="sm"
             onClick={seg.onClick}
-            className="rounded px-1.5 py-0.5 text-txt-muted hover:bg-accent hover:text-foreground"
+            className="h-auto px-1.5 py-0.5 font-normal text-txt-muted hover:text-foreground"
           >
             {seg.label}
-          </button>
+          </Button>
         ) : (
           <span className={isLast ? 'px-1.5 py-0.5 font-medium text-foreground' : 'px-1.5 py-0.5 text-txt-muted'}>
             {seg.label}
@@ -32,6 +35,6 @@ export function Breadcrumb({ segments }: BreadcrumbProps) {
           </React.Fragment>
         );
       })}
-    </div>
+    </nav>
   );
 }
