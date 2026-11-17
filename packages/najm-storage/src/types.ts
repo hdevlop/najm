@@ -3,6 +3,7 @@
 // ============================================================================
 
 import type { FileCategory } from './fileUtils';
+import type { StorageValidator } from './StorageValidator';
 
 export type StorageBackend = 'local' | 'database';
 export type StorageDialect = 'sqlite' | 'pg' | 'mysql';
@@ -47,6 +48,12 @@ export interface StorageConfig {
   guards?: StorageRouteGuard[];
   /** Guards for listing, metadata, uploads, deletion, Studio, and MCP tools. Defaults to guards. */
   manageGuards?: StorageRouteGuard[];
+  /**
+   * A subclass of `StorageValidator` that replaces it for every upload, for
+   * application rules such as per-namespace categories. It is registered as a
+   * service and resolved wherever `StorageValidator` is injected.
+   */
+  validator?: new (...args: any[]) => StorageValidator;
   /** Enable the MCP server-path upload tool inside these roots; production needs explicit approval. */
   mcpUploadFromPath?: { allowedRoots: string[]; allowInProduction?: boolean };
   /** Required when provider is 'database' — auto-selects schema */

@@ -3,7 +3,7 @@ import { mkdtemp, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Hono } from 'hono';
-import { getRoutes } from 'najm-core';
+import { getRoutes, Server } from 'najm-core';
 import { createGuard, getGuardMetadata } from 'najm-guard';
 import { MCP_REGISTRY } from 'najm-mcp';
 import {
@@ -691,6 +691,44 @@ describe('storage plugin MCP toggle', () => {
     expect(getGuardMetadata(StorageController, 'serveFile').some((item) => item.guardClass === ManageGuard)).toBe(false);
     expect(getGuardMetadata(StorageStudioController).some((item) => item.guardClass === ManageGuard)).toBe(true);
     expect(getGuardMetadata(StorageMcpTools).some((item) => item.guardClass === ManageGuard)).toBe(true);
+  });
+
+  test('a second storage() replaces the guards of the first instead of adding to them', () => {
+    class FirstGuard { canActivate() { return true; } }
+    class SecondGuard { canActivate() { return true; } }
+    const count = (guardClass: Function) => [
+      ...getGuardMetadata(StorageController, 'serveFile'),
+      ...getGuardMetadata(StorageController, 'listFiles'),
+      ...getGuardMetadata(StorageStudioController),
+      ...getGuardMetadata(StorageMcpTools),
+    ].filter((item) => item.guardClass === guardClass).length;
+
+    storage({ guards: [createGuard(FirstGuard)()], mcp: true, studio: true });
+    storage({ guards: [createGuard(FirstGuard)()], mcp: true, studio: true });
+    expect(count(FirstGuard)).toBe(4);
+
+    storage({ guards: [createGuard(SecondGuard)()] });
+    expect(count(FirstGuard)).toBe(0);
+    expect(count(SecondGuard)).toBe(2);
+
+    storage({ routes: false });
+    expect(count(SecondGuard)).toBe(0);
+  });
+
+  test('a validator option replaces StorageValidator wherever it is injected', async () => {
+    class NamespaceValidator extends StorageValidator {}
+    const plugin = storage({ routes: false, validator: NamespaceValidator });
+    expect(plugin.services ?? []).toContain(NamespaceValidator);
+    expect(plugin.services ?? []).not.toContain(StorageValidator);
+
+    const server = new Server({ isolated: true, silent: true }).use(plugin);
+    await server.init();
+    try {
+      expect(await server.container.resolve(StorageValidator)).toBeInstanceOf(NamespaceValidator);
+      expect((await server.container.resolve(StorageService) as any).validator).toBeInstanceOf(NamespaceValidator);
+    } finally {
+      await server.stop();
+    }
   });
 
   test('requires allowed roots and an explicit production choice for path uploads', () => {

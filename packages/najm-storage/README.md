@@ -184,6 +184,18 @@ storage({
 });
 ```
 
+Application upload rules (per-namespace categories, for example) go in a
+subclass of `StorageValidator`. `validator` registers it and every service that
+injects `StorageValidator` receives it:
+
+```ts
+class AppStorageValidator extends StorageValidator { /* override validate* */ }
+storage({ guards: [isAuth()], validator: AppStorageValidator });
+```
+
+Calling `storage()` again (a second server, a test) replaces the guards the
+previous call put on the shared storage controllers instead of adding to them.
+
 `storage_upload_from_path` is absent by default. To enable it, set
 `mcpUploadFromPath: { allowedRoots: ['/srv/imports'] }` alongside `mcp: true`.
 The source and allowed roots are resolved with `realpath` before reading, so a

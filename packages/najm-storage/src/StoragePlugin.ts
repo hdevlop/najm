@@ -2,7 +2,7 @@
 // najm-storage - Plugin Factory
 // ============================================================================
 
-import { plugin } from 'najm-core';
+import { MetaHelper, plugin } from 'najm-core';
 import { events } from 'najm-event';
 import { STORAGE_CONFIG, STORAGE_SERVICE } from './tokens';
 import type { StorageConfig } from './types';
@@ -51,6 +51,29 @@ function assertExplicitGuards(config: StorageConfig): void {
   }
 }
 
+// najm-guard's metadata key (a registered symbol, so no dependency on it).
+const GUARDS_META = Symbol.for('najm:guards:meta');
+const STORAGE_GUARDED_METHODS = ['serveFile', 'servePreview', 'listFiles', 'getFileInfo', 'uploadFile', 'deleteFile', 'deleteNamespace'] as const;
+const guardBaselines = new WeakMap<object, Map<string | symbol | undefined, unknown[]>>();
+
+/**
+ * storage() decorates shared classes. Each call first puts back the guards
+ * they carried before the first call, so a second storage() (another server,
+ * a test) replaces the guards instead of adding to them.
+ */
+function restoreGuardBaseline(target: object, key?: string | symbol): void {
+  let byKey = guardBaselines.get(target);
+  if (!byKey) guardBaselines.set(target, byKey = new Map());
+  if (!byKey.has(key)) byKey.set(key, [...(MetaHelper.get<unknown[]>(GUARDS_META, target, key) ?? [])]);
+  MetaHelper.define(GUARDS_META, [...byKey.get(key)!], target, key);
+}
+
+function restoreStorageGuards(): void {
+  for (const method of STORAGE_GUARDED_METHODS) restoreGuardBaseline(StorageController.prototype, method);
+  restoreGuardBaseline(StorageStudioController);
+  restoreGuardBaseline(StorageMcpTools);
+}
+
 function applyRouteGuards(guards: StorageConfig['guards'], controllers: Function[]): void {
   if (!guards?.length) return;
 
@@ -92,6 +115,7 @@ export const storage = (config: StorageConfig = {}) => {
     ...(merged.studio ? [StorageStudioController] : []),
   ];
 
+  restoreStorageGuards();
   if (merged.routes) {
     for (const [methods, guards] of [
       [['serveFile', 'servePreview'], merged.guards],
@@ -108,16 +132,20 @@ export const storage = (config: StorageConfig = {}) => {
   if (merged.studio) applyRouteGuards(merged.manageGuards ?? merged.guards, [StorageStudioController]);
   if (merged.mcp) applyRouteGuards(merged.manageGuards ?? merged.guards, [StorageMcpTools]);
 
+  const validator = config.validator ?? StorageValidator;
   const builder = plugin('storage')
     .version('3.0.0')
     .depends(events())
-    .services(StorageService, StorageValidator)
+    .services(StorageService, validator)
     // The identity-stable way in for packages that store files through this
     // plugin. The alias forwards to the same singleton registered above, so a
     // consumer loaded from a different copy of `najm-storage` writes to the
     // application's provider rather than to a second one of its own.
     .alias(STORAGE_SERVICE, StorageService)
     .config(STORAGE_CONFIG, merged);
+
+  // StorageService injects StorageValidator by class; the alias hands it the replacement.
+  if (validator !== StorageValidator) builder.alias(StorageValidator, validator);
 
   if (merged.routes) {
     builder.services(StorageController);
