@@ -1,6 +1,16 @@
 // Core framework surface
 export * from 'najm-core';
 
+// Server preset: the common plugins in dependency order, with their shared policy
+export { createNajmServer } from './server';
+export type {
+  NajmServerOptions,
+  NajmServerSlot,
+  NajmServerCacheOptions,
+  NajmServerRateLimitOptions,
+  NajmServerEmailOptions,
+} from './server';
+
 // Common plugin factories and decorators
 export { guards, GuardPlugin, createGuard, composeGuards, Public } from 'najm-guard';
 export { Validate, validation } from 'najm-validation';

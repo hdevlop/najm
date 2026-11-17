@@ -3,6 +3,8 @@
   "packages": {
     "najm-api": [
       "export * from 'najm-core';",
+      "export { createNajmServer } from './server';",
+      "export type { NajmServerOptions, NajmServerSlot, NajmServerCacheOptions, NajmServerRateLimitOptions, NajmServerEmailOptions, } from './server';",
       "export { guards, GuardPlugin, createGuard, composeGuards, Public } from 'najm-guard';",
       "export { Validate, validation } from 'najm-validation';",
       "export { cache, CacheService, MemoryDriver, RedisDriver, isRedisAvailable } from 'najm-cache';",

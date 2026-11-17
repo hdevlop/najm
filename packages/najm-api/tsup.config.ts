@@ -17,6 +17,7 @@ export default defineConfig({
     'src/rate.ts',
     'src/storage.ts',
     'src/validation.ts',
+    'src/server.ts',
   ],
   format: ['esm'],
   dts: true,

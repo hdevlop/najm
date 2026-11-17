@@ -107,6 +107,45 @@ await new Server()
   .listen(3000);
 ```
 
+### Server preset
+
+`createNajmServer` registers the common plugins in the order they depend on
+each other (cors, database, cache, i18n, validation, rateLimit, events, email,
+guards, auth, mcp, storage, then your `plugins`), with the policy every app
+would otherwise write itself:
+
+- **guards**: with `auth`, a route that declares no guard asks for sign-in and
+  `@Public()` opens one. Registered before auth, which would otherwise take a
+  guards plugin with no default.
+- **cache**: Redis when `url` is set and required in production; memory
+  otherwise, and always when `buildPhase` is true (Next: `isNextBuildPhase()`).
+- **rateLimit**: `trustedProxyHops` defaults to 1 in production and 0
+  elsewhere; with 0 hops outside production rate limiting is skipped, since a
+  local server behind no proxy exposes no client address.
+- **email**: `{ env, defaultProvider, defaultFrom }` builds the config with
+  `emailConfigFromEnv`.
+
+Each slot takes the plugin's options, `false` to leave it out, or a function
+returning the plugin when you build it yourself. Options are values: read your
+environment variables and pass them in.
+
+```typescript
+import Redis from 'ioredis';
+import { createNajmServer } from 'najm-api';
+
+export const server = createNajmServer({
+  base: '/api',
+  cors: { origin: [process.env.FRONTEND_URL ?? 'http://localhost:3000'], credentials: true },
+  database: { default: db },
+  cache: { url: process.env.REDIS_URL, Redis, keyPrefix: 'app:' },
+  rateLimit: {},
+  email: { env: { EMAIL_PROVIDER: process.env.EMAIL_PROVIDER }, defaultProvider: 'console' },
+  auth: { dialect: 'pg' },
+  storage: { guards: [isAuth()], manageGuards: [isAdmin()] },
+  plugins: [myAppPlugin()],
+}).load(modules);
+```
+
 ## Feature Subpaths
 
 Use the root entry for common APIs, or feature subpaths when you want a smaller, explicit import surface:
