@@ -1,5 +1,15 @@
 # Changelog
 
+## 3.8.0 - 2026-11-17
+
+### Added
+
+- `rerankTools.dropAt`: a reranker's "none" at or above it leaves the message
+  without tools (status `fallback_none`, whatever `fallbackOnNoMatch` says),
+  with no second pass and no unmatched record, reported as `applied:
+  'dropped'`. Use it for greetings and thanks that weakly match a tool. Off by
+  default: a "none" still keeps the router's order.
+
 ## 3.7.0 - 2026-11-16
 
 ### Added
