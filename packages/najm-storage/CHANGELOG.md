@@ -1,5 +1,12 @@
 # Changelog
 
+## 4.1.0 - 2026-11-17
+
+- `validator`: a `StorageValidator` subclass that replaces it wherever it is
+  injected, for application upload rules such as per-namespace categories.
+- A second `storage()` (another server, a test) replaces the guards the
+  previous call put on the shared storage controllers instead of adding to them.
+
 ## 4.0.1 - 2026-11-16
 
 - The studio keeps its emerald accent: `dark` is set on the theme provider

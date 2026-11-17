@@ -785,7 +785,7 @@
     },
     "packages/najm-storage": {
       "name": "najm-storage",
-      "version": "4.0.1",
+      "version": "4.1.0",
       "dependencies": {
         "@tanstack/react-router": "^1.170.8",
         "clsx": "^2.1.1",
