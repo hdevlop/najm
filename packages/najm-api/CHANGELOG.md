@@ -1,5 +1,17 @@
 # Changelog
 
+## 5.1.0 - 2026-11-17
+
+- `createNajmServer(options)` (also `najm-api/server`) registers cors,
+  database, cache, i18n, validation, rateLimit, events, email, guards, auth,
+  mcp and storage in dependency order, then the app's `plugins`, from one
+  options object. It holds the shared policy: sign-in by default with auth,
+  registered before it; Redis when a URL is set and required in production,
+  memory during a build; one trusted proxy in production and none, skipped,
+  locally; email from the app's env reads. A slot takes options, `false`, or a
+  function returning the plugin. The preset reads no environment variable.
+- Adopt najm-storage 4.1.0 (`validator` option).
+
 ## 5.0.0 - 2026-10-04
 
 - Breaking: aggregate Auth 6, Rate 3, Email 3, and Storage 4 with the production security fixes.

@@ -190,7 +190,7 @@
     },
     "packages/najm-api": {
       "name": "najm-api",
-      "version": "5.0.0",
+      "version": "5.1.0",
       "dependencies": {
         "najm-auth": "workspace:*",
         "najm-cache": "workspace:*",
