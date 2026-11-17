@@ -19,7 +19,7 @@ export interface RoutingRerankOutcome {
   /** Null when the reranker failed, timed out or answered something unusable. */
   pick: { toolName: string | null; confidence: number } | null;
   /** selected: the pick leads a shortened list; promoted: moved to the top; unchanged: the router's order. */
-  applied: 'selected' | 'promoted' | 'unchanged';
+  applied: 'selected' | 'promoted' | 'dropped' | 'unchanged';
   /** How many candidates the reranker was shown. */
   candidates: number;
 }

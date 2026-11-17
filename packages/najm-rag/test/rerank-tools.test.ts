@@ -95,6 +95,32 @@ describe('rerankTools: a second judge after embedding search', () => {
     expect(names(await router.findRelevantTools('notes de la classe'))).toEqual(ROUTER_ORDER);
   });
 
+  test('with dropAt, a sure "none" leaves the message without tools, not retried or recorded', async () => {
+    const rerank = mock(async () => ({ toolName: null, confidence: 0.95 }));
+    const { router, unmatched } = build({ rerank, dropAt: 0.9 });
+    const result = await router.findRelevantTools('salam labas');
+    expect(result).toEqual({ status: 'fallback_none', tools: [],
+      rerank: { pick: { toolName: null, confidence: 0.95 }, applied: 'dropped', candidates: 4 } });
+    expect(rerank).toHaveBeenCalledTimes(1);
+    expect(unmatched.recordMiss).not.toHaveBeenCalled();
+  });
+
+  test('with dropAt, a less sure "none" or any tool pick routes as before', async () => {
+    const unsure = await build({ rerank: async () => ({ toolName: null, confidence: 0.85 }), dropAt: 0.9 }).router.findRelevantTools('x');
+    expect(names(unsure)).toEqual(ROUTER_ORDER);
+    expect(unsure.rerank?.applied).toBe('unchanged');
+    const picked = await build({ rerank: async () => ({ toolName: 'kpis', confidence: 0.95 }), dropAt: 0.9, keepRouterTools: 0 }).router.findRelevantTools('x');
+    expect(names(picked)).toEqual(['kpis']);
+  });
+
+  test('a drop gives no tools even when fallbackOnNoMatch is all, and the preview says so', async () => {
+    const built = build({ rerank: async () => ({ toolName: null, confidence: 1 }), dropAt: 0.9 });
+    (built as any).router.config.toolRouting.fallbackOnNoMatch = 'all';
+    expect((await built.router.findRelevantTools('merci')).tools).toEqual([]);
+    const preview = await built.preview.previewRouting('merci');
+    expect(preview).toMatchObject({ status: 'fallback_none', finalTools: [], matches: [], rerank: { applied: 'dropped' } });
+  });
+
   test.each([
     ['a tool that is not a candidate', async () => ({ toolName: 'weather', confidence: 0.99 })],
     ['a confidence above 1', async () => ({ toolName: 'kpis', confidence: 1.5 })],

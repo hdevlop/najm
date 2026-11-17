@@ -196,6 +196,13 @@ export interface RoutingRerankConfig {
   promoteAt?: number;
   /** Router matches kept after a selected pick. Default 3. */
   keepRouterTools?: number;
+  /**
+   * At or above: a pick of none (no candidate fits the message, as for a
+   * greeting) leaves the message without tools, status `fallback_none`
+   * whatever `fallbackOnNoMatch` says, with no second pass and no unmatched
+   * record. Default: off; a none keeps the router's order.
+   */
+  dropAt?: number;
   /** Default 800. */
   timeoutMs?: number;
 }

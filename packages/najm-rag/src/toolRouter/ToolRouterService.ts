@@ -73,6 +73,8 @@ export class ToolRouterService {
         dependencies: routing.dependencies ?? {},
       };
       let decision = await decideRouting(latestEmbedding, routableTools, this.repository, settings, this.rerankFor(latest));
+      // The reranker said no tool fits (`dropAt`): no retry, no unmatched record.
+      if (decision.dropped) return { status: 'fallback_none', tools: [], ...withRerank(decision) };
       if (decision.miss && joinedEmbedding) {
         const joined = await decideRouting(joinedEmbedding, routableTools, this.repository, settings, this.rerankFor(normalized));
         if (!joined.miss) decision = joined;

@@ -43,6 +43,8 @@ export interface RoutingDecision {
   finalTools: RegisteredTool[];
   /** Set when `rerankTools` was asked. */
   rerank?: RoutingRerankOutcome;
+  /** The reranker said no tool fits at `dropAt`: no tools, and not a miss to retry. */
+  dropped?: true;
 }
 
 /** The app's reranker and the message it judges (before `rewriteRoutingQuery`). */
@@ -95,6 +97,9 @@ export async function decideRouting(
     if (reranked) ({ matches, outcome: rerankOutcome } = reranked);
   }
   const withRerank = rerankOutcome ? { rerank: rerankOutcome } : {};
+  if (rerankOutcome?.applied === 'dropped') {
+    return { ...withRerank, dropped: true, matches: [], miss: null, primaryName: undefined, dependencies: [], routingDecisions: [], finalTools: [] };
+  }
 
   if (matches.length === 0) {
     return {

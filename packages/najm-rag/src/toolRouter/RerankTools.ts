@@ -66,6 +66,7 @@ export async function askReranker(
  *   confidence >= selectAt:  the pick, then `keepRouterTools` of the router's
  *                            matches; a near miss is rescued only here.
  *   confidence >= promoteAt: the pick moves to the top of the router's matches.
+ *   none at >= dropAt:       no matches (only when `dropAt` is set).
  *   anything else:           the router's order.
  */
 export async function rerankMatches(
@@ -87,7 +88,12 @@ export async function rerankMatches(
     similarity: candidate.similarity,
   })));
   const unchanged = { matches, outcome: { pick, applied: 'unchanged' as const, candidates: candidates.length } };
-  if (!pick?.toolName) return unchanged;
+  if (!pick?.toolName) {
+    if (pick && config.dropAt !== undefined && pick.confidence >= config.dropAt) {
+      return { matches: [], outcome: { ...unchanged.outcome, applied: 'dropped' } };
+    }
+    return unchanged;
+  }
 
   const picked = candidates.find((candidate) => candidate.toolName === pick.toolName)!;
   const others = matches.filter((match) => match.toolName !== picked.toolName);

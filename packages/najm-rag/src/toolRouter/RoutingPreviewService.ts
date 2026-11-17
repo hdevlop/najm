@@ -75,6 +75,13 @@ export class RoutingPreviewService {
       const settings = { maxTools, topSemanticHits, similarityThreshold, dependencies: routing.dependencies ?? {} };
       const rerankFor = (query: string) => (this.config.rerankTools ? { config: this.config.rerankTools, query } : undefined);
       let decision = await decideRouting(embedding, routableTools, this.repository, settings, rerankFor(normalized));
+      if (decision.dropped) {
+        return {
+          query: userText, normalized, ...shown, ...(decision.rerank ? { rerank: decision.rerank } : {}),
+          status: 'fallback_none', matches: [], dependencies: [], routingDecisions: [], confirmations: this.getConfirmations([]),
+          finalTools: [], config,
+        };
+      }
 
       // Same second pass as chat routing (ToolRouterService).
       if (decision.miss) {
