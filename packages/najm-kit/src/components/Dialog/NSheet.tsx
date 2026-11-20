@@ -1,7 +1,9 @@
 import React, { createContext, useContext, type ComponentType, type ReactNode, type CSSProperties } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "../ui/sheet";
+import { X } from "lucide-react";
+import { Sheet, SheetClose, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "../ui/sheet";
 import { NajmScroll } from "../ui/scroll";
 import { cn } from "../../lib/cn";
+import { useNajmKitLabels } from "../../lib/kitLabels";
 
 const PortalScopeContext = createContext<string | undefined>(undefined);
 
@@ -46,6 +48,11 @@ const responsiveSectionPadding = "px-3 py-3 lg:px-3 2xl:px-4";
  * - Inline `style` width (bypasses Tailwind responsive-prefix-scoping issues in consumer apps).
  * - Inherits portal scope from `NPortalScopeProvider` so prefixed CSS (e.g. `.rs-studio`) reaches portaled content.
  * - One header + scrollable body + optional sticky footer.
+ * - The close button sits in the header row, centred with the title: a 36px
+ *   destructive-toned target rather than the bare corner icon, so it is easy to
+ *   find and to tap on a phone.
+ * - Never wider than the viewport: a phone gets the full width, not a sliver of
+ *   page beside the sheet.
  */
 export function NSheet({
   open,
@@ -63,9 +70,10 @@ export function NSheet({
   footer,
 }: NSheetProps) {
   const inheritedScope = useNPortalScope();
+  const labels = useNajmKitLabels();
   const portal = portalClassName ?? inheritedScope;
   const style: CSSProperties = {
-    width: `min(${width}px, 95vw)`,
+    width: `min(${width}px, 100vw)`,
     maxWidth: `${width}px`,
   };
 
@@ -80,6 +88,7 @@ export function NSheet({
           classNames?.content,
         )}
         style={style}
+        showClose={false}
       >
         <SheetHeader
           className={cn(
@@ -92,7 +101,7 @@ export function NSheet({
             <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-primary/10">
               <Icon className="size-4 text-primary" />
             </div>
-            <div className="min-w-0">
+            <div className="min-w-0 flex-1">
               <SheetTitle className="truncate text-sm font-semibold text-foreground">{title}</SheetTitle>
               {description && (
                 <SheetDescription className="truncate text-xs text-muted-foreground">
@@ -100,6 +109,13 @@ export function NSheet({
                 </SheetDescription>
               )}
             </div>
+            <SheetClose
+              aria-label={labels.close}
+              title={labels.close}
+              className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10 text-destructive transition-colors hover:bg-destructive/20 focus-visible:outline-hidden focus-visible:ring-2 focus-visible:ring-destructive/40 disabled:pointer-events-none"
+            >
+              <X className="size-5" aria-hidden="true" />
+            </SheetClose>
           </div>
         </SheetHeader>
         <NajmScroll axis="y" className="min-h-0 flex-1">

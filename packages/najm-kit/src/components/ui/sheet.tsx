@@ -54,9 +54,11 @@ const sheetVariants = cva(
 type SheetContentProps = React.ComponentProps<typeof SheetPrimitive.Content> &
   VariantProps<typeof sheetVariants> & {
     portalClassName?: string
+    /** Renders the corner close button. A content that places its own `SheetClose` turns it off. Default true. */
+    showClose?: boolean
   }
 
-function SheetContent({ className, portalClassName, side, children, ...props }: SheetContentProps) {
+function SheetContent({ className, portalClassName, side, showClose = true, children, ...props }: SheetContentProps) {
   const labels = useNajmKitLabels()
   return (
     <SheetPortal>
@@ -68,10 +70,12 @@ function SheetContent({ className, portalClassName, side, children, ...props }: 
           {...props}
         >
           {children}
-          <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 end-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
-            <X className="size-4" />
-            <span className="sr-only">{labels.close}</span>
-          </SheetPrimitive.Close>
+          {showClose && (
+            <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 end-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+              <X className="size-4" />
+              <span className="sr-only">{labels.close}</span>
+            </SheetPrimitive.Close>
+          )}
         </SheetPrimitive.Content>
       </div>
     </SheetPortal>
