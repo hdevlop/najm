@@ -1,5 +1,17 @@
 # Changelog
 
+## 3.14.2 - 2026-11-20
+
+- `NSheet` closes from one button in its header row, centred with the
+  title: 36px, red text on a light red background. It replaces the bare
+  16px corner icon, which was hard to find and to tap on a phone and could
+  run into a long title. Screens that placed something at the sheet's top
+  end corner should check it no longer needs to keep clear of the old icon.
+- `NSheet` is capped at the viewport width instead of `95vw`, so a phone
+  gets the full width rather than a sliver of page beside the sheet.
+- `SheetContent` takes `showClose` (default `true`); a content that places
+  its own `SheetClose` turns the corner button off.
+
 ## 3.14.1 - 2026-11-15
 
 - `Badge` honors `variant` again. With no `color`, the badge fell back to the
