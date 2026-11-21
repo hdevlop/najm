@@ -30,6 +30,12 @@ function assignRef(ref: React.Ref<HTMLElement> | undefined, node: HTMLElement | 
 function applyViewportLayout(node: HTMLElement, axis: "both" | "x" | "y") {
   node.style.width = "100%";
   node.style.height = "100%";
+  // The viewport is the host's direct child. Under a host sized only by a
+  // max-height (`max-h-64`), height: 100% resolves to auto, so the viewport
+  // grew to its whole content and the host clipped it instead of scrolling.
+  // Inheriting the host's limits caps the viewport, responsive classes included.
+  node.style.maxWidth = "inherit";
+  node.style.maxHeight = "inherit";
   node.style.minWidth = "0";
   node.style.minHeight = "0";
   node.style.overflowX = axis === "x" || axis === "both" ? "auto" : "hidden";

@@ -32,6 +32,25 @@ describe("NajmScroll", () => {
     expect(host?.querySelector("[data-overlayscrollbars-contents]")).toBeTruthy();
   });
 
+  test("caps its viewport at the host's max-height so a max-h-* host scrolls instead of clipping", async () => {
+    const { container } = render(
+      <NajmScroll className="max-h-64">
+        {Array.from({ length: 50 }, (_, index) => <div key={index}>Option {index}</div>)}
+      </NajmScroll>,
+    );
+    const host = container.firstElementChild as HTMLElement;
+
+    await waitFor(() => {
+      expect(host.querySelector("[data-overlayscrollbars-viewport]")).toBeTruthy();
+    });
+    const viewport = host.querySelector("[data-overlayscrollbars-viewport]") as HTMLElement;
+
+    expect(viewport.parentElement).toBe(host);
+    expect(viewport.style.maxHeight).toBe("inherit");
+    expect(viewport.style.maxWidth).toBe("inherit");
+    expect(viewport.style.overflowY).toBe("auto");
+  });
+
   test("enhances an existing headless-component viewport", async () => {
     const { getByTestId } = render(<ExistingViewportHarness />);
 

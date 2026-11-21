@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- `NajmScroll` scrolls when it is sized by a max-height alone (`max-h-64`).
+  Its viewport took `height: 100%`, which resolves to auto under such a
+  host, so the viewport grew to the whole content and the host clipped it:
+  `Combobox` lists showed about seven options and the rest could not be
+  reached. The viewport now inherits the host's `max-height` and
+  `max-width`. Hosts with a fixed or flex height are unchanged.
+
 ## 3.14.2 - 2026-11-20
 
 - `NSheet` closes from one button in its header row, centred with the
