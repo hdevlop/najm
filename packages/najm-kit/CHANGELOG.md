@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 3.14.3 - 2026-11-21
 
 - `NajmScroll` scrolls when it is sized by a max-height alone (`max-h-64`).
   Its viewport took `height: 100%`, which resolves to auto under such a
